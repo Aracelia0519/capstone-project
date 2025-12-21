@@ -10,6 +10,27 @@ import Reports from '@/views/admin/Reports.vue'
 import SystemSettings from '@/views/admin/SystemSettings.vue'
 import AuditLogs from '@/views/admin/AuditLogs.vue'
 
+import DistributorLayout from '@/layouts/DistributorLayout.vue'
+import DistributorDashboard from '@/views/distributor/Dashboard.vue'
+import PaintInventory from '@/views/distributor/PaintInventory.vue'
+import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
+import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
+import SalesHistory from '@/views/distributor/SalesHistory.vue'
+import ServiceProviders from '@/views/distributor/ServiceProviders.vue'
+import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
+import DistributorReports from '@/views/distributor/Reports.vue'
+
+import ServiceProviderLayout from '@/layouts/ServiceProviderLayout.vue'
+import DashboardSP from '@/views/serviceProvider/DashboardSP.vue'
+import Clients from '@/views/serviceProvider/Clients.vue'
+import ServiceRequestsJobs from '@/views/serviceProvider/ServiceRequestsJobs.vue'
+import VirtualPaintColor from '@/views/serviceProvider/VirtualPaintColor.vue'
+import ColorHistory from '@/views/serviceProvider/ColorHistory.vue'
+import PaintProductsSP from '@/views/serviceProvider/PaintProductsSP.vue'
+import Distributors from '@/views/serviceProvider/Distributors.vue'
+import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
+import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
+
 const routes = [
   {
     path: '/admin',
@@ -61,7 +82,105 @@ const routes = [
         component: AuditLogs
       },
       
-      // ... other admin routes
+    ]
+  },
+  {
+    path: '/distributor',
+    component: DistributorLayout,
+    children: [
+      {
+        path: 'distributordashboard',
+        name: 'distributordashboard',
+        component: DistributorDashboard
+      },
+      {
+        path: 'paintInventory',
+        path: 'paintInventory',
+        component: PaintInventory
+      },
+      {
+        path: 'ordersRequest',
+        name: 'ordersRequest',
+        component: OrdersRequest
+      },
+      {
+        path: 'ColorDemandInsights',
+        name: 'ColorDemandInsights',
+        component: ColorDemandInsights
+      },
+      {
+        path: 'SalesHistory',
+        name: 'SalesHistory',
+        component: SalesHistory
+      },
+      {
+        path: 'ServiceProviders',
+        name: 'ServiceProviders',
+        component: ServiceProviders
+      },
+      {
+        path: 'reportsD',
+        name: 'reportsD',
+        component: DistributorReports
+      },
+      {
+        path: 'profileSettings',
+        name: 'profileSettings',
+        component: ProfileSettings
+      },
+
+    ]
+  },
+  {
+    path: '/serviceProvider',
+    component: ServiceProviderLayout,
+    children: [
+      {
+        path: 'dashboardSP',
+        name: 'dashboardSP',
+        component: DashboardSP
+      },
+      {
+        path: 'Clients',
+        name: 'Clients',
+        component: Clients
+      },
+      {
+        path: 'ServiceRequestsJobs',
+        name: 'ServiceRequestsJobs',
+        component: ServiceRequestsJobs
+      },
+      {
+        path: 'VirtualPaintColor',
+        name: 'VirtualPaintColor',
+        component: VirtualPaintColor
+      },
+      {
+        path: 'ColorHistory',
+        name: 'ColorHistory',
+        component: ColorHistory
+      },    
+      {
+        path: 'PaintProductsSP',
+        name: 'PaintProductsSP',
+        component: PaintProductsSP
+      },
+      {
+        path: 'Distributors',
+        name: 'Distributors',
+        component: Distributors
+      },
+      {
+        path: 'ReportsSP',
+        name: 'ReportsSP',
+        component: ReportsSP
+      },
+      {
+        path: 'ProfileSettingsSP',
+        name: 'ProfileSettingsSP',
+        component: ProfileSettingsSP
+      },
+      
     ]
   },
   // ... other routes
