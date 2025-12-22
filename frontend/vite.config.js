@@ -17,4 +17,20 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  
 })
+module.exports = {
+  theme: {
+    extend: {
+      animation: {
+        'pulse-slow': 'pulse-slow 2s infinite',
+      },
+      keyframes: {
+        'pulse-slow': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        }
+      }
+    }
+  }
+}

@@ -325,6 +325,10 @@ export default {
       if (newVal) {
         this.isMobile = window.innerWidth <= 768
       }
+    },
+    isCollapsed(newVal) {
+      // Emit the collapsed state to parent component
+      this.$emit('collapsed', newVal)
     }
   },
   methods: {
@@ -358,7 +362,7 @@ export default {
   beforeUnmount() {
     window.removeEventListener('resize', this.checkMobile)
   },
-  emits: ['toggle', 'link-click']
+  emits: ['toggle', 'link-click', 'collapsed']
 }
 </script>
 

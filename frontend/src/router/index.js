@@ -31,6 +31,15 @@ import Distributors from '@/views/serviceProvider/Distributors.vue'
 import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
 import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
 
+import ClientLayout from '@/layouts/ClientLayout.vue'
+import DashboardC from '@/views/client/DashboardC.vue'
+import MyServiceRequests from '@/views/client/MyServiceRequests.vue'
+import ColorPreview from '@/views/client/ColorPreview.vue'
+import ColorHistoryC from '@/views/client/ColorHistoryC.vue'
+import Recommendations from '@/views/client/Recommendations.vue'
+import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
+import ProfileC from '@/views/client/ProfileC.vue'
+
 const routes = [
   {
     path: '/admin',
@@ -183,7 +192,49 @@ const routes = [
       
     ]
   },
-  // ... other routes
+  {
+    path: '/Clients',
+    component: ClientLayout,
+    children: [
+      {
+        path: 'dashboardC',
+        name: 'dashboardC',
+        component: DashboardC
+      },
+      {
+        path: 'myServiceRequest',
+        name: 'myServiceRequest',
+        component: MyServiceRequests
+      },
+      {
+        path: 'colorPreview',
+        name: 'colorPreview',
+        component: ColorPreview
+      },
+      {
+        path: 'colorHistoryC',
+        name: 'colorHistoryC',
+        component: ColorHistoryC
+      },
+      {
+        path: 'recommendation',
+        name: 'recommendation',
+        component: Recommendations
+      },
+      {
+        path: 'serviceProviderC',
+        name: 'serviceProviderC',
+        component: ServiceProvidersC
+      },
+      {
+        path: 'profileC',
+        name: 'profileC',
+        component: ProfileC
+      },
+      
+    ]
+  },
+  // other routes bitch
 ]
 
 const router = createRouter({
