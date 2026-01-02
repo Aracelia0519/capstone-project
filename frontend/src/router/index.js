@@ -40,6 +40,12 @@ import Recommendations from '@/views/client/Recommendations.vue'
 import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
 
+import LandingLayout from '@/layouts/LandingLayout.vue'
+import homeLanding from '@/views/landingPage/homeLanding.vue'
+import HowItWorks from '@/views/landingPage/HowItWorks.vue'
+import ExploreColors from '@/views/landingPage/ExploreColors.vue'
+import Services from '@/views/landingPage/Services.vue'
+
 const routes = [
   {
     path: '/admin',
@@ -232,6 +238,33 @@ const routes = [
         component: ProfileC
       },
       
+    ]
+  },
+  {
+    path: '/Landing',
+    component: LandingLayout,
+    children: [
+      {
+        path: 'homeLanding',
+        name: 'homeLanding',
+        component: homeLanding
+      },
+      {
+        path: 'howItWorks',
+        name: 'howItWorks',
+        component: HowItWorks
+      },
+      {
+        path: 'exploreColors',
+        name: 'exploreColors',
+        component: ExploreColors
+      },
+      {
+        path: 'servicesLanding',
+        name: 'servicesLanding',
+        component: Services
+      },
+
     ]
   },
   // other routes bitch
