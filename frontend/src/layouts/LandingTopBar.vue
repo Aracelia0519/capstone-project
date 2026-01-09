@@ -38,7 +38,7 @@
           <!-- CTA Buttons -->
           <div class="flex items-center space-x-3 ml-6">
             <button
-              @click="navigateTo('/login')"
+              @click="navigateTo('/Landing/logIn')"
               class="px-5 py-2.5 border border-blue-500 text-blue-500 rounded-lg font-semibold hover:bg-blue-50 transition-all duration-300 hover:shadow-md flex items-center space-x-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -47,7 +47,7 @@
               <span>Login</span>
             </button>
             <button
-              @click="navigateTo('/register')"
+              @click="navigateTo('/Landing/SignUp')"
               class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 hover:from-blue-600 hover:to-purple-600 flex items-center space-x-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

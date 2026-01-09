@@ -45,6 +45,8 @@ import homeLanding from '@/views/landingPage/homeLanding.vue'
 import HowItWorks from '@/views/landingPage/HowItWorks.vue'
 import ExploreColors from '@/views/landingPage/ExploreColors.vue'
 import Services from '@/views/landingPage/Services.vue'
+import LogIn from '@/views/landingPage/LogIn.vue'
+import SignUp from '@/views/landingPage/SignUp.vue'
 
 const routes = [
   {
@@ -263,6 +265,16 @@ const routes = [
         path: 'servicesLanding',
         name: 'servicesLanding',
         component: Services
+      },
+      {
+        path: 'logIn',
+        name: 'logIn',
+        component: LogIn
+      },
+      {
+        path: 'signUp',
+        name: 'signUp',
+        component: SignUp
       },
 
     ]
