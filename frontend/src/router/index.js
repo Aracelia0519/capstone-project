@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import axios from '@/utils/axios'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import Dashboard from '@/views/admin/Dashboard.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
@@ -50,8 +51,13 @@ import SignUp from '@/views/landingPage/SignUp.vue'
 
 const routes = [
   {
+    path: '/',
+    redirect: '/Landing/homeLanding'
+  },
+  {
     path: '/admin',
     component: AdminLayout,
+    meta: { requiresAuth: true, role: 'admin' },
     children: [
       {
         path: 'dashboard',
@@ -98,12 +104,12 @@ const routes = [
         name: 'auditLogs',
         component: AuditLogs
       },
-      
     ]
   },
   {
     path: '/distributor',
     component: DistributorLayout,
+    meta: { requiresAuth: true, role: 'distributor' },
     children: [
       {
         path: 'distributordashboard',
@@ -112,7 +118,7 @@ const routes = [
       },
       {
         path: 'paintInventory',
-        path: 'paintInventory',
+        name: 'paintInventory',
         component: PaintInventory
       },
       {
@@ -145,12 +151,12 @@ const routes = [
         name: 'profileSettings',
         component: ProfileSettings
       },
-
     ]
   },
   {
     path: '/serviceProvider',
     component: ServiceProviderLayout,
+    meta: { requiresAuth: true, role: 'service_provider' },
     children: [
       {
         path: 'dashboardSP',
@@ -197,12 +203,12 @@ const routes = [
         name: 'ProfileSettingsSP',
         component: ProfileSettingsSP
       },
-      
     ]
   },
   {
     path: '/Clients',
     component: ClientLayout,
+    meta: { requiresAuth: true, role: 'client' },
     children: [
       {
         path: 'dashboardC',
@@ -239,12 +245,12 @@ const routes = [
         name: 'profileC',
         component: ProfileC
       },
-      
     ]
   },
   {
     path: '/Landing',
     component: LandingLayout,
+    meta: { requiresAuth: false },
     children: [
       {
         path: 'homeLanding',
@@ -276,15 +282,82 @@ const routes = [
         name: 'signUp',
         component: SignUp
       },
-
     ]
   },
-  // other routes bitch
+  // Catch all route - redirect to home
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/Landing/homeLanding'
+  }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
+
+// Route guard to check authentication
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiredRole = to.meta.role
+  const token = localStorage.getItem('auth_token')
+  const userData = localStorage.getItem('user_data')
+
+  // If route requires authentication
+  if (requiresAuth) {
+    if (!token || !userData) {
+      // Not authenticated, redirect to login
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+      next('/Landing/logIn')
+      return
+    }
+
+    try {
+      // Verify token with backend
+      await axios.get('/auth/me')
+      
+      // Check role if required
+      if (requiredRole) {
+        const user = JSON.parse(userData)
+        if (user.role !== requiredRole) {
+          // Wrong role, redirect to appropriate dashboard
+          const roleRoutes = {
+            admin: '/admin/dashboard',
+            distributor: '/distributor/distributordashboard',
+            service_provider: '/serviceProvider/dashboardSP',
+            client: '/Clients/dashboardC'
+          }
+          next(roleRoutes[user.role] || '/Landing/homeLanding')
+          return
+        }
+      }
+      
+      next()
+    } catch (error) {
+      // Token invalid or expired
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+      next('/Landing/logIn')
+    }
+  } else {
+    // Public route, allow access
+    next()
+  }
+})
+
+// Add axios interceptor to handle 401 responses globally
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+      router.push('/Landing/logIn')
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default router

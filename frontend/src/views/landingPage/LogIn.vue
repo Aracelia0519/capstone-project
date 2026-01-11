@@ -166,7 +166,7 @@
                 <label class="block text-sm font-medium text-gray-300 mb-2">
                   <div class="flex items-center space-x-2">
                     <svg class="w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 118 0v4h8z"></path>
                     </svg>
                     <span class="group-hover:text-purple-300 transition-colors duration-300">Password</span>
                   </div>
@@ -356,6 +356,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from '@/utils/axios'
 
 const router = useRouter()
 const particleCanvas = ref(null)
@@ -401,9 +402,9 @@ const validationErrors = reactive({
 // Role-based redirect routes
 const roleRoutes = {
   admin: '/admin/dashboard',
-  distributor: '/distributor/dashboard',
-  service_provider: '/service-provider/dashboard',
-  client: '/client/dashboard'
+  distributor: '/distributor/distributordashboard',
+  service_provider: '/serviceProvider/dashboardSP',
+  client: '/Clients/dashboardC'
 }
 
 // Particle system
@@ -515,58 +516,6 @@ const showNotification = (title, message, type = 'success') => {
   }, 5000)
 }
 
-// Simulate API login call
-const loginApiCall = async (credentials) => {
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
-  const mockUsers = {
-    'admin@cavitegopaint.com': { 
-      token: 'admin_token_123',
-      role: 'admin',
-      name: 'System Administrator',
-      status: 'active'
-    },
-    'distributor@cavitegopaint.com': { 
-      token: 'distributor_token_123',
-      role: 'distributor',
-      name: 'Paint Distributor',
-      status: 'active'
-    },
-    'service@cavitegopaint.com': { 
-      token: 'service_token_123',
-      role: 'service_provider',
-      name: 'Service Provider',
-      status: 'active'
-    },
-    'client@cavitegopaint.com': { 
-      token: 'client_token_123',
-      role: 'client',
-      name: 'Paint Client',
-      status: 'active'
-    }
-  }
-
-  const user = mockUsers[credentials.email.toLowerCase()]
-  
-  if (!user) {
-    throw new Error('Invalid email or password')
-  }
-
-  if (credentials.password !== 'password123') {
-    throw new Error('Invalid email or password')
-  }
-
-  if (user.status === 'pending') {
-    throw new Error('Your account is pending approval')
-  }
-
-  if (user.status === 'suspended') {
-    throw new Error('Your account has been suspended')
-  }
-
-  return user
-}
-
 // Handle login
 const handleLogin = async () => {
   if (!validateForm()) {
@@ -577,35 +526,33 @@ const handleLogin = async () => {
   isLoading.value = true
 
   try {
-    const response = await loginApiCall({
+    const response = await axios.post('/auth/login', {
       email: form.email,
-      password: form.password
+      password: form.password,
+      remember: form.remember
     })
 
-    localStorage.setItem('auth_token', response.token)
-    localStorage.setItem('user_role', response.role)
-    localStorage.setItem('user_name', response.name)
-    
-    if (form.remember) {
-      localStorage.setItem('remember_me', 'true')
+    if (response.data.status === 'success') {
+      // Store token and user data
+      localStorage.setItem('auth_token', response.data.token)
+      localStorage.setItem('user_data', JSON.stringify(response.data.user))
+      
+      showNotification('Success!', 'Redirecting to dashboard...', 'success')
+      
+      setTimeout(() => {
+        const redirectRoute = roleRoutes[response.data.user.role] || '/'
+        router.push(redirectRoute)
+      }, 1500)
+    } else {
+      showNotification('Login Failed', response.data.message || 'Login failed', 'error')
     }
 
-    showNotification('Success!', 'Redirecting to dashboard...', 'success')
-    
-    setTimeout(() => {
-      const redirectRoute = roleRoutes[response.role] || '/'
-      router.push(redirectRoute)
-    }, 1500)
-
   } catch (error) {
-    if (error.message.includes('Invalid email or password')) {
-      showNotification('Login Failed', 'Invalid email or password', 'error')
-    } else if (error.message.includes('pending approval')) {
-      showNotification('Account Pending', 'Your account is pending approval', 'error')
-    } else if (error.message.includes('suspended')) {
-      showNotification('Account Suspended', 'Your account has been suspended', 'error')
+    if (error.response && error.response.data) {
+      const { data } = error.response
+      showNotification('Login Failed', data.message || 'Login failed', 'error')
     } else {
-      showNotification('Error', 'Something went wrong. Please try again.', 'error')
+      showNotification('Error', 'Network error. Please try again.', 'error')
     }
   } finally {
     isLoading.value = false
@@ -619,7 +566,7 @@ const handleForgotPassword = () => {
 
 // Handle register
 const handleRegister = () => {
-  router.push('/Landing/SignUp')
+  router.push('/Landing/signUp')
 }
 
 // Initialize animations and particle system
@@ -651,609 +598,9 @@ onMounted(() => {
     if (cleanup) cleanup()
   })
 })
+
 </script>
 
 <style scoped>
-/* Enhanced Keyframes */
-@keyframes gentle-float {
-  0%, 100% { 
-    transform: translateY(0) scale(1); 
-  }
-  50% { 
-    transform: translateY(-10px) scale(1.01); 
-  }
-}
-
-@keyframes morph-slow {
-  0%, 100% { 
-    transform: translateY(0) rotate(0deg) scale(1);
-    border-radius: 50%; 
-  }
-  33% { 
-    transform: translateY(-15px) rotate(120deg) scale(1.2);
-    border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%; 
-  }
-  66% { 
-    transform: translateY(10px) rotate(240deg) scale(0.9);
-    border-radius: 60% 40% 40% 60% / 40% 60% 40% 60%; 
-  }
-}
-
-@keyframes morph-medium {
-  0%, 100% { 
-    transform: translateX(0) rotate(0deg) scale(1); 
-  }
-  50% { 
-    transform: translateX(20px) rotate(180deg) scale(1.1); 
-  }
-}
-
-@keyframes morph-slow-reverse {
-  0%, 100% { 
-    transform: translateY(0) rotate(0deg) scale(1);
-  }
-  33% { 
-    transform: translateY(15px) rotate(-120deg) scale(1.2);
-  }
-  66% { 
-    transform: translateY(-10px) rotate(-240deg) scale(0.9);
-  }
-}
-
-@keyframes morph-medium-delay {
-  0%, 100% { 
-    transform: translateX(0) rotate(0deg); 
-  }
-  50% { 
-    transform: translateX(-15px) rotate(-180deg); 
-  }
-}
-
-@keyframes brush-trail {
-  0%, 100% { 
-    transform: translateX(0) rotate(45deg) scaleY(1);
-    opacity: 0.1;
-  }
-  25% { 
-    transform: translateX(40px) rotate(55deg) scaleY(1.2);
-    opacity: 0.15;
-  }
-  75% { 
-    transform: translateX(-20px) rotate(35deg) scaleY(0.8);
-    opacity: 0.08;
-  }
-}
-
-@keyframes brush-trail-delay {
-  0%, 100% { 
-    transform: translateX(0) rotate(-12deg) scaleY(1);
-    opacity: 0.1;
-  }
-  25% { 
-    transform: translateX(-30px) rotate(-8deg) scaleY(1.3);
-    opacity: 0.15;
-  }
-  75% { 
-    transform: translateX(20px) rotate(-16deg) scaleY(0.7);
-    opacity: 0.08;
-  }
-}
-
-@keyframes parabolic-blue {
-  0%, 100% { 
-    transform: translate(0, 0); 
-  }
-  25% { 
-    transform: translate(15px, -25px); 
-  }
-  50% { 
-    transform: translate(25px, 0); 
-  }
-  75% { 
-    transform: translate(15px, 25px); 
-  }
-}
-
-@keyframes parabolic-purple {
-  0%, 100% { 
-    transform: translate(0, 0); 
-  }
-  25% { 
-    transform: translate(-20px, -20px); 
-  }
-  50% { 
-    transform: translate(-30px, 0); 
-  }
-  75% { 
-    transform: translate(-20px, 20px); 
-  }
-}
-
-@keyframes parabolic-green {
-  0%, 100% { 
-    transform: translate(0, 0); 
-  }
-  25% { 
-    transform: translate(10px, 20px); 
-  }
-  50% { 
-    transform: translate(20px, 0); 
-  }
-  75% { 
-    transform: translate(10px, -20px); 
-  }
-}
-
-@keyframes parabolic-yellow {
-  0%, 100% { 
-    transform: translate(0, 0); 
-  }
-  25% { 
-    transform: translate(-15px, 15px); 
-  }
-  50% { 
-    transform: translate(-25px, 0); 
-  }
-  75% { 
-    transform: translate(-15px, -15px); 
-  }
-}
-
-@keyframes orb-float {
-  0%, 100% { 
-    transform: translate(0, 0) rotate(0deg); 
-  }
-  33% { 
-    transform: translate(20px, -20px) rotate(120deg); 
-  }
-  66% { 
-    transform: translate(-20px, 10px) rotate(240deg); 
-  }
-}
-
-@keyframes orb-float-delay {
-  0%, 100% { 
-    transform: translate(0, 0) rotate(0deg); 
-  }
-  33% { 
-    transform: translate(-30px, 15px) rotate(-120deg); 
-  }
-  66% { 
-    transform: translate(30px, -10px) rotate(-240deg); 
-  }
-}
-
-@keyframes ripple {
-  0% { 
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2),
-                0 0 0 10px rgba(139, 92, 246, 0.2),
-                0 0 0 20px rgba(236, 72, 153, 0.1);
-  }
-  100% { 
-    box-shadow: 0 0 0 40px rgba(59, 130, 246, 0),
-                0 0 0 80px rgba(139, 92, 246, 0),
-                0 0 0 120px rgba(236, 72, 153, 0);
-  }
-}
-
-@keyframes gradient-shift {
-  0%, 100% { 
-    background-position: 0% 50%; 
-  }
-  50% { 
-    background-position: 100% 50%; 
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { 
-    opacity: 0.3; 
-  }
-  50% { 
-    opacity: 0.6; 
-  }
-}
-
-@keyframes soft-spin {
-  0% { 
-    transform: rotate(0deg) scale(1); 
-  }
-  100% { 
-    transform: rotate(360deg) scale(1); 
-  }
-}
-
-@keyframes drip {
-  0%, 100% { 
-    transform: translateY(0) scaleY(1); 
-    opacity: 0.5;
-  }
-  50% { 
-    transform: translateY(8px) scaleY(1.2); 
-    opacity: 1;
-  }
-}
-
-@keyframes gradient-text {
-  0% { 
-    background-position: 0% 50%; 
-  }
-  50% { 
-    background-position: 100% 50%; 
-  }
-  100% { 
-    background-position: 0% 50%; 
-  }
-}
-
-@keyframes typewriter {
-  0% { 
-    width: 0; 
-  }
-  100% { 
-    width: 100%; 
-  }
-}
-
-@keyframes input-slide-left {
-  0% { 
-    opacity: 0;
-    transform: translateX(-30px); 
-  }
-  100% { 
-    opacity: 1;
-    transform: translateX(0); 
-  }
-}
-
-@keyframes input-slide-right {
-  0% { 
-    opacity: 0;
-    transform: translateX(30px); 
-  }
-  100% { 
-    opacity: 1;
-    transform: translateX(0); 
-  }
-}
-
-@keyframes expand-width {
-  0% { 
-    width: 0; 
-  }
-  100% { 
-    width: 100%; 
-  }
-}
-
-@keyframes shine {
-  0% { 
-    transform: translateX(-100%) skewX(-12deg); 
-  }
-  100% { 
-    transform: translateX(200%) skewX(-12deg); 
-  }
-}
-
-@keyframes ripple-button {
-  0% { 
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.3),
-                0 0 0 10px rgba(255, 255, 255, 0.2),
-                0 0 0 20px rgba(255, 255, 255, 0.1);
-  }
-  100% { 
-    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0),
-                0 0 0 20px rgba(255, 255, 255, 0),
-                0 0 0 30px rgba(255, 255, 255, 0);
-  }
-}
-
-@keyframes spin-slow {
-  from { 
-    transform: rotate(0deg); 
-  }
-  to { 
-    transform: rotate(360deg); 
-  }
-}
-
-@keyframes bounce-soft {
-  0%, 100% { 
-    transform: translateY(0); 
-  }
-  50% { 
-    transform: translateY(-3px); 
-  }
-}
-
-@keyframes bounce-check {
-  0%, 100% { 
-    transform: scale(1); 
-  }
-  30% { 
-    transform: scale(1.2); 
-  }
-  70% { 
-    transform: scale(0.9); 
-  }
-}
-
-@keyframes shake {
-  0%, 100% { 
-    transform: translateX(0); 
-  }
-  10%, 30%, 50%, 70%, 90% { 
-    transform: translateX(-2px); 
-  }
-  20%, 40%, 60%, 80% { 
-    transform: translateX(2px); 
-  }
-}
-
-@keyframes toast-slide {
-  0% { 
-    transform: translateX(100%) scale(0.8);
-    opacity: 0; 
-  }
-  100% { 
-    transform: translateX(0) scale(1);
-    opacity: 1; 
-  }
-}
-
-@keyframes pulse-delay {
-  0%, 100% { 
-    opacity: 0.1; 
-  }
-  50% { 
-    opacity: 0.3; 
-  }
-}
-
-@keyframes fade-in-up {
-  0% { 
-    opacity: 0;
-    transform: translateY(20px); 
-  }
-  100% { 
-    opacity: 1;
-    transform: translateY(0); 
-  }
-}
-
-/* Animation Classes */
-.animate-gentle-float {
-  animation: gentle-float 6s ease-in-out infinite;
-}
-
-.animate-morph-slow {
-  animation: morph-slow 20s ease-in-out infinite;
-}
-
-.animate-morph-medium {
-  animation: morph-medium 15s ease-in-out infinite;
-}
-
-.animate-morph-slow-reverse {
-  animation: morph-slow-reverse 25s ease-in-out infinite;
-}
-
-.animate-morph-medium-delay {
-  animation: morph-medium-delay 18s ease-in-out infinite 2s;
-}
-
-.animate-brush-trail {
-  animation: brush-trail 8s ease-in-out infinite;
-}
-
-.animate-brush-trail-delay {
-  animation: brush-trail-delay 10s ease-in-out infinite 1s;
-}
-
-.animate-parabolic-blue {
-  animation: parabolic-blue 15s ease-in-out infinite;
-}
-
-.animate-parabolic-purple {
-  animation: parabolic-purple 18s ease-in-out infinite 1s;
-}
-
-.animate-parabolic-green {
-  animation: parabolic-green 20s ease-in-out infinite 2s;
-}
-
-.animate-parabolic-yellow {
-  animation: parabolic-yellow 16s ease-in-out infinite 3s;
-}
-
-.animate-orb-float {
-  animation: orb-float 25s ease-in-out infinite;
-}
-
-.animate-orb-float-delay {
-  animation: orb-float-delay 30s ease-in-out infinite 5s;
-}
-
-.animate-ripple {
-  animation: ripple 3s ease-out infinite;
-}
-
-.animate-gradient-shift {
-  background-size: 200% 200%;
-  animation: gradient-shift 10s ease infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-.animate-soft-spin {
-  animation: soft-spin 20s linear infinite;
-}
-
-.animate-drip {
-  animation: drip 2s ease-in-out infinite;
-}
-
-.animate-gradient-text {
-  background-size: 200% auto;
-  animation: gradient-text 3s ease-in-out infinite;
-}
-
-.animate-typewriter {
-  animation: typewriter 2s steps(30) 1s forwards;
-  white-space: nowrap;
-  overflow: hidden;
-  width: 0;
-}
-
-.animate-input-slide-left {
-  animation: input-slide-left 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s forwards;
-  opacity: 0;
-}
-
-.animate-input-slide-right {
-  animation: input-slide-right 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s forwards;
-  opacity: 0;
-}
-
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-  opacity: 0;
-}
-
-.animate-fade-in-up-delay {
-  animation: fade-in-up 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.2s forwards;
-  opacity: 0;
-}
-
-.animate-expand-width {
-  animation: expand-width 1s ease-out 0.5s forwards;
-  width: 0;
-}
-
-.animate-expand-width-delay {
-  animation: expand-width 1s ease-out 1s forwards;
-  width: 0;
-}
-
-.animate-button-pulse {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-.animate-shine {
-  animation: shine 3s ease-in-out infinite;
-}
-
-.animate-ripple-button {
-  animation: ripple-button 2s ease-out infinite;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 1.5s linear infinite;
-}
-
-.animate-bounce-soft {
-  animation: bounce-soft 2s ease-in-out infinite;
-}
-
-.animate-bounce-check {
-  animation: bounce-check 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.animate-shake {
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-}
-
-.animate-toast-slide {
-  animation: toast-slide 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-}
-
-.animate-pulse-delay {
-  animation: pulse-delay 4s ease-in-out infinite 1s;
-}
-
-/* Animation Complete State */
-.animation-complete {
-  opacity: 1 !important;
-  transform: none !important;
-  animation: none !important;
-}
-
-/* Enhanced Hover Effects */
-* {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6, #ec4899);
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #60a5fa, #a78bfa, #f472b6);
-  transform: scale(1.1);
-}
-
-/* Accessibility */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 3px;
-  border-radius: 0.75rem;
-  transition: outline-offset 0.2s;
-}
-
-/* Mobile Optimizations */
-@media (max-width: 1024px) {
-  .max-w-4xl {
-    max-width: 100%;
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-  
-  .animate-input-slide-left,
-  .animate-input-slide-right {
-    animation: fade-in-up 0.6s ease-out 0.3s forwards;
-  }
-}
-
-@media (max-width: 640px) {
-  .p-8 {
-    padding: 1.5rem;
-  }
-  
-  .animate-gentle-float {
-    animation-duration: 8s;
-  }
-  
-  .animate-morph-slow,
-  .animate-morph-medium,
-  .animate-orb-float {
-    animation-duration: 15s;
-  }
-}
-
-/* Performance Optimizations */
-.will-change-transform {
-  will-change: transform;
-}
-
-.will-change-opacity {
-  will-change: opacity;
-}
+  @import "../landingPage/styleFolder/logIn.css";
 </style>

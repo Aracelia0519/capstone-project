@@ -6,6 +6,161 @@
     }]"
     :style="isCollapsed && !isMobile ? 'width: 80px' : 'width: 280px'"
   >
+    <!-- Enhanced Logout Confirmation Modal -->
+    <transition name="fade">
+      <div 
+        v-if="showLogoutModal"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        @click.self="cancelLogout"
+      >
+        <div class="relative w-full max-w-md">
+          <!-- Animated background effect -->
+          <div class="absolute -inset-4 bg-gradient-to-r from-red-500/20 via-pink-500/20 to-orange-500/20 rounded-3xl blur-2xl animate-pulse"></div>
+          
+          <div class="relative bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Modal header with animated paint drip -->
+            <div class="relative p-6 border-b border-gray-700/50">
+              <!-- Paint drip animation -->
+              <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-16 h-8">
+                <div class="w-4 h-4 bg-gradient-to-b from-red-500 to-pink-500 rounded-full mx-auto animate-drip"></div>
+                <div class="w-2 h-4 bg-gradient-to-b from-red-400/50 to-transparent rounded-full mx-auto animate-drip-delay"></div>
+              </div>
+              
+              <div class="flex items-center justify-center mb-4">
+                <div class="relative">
+                  <!-- Animated logout icon -->
+                  <div class="w-20 h-20 rounded-full bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 flex items-center justify-center shadow-2xl animate-pulse-slow">
+                    <svg class="w-10 h-10 text-white animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <!-- Pulsing ring -->
+                  <div class="absolute inset-0 border-4 border-red-500/30 rounded-full animate-ping-slow"></div>
+                </div>
+              </div>
+              
+              <h3 class="text-2xl font-bold text-center bg-gradient-to-r from-red-400 via-pink-400 to-orange-400 bg-clip-text text-transparent mb-2">
+                Logout Confirmation
+              </h3>
+              <p class="text-gray-300 text-center">
+                Are you sure you want to logout?
+              </p>
+            </div>
+
+            <!-- Modal body -->
+            <div class="p-6">
+              <div class="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-500/10 to-pink-500/10 border border-red-500/20">
+                <div class="flex items-start space-x-3">
+                  <div class="flex-shrink-0 p-2 rounded-lg bg-gradient-to-r from-red-500/20 to-pink-500/20">
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-semibold text-gray-200 mb-1">Session Ending</h4>
+                    <p class="text-xs text-gray-400">
+                      You'll be redirected to the login page. Your current session will be securely terminated.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="flex flex-col sm:flex-row gap-3">
+                <button
+                  @click="cancelLogout"
+                  :disabled="isLoggingOut"
+                  class="flex-1 py-3 px-6 rounded-xl border border-gray-600 bg-gray-800/50 text-gray-300 font-semibold hover:bg-gray-700/50 hover:text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] group"
+                >
+                  <div class="flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancel</span>
+                  </div>
+                </button>
+                
+                <button
+                  @click="confirmLogout"
+                  :disabled="isLoggingOut"
+                  class="flex-1 py-3 px-6 rounded-xl bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold shadow-lg hover:shadow-xl hover:from-red-600 hover:to-pink-600 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden"
+                >
+                  <!-- Animated shine effect -->
+                  <div class="absolute inset-0 overflow-hidden">
+                    <div class="absolute top-0 left-0 w-12 h-full bg-white/20 skew-x-12 animate-shine"></div>
+                  </div>
+                  
+                  <div class="relative flex items-center justify-center space-x-2">
+                    <svg v-if="isLoggingOut" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg v-else class="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>{{ isLoggingOut ? 'Logging out...' : 'Yes, Logout' }}</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="px-6 py-4 border-t border-gray-700/50 bg-gray-900/50">
+              <div class="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Secure logout powered by Laravel Sanctum</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Success Toast Notification -->
+    <transition name="slide-fade">
+      <div 
+        v-if="showSuccessToast"
+        class="toast-notification success"
+      >
+        <div class="toast-icon">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="toast-content">
+          <h4 class="toast-title">Successfully Logged Out!</h4>
+          <p class="toast-message">Redirecting to login page...</p>
+        </div>
+        <div class="toast-progress">
+          <div class="toast-progress-bar"></div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Error Toast Notification -->
+    <transition name="slide-fade">
+      <div 
+        v-if="showErrorToast"
+        class="toast-notification error"
+      >
+        <div class="toast-icon">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.882 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <div class="toast-content">
+          <h4 class="toast-title">Logout Failed</h4>
+          <p class="toast-message">{{ errorMessage }}</p>
+        </div>
+        <button @click="showErrorToast = false" class="toast-close">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </transition>
+
     <!-- Close button for mobile -->
     <button 
       v-if="isMobile"
@@ -33,7 +188,7 @@
         
         <div v-if="!isCollapsed || isMobile" class="sidebar-title">
           <h2 class="text-xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-300 bg-clip-text text-transparent">
-            Welcome Back!
+            {{ userName || 'Welcome Back!' }}
           </h2>
           <p class="text-xs text-gray-200 flex items-center mt-0.5">
             <span class="w-2 h-2 bg-green-400 rounded-full mr-1.5 animate-pulse"></span>
@@ -218,11 +373,8 @@
         </ul>
       </div>
 
-      <!-- Divider -->
-      <div v-if="!isCollapsed || isMobile" class="nav-divider"></div>
-
-      <!-- Settings Section -->
-      <div class="nav-section">
+      <!-- Settings Section - This stays at the bottom -->
+      <div class="nav-section account-section">
         <ul class="nav-list">
           <!-- Profile -->
           <li>
@@ -246,18 +398,20 @@
           <!-- Logout -->
           <li>
             <button 
-              @click="logout"
-              class="nav-item group logout-btn w-full"
+              @click="showLogoutModal = true"
+              class="nav-item group logout-btn w-full hover:bg-gradient-to-r hover:from-red-500/10 hover:to-pink-500/10"
             >
               <div class="nav-icon-wrapper">
-                <div class="nav-icon bg-gradient-to-r from-red-500 to-pink-400">
+                <div class="nav-icon bg-gradient-to-r from-red-500 to-pink-400 group-hover:scale-110 transition-transform duration-300">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                 </div>
-                <span v-if="!isCollapsed || isMobile" class="nav-text">Logout</span>
+                <span v-if="!isCollapsed || isMobile" class="nav-text group-hover:text-red-300 transition-colors duration-300">
+                  Logout
+                </span>
               </div>
-              <div v-if="!isCollapsed || isMobile" class="nav-badge">🔐</div>
+              <div v-if="!isCollapsed || isMobile" class="nav-badge animate-pulse">🔐</div>
             </button>
           </li>
         </ul>
@@ -293,6 +447,10 @@
 </template>
 
 <script>
+import api from '../utils/axios'
+import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+
 export default {
   name: 'SideBarClient',
   props: {
@@ -301,472 +459,174 @@ export default {
       default: false
     }
   },
-  data() {
+  setup(props, { emit }) {
+    const router = useRouter()
+    const isCollapsed = ref(false)
+    const isMobile = ref(false)
+    const isLoggingOut = ref(false)
+    const userName = ref('')
+    const showLogoutModal = ref(false)
+    const showSuccessToast = ref(false)
+    const showErrorToast = ref(false)
+    const errorMessage = ref('')
+    
+    const stats = {
+      activeJobs: 2,
+      colorsSaved: 5,
+      recommendations: 8
+    }
+
+    const loadUserData = () => {
+      const userData = localStorage.getItem('user_data')
+      if (userData) {
+        try {
+          const user = JSON.parse(userData)
+          userName.value = user.name || `${user.first_name} ${user.last_name}` || 'Welcome Back!'
+        } catch (e) {
+          console.error('Failed to parse user data:', e)
+        }
+      }
+    }
+
+    const closeSidebar = () => {
+      emit('toggle')
+    }
+    
+    const toggleCollapse = () => {
+      isCollapsed.value = !isCollapsed.value
+      emit('collapsed', isCollapsed.value)
+    }
+    
+    const handleNavigation = () => {
+      emit('link-click')
+      if (isMobile.value) {
+        closeSidebar()
+      }
+    }
+    
+    const cancelLogout = () => {
+      showLogoutModal.value = false
+    }
+    
+    const confirmLogout = async () => {
+      try {
+        isLoggingOut.value = true
+        
+        // Call the backend logout endpoint
+        const response = await api.post('/auth/logout')
+        
+        if (response.data.status === 'success') {
+          console.log('Logout successful')
+          
+          // Clear all local storage items
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user_data')
+          localStorage.removeItem('user_role')
+          localStorage.removeItem('user_name')
+          localStorage.removeItem('remember_me')
+          
+          // Clear any session storage
+          sessionStorage.clear()
+          
+          // Clear axios authorization header
+          delete api.defaults.headers.common['Authorization']
+          
+          // Hide modal and show success toast
+          showLogoutModal.value = false
+          showSuccessToast.value = true
+          
+          // Redirect to login page after 2 seconds
+          setTimeout(() => {
+            router.push('/Landing/logIn')
+          }, 2000)
+          
+        } else {
+          console.error('Logout failed:', response.data.message)
+          errorMessage.value = response.data.message || 'Logout failed. Please try again.'
+          showLogoutModal.value = false
+          showErrorToast.value = true
+        }
+        
+      } catch (error) {
+        console.error('Logout error:', error)
+        
+        // Even if API call fails, clear local data
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('user_data')
+        localStorage.removeItem('user_role')
+        localStorage.removeItem('user_name')
+        localStorage.removeItem('remember_me')
+        sessionStorage.clear()
+        delete api.defaults.headers.common['Authorization']
+        
+        // Show appropriate error message
+        if (error.response) {
+          console.error('Response error:', error.response.data)
+          // Check if the error is actually success
+          if (error.response.data.status === 'success') {
+            showSuccessToast.value = true
+            setTimeout(() => {
+              router.push('/Landing/logIn')
+            }, 2000)
+            return
+          }
+          errorMessage.value = error.response.data.message || 'Server error'
+        } else if (error.request) {
+          errorMessage.value = 'No response from server'
+        } else {
+          errorMessage.value = error.message
+        }
+        
+        showLogoutModal.value = false
+        showErrorToast.value = true
+        
+        // Still redirect to login after showing error
+        setTimeout(() => {
+          router.push('/Landing/logIn')
+        }, 3000)
+        
+      } finally {
+        isLoggingOut.value = false
+      }
+    }
+    
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+
+    onMounted(() => {
+      checkMobile()
+      window.addEventListener('resize', checkMobile)
+      loadUserData()
+    })
+
     return {
-      isCollapsed: false,
-      isMobile: false,
-      stats: {
-        activeJobs: 2,
-        colorsSaved: 5,
-        recommendations: 8
-      }
+      isCollapsed,
+      isMobile,
+      isLoggingOut,
+      userName,
+      stats,
+      showLogoutModal,
+      showSuccessToast,
+      showErrorToast,
+      errorMessage,
+      closeSidebar,
+      toggleCollapse,
+      handleNavigation,
+      cancelLogout,
+      confirmLogout,
+      checkMobile
     }
   },
-  watch: {
-    mobileVisible(newVal) {
-      if (newVal) {
-        this.isMobile = window.innerWidth <= 768
-      }
-    },
-    isCollapsed(newVal) {
-      // Emit the collapsed state to parent component
-      this.$emit('collapsed', newVal)
-    }
-  },
-  methods: {
-    closeSidebar() {
-      this.$emit('toggle')
-    },
-    
-    toggleCollapse() {
-      this.isCollapsed = !this.isCollapsed
-    },
-    
-    handleNavigation() {
-      this.$emit('link-click')
-      if (this.isMobile) {
-        this.closeSidebar()
-      }
-    },
-    
-    logout() {
-      console.log('Client logging out... Destroying token...')
-      // Implement actual logout logic
-    },
-    
-    checkMobile() {
-      this.isMobile = window.innerWidth <= 768
-    }
-  },
-  mounted() {
-    this.checkMobile()
-    window.addEventListener('resize', this.checkMobile)
-  },
+  
   beforeUnmount() {
     window.removeEventListener('resize', this.checkMobile)
   },
+  
   emits: ['toggle', 'link-click', 'collapsed']
 }
 </script>
 
 <style scoped>
-/* Main Sidebar Container */
-.sidebar-client {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 280px;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  transition: all 0.3s ease;
-  border-right: 1px solid rgba(100, 116, 139, 0.3);
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.sidebar-client.mobile-visible {
-  transform: translateX(0) !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-/* Animations */
-@keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 2s infinite;
-}
-
-/* Sidebar Header - Fixed Height */
-.sidebar-header {
-  padding: 1.25rem;
-  border-bottom: 1px solid rgba(100, 116, 139, 0.3);
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.1) 0%, rgba(20, 184, 166, 0.1) 100%);
-  flex-shrink: 0;
-}
-
-.sidebar-stats {
-  margin-top: 1rem;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 0.5rem;
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.stat-item:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
-}
-
-.stat-value {
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 0.7rem;
-  color: #cbd5e1;
-  margin-top: 0.125rem;
-}
-
-/* Navigation Items - Fit within sidebar */
-.sidebar-nav {
-  padding: 1rem 0.75rem;
-  flex: 1;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.nav-section {
-  margin-bottom: 1.25rem;
-  width: 100%;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem 0.5rem;
-  color: #94a3b8;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.section-icon {
-  font-size: 0.875rem;
-  flex-shrink: 0;
-}
-
-/* Navigation Items - Prevent horizontal overflow */
-.nav-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 100%;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.625rem 0.75rem;
-  margin-bottom: 0.375rem;
-  border-radius: 0.75rem;
-  text-decoration: none;
-  color: #e2e8f0;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  min-height: 44px;
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid transparent;
-}
-
-.nav-item:hover {
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), rgba(20, 184, 166, 0.15));
-  transform: translateX(4px);
-  border-color: rgba(56, 189, 248, 0.2);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
-}
-
-.nav-item-active {
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.25), rgba(20, 184, 166, 0.25));
-  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.25);
-  border-left: 3px solid #38bdf8;
-  border-color: rgba(56, 189, 248, 0.3);
-}
-
-.unity-nav-item:hover {
-  background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.15));
-  border-color: rgba(168, 85, 247, 0.2);
-}
-
-.unity-nav-item.nav-item-active {
-  background: linear-gradient(90deg, rgba(168, 85, 247, 0.25), rgba(236, 72, 153, 0.25));
-  border-left: 3px solid #a855f7;
-}
-
-.nav-icon-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.nav-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.nav-item:hover .nav-icon {
-  transform: scale(1.1) rotate(5deg);
-}
-
-.nav-text {
-  font-weight: 500;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.2s ease;
-  flex: 1;
-  min-width: 0;
-}
-
-.nav-item:hover .nav-text {
-  color: white;
-}
-
-.nav-badge {
-  font-size: 0.65rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 9999px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-  flex-shrink: 0;
-  margin-left: 0.5rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.unity-badge {
-  background: linear-gradient(45deg, #a855f7, #ec4899);
-  color: white;
-  font-size: 0.6rem;
-  padding: 0.2rem 0.35rem;
-}
-
-.nav-divider {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.3), transparent);
-  margin: 1rem 0.5rem;
-  width: calc(100% - 1rem);
-}
-
-/* Logout Button */
-.logout-btn {
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), rgba(244, 114, 182, 0.1));
-  border-color: rgba(239, 68, 68, 0.2);
-}
-
-.logout-btn:hover {
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0.2), rgba(244, 114, 182, 0.2));
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-/* Sidebar Footer - Fixed Height */
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid rgba(100, 116, 139, 0.3);
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.05), rgba(20, 184, 166, 0.05));
-  flex-shrink: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.footer-content {
-  text-align: center;
-  width: 100%;
-}
-
-.footer-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #7dd3fc;
-  margin-bottom: 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.color-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.375rem;
-  margin-bottom: 0.5rem;
-  width: 100%;
-}
-
-.color-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 4px currentColor;
-}
-
-.footer-version {
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
-
-/* Collapse Toggle */
-.collapse-toggle {
-  position: absolute;
-  top: 1.25rem;
-  right: 8px;
-  background: linear-gradient(45deg, #38bdf8, #0ea5e9);
-  color: white;
-  border: 2px solid #1e293b;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease;
-  z-index: 1001;
-}
-
-.collapse-toggle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 12px rgba(56, 189, 248, 0.4);
-}
-
-/* Custom Scrollbar */
-.sidebar-client::-webkit-scrollbar {
-  width: 6px;
-}
-
-.sidebar-client::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
-  border-radius: 3px;
-}
-
-.sidebar-client::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #38bdf8, #0ea5e9);
-  border-radius: 3px;
-}
-
-.sidebar-client::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #0ea5e9, #0284c7);
-}
-
-/* Desktop - no vertical scroll */
-@media (min-width: 769px) {
-  .sidebar-client {
-    overflow-y: hidden !important;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .sidebar-client .sidebar-nav {
-    flex: 1;
-    overflow-y: hidden;
-  }
-}
-
-/* Mobile styles */
-@media (max-width: 768px) {
-  .sidebar-client {
-    transform: translateX(-100%);
-    width: 280px !important;
-    overflow-y: auto;
-  }
-  
-  .sidebar-client.mobile-visible {
-    transform: translateX(0);
-  }
-  
-  .collapse-toggle {
-    display: none;
-  }
-}
-
-/* Desktop collapsed state */
-@media (min-width: 769px) {
-  .sidebar-client.collapsed {
-    width: 80px !important;
-  }
-  
-  .sidebar-client.collapsed .nav-text,
-  .sidebar-client.collapsed .sidebar-title,
-  .sidebar-client.collapsed .sidebar-stats,
-  .sidebar-client.collapsed .nav-badge,
-  .sidebar-client.collapsed .section-title,
-  .sidebar-client.collapsed .nav-divider,
-  .sidebar-client.collapsed .footer-title,
-  .sidebar-client.collapsed .color-dots,
-  .sidebar-client.collapsed .footer-version {
-    display: none;
-  }
-  
-  .sidebar-client.collapsed .nav-icon-wrapper {
-    justify-content: center;
-  }
-  
-  .sidebar-client.collapsed .nav-item {
-    justify-content: center;
-    padding: 0.625rem;
-  }
-  
-  .sidebar-client.collapsed .nav-icon {
-    width: 36px;
-    height: 36px;
-    margin: 0;
-  }
-  
-  .sidebar-client.collapsed .sidebar-footer {
-    padding: 1rem 0.25rem;
-  }
-}
-
-/* Prevent horizontal scroll */
-* {
-  max-width: 100%;
-}
-
-.sidebar-client * {
-  box-sizing: border-box;
-}
+@import "../layouts/styles/clientSideBar.css";
 </style>

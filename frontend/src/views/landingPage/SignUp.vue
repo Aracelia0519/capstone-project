@@ -257,15 +257,22 @@
                 <div class="relative">
                   <input
                     v-model="form.phone"
-                    type="tel"
+                    type="text"
                     required
-                    placeholder="+63 912 345 6789"
+                    placeholder="0912 345 6789"
                     class="w-full px-4 py-3 pl-11 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500/60 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 transition-all duration-300 group-hover:border-cyan-500/30"
                     :class="validationErrors.phone ? 'border-red-500/50 focus:ring-red-500/30' : ''"
+                    @input="formatPhoneNumber"
                   />
                   <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
                   </svg>
+                </div>
+                <div v-if="validationErrors.phone" class="mt-1 text-xs text-red-400">
+                  {{ validationErrors.phone }}
+                </div>
+                <div v-else-if="form.phone && !validationErrors.phone" class="mt-1 text-xs text-cyan-400">
+                  Philippine mobile number format: 09XX XXX XXXX
                 </div>
               </div>
 
@@ -370,6 +377,12 @@
                       {{ passwordStrength }}
                     </span>
                   </div>
+                  <div class="mt-1 text-xs text-gray-400">
+                    Must be at least 8 characters with uppercase, number, and special character
+                  </div>
+                </div>
+                <div v-if="validationErrors.password" class="mt-1 text-xs text-red-400">
+                  {{ validationErrors.password }}
                 </div>
               </div>
 
@@ -414,6 +427,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                   </svg>
                   <span class="text-xs text-green-400">Passwords match</span>
+                </div>
+                <div v-if="validationErrors.confirmPassword" class="mt-1 text-xs text-red-400">
+                  {{ validationErrors.confirmPassword }}
                 </div>
               </div>
             </div>
@@ -643,7 +659,22 @@ const getRoleBorderColor = (roleValue) => {
   }
 }
 
-// Password strength calculator
+// Format phone number - only allow numbers
+const formatPhoneNumber = () => {
+  // Remove all non-numeric characters
+  form.phone = form.phone.replace(/\D/g, '')
+  
+  // Format as 09XX XXX XXXX
+  if (form.phone.length > 3 && form.phone.length <= 6) {
+    form.phone = form.phone.replace(/(\d{3})(\d+)/, '$1 $2')
+  } else if (form.phone.length > 6 && form.phone.length <= 10) {
+    form.phone = form.phone.replace(/(\d{3})(\d{3})(\d+)/, '$1 $2 $3')
+  } else if (form.phone.length > 10) {
+    form.phone = form.phone.substring(0, 11).replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3')
+  }
+}
+
+// Password strength calculator with enhanced requirements
 const passwordStrength = computed(() => {
   if (!form.password) return ''
 
@@ -687,6 +718,25 @@ const passwordStrengthTextClass = computed(() => {
   }
   return classes[strength] || 'text-gray-400'
 })
+
+// Check if password meets all requirements
+const validatePassword = () => {
+  const password = form.password
+  const hasLower = /[a-z]/.test(password)
+  const hasUpper = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+  const hasMinLength = password.length >= 8
+  
+  return {
+    hasLower,
+    hasUpper,
+    hasNumber,
+    hasSpecial,
+    hasMinLength,
+    isValid: hasLower && hasUpper && hasNumber && hasSpecial && hasMinLength
+  }
+}
 
 // Auto-update full name
 const updateFullName = () => {
@@ -745,13 +795,21 @@ const validateForm = () => {
     isValid = false
   }
 
-  // Phone validation
+  // Phone validation - only numbers
   if (!form.phone.trim()) {
     validationErrors.phone = 'Phone number is required'
     isValid = false
-  } else if (!/^\+?[\d\s\-\(\)]+$/.test(form.phone)) {
-    validationErrors.phone = 'Please enter a valid phone number'
-    isValid = false
+  } else {
+    // Remove all non-numeric characters for validation
+    const numericPhone = form.phone.replace(/\D/g, '')
+    
+    if (numericPhone.length < 10) {
+      validationErrors.phone = 'Phone number must be at least 10 digits'
+      isValid = false
+    } else if (!/^09\d{9}$/.test(numericPhone)) {
+      validationErrors.phone = 'Please enter a valid Philippine mobile number (09XXXXXXXXX)'
+      isValid = false
+    }
   }
 
   // Address validation
@@ -769,13 +827,29 @@ const validateForm = () => {
     isValid = false
   }
 
-  // Password validation
+  // Password validation with enhanced requirements
   if (!form.password) {
     validationErrors.password = 'Password is required'
     isValid = false
-  } else if (form.password.length < 8) {
-    validationErrors.password = 'Password must be at least 8 characters'
-    isValid = false
+  } else {
+    const passwordValidation = validatePassword()
+    
+    if (!passwordValidation.hasMinLength) {
+      validationErrors.password = 'Password must be at least 8 characters'
+      isValid = false
+    } else if (!passwordValidation.hasUpper) {
+      validationErrors.password = 'Password must contain at least one uppercase letter'
+      isValid = false
+    } else if (!passwordValidation.hasNumber) {
+      validationErrors.password = 'Password must contain at least one number'
+      isValid = false
+    } else if (!passwordValidation.hasSpecial) {
+      validationErrors.password = 'Password must contain at least one special character (!@#$%^&* etc.)'
+      isValid = false
+    } else if (!passwordValidation.hasLower) {
+      validationErrors.password = 'Password must contain at least one lowercase letter'
+      isValid = false
+    }
   }
 
   // Confirm Password validation
@@ -807,34 +881,7 @@ const showNotification = (title, message, type = 'info') => {
   }, 3000) // Reduced from 5000 to 3000 for role selection feedback
 }
 
-// Simulate API signup call
-const signupApiCall = async (userData) => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 2000))
-  
-  // Check if email already exists (mock)
-  const existingEmails = [
-    'admin@cavitegopaint.com',
-    'distributor@cavitegopaint.com',
-    'service@cavitegopaint.com',
-    'client@cavitegopaint.com'
-  ]
-
-  if (existingEmails.includes(userData.email.toLowerCase())) {
-    throw new Error('Email already registered')
-  }
-
-  // Mock successful response
-  return {
-    id: Math.random().toString(36).substr(2, 9),
-    email: userData.email,
-    role: userData.role,
-    status: 'pending', // All new accounts need verification
-    message: 'Account created successfully. Please wait for verification.'
-  }
-}
-
-// Handle signup
+// Handle signup with API
 const handleSignup = async () => {
   if (!validateForm()) {
     return
@@ -843,22 +890,40 @@ const handleSignup = async () => {
   isLoading.value = true
 
   try {
-    const response = await signupApiCall({
-      firstName: form.firstName,
-      lastName: form.lastName,
-      fullName: form.fullName,
+    // Prepare data for API
+    const userData = {
+      first_name: form.firstName,
+      last_name: form.lastName,
+      email: form.email,
       phone: form.phone,
       address: form.address,
-      email: form.email,
       password: form.password,
-      role: form.role
+      password_confirmation: form.confirmPassword,
+      role: form.role,
+      terms: form.terms
+    }
+
+    // Send API request
+    const response = await fetch('http://localhost:8000/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(userData)
     })
 
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Registration failed')
+    }
+
     showNotification(
-      'Account Created Successfully!',
-      response.message,
-      'success'
-    )
+    'Account Created Successfully!',
+    'Your account has been created. Please check your email for verification instructions.',
+    'success'
+);
 
     // Clear form
     Object.keys(form).forEach(key => {
@@ -870,16 +935,23 @@ const handleSignup = async () => {
     })
     form.role = 'client'
 
+    // Store token in localStorage if needed
+    if (data.data && data.data.token) {
+      localStorage.setItem('auth_token', data.data.token)
+    }
+
     // Redirect to login after delay
     setTimeout(() => {
-      router.push('/login')
+      router.push('/Landing/logIn')
     }, 3000)
 
   } catch (error) {
-    if (error.message.includes('already registered')) {
+    if (error.message.includes('already registered') || error.message.includes('taken')) {
       showNotification('Registration Failed', 'This email is already registered', 'error')
+    } else if (error.message.includes('Validation')) {
+      showNotification('Validation Error', 'Please check your information and try again', 'error')
     } else {
-      showNotification('Registration Error', 'Something went wrong. Please try again.', 'error')
+      showNotification('Registration Error', error.message || 'Something went wrong. Please try again.', 'error')
     }
   } finally {
     isLoading.value = false
@@ -902,268 +974,5 @@ const showPrivacy = () => {
 </script>
 
 <style scoped>
-/* Initial hidden state */
-.min-h-screen {
-  opacity: 0;
-}
-
-/* Entry animations */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slide-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-down {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes float-slow {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
-}
-
-@keyframes float-medium {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(-3deg); }
-}
-
-@keyframes brush-stroke-1 {
-  0%, 100% { transform: translateX(0) rotate(45deg); }
-  50% { transform: translateX(20px) rotate(55deg); }
-}
-
-@keyframes brush-stroke-2 {
-  0%, 100% { transform: translateX(0) rotate(-12deg); }
-  50% { transform: translateX(-15px) rotate(-8deg); }
-}
-
-@keyframes bounce-droplet {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes pulse-selected {
-  0%, 100% { 
-    transform: scale(1.1);
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-  }
-  50% { 
-    transform: scale(1.15);
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-  }
-}
-
-/* Animation classes */
-.animate-fade-in {
-  animation: fade-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-slide-in-up {
-  animation: slide-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-slide-in-down {
-  animation: slide-in-down 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-slide-in-left {
-  animation: slide-in-left 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.animate-float-slow {
-  animation: float-slow 8s ease-in-out infinite;
-}
-
-.animate-float-medium {
-  animation: float-medium 6s ease-in-out infinite;
-}
-
-.animate-brush-stroke-1 {
-  animation: brush-stroke-1 10s ease-in-out infinite;
-}
-
-.animate-brush-stroke-2 {
-  animation: brush-stroke-2 12s ease-in-out infinite;
-}
-
-.animate-bounce-droplet {
-  animation: bounce-droplet 4s ease-in-out infinite;
-}
-
-.animate-pulse {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.animate-pulse-selected {
-  animation: pulse-selected 2s ease-in-out infinite;
-}
-
-/* Smooth transitions */
-* {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Input focus effects */
-input:focus, textarea:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6, #ec4899);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #60a5fa, #a78bfa, #f472b6);
-}
-
-/* Accessibility focus styles */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 3px;
-  border-radius: 0.75rem;
-}
-
-/* Disabled state styles */
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* Mobile responsiveness adjustments */
-@media (max-width: 1024px) {
-  .max-w-5xl {
-    max-width: 100%;
-  }
-  
-  .grid-cols-3, .grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .p-8 {
-    padding: 1.5rem;
-  }
-  
-  /* Reduce animation intensity on mobile */
-  .animate-float-slow,
-  .animate-float-medium,
-  .animate-brush-stroke-1,
-  .animate-brush-stroke-2,
-  .animate-pulse-selected {
-    animation-duration: 12s;
-  }
-  
-  /* Stagger animations less on mobile for performance */
-  .animate-fade-in,
-  .animate-slide-in-up,
-  .animate-scale-in {
-    animation-delay: 0ms !important;
-  }
-  
-  /* Ensure proper spacing on mobile */
-  .my-8 {
-    margin-top: 2rem;
-    margin-bottom: 2rem;
-  }
-  
-  .mx-4 {
-    margin-left: 1rem;
-    margin-right: 1rem;
-  }
-}
-
-/* Enhanced text gradients */
-.bg-clip-text {
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-/* Password strength indicator transitions */
-.bg-gradient-to-r {
-  transition: all 0.5s ease-in-out;
-}
+  @import "../landingPage/styleFolder/signUp.css";
 </style>
