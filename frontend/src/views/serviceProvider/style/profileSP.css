@@ -1,0 +1,122 @@
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #2563eb, #7c3aed);
+}
+
+/* Glass morphism effect */
+.bg-gradient-to-br {
+  backdrop-filter: blur(10px);
+}
+
+/* Form input focus effects */
+input:focus, textarea:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Toggle switch customization */
+input:checked + div {
+  background-color: #2563eb;
+}
+
+input:checked + div:after {
+  transform: translateX(100%);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .text-2xl {
+    font-size: 1.5rem;
+  }
+  
+  .w-32 {
+    width: 6rem;
+    height: 6rem;
+  }
+  
+  .text-4xl {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  .md\:col-span-2 {
+    grid-column: span 1;
+  }
+}
+
+/* Avatar animation */
+.relative.inline-block:hover .absolute {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Notification cards hover effect */
+.bg-gray-800\/50:hover {
+  background-color: rgba(55, 65, 81, 0.7) !important;
+}
+
+/* Password strength indicator (future enhancement) */
+.password-strength {
+  height: 4px;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* Print styles */
+@media print {
+  .profile-page {
+    background: white !important;
+    color: black !important;
+  }
+  
+  header, button, .bg-gradient-to-br {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  input, textarea {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #ddd !important;
+  }
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+

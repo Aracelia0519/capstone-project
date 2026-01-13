@@ -1,5 +1,43 @@
 <template>
   <div class="p-4 md:p-6">
+    <!-- Loading Overlay -->
+    <div v-if="loading" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-gray-600">Loading profile data...</p>
+      </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div v-if="error" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-red-800">{{ error }}</span>
+        <button @click="error = ''" class="ml-auto text-red-500 hover:text-red-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Alert -->
+    <div v-if="successMessage" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-green-800">{{ successMessage }}</span>
+        <button @click="successMessage = ''" class="ml-auto text-green-500 hover:text-green-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Page Header -->
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -9,13 +47,16 @@
         </div>
         <div class="flex items-center space-x-3">
           <button @click="saveAllChanges" 
-            :disabled="!hasUnsavedChanges"
-            :class="hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+            :disabled="!hasUnsavedChanges || saving"
+            :class="[hasUnsavedChanges && !saving ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed', saving ? 'bg-blue-400 cursor-wait' : '']"
             class="px-4 py-2 text-white rounded-lg transition-colors flex items-center">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="!saving" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
             </svg>
-            Save All Changes
+            <svg v-if="saving" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            {{ saving ? 'Saving...' : 'Save All Changes' }}
           </button>
         </div>
       </div>
@@ -25,10 +66,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Column: Distributor Info -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- Distributor Information Card -->
+        <!-- User Information Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Distributor Information</h2>
+            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Personal Information</h2>
             <div class="p-2 bg-blue-50 rounded-lg">
               <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -42,7 +83,7 @@
               <div class="flex-shrink-0">
                 <div class="relative">
                   <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                    <span class="text-2xl font-bold text-white">{{ getInitials(distributorInfo.name) }}</span>
+                    <span class="text-2xl font-bold text-white">{{ getInitials(userInfo.full_name) }}</span>
                   </div>
                   <button @click="changeProfilePhoto" class="absolute -bottom-2 -right-2 p-1.5 bg-white rounded-full border border-gray-300 shadow-sm hover:bg-gray-50">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,65 +93,50 @@
                 </div>
               </div>
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-900">{{ distributorInfo.name }}</h3>
-                <p class="text-gray-600 mb-2">{{ distributorInfo.role }}</p>
+                <h3 class="text-lg font-semibold text-gray-900">{{ userInfo.full_name }}</h3>
+                <p class="text-gray-600 mb-2">{{ userInfo.role | capitalize }}</p>
                 <div class="flex flex-wrap gap-2">
-                  <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  <span :class="userInfo.status === 'active' ? 'bg-green-100 text-green-800' : userInfo.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'"
+                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
                     <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      <path v-if="userInfo.status === 'active'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      <path v-if="userInfo.status === 'pending'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path v-if="userInfo.status === 'inactive'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    Verified Distributor
-                  </span>
-                  <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    Account ID: {{ distributorInfo.accountId }}
+                    {{ userInfo.status | capitalize }}
                   </span>
                 </div>
               </div>
               <div class="text-right">
                 <p class="text-sm text-gray-500">Member since</p>
-                <p class="font-medium text-gray-900">{{ formatDate(distributorInfo.memberSince) }}</p>
+                <p class="font-medium text-gray-900">{{ formatDate(userInfo.created_at) }}</p>
               </div>
             </div>
           </div>
 
-          <!-- Distributor Form -->
+          <!-- User Form -->
           <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                <input v-model="distributorInfo.companyName" type="text" 
+                <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                <input v-model="userInfo.first_name" type="text" 
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
-                <select v-model="distributorInfo.businessType" 
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
-                  <option value="retail">Retail Distributor</option>
-                  <option value="wholesale">Wholesale Distributor</option>
-                  <option value="exclusive">Exclusive Distributor</option>
-                  <option value="authorized">Authorized Reseller</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                <input v-model="userInfo.last_name" type="text" 
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Contact Person</label>
-                <input v-model="distributorInfo.contactPerson" type="text" 
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                <div class="relative">
-                  <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                  </svg>
-                  <input v-model="distributorInfo.email" type="email" 
-                    class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <div class="relative">
+                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <input v-model="userInfo.email" type="email" 
+                  class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               </div>
             </div>
 
@@ -120,39 +146,74 @@
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                 </svg>
-                <input v-model="distributorInfo.phone" type="tel" 
+                <input v-model="userInfo.phone" type="tel" 
                   class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Business Address</label>
-              <textarea v-model="distributorInfo.address" rows="3" 
+              <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+              <textarea v-model="userInfo.address" rows="3" 
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"></textarea>
             </div>
 
+            <div class="pt-4 border-t border-gray-200">
+              <button @click="saveUserInfo" 
+                :disabled="!userInfoChanged || saving"
+                :class="[userInfoChanged && !saving ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed', saving ? 'bg-blue-400 cursor-wait' : '']"
+                class="px-4 py-2 text-white rounded-lg transition-colors flex items-center">
+                <svg v-if="!saving" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <svg v-if="saving" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                {{ saving ? 'Saving...' : 'Update Personal Information' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distributor-specific Information Card (Only for distributor role) -->
+        <div v-if="userInfo.role === 'distributor'" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Distributor Information</h2>
+            <div class="p-2 bg-green-50 rounded-lg">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Distributor Form -->
+          <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tax Identification Number</label>
-                <input v-model="distributorInfo.tin" type="text" 
+                <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                <input v-model="distributorInfo.company_name" type="text" 
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               </div>
               <div>
+                <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Business License Number</label>
-                <input v-model="distributorInfo.licenseNumber" type="text" 
+                <input v-model="distributorInfo.license_number" type="text" 
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              </div>
               </div>
             </div>
 
             <div class="pt-4 border-t border-gray-200">
               <button @click="saveDistributorInfo" 
-                :disabled="!distributorInfoChanged"
-                :class="distributorInfoChanged ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+                :disabled="!distributorInfoChanged || savingDistributor"
+                :class="[distributorInfoChanged && !savingDistributor ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed', savingDistributor ? 'bg-green-400 cursor-wait' : '']"
                 class="px-4 py-2 text-white rounded-lg transition-colors flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!savingDistributor" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                Update Distributor Information
+                <svg v-if="savingDistributor" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                {{ savingDistributor ? 'Saving...' : 'Update Distributor Information' }}
               </button>
             </div>
           </div>
@@ -257,145 +318,269 @@
 
             <div class="pt-4 border-t border-gray-200">
               <button @click="changePassword" 
-                :disabled="!canChangePassword"
-                :class="canChangePassword ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
+                :disabled="!canChangePassword || changingPassword"
+                :class="[canChangePassword && !changingPassword ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed', changingPassword ? 'bg-blue-400 cursor-wait' : '']"
                 class="px-4 py-2 text-white rounded-lg transition-colors flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!changingPassword" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                 </svg>
-                Change Password
+                <svg v-if="changingPassword" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                {{ changingPassword ? 'Changing Password...' : 'Change Password' }}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Column: Notification Preferences -->
+      <!--Authentication for Verification -->
       <div class="space-y-6">
-        <!-- Notification Preferences Card -->
+        <!-- Verification Requirements Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
           <div class="flex items-center justify-between mb-6">
-            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Notification Preferences</h2>
+            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Business Verification</h2>
             <div class="p-2 bg-purple-50 rounded-lg">
               <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
               </svg>
             </div>
           </div>
 
-          <div class="space-y-6">
-            <!-- Email Notifications -->
-            <div>
-              <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-                Email Notifications
-              </h3>
-              <div class="space-y-3">
-                <div v-for="pref in emailPreferences" :key="pref.id" class="flex items-center justify-between">
-                  <div>
-                    <p class="font-medium text-gray-900">{{ pref.label }}</p>
-                    <p class="text-xs text-gray-500">{{ pref.description }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input v-model="pref.enabled" type="checkbox" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
+          <!-- Status Banner -->
+          <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex">
+              <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <div>
+                <h4 class="font-medium text-blue-800">Verification Required</h4>
+                <p class="text-sm text-blue-700 mt-1">Please upload all required documents for business verification. All fields are mandatory for account verification.</p>
               </div>
-            </div>
-
-            <!-- In-App Notifications -->
-            <div class="pt-4 border-t border-gray-200">
-              <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                In-App Notifications
-              </h3>
-              <div class="space-y-3">
-                <div v-for="pref in appPreferences" :key="pref.id" class="flex items-center justify-between">
-                  <div>
-                    <p class="font-medium text-gray-900">{{ pref.label }}</p>
-                    <p class="text-xs text-gray-500">{{ pref.description }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input v-model="pref.enabled" type="checkbox" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <!-- SMS Notifications -->
-            <div class="pt-4 border-t border-gray-200">
-              <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                </svg>
-                SMS Notifications
-              </h3>
-              <div class="space-y-3">
-                <div v-for="pref in smsPreferences" :key="pref.id" class="flex items-center justify-between">
-                  <div>
-                    <p class="font-medium text-gray-900">{{ pref.label }}</p>
-                    <p class="text-xs text-gray-500">{{ pref.description }}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input v-model="pref.enabled" type="checkbox" class="sr-only peer">
-                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div class="pt-4 border-t border-gray-200">
-              <button @click="saveNotificationPreferences" 
-                :disabled="!notificationsChanged"
-                :class="notificationsChanged ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'"
-                class="w-full px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Save Notification Settings
-              </button>
             </div>
           </div>
-        </div>
 
-        <!-- Account Status Card -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h3 class="text-sm font-semibold text-gray-700 mb-4">Account Status</h3>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-gray-600">Account Status</span>
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          <!-- Verification Form -->
+          <div class="space-y-8">
+            <!-- Company Information -->
+            <div>
+              <h3 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Company Information</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Company Name
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <input type="text" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Enter your company name">
+                </div>
+              </div>
+            </div>
+
+            <!-- Valid ID Section -->
+            <div>
+              <h3 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Valid ID Requirements</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Type of Valid ID
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                    <option value="">Select ID Type</option>
+                    <option value="passport">Passport</option>
+                    <option value="driver_license">Driver's License</option>
+                    <option value="umid">UMID</option>
+                    <option value="prc">PRC ID</option>
+                    <option value="postal">Postal ID</option>
+                    <option value="voter">Voter's ID</option>
+                    <option value="tin">TIN ID</option>
+                    <option value="sss">SSS ID</option>
+                    <option value="philhealth">PhilHealth ID</option>
+                    <option value="other">Other Government ID</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Photo of Valid ID
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                    <div class="space-y-1 text-center">
+                      <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <div class="flex text-sm text-gray-600">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                          <span>Upload a file</span>
+                          <input type="file" class="sr-only" accept="image/*">
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                      </div>
+                      <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                      <div class="mt-2">
+                        <span class="text-xs text-gray-500">Front side of ID required</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Business Documents -->
+            <div>
+              <h3 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Business Documents</h3>
+              <div class="space-y-6">
+                
+                <!-- DTI Certificate -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Photo of DTI Certificate
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                    <div class="space-y-1 text-center">
+                      <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <div class="flex text-sm text-gray-600">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                          <span>Upload DTI Certificate</span>
+                          <input type="file" class="sr-only" accept="image/*,.pdf">
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                      </div>
+                      <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                      <div class="mt-2">
+                        <span class="text-xs text-gray-500">Ensure certificate details are clear and readable</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mayor's Permit -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Photo of Mayor's Permit to Operate
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                    <div class="space-y-1 text-center">
+                      <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <div class="flex text-sm text-gray-600">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                          <span>Upload Mayor's Permit</span>
+                          <input type="file" class="sr-only" accept="image/*,.pdf">
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                      </div>
+                      <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                      <div class="mt-2">
+                        <span class="text-xs text-gray-500">Current year's permit required</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Barangay Clearance -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Photo of Barangay Business Clearance
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                    <div class="space-y-1 text-center">
+                      <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <div class="flex text-sm text-gray-600">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                          <span>Upload Barangay Clearance</span>
+                          <input type="file" class="sr-only" accept="image/*,.pdf">
+                        </label>
+                          <p class="pl-1">or drag and drop</p>
+                      </div>
+                      <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                      <div class="mt-2">
+                        <span class="text-xs text-gray-500">Issued within the last 6 months</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Business Registration Plate -->
+                <div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Business Registration Plate Number
+                        <span class="text-red-500">*</span>
+                      </label>
+                      <input type="text" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        placeholder="Enter plate number">
+                    </div>
+                    
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Photo of Business Registration Plate
+                        <span class="text-red-500">*</span>
+                      </label>
+                      <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                          <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                          <div class="text-sm text-gray-600">
+                            <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                              <span>Upload Photo</span>
+                              <input type="file" class="sr-only" accept="image/*">
+                            </label>
+                          </div>
+                          <p class="text-xs text-gray-500">Clear photo showing plate</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Notes -->
+            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div class="flex">
+                <svg class="w-5 h-5 text-gray-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                Active
-              </span>
+                <div>
+                  <h4 class="font-medium text-gray-800">Important Notes</h4>
+                  <ul class="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
+                    <li>All documents must be current and valid</li>
+                    <li>Photos should be clear and all text readable</li>
+                    <li>Maximum file size per document: 5MB</li>
+                    <li>Accepted formats: JPG, PNG, PDF</li>
+                    <li>Verification process takes 3-5 business days</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-            <div class="flex items-center justify-between">
-              <span class="text-gray-600">Two-Factor Auth</span>
-              <button @click="toggleTwoFactor" 
-                :class="twoFactorEnabled ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 hover:bg-gray-400'"
-                class="px-3 py-1 text-white text-sm rounded-lg transition-colors">
-                {{ twoFactorEnabled ? 'Enabled' : 'Enable' }}
-              </button>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-gray-600">Last Login</span>
-              <span class="text-sm font-medium text-gray-900">{{ formatDate(lastLogin) }}</span>
-            </div>
+
+            <!-- Submit Button -->
             <div class="pt-4 border-t border-gray-200">
-              <button @click="logout" class="w-full px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              <button 
+                class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                Logout
+                Submit for Verification
               </button>
+              <p class="text-xs text-gray-500 text-center mt-2">
+                By submitting, you confirm that all information provided is accurate and authentic
+              </p>
             </div>
           </div>
         </div>
@@ -405,23 +590,44 @@
 </template>
 
 <script>
+import axios from '@/utils/axios'
+
 export default {
   name: 'ProfileSettings',
+  filters: {
+    capitalize(value) {
+      if (!value) return ''
+      value = value.toString()
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    }
+  },
   data() {
     return {
+      loading: false,
+      saving: false,
+      savingDistributor: false,
+      savingNotifications: false,
+      changingPassword: false,
+      error: '',
+      successMessage: '',
+      userInfo: {
+        id: null,
+        first_name: '',
+        last_name: '',
+        full_name: '',
+        email: '',
+        phone: '',
+        address: '',
+        role: '',
+        status: '',
+        created_at: ''
+      },
+      originalUserInfo: {},
       distributorInfo: {
-        name: 'Juan Dela Cruz',
-        role: 'Senior Distributor Manager',
-        accountId: 'DIST-2024-001',
-        memberSince: '2023-06-15',
-        companyName: 'Cavite Paint Distributors Inc.',
-        businessType: 'retail',
-        contactPerson: 'Maria Santos',
-        email: 'juan.delacruz@cavitepaint.ph',
-        phone: '+63 912 345 6789',
-        address: '123 Paint Street, Imus City, Cavite, Philippines 4103',
-        tin: '123-456-789-000',
-        licenseNumber: 'BL-2023-7890'
+        company_name: '',
+        business_type: 'retail',
+        license_number: '',
+        tin_number: ''
       },
       originalDistributorInfo: {},
       password: {
@@ -490,29 +696,9 @@ export default {
           enabled: true
         }
       ],
-      smsPreferences: [
-        {
-          id: 1,
-          label: 'Urgent Alerts',
-          description: 'Critical alerts via SMS',
-          enabled: true
-        },
-        {
-          id: 2,
-          label: 'Order Confirmations',
-          description: 'SMS confirmation for large orders',
-          enabled: false
-        },
-        {
-          id: 3,
-          label: 'Security Alerts',
-          description: 'Account security notifications',
-          enabled: true
-        }
-      ],
       originalNotifications: {},
       twoFactorEnabled: true,
-      lastLogin: '2024-01-15T14:30:00'
+      lastLogin: new Date().toISOString()
     }
   },
   computed: {
@@ -524,16 +710,6 @@ export default {
     },
     confirmPasswordFieldType() {
       return this.showConfirmPassword ? 'text' : 'password'
-    },
-    getInitials() {
-      return (name) => {
-        return name
-          .split(' ')
-          .map(word => word[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2)
-      }
     },
     passwordRequirements() {
       const newPassword = this.password.new
@@ -570,32 +746,232 @@ export default {
              this.passwordMatch &&
              this.passwordRequirements.every(req => req.met)
     },
+    userInfoChanged() {
+      return JSON.stringify(this.userInfo) !== JSON.stringify(this.originalUserInfo)
+    },
     distributorInfoChanged() {
       return JSON.stringify(this.distributorInfo) !== JSON.stringify(this.originalDistributorInfo)
     },
     notificationsChanged() {
       const current = {
         email: this.emailPreferences,
-        app: this.appPreferences,
-        sms: this.smsPreferences
+        app: this.appPreferences
       }
       return JSON.stringify(current) !== JSON.stringify(this.originalNotifications)
     },
     hasUnsavedChanges() {
-      return this.distributorInfoChanged || this.notificationsChanged
+      return this.userInfoChanged || this.distributorInfoChanged || this.notificationsChanged
     }
   },
-  created() {
-    // Store original data for comparison
-    this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
-    this.originalNotifications = {
-      email: JSON.parse(JSON.stringify(this.emailPreferences)),
-      app: JSON.parse(JSON.stringify(this.appPreferences)),
-      sms: JSON.parse(JSON.stringify(this.smsPreferences))
-    }
+  async created() {
+    await this.fetchUserData()
+    await this.fetchDistributorData()
+    this.setOriginalData()
   },
   methods: {
+    async fetchUserData() {
+      this.loading = true
+      this.error = ''
+      try {
+        const response = await axios.get('/profile') // Changed from '/api/profile' to '/profile'
+        if (response.data.status === 'success') {
+          this.userInfo = response.data.data.user
+        } else {
+          throw new Error(response.data.message || 'Failed to fetch user data')
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        this.error = error.response?.data?.message || 'Failed to load profile data. Please try again.'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchDistributorData() {
+      // This would be a separate API endpoint for distributor-specific data
+      // For now, we'll use mock data or leave it empty
+      if (this.userInfo.role === 'distributor') {
+        try {
+          // Example API call (you need to create this endpoint):
+          // const response = await axios.get('/distributor/profile')
+          // this.distributorInfo = response.data.data.distributorInfo
+          
+          // For now, use empty object or mock data
+          this.distributorInfo = {
+            company_name: '',
+            business_type: 'retail',
+            license_number: '',
+            tin_number: ''
+          }
+        } catch (error) {
+          console.error('Error fetching distributor data:', error)
+        }
+      }
+    },
+
+    setOriginalData() {
+      this.originalUserInfo = JSON.parse(JSON.stringify(this.userInfo))
+      this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
+      this.originalNotifications = {
+        email: JSON.parse(JSON.stringify(this.emailPreferences)),
+        app: JSON.parse(JSON.stringify(this.appPreferences))
+      }
+    },
+
+    async saveUserInfo() {
+      if (!this.userInfoChanged || this.saving) return
+      
+      this.saving = true
+      this.error = ''
+      this.successMessage = ''
+      
+      try {
+        const response = await axios.put('/profile', { // Changed from '/api/profile' to '/profile'
+          first_name: this.userInfo.first_name,
+          last_name: this.userInfo.last_name,
+          email: this.userInfo.email,
+          phone: this.userInfo.phone,
+          address: this.userInfo.address
+        })
+        
+        if (response.data.status === 'success') {
+          this.originalUserInfo = JSON.parse(JSON.stringify(this.userInfo))
+          this.successMessage = 'Personal information updated successfully!'
+          
+          // Update full name after saving
+          this.userInfo.full_name = `${this.userInfo.first_name} ${this.userInfo.last_name}`
+        } else {
+          throw new Error(response.data.message || 'Failed to update profile')
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error)
+        this.error = error.response?.data?.message || 'Failed to update profile. Please try again.'
+        
+        // Rollback changes on error
+        this.userInfo = JSON.parse(JSON.stringify(this.originalUserInfo))
+      } finally {
+        this.saving = false
+      }
+    },
+
+    async saveDistributorInfo() {
+      if (!this.distributorInfoChanged || this.savingDistributor) return
+      
+      this.savingDistributor = true
+      this.error = ''
+      this.successMessage = ''
+      
+      try {
+        // This would be a separate API endpoint for distributor-specific data
+        // Example: const response = await axios.put('/distributor/profile', this.distributorInfo)
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
+        this.successMessage = 'Distributor information updated successfully!'
+      } catch (error) {
+        console.error('Error updating distributor info:', error)
+        this.error = error.response?.data?.message || 'Failed to update distributor information. Please try again.'
+        
+        // Rollback changes on error
+        this.distributorInfo = JSON.parse(JSON.stringify(this.originalDistributorInfo))
+      } finally {
+        this.savingDistributor = false
+      }
+    },
+
+    async changePassword() {
+      if (!this.canChangePassword || this.changingPassword) return
+      
+      this.changingPassword = true
+      this.error = ''
+      this.successMessage = ''
+      
+      try {
+        const response = await axios.put('/profile/password', { // Changed from '/api/profile/password' to '/profile/password'
+          current_password: this.password.current,
+          password: this.password.new,
+          password_confirmation: this.password.confirm
+        })
+        
+        if (response.data.status === 'success') {
+          this.successMessage = 'Password changed successfully!'
+          
+          // Reset password fields
+          this.password = {
+            current: '',
+            new: '',
+            confirm: ''
+          }
+          this.showCurrentPassword = false
+          this.showNewPassword = false
+          this.showConfirmPassword = false
+        } else {
+          throw new Error(response.data.message || 'Failed to change password')
+        }
+      } catch (error) {
+        console.error('Error changing password:', error)
+        this.error = error.response?.data?.message || 'Failed to change password. Please try again.'
+      } finally {
+        this.changingPassword = false
+      }
+    },
+
+    async saveNotificationPreferences() {
+      if (!this.notificationsChanged || this.savingNotifications) return
+      
+      this.savingNotifications = true
+      this.error = ''
+      this.successMessage = ''
+      
+      try {
+        // This would be a separate API endpoint for notification preferences
+        // Example: const response = await axios.put('/notifications', {
+        //   email: this.emailPreferences,
+        //   app: this.appPreferences
+        // })
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        this.originalNotifications = {
+          email: JSON.parse(JSON.stringify(this.emailPreferences)),
+          app: JSON.parse(JSON.stringify(this.appPreferences))
+        }
+        this.successMessage = 'Notification preferences updated successfully!'
+      } catch (error) {
+        console.error('Error updating notification preferences:', error)
+        this.error = error.response?.data?.message || 'Failed to update notification preferences. Please try again.'
+      } finally {
+        this.savingNotifications = false
+      }
+    },
+
+    async saveAllChanges() {
+      if (this.userInfoChanged) {
+        await this.saveUserInfo()
+      }
+      if (this.userInfo.role === 'distributor' && this.distributorInfoChanged) {
+        await this.saveDistributorInfo()
+      }
+      if (this.notificationsChanged) {
+        await this.saveNotificationPreferences()
+      }
+    },
+
+    getInitials(name) {
+      if (!name) return '??'
+      return name
+        .split(' ')
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    },
+
     formatDate(dateString) {
+      if (!dateString) return 'N/A'
       const date = new Date(dateString)
       return date.toLocaleDateString('en-PH', {
         year: 'numeric',
@@ -603,76 +979,54 @@ export default {
         day: 'numeric'
       })
     },
+
+    formatDateTime(dateTimeString) {
+      if (!dateTimeString) return 'N/A'
+      const date = new Date(dateTimeString)
+      return date.toLocaleString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+
     toggleCurrentPasswordVisibility() {
       this.showCurrentPassword = !this.showCurrentPassword
     },
+
     toggleNewPasswordVisibility() {
       this.showNewPassword = !this.showNewPassword
     },
+
     toggleConfirmPasswordVisibility() {
       this.showConfirmPassword = !this.showConfirmPassword
     },
+
     changeProfilePhoto() {
       alert('Feature to change profile photo would open file picker')
     },
-    saveDistributorInfo() {
-      if (!this.distributorInfoChanged) return
-      
-      // In a real app, this would be an API call
-      console.log('Saving distributor info:', this.distributorInfo)
-      this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
-      
-      alert('Distributor information updated successfully!')
-    },
-    changePassword() {
-      if (!this.canChangePassword) return
-      
-      // In a real app, this would be an API call
-      console.log('Changing password...')
-      
-      // Reset password fields
-      this.password = {
-        current: '',
-        new: '',
-        confirm: ''
-      }
-      
-      alert('Password changed successfully!')
-    },
-    saveNotificationPreferences() {
-      if (!this.notificationsChanged) return
-      
-      // In a real app, this would be an API call
-      console.log('Saving notification preferences:', {
-        email: this.emailPreferences,
-        app: this.appPreferences,
-        sms: this.smsPreferences
-      })
-      
-      this.originalNotifications = {
-        email: JSON.parse(JSON.stringify(this.emailPreferences)),
-        app: JSON.parse(JSON.stringify(this.appPreferences)),
-        sms: JSON.parse(JSON.stringify(this.smsPreferences))
-      }
-      
-      alert('Notification preferences updated successfully!')
-    },
-    saveAllChanges() {
-      if (this.distributorInfoChanged) {
-        this.saveDistributorInfo()
-      }
-      if (this.notificationsChanged) {
-        this.saveNotificationPreferences()
-      }
-    },
+
     toggleTwoFactor() {
-      this.twoFactorEnabled = !this.twoFactorEnabled
+      // This would be an API call to update 2FA status
       alert(`Two-factor authentication ${this.twoFactorEnabled ? 'enabled' : 'disabled'}`)
     },
-    logout() {
+
+    async logout() {
       if (confirm('Are you sure you want to logout?')) {
-        alert('Logging out...')
-        // In a real app, this would clear auth tokens and redirect to login
+        try {
+          await axios.post('/auth/logout') // Changed from '/api/auth/logout' to '/auth/logout'
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user')
+          this.$router.push('/Landing/logIn')
+        } catch (error) {
+          console.error('Logout error:', error)
+          // Still clear local storage and redirect even if API call fails
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user')
+          this.$router.push('/Landing/logIn')
+        }
       }
     }
   }
@@ -680,177 +1034,5 @@ export default {
 </script>
 
 <style scoped>
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Gradient animations */
-.bg-gradient-to-br {
-  background-size: 200% 200%;
-}
-
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Smooth transitions */
-.transition-colors {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Focus styles */
-:focus {
-  outline: none;
-}
-
-:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Toggle switch styling */
-.peer:checked ~ .peer-checked\:bg-blue-600 {
-  background-color: #2563eb;
-}
-
-.peer:checked ~ .peer-checked\:after\:translate-x-full::after {
-  transform: translateX(100%);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .grid-cols-1 {
-    grid-template-columns: 1fr;
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-  
-  .text-2xl {
-    font-size: 1.5rem;
-  }
-  
-  .text-3xl {
-    font-size: 1.75rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .p-6 {
-    padding: 1rem;
-  }
-  
-  .space-y-6 > * + * {
-    margin-top: 1rem;
-  }
-}
-
-/* Loading skeleton animation */
-@keyframes shimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
-.shimmer {
-  background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
-  background-size: 800px 104px;
-  animation: shimmer 1.5s infinite linear;
-}
-
-/* Card hover effects */
-.bg-white {
-  transition: all 0.2s ease-in-out;
-}
-
-.bg-white:hover {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-/* Input focus effects */
-input:focus, select:focus, textarea:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Button hover effects */
-button:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-button:disabled {
-  cursor: not-allowed;
-}
-
-/* Print styles */
-@media print {
-  button, input, select, textarea, .bg-gradient-to-r {
-    display: none !important;
-  }
-  
-  .bg-white {
-    background: white !important;
-    border: 1px solid #e5e7eb !important;
-  }
-}
-
-/* Avatar initials styling */
-.text-2xl {
-  font-weight: 700;
-}
-
-/* Password strength indicator */
-.text-green-500 {
-  color: #10b981;
-}
-
-.text-green-600 {
-  color: #059669;
-}
-
-.text-red-500 {
-  color: #ef4444;
-}
-
-.text-red-600 {
-  color: #dc2626;
-}
-
-/* Notification toggle spacing */
-.space-y-3 > * + * {
-  margin-top: 0.75rem;
-}
-
-/* Section spacing */
-.space-y-6 > * + * {
-  margin-top: 1.5rem;
-}
+  @import "../distributor/styles/profileSettings.css";
 </style>

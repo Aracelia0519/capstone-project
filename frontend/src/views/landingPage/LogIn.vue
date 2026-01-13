@@ -271,12 +271,14 @@
             </button>
 
             <!-- Animated Divider -->
-            <div class="relative animate-expand-width-delay">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
-              </div>
-              <div class="relative flex justify-center">
-                <span class="px-4 bg-gray-800/80 text-gray-400/80 text-sm animate-bounce-soft">Don't have an account?</span>
+            <div class="relative animate-expand-width-delay flex justify-center">
+              <div class="w-full max-w-md"> <!-- Adjust max-w-md to your preferred width -->
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
+                </div>
+                <div class="relative flex justify-center">
+                  <span class="px-4 bg-gray-800/80 text-gray-400/80 text-sm animate-bounce-soft">Don't have an account?</span>
+                </div>
               </div>
             </div>
 

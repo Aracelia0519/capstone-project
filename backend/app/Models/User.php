@@ -52,6 +52,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 
@@ -121,6 +123,46 @@ class User extends Authenticatable
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    /**
+     * Get the client requirement for this user (if they are a client)
+     */
+    public function clientRequirement()
+    {
+        return $this->hasOne(Client\ClientRequirement::class);
+    }
+
+    /**
+     * Check if user has submitted ID verification
+     */
+    public function hasIdVerification(): bool
+    {
+        return $this->clientRequirement()->exists();
+    }
+
+    /**
+     * Get ID verification status
+     */
+    public function getIdVerificationStatus(): ?string
+    {
+        return $this->clientRequirement?->status;
+    }
+
+    /**
+     * Check if ID verification is approved
+     */
+    public function isIdVerified(): bool
+    {
+        return $this->getIdVerificationStatus() === 'approved';
+    }
+
+    /**
+     * Check if ID verification is pending
+     */
+    public function isIdVerificationPending(): bool
+    {
+        return $this->getIdVerificationStatus() === 'pending';
     }
 
     /**

@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
+
+// Import all layouts and views (keep your existing imports)
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import Dashboard from '@/views/admin/Dashboard.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
@@ -296,65 +299,83 @@ const router = createRouter({
   routes
 })
 
+// Track navigation to prevent duplicate API calls
+let isNavigating = false
+let pendingNavigation = null
+
 // Route guard to check authentication
 router.beforeEach(async (to, from, next) => {
+  // Skip if already navigating
+  if (isNavigating) {
+    pendingNavigation = { to, from, next }
+    return
+  }
+
+  isNavigating = true
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiredRole = to.meta.role
-  const token = localStorage.getItem('auth_token')
-  const userData = localStorage.getItem('user_data')
 
-  // If route requires authentication
   if (requiresAuth) {
-    if (!token || !userData) {
-      // Not authenticated, redirect to login
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user_data')
-      next('/Landing/logIn')
-      return
-    }
-
     try {
-      // Verify token with backend
-      await axios.get('/auth/me')
+      // Get user from cache (fast) or API (first time)
+      const user = await getCurrentUser()
+      
+      if (!user) {
+        clearAuthData()
+        next('/Landing/logIn')
+        isNavigating = false
+        processPendingNavigation()
+        return
+      }
       
       // Check role if required
-      if (requiredRole) {
-        const user = JSON.parse(userData)
-        if (user.role !== requiredRole) {
-          // Wrong role, redirect to appropriate dashboard
-          const roleRoutes = {
-            admin: '/admin/dashboard',
-            distributor: '/distributor/distributordashboard',
-            service_provider: '/serviceProvider/dashboardSP',
-            client: '/Clients/dashboardC'
-          }
-          next(roleRoutes[user.role] || '/Landing/homeLanding')
-          return
+      if (requiredRole && user.role !== requiredRole) {
+        const roleRoutes = {
+          admin: '/admin/dashboard',
+          distributor: '/distributor/distributordashboard',
+          service_provider: '/serviceProvider/dashboardSP',
+          client: '/Clients/dashboardC'
         }
+        next(roleRoutes[user.role] || '/Landing/homeLanding')
+        isNavigating = false
+        processPendingNavigation()
+        return
       }
       
       next()
     } catch (error) {
-      // Token invalid or expired
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user_data')
+      clearAuthData()
       next('/Landing/logIn')
+    } finally {
+      isNavigating = false
+      processPendingNavigation()
     }
   } else {
-    // Public route, allow access
     next()
+    isNavigating = false
+    processPendingNavigation()
   }
 })
+
+// Process any pending navigation
+function processPendingNavigation() {
+  if (pendingNavigation) {
+    const { to, from, next } = pendingNavigation
+    pendingNavigation = null
+    router.beforeEach(() => {})(to, from, next)
+  }
+}
 
 // Add axios interceptor to handle 401 responses globally
 axios.interceptors.response.use(
   response => response,
   error => {
     if (error.response && error.response.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('auth_token')
-      localStorage.removeItem('user_data')
-      router.push('/Landing/logIn')
+      clearAuthData()
+      // Only redirect if not already going to login
+      if (!router.currentRoute.value.path.includes('/logIn')) {
+        router.push('/Landing/logIn')
+      }
     }
     return Promise.reject(error)
   }

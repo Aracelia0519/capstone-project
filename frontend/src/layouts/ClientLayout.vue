@@ -20,33 +20,66 @@
     <!-- Main Content - Dynamically adjusts based on sidebar collapse state -->
     <div 
       class="client-content"
-      :class="{ 'sidebar-collapsed': sidebarCollapsed && !isMobile }"
+      :class="{ 
+        'sidebar-collapsed': sidebarCollapsed && !isMobile,
+        'loading': isLoading && !dashboardData
+      }"
       :style="sidebarCollapsed && !isMobile ? 'margin-left: 80px' : 'margin-left: 280px'"
     >
-      <router-view />
+      <div v-if="isLoading && !dashboardData" class="content-loading">
+        <div class="loading-spinner"></div>
+        <p>Loading dashboard...</p>
+      </div>
+      <template v-else>
+        <!-- Pass user data to child components if needed -->
+        <router-view v-if="userData" :user="userData" :dashboard-data="dashboardData" />
+        <router-view v-else />
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import SideBarClient from './sideBarClient.vue'
 import axios from '@/utils/axios'
+import { getCurrentUser } from '@/utils/auth'
 
+const router = useRouter()
 
 const userData = ref(null)
 const dashboardData = ref(null)
 const isLoading = ref(false)
 
-// Fetch user data and dashboard data
-const fetchData = async () => {
+// Sidebar states
+const sidebarMobileVisible = ref(false)
+const isMobile = ref(false)
+const sidebarCollapsed = ref(false)
+
+// Get user data from cache first
+const initializeUserData = () => {
+  const storedUserData = localStorage.getItem('user_data')
+  if (storedUserData) {
+    userData.value = JSON.parse(storedUserData)
+  }
+}
+
+// Fetch dashboard data only
+const fetchDashboardData = async () => {
+  if (!userData.value) return
+  
+  // Check if we already have recent dashboard data
+  const lastDashboardFetch = localStorage.getItem(`last_dashboard_fetch_${userData.value.role}`)
+  const now = Date.now()
+  
+  // If fetched less than 2 minutes ago, use cached data
+  if (lastDashboardFetch && dashboardData.value && (now - parseInt(lastDashboardFetch)) < 2 * 60 * 1000) {
+    return
+  }
+  
   isLoading.value = true
   try {
-    // Get user profile
-    const userResponse = await axios.get('/auth/me')
-    userData.value = userResponse.data.user
-    
-    // Get dashboard data based on role
     const roleEndpoints = {
       admin: '/dashboard/admin',
       distributor: '/dashboard/distributor',
@@ -57,25 +90,52 @@ const fetchData = async () => {
     if (roleEndpoints[userData.value.role]) {
       const dashboardResponse = await axios.get(roleEndpoints[userData.value.role])
       dashboardData.value = dashboardResponse.data.data
+      // Cache the fetch time
+      localStorage.setItem(`last_dashboard_fetch_${userData.value.role}`, now.toString())
     }
-    
   } catch (error) {
-    console.error('Failed to fetch data:', error)
+    console.error('Failed to fetch dashboard data:', error)
+    // Don't show error to user for dashboard data
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => {
-  fetchData()
+// Initialize data on mount
+onMounted(async () => {
+  initializeUserData()
+  
+  // If no cached user data, fetch it
+  if (!userData.value) {
+    isLoading.value = true
+    try {
+      const user = await getCurrentUser()
+      userData.value = user
+      localStorage.setItem('user_data', JSON.stringify(user))
+    } catch (error) {
+      console.error('Failed to fetch user data:', error)
+      // Redirect to login if we can't get user data
+      router.push('/Landing/logIn')
+      return
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  // Fetch dashboard data in background
+  fetchDashboardData()
+  
+  // Setup responsive behavior
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
 })
 
-const sidebarMobileVisible = ref(false)
-const isMobile = ref(false)
-const sidebarCollapsed = ref(false)
-
+// Responsive methods
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value) {
+    sidebarMobileVisible.value = false
+  }
 }
 
 const toggleSidebarMobile = () => {
@@ -92,14 +152,21 @@ const handleSidebarCollapsed = (isCollapsed) => {
   sidebarCollapsed.value = isCollapsed
 }
 
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
+// Cleanup
 onBeforeUnmount(() => {
   window.removeEventListener('resize', checkMobile)
 })
+
+// Watch for route changes to refresh dashboard data if needed
+watch(
+  () => router.currentRoute.value.path,
+  (newPath, oldPath) => {
+    // Refresh dashboard data when navigating to dashboard
+    if (newPath.includes('dashboard') && !oldPath.includes('dashboard')) {
+      fetchDashboardData()
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -126,6 +193,33 @@ onBeforeUnmount(() => {
 .client-content.sidebar-collapsed {
   margin-left: 80px;
   width: calc(100% - 80px);
+}
+
+/* Loading state */
+.client-content.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-loading {
+  text-align: center;
+  color: #94a3b8;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(56, 189, 248, 0.3);
+  border-radius: 50%;
+  border-top-color: #38bdf8;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Animated background for client area */
@@ -200,11 +294,6 @@ onBeforeUnmount(() => {
   .mobile-toggle-btn {
     display: flex;
   }
-}
-
-/* Smooth transition for all interactive elements */
-* {
-  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
 }
 
 /* Smooth transition for the main content when sidebar collapses/expands */
