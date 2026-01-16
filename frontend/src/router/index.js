@@ -44,6 +44,7 @@ import Recommendations from '@/views/client/Recommendations.vue'
 import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
 
+
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
 import HowItWorks from '@/views/landingPage/HowItWorks.vue'
@@ -51,6 +52,51 @@ import ExploreColors from '@/views/landingPage/ExploreColors.vue'
 import Services from '@/views/landingPage/Services.vue'
 import LogIn from '@/views/landingPage/LogIn.vue'
 import SignUp from '@/views/landingPage/SignUp.vue'
+
+import HRLayout from '@/layouts/HRLayout.vue'
+import HRDashboard from '@/views/humanResource/HRDashboard.vue'
+import EmployeesList from '@/views/humanResource/EmployeesList.vue'
+import PositionsRoles from '@/views/humanResource/PositionsRoles.vue'
+import Departments from '@/views/humanResource/Departments.vue'
+import EmploymentStatus from '@/views/humanResource/EmploymentStatus.vue'
+import ReportsHR from '@/views/humanResource/Reports.vue'
+
+import FinanceLayout from '@/layouts/financeLayout.vue'
+import FinanceDashboard from '@/views/finance/financeDashboard.vue'
+import Transactions from '@/views/finance/Transactions.vue'
+import PaymentMethods from '@/views/finance/PaymentMethods.vue'
+import Invoices from '@/views/finance/Invoices.vue'
+import ReportsFinance from '@/views/finance/ReportsFinance.vue'
+
+import CRMLayout from '@/layouts/CRMLayout.vue'
+import CRMDashboard from '@/views/CRM/CRMDashboard.vue'
+import CRMClients from '@/views/CRM/CRMClients.vue'
+import CRMDistributors from '@/views/CRM/CRMDistributors.vue'
+import CRMServiceProviders from '@/views/CRM/CRMServiceProviders.vue'
+import CRMInteractions from '@/views/CRM/CRMInteractions.vue'
+import CRMFollowUps from '@/views/CRM/CRMFollowUps.vue'
+import CRMReports from '@/views/CRM/CRMReports.vue'
+
+import ECommerceLayout from '@/layouts/ECommerceLayout.vue'
+import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
+import ECommerceProducts from '@/views/E-commerce/ECommerceProducts.vue'
+import ECommerceCategories from '@/views/E-commerce/ECommerceCategories.vue'
+import ECommerceOrders from '@/views/E-commerce/ECommerceOrders.vue'
+import ECommercePayments from '@/views/E-commerce/ECommercePayments.vue'
+import ECommerceDelivery from '@/views/E-commerce/ECommerceDelivery.vue'
+import ECommerceReturns from '@/views/E-commerce/ECommerceReturns.vue'
+import ECommerceReviews from '@/views/E-commerce/ECommerceReviews.vue'
+import ECommercePromotions from '@/views/E-commerce/ECommercePromotions.vue'
+import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
+
+import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
+import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
+import ECommerceProductDetail from '@/views/ClientE-Commerce/ECommerceProductDetail.vue'
+import ECommerceServices from '@/views/ClientE-Commerce/ECommerceServices.vue'
+import ECommerceCart from '@/views/ClientE-Commerce/ECommerceCart.vue'
+import ECommerceCheckout from '@/views/ClientE-Commerce/ECommerceCheckout.vue'
+import ClientECommerceOrders from '@/views/ClientE-Commerce/ECommerceOrders.vue'
+import ECommerceProfile from '@/views/ClientE-Commerce/ECommerceProfile.vue'
 
 const routes = [
   {
@@ -287,6 +333,224 @@ const routes = [
       },
     ]
   },
+
+
+  /*
+  no authentication yet
+  */
+
+  {
+    path: '/HR',
+    component: HRLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'HRdashboard',
+        name: 'HRdashboard',
+        component: HRDashboard
+      },
+      {
+        path: 'employeesListHR',
+        name: 'employeesListHR',
+        component: EmployeesList
+      },
+      {
+        path: 'positionRolesHR',
+        name: 'positionRolesHR',
+        component: PositionsRoles
+      },
+      {
+        path: 'departmentsHR',
+        name: 'departmentsHR',
+        component: Departments
+      },
+      {
+        path: 'employmentStatusHR',
+        name: 'employmentStatusHR',
+        component: EmploymentStatus
+      },
+      {
+        path: 'reportsHR',
+        name: 'reportsHR',
+        component: ReportsHR
+      },
+    ]
+  },
+  {
+    path: '/finance',
+    component: FinanceLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'financeDashboard',
+        name: 'financeDashboard',
+        component: FinanceDashboard
+      },
+      {
+        path: 'transactions',
+        name: 'transactions',
+        component: Transactions
+      },
+      {
+        path: 'paymentMethods',
+        name: 'paymentMethods',
+        component: PaymentMethods
+      },
+      {
+        path: 'invoices',
+        name: 'invoices',
+        component: Invoices
+      },
+      {
+        path: 'reportFinance',
+        name: 'reportFinance',
+        component: ReportsFinance
+      },
+    ]
+  },
+  {
+    path: '/CRM',
+    component: CRMLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'CRMDashboard',
+        name: 'CRMDashboard',
+        component: CRMDashboard
+      },
+      {
+        path: 'CRMClients',
+        name: 'CRMClients',
+        component: CRMClients
+      },
+      {
+        path: 'CRMDistributors',
+        name: 'CRMDistributors',
+        component: CRMDistributors
+      },
+      {
+        path: 'CRMServiceProviders',
+        name: 'CRMServiceProviders',
+        component: CRMServiceProviders
+      },
+      {
+        path: 'CRMInteractions',
+        name: 'CRMInteractions',
+        component: CRMInteractions
+      },
+      {
+        path: 'CRMFollowUps',
+        name: 'CRMFollowUps',
+        component: CRMFollowUps
+      },
+      {
+        path: 'CRMReports',
+        name: 'CRMReports',
+        component: CRMReports
+      },
+    ]
+  },
+  {
+    path: '/ECommerce',
+    component: ECommerceLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'ECDashboard',
+        name: 'ECDashboard',
+        component: ECommerceDashboard
+      },
+      {
+        path: 'ECProducts',
+        name: 'ECProducts',
+        component: ECommerceProducts
+      },
+      {
+        path: 'ECCategories',
+        name: 'ECCategories',
+        component: ECommerceCategories
+      },
+      {
+        path: 'ECOrders',
+        name: 'ECOrders',
+        component: ECommerceOrders
+      },
+      {
+        path: 'ECPayment',
+        name: 'ECPayment',
+        component: ECommercePayments
+      },
+      {
+        path: 'ECDelivery',
+        name: 'ECDelivery',
+        component: ECommerceDelivery
+      },
+      {
+        path: 'ECReturns',
+        name: 'ECReturns',
+        component: ECommerceReturns
+      },
+      {
+        path: 'ECReviews',
+        name: 'ECReviews',
+        component: ECommerceReviews
+      },
+      {
+        path: 'ECPromotions',
+        name: 'ECPromotions',
+        component: ECommercePromotions
+      },
+      {
+        path: 'ECreports',
+        name: 'ECreports',
+        component: ECommerceReports
+      },
+    ]
+  },
+  {
+    path: '/ECommerceClient',
+    component: ECommerceClientLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'EccommerceShop',
+        name: 'EccommerceShop',
+        component: ECommerceShop
+      },
+      {
+        path: 'EccommerceProductDetails',
+        name: 'EccommerceProductDetails',
+        component: ECommerceProductDetail
+      },
+      {
+        path: 'EccommerceServices',
+        name: 'EccommerceServices',
+        component: ECommerceServices
+      },
+      {
+        path: 'EccommerceCart',
+        name: 'EccommerceCart',
+        component: ECommerceCart
+      },
+      {
+        path: 'EccommerceCheckOut',
+        name: 'EccommerceCheckOut',
+        component: ECommerceCheckout
+      },
+      {
+        path: 'EccommerceOrders',
+        name: 'EccommerceOrders',
+        component: ClientECommerceOrders
+      },
+      {
+        path: 'EccommerceProfile',
+        name: 'EccommerceProfile',
+        component: ECommerceProfile
+      },
+    ]
+  },
+
+
   // Catch all route - redirect to home
   {
     path: '/:pathMatch(.*)*',
