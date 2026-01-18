@@ -8,35 +8,8 @@
       </div>
     </div>
 
-    <!-- Error Alert -->
-    <div v-if="error" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-      <div class="flex items-center">
-        <svg class="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <span class="text-red-800">{{ error }}</span>
-        <button @click="error = ''" class="ml-auto text-red-500 hover:text-red-700">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Success Alert -->
-    <div v-if="successMessage" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-      <div class="flex items-center">
-        <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <span class="text-green-800">{{ successMessage }}</span>
-        <button @click="successMessage = ''" class="ml-auto text-green-500 hover:text-green-700">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-    </div>
+    <!-- Toastify Container (will be injected by Toastify) -->
+    <div id="toast-container"></div>
 
     <!-- Page Header -->
     <div class="mb-6 md:mb-8">
@@ -104,6 +77,18 @@
                       <path v-if="userInfo.status === 'inactive'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     {{ userInfo.status | capitalize }}
+                  </span>
+                  <!-- Business Verification Status Badge -->
+                  <span v-if="userInfo.role === 'distributor' && verificationData" 
+                    :class="verificationData.status === 'approved' ? 'bg-green-100 text-green-800' : verificationData.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : verificationData.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'"
+                    class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path v-if="verificationData.status === 'approved'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      <path v-if="verificationData.status === 'pending'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path v-if="verificationData.status === 'rejected'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      <path v-if="!verificationData.status" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {{ verificationData.status ? verificationData.status.charAt(0).toUpperCase() + verificationData.status.slice(1) : 'Not Submitted' }} Verification
                   </span>
                 </div>
               </div>
@@ -191,21 +176,52 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
                 <input v-model="distributorInfo.company_name" type="text" 
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  :readonly="verificationData && verificationData.has_submitted">
               </div>
               <div>
-                <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Business License Number</label>
-                <input v-model="distributorInfo.license_number" type="text" 
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                <input v-model="distributorInfo.business_registration_number" type="text" 
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  :readonly="verificationData && verificationData.has_submitted">
               </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">ID Type</label>
+                <input v-model="distributorInfo.valid_id_type_display" type="text" 
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50"
+                  readonly>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
+                <input v-model="distributorInfo.id_number" type="text" 
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  :readonly="verificationData && verificationData.has_submitted">
+              </div>
+            </div>
+
+            <!-- Read-only status info when verification is submitted -->
+            <div v-if="verificationData && verificationData.has_submitted" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <div>
+                  <h4 class="font-medium text-gray-800">Information Locked</h4>
+                  <p class="text-sm text-gray-600 mt-1">
+                    Your distributor information is currently locked because you have submitted business verification. 
+                    To make changes, please contact admin support or wait for your verification to be processed.
+                  </p>
+                </div>
               </div>
             </div>
 
             <div class="pt-4 border-t border-gray-200">
               <button @click="saveDistributorInfo" 
-                :disabled="!distributorInfoChanged || savingDistributor"
-                :class="[distributorInfoChanged && !savingDistributor ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed', savingDistributor ? 'bg-green-400 cursor-wait' : '']"
+                :disabled="!distributorInfoChanged || savingDistributor || (verificationData && verificationData.has_submitted)"
+                :class="[distributorInfoChanged && !savingDistributor && (!verificationData || !verificationData.has_submitted) ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed', savingDistributor ? 'bg-green-400 cursor-wait' : '']"
                 class="px-4 py-2 text-white rounded-lg transition-colors flex items-center">
                 <svg v-if="!savingDistributor" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -334,8 +350,8 @@
         </div>
       </div>
 
-      <!--Authentication for Verification -->
-      <div class="space-y-6">
+      <!-- Right Column: Business Verification -->
+      <div class="space-y-6" v-if="userInfo.role === 'distributor'">
         <!-- Verification Requirements Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
           <div class="flex items-center justify-between mb-6">
@@ -348,20 +364,47 @@
           </div>
 
           <!-- Status Banner -->
-          <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div v-if="verificationData" class="mb-6 p-4 rounded-lg border" 
+            :class="verificationData.status === 'approved' ? 'bg-green-50 border-green-200' : 
+                   verificationData.status === 'pending' ? 'bg-yellow-50 border-yellow-200' : 
+                   verificationData.status === 'rejected' ? 'bg-red-50 border-red-200' : 
+                   'bg-blue-50 border-blue-200'">
             <div class="flex">
-              <svg class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <svg class="w-5 h-5 mr-3 flex-shrink-0" 
+                :class="verificationData.status === 'approved' ? 'text-green-600' : 
+                       verificationData.status === 'pending' ? 'text-yellow-600' : 
+                       verificationData.status === 'rejected' ? 'text-red-600' : 
+                       'text-blue-600'" 
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="verificationData.status === 'approved'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                <path v-if="verificationData.status === 'pending'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path v-if="verificationData.status === 'rejected'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path v-if="!verificationData.status" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <div>
-                <h4 class="font-medium text-blue-800">Verification Required</h4>
-                <p class="text-sm text-blue-700 mt-1">Please upload all required documents for business verification. All fields are mandatory for account verification.</p>
+                <h4 class="font-medium" 
+                  :class="verificationData.status === 'approved' ? 'text-green-800' : 
+                         verificationData.status === 'pending' ? 'text-yellow-800' : 
+                         verificationData.status === 'rejected' ? 'text-red-800' : 
+                         'text-blue-800'">
+                  {{ getVerificationStatusTitle() }}
+                </h4>
+                <p class="text-sm mt-1" 
+                  :class="verificationData.status === 'approved' ? 'text-green-700' : 
+                         verificationData.status === 'pending' ? 'text-yellow-700' : 
+                         verificationData.status === 'rejected' ? 'text-red-700' : 
+                         'text-blue-700'">
+                  {{ getVerificationStatusMessage() }}
+                </p>
+                <p v-if="verificationData.rejection_reason" class="text-sm mt-2 text-red-700">
+                  <strong>Reason:</strong> {{ verificationData.rejection_reason }}
+                </p>
               </div>
             </div>
           </div>
 
-          <!-- Verification Form -->
-          <div class="space-y-8">
+          <!-- Verification Form - FIXED CONDITION -->
+          <div v-if="!verificationData || verificationData.status === 'rejected' || (verificationData && verificationData.has_submitted === false)" class="space-y-8">
             <!-- Company Information -->
             <div>
               <h3 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">Company Information</h3>
@@ -371,7 +414,7 @@
                     Company Name
                     <span class="text-red-500">*</span>
                   </label>
-                  <input type="text" 
+                  <input v-model="verificationForm.company_name" type="text" 
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     placeholder="Enter your company name">
                 </div>
@@ -387,7 +430,8 @@
                     Type of Valid ID
                     <span class="text-red-500">*</span>
                   </label>
-                  <select class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                  <select v-model="verificationForm.valid_id_type" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                     <option value="">Select ID Type</option>
                     <option value="passport">Passport</option>
                     <option value="driver_license">Driver's License</option>
@@ -404,18 +448,29 @@
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
+                    ID Number
+                    <span class="text-red-500">*</span>
+                  </label>
+                  <input v-model="verificationForm.id_number" type="text" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Enter your ID number">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
                     Photo of Valid ID
                     <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                  <div @click="triggerFileInput('valid_id_photo')" 
+                    @dragover.prevent @drop.prevent="handleFileDrop($event, 'valid_id_photo')"
+                    class="mt-1 cursor-pointer flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
                     <div class="space-y-1 text-center">
                       <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      <div class="flex text-sm text-gray-600">
+                      <div class="flex text-sm text-gray-600 justify-center">
                         <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
                           <span>Upload a file</span>
-                          <input type="file" class="sr-only" accept="image/*">
                         </label>
                         <p class="pl-1">or drag and drop</p>
                       </div>
@@ -423,8 +478,13 @@
                       <div class="mt-2">
                         <span class="text-xs text-gray-500">Front side of ID required</span>
                       </div>
+                      <p v-if="verificationForm.valid_id_photo" class="text-sm text-green-600 mt-2">
+                        ✓ File selected: {{ verificationForm.valid_id_photo.name }}
+                      </p>
                     </div>
                   </div>
+                  <input ref="valid_id_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                    @change="handleFileChange($event, 'valid_id_photo')">
                 </div>
               </div>
             </div>
@@ -440,15 +500,16 @@
                     Photo of DTI Certificate
                     <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                  <div @click="triggerFileInput('dti_certificate_photo')" 
+                    @dragover.prevent @drop.prevent="handleFileDrop($event, 'dti_certificate_photo')"
+                    class="mt-1 cursor-pointer flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
                     <div class="space-y-1 text-center">
                       <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      <div class="flex text-sm text-gray-600">
-                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                      <div class="flex text-sm text-gray-600 justify-center">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                           <span>Upload DTI Certificate</span>
-                          <input type="file" class="sr-only" accept="image/*,.pdf">
                         </label>
                         <p class="pl-1">or drag and drop</p>
                       </div>
@@ -456,8 +517,13 @@
                       <div class="mt-2">
                         <span class="text-xs text-gray-500">Ensure certificate details are clear and readable</span>
                       </div>
+                      <p v-if="verificationForm.dti_certificate_photo" class="text-sm text-green-600 mt-2">
+                        ✓ File selected: {{ verificationForm.dti_certificate_photo.name }}
+                      </p>
                     </div>
                   </div>
+                  <input ref="dti_certificate_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                    @change="handleFileChange($event, 'dti_certificate_photo')">
                 </div>
 
                 <!-- Mayor's Permit -->
@@ -466,15 +532,16 @@
                     Photo of Mayor's Permit to Operate
                     <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                  <div @click="triggerFileInput('mayor_permit_photo')" 
+                    @dragover.prevent @drop.prevent="handleFileDrop($event, 'mayor_permit_photo')"
+                    class="mt-1 cursor-pointer flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
                     <div class="space-y-1 text-center">
                       <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      <div class="flex text-sm text-gray-600">
-                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                      <div class="flex text-sm text-gray-600 justify-center">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                           <span>Upload Mayor's Permit</span>
-                          <input type="file" class="sr-only" accept="image/*,.pdf">
                         </label>
                         <p class="pl-1">or drag and drop</p>
                       </div>
@@ -482,8 +549,13 @@
                       <div class="mt-2">
                         <span class="text-xs text-gray-500">Current year's permit required</span>
                       </div>
+                      <p v-if="verificationForm.mayor_permit_photo" class="text-sm text-green-600 mt-2">
+                        ✓ File selected: {{ verificationForm.mayor_permit_photo.name }}
+                      </p>
                     </div>
                   </div>
+                  <input ref="mayor_permit_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                    @change="handleFileChange($event, 'mayor_permit_photo')">
                 </div>
 
                 <!-- Barangay Clearance -->
@@ -492,24 +564,30 @@
                     Photo of Barangay Business Clearance
                     <span class="text-red-500">*</span>
                   </label>
-                  <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                  <div @click="triggerFileInput('barangay_clearance_photo')" 
+                    @dragover.prevent @drop.prevent="handleFileDrop($event, 'barangay_clearance_photo')"
+                    class="mt-1 cursor-pointer flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
                     <div class="space-y-1 text-center">
                       <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
-                      <div class="flex text-sm text-gray-600">
-                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
+                      <div class="flex text-sm text-gray-600 justify-center">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                           <span>Upload Barangay Clearance</span>
-                          <input type="file" class="sr-only" accept="image/*,.pdf">
                         </label>
-                          <p class="pl-1">or drag and drop</p>
+                        <p class="pl-1">or drag and drop</p>
                       </div>
                       <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
                       <div class="mt-2">
                         <span class="text-xs text-gray-500">Issued within the last 6 months</span>
                       </div>
+                      <p v-if="verificationForm.barangay_clearance_photo" class="text-sm text-green-600 mt-2">
+                        ✓ File selected: {{ verificationForm.barangay_clearance_photo.name }}
+                      </p>
                     </div>
                   </div>
+                  <input ref="barangay_clearance_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                    @change="handleFileChange($event, 'barangay_clearance_photo')">
                 </div>
 
                 <!-- Business Registration Plate -->
@@ -520,7 +598,7 @@
                         Business Registration Plate Number
                         <span class="text-red-500">*</span>
                       </label>
-                      <input type="text" 
+                      <input v-model="verificationForm.business_registration_number" type="text" 
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         placeholder="Enter plate number">
                     </div>
@@ -530,7 +608,9 @@
                         Photo of Business Registration Plate
                         <span class="text-red-500">*</span>
                       </label>
-                      <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
+                      <div @click="triggerFileInput('business_registration_photo')" 
+                        @dragover.prevent @drop.prevent="handleFileDrop($event, 'business_registration_photo')"
+                        class="mt-1 cursor-pointer flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-400 transition-colors">
                         <div class="space-y-1 text-center">
                           <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -538,12 +618,16 @@
                           <div class="text-sm text-gray-600">
                             <label class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                               <span>Upload Photo</span>
-                              <input type="file" class="sr-only" accept="image/*">
                             </label>
                           </div>
                           <p class="text-xs text-gray-500">Clear photo showing plate</p>
+                          <p v-if="verificationForm.business_registration_photo" class="text-sm text-green-600 mt-2">
+                            ✓ File selected: {{ verificationForm.business_registration_photo.name }}
+                          </p>
                         </div>
                       </div>
+                      <input ref="business_registration_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                        @change="handleFileChange($event, 'business_registration_photo')">
                     </div>
                   </div>
                 </div>
@@ -571,16 +655,69 @@
 
             <!-- Submit Button -->
             <div class="pt-4 border-t border-gray-200">
-              <button 
-                class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button @click="submitVerification" 
+                :disabled="!isVerificationFormValid || submittingVerification"
+                :class="[isVerificationFormValid && !submittingVerification ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed', submittingVerification ? 'bg-blue-400 cursor-wait' : '']"
+                class="w-full px-4 py-3 text-white rounded-lg transition-colors flex items-center justify-center">
+                <svg v-if="!submittingVerification" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                Submit for Verification
+                <svg v-if="submittingVerification" class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                {{ submittingVerification ? 'Submitting...' : 'Submit for Verification' }}
               </button>
               <p class="text-xs text-gray-500 text-center mt-2">
                 By submitting, you confirm that all information provided is accurate and authentic
               </p>
+            </div>
+          </div>
+
+          <!-- View Submitted Documents -->
+          <div v-if="verificationData && verificationData.has_submitted === true && (verificationData.status === 'pending' || verificationData.status === 'approved')" 
+            class="space-y-6">
+            <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <h3 class="text-md font-semibold text-gray-800 mb-3">Submitted Documents</h3>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-sm text-gray-600 mb-1">Company Name:</p>
+                  <p class="font-medium">{{ verificationData.company_name }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 mb-1">ID Type:</p>
+                  <p class="font-medium">{{ verificationData.id_type_name }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 mb-1">ID Number:</p>
+                  <p class="font-medium">{{ verificationData.id_number }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600 mb-1">Business Registration Number:</p>
+                  <p class="font-medium">{{ verificationData.business_registration_number }}</p>
+                </div>
+                <div class="pt-3 border-t border-gray-200">
+                  <p class="text-sm text-gray-600 mb-2">Uploaded Documents:</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <a v-for="(url, field) in verificationData.photos" :key="field" 
+                      :href="url" target="_blank" 
+                      class="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-center">
+                      <svg class="w-5 h-5 mx-auto text-blue-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                      <span class="text-xs text-gray-700">{{ formatFieldName(field) }}</span>
+                    </a>
+                  </div>
+                </div>
+                <div class="pt-3 border-t border-gray-200">
+                  <p class="text-sm text-gray-600 mb-1">Submitted:</p>
+                  <p class="font-medium">{{ formatDateTime(verificationData.submitted_at) }}</p>
+                </div>
+                <div v-if="verificationData.status === 'pending'">
+                  <p class="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                    ⏳ Your documents are under review. Please wait for admin approval.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -591,6 +728,8 @@
 
 <script>
 import axios from '@/utils/axios'
+import Toastify from 'toastify-js'
+import "toastify-js/src/toastify.css"
 
 export default {
   name: 'ProfileSettings',
@@ -608,8 +747,7 @@ export default {
       savingDistributor: false,
       savingNotifications: false,
       changingPassword: false,
-      error: '',
-      successMessage: '',
+      submittingVerification: false,
       userInfo: {
         id: null,
         first_name: '',
@@ -625,11 +763,24 @@ export default {
       originalUserInfo: {},
       distributorInfo: {
         company_name: '',
-        business_type: 'retail',
-        license_number: '',
-        tin_number: ''
+        business_registration_number: '',
+        valid_id_type: '',
+        valid_id_type_display: '',
+        id_number: ''
       },
       originalDistributorInfo: {},
+      verificationData: null,
+      verificationForm: {
+        company_name: '',
+        valid_id_type: '',
+        id_number: '',
+        valid_id_photo: null,
+        dti_certificate_photo: null,
+        mayor_permit_photo: null,
+        barangay_clearance_photo: null,
+        business_registration_number: '',
+        business_registration_photo: null
+      },
       password: {
         current: '',
         new: '',
@@ -761,19 +912,118 @@ export default {
     },
     hasUnsavedChanges() {
       return this.userInfoChanged || this.distributorInfoChanged || this.notificationsChanged
+    },
+    isVerificationFormValid() {
+      return this.verificationForm.company_name &&
+             this.verificationForm.valid_id_type &&
+             this.verificationForm.id_number &&
+             this.verificationForm.valid_id_photo &&
+             this.verificationForm.dti_certificate_photo &&
+             this.verificationForm.mayor_permit_photo &&
+             this.verificationForm.barangay_clearance_photo &&
+             this.verificationForm.business_registration_number &&
+             this.verificationForm.business_registration_photo
     }
   },
   async created() {
     await this.fetchUserData()
     await this.fetchDistributorData()
+    if (this.userInfo.role === 'distributor') {
+      await this.fetchVerificationData()
+    }
     this.setOriginalData()
   },
   methods: {
+    // Toastify Notification Methods
+    showSuccessToast(message) {
+      Toastify({
+        text: message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #10b981, #059669)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          zIndex: 9999
+        },
+        stopOnFocus: true
+      }).showToast();
+    },
+
+    showErrorToast(message) {
+      Toastify({
+        text: message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #ef4444, #dc2626)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          zIndex: 9999
+        },
+        stopOnFocus: true
+      }).showToast();
+    },
+
+    showWarningToast(message) {
+      Toastify({
+        text: message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #f59e0b, #d97706)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          zIndex: 9999
+        },
+        stopOnFocus: true
+      }).showToast();
+    },
+
+    showInfoToast(message) {
+      Toastify({
+        text: message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #3b82f6, #2563eb)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          zIndex: 9999
+        },
+        stopOnFocus: true
+      }).showToast();
+    },
+
+    // File Validation Toast
+    showFileErrorToast(message) {
+      this.showErrorToast(message);
+    },
+
     async fetchUserData() {
       this.loading = true
-      this.error = ''
       try {
-        const response = await axios.get('/profile') // Changed from '/api/profile' to '/profile'
+        const response = await axios.get('/profile')
         if (response.data.status === 'success') {
           this.userInfo = response.data.data.user
         } else {
@@ -781,31 +1031,72 @@ export default {
         }
       } catch (error) {
         console.error('Error fetching user data:', error)
-        this.error = error.response?.data?.message || 'Failed to load profile data. Please try again.'
+        this.showErrorToast(error.response?.data?.message || 'Failed to load profile data. Please try again.')
       } finally {
         this.loading = false
       }
     },
 
     async fetchDistributorData() {
-      // This would be a separate API endpoint for distributor-specific data
-      // For now, we'll use mock data or leave it empty
       if (this.userInfo.role === 'distributor') {
         try {
-          // Example API call (you need to create this endpoint):
-          // const response = await axios.get('/distributor/profile')
-          // this.distributorInfo = response.data.data.distributorInfo
-          
-          // For now, use empty object or mock data
-          this.distributorInfo = {
-            company_name: '',
-            business_type: 'retail',
-            license_number: '',
-            tin_number: ''
+          // Fetch distributor data from the distributor_requirements table
+          const response = await axios.get('/distributor/requirements')
+          if (response.data.status === 'success') {
+            const data = response.data.data
+            
+            // Fill distributorInfo with data from verification
+            this.distributorInfo = {
+              company_name: data.company_name || '',
+              business_registration_number: data.business_registration_number || '',
+              valid_id_type: data.valid_id_type || '',
+              valid_id_type_display: data.id_type_name || '',
+              id_number: data.id_number || ''
+            }
+          } else {
+            // If no data found, set empty values
+            this.distributorInfo = {
+              company_name: '',
+              business_registration_number: '',
+              valid_id_type: '',
+              valid_id_type_display: '',
+              id_number: ''
+            }
           }
         } catch (error) {
           console.error('Error fetching distributor data:', error)
+          // Set empty values on error
+          this.distributorInfo = {
+            company_name: '',
+            business_registration_number: '',
+            valid_id_type: '',
+            valid_id_type_display: '',
+            id_number: ''
+          }
         }
+      }
+    },
+
+    async fetchVerificationData() {
+      try {
+        const response = await axios.get('/distributor/requirements')
+        if (response.data.status === 'success') {
+          this.verificationData = response.data.data
+          // Log for debugging
+          console.log('Verification data fetched:', this.verificationData)
+          
+          // Pre-fill verification form with existing data if available and status is rejected
+          if (this.verificationData && this.verificationData.status === 'rejected') {
+            this.verificationForm.company_name = this.verificationData.company_name || ''
+            this.verificationForm.valid_id_type = this.verificationData.valid_id_type || ''
+            this.verificationForm.id_number = this.verificationData.id_number || ''
+            this.verificationForm.business_registration_number = this.verificationData.business_registration_number || ''
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching verification data:', error)
+        // Set verificationData to null on error
+        this.verificationData = null
       }
     },
 
@@ -822,11 +1113,8 @@ export default {
       if (!this.userInfoChanged || this.saving) return
       
       this.saving = true
-      this.error = ''
-      this.successMessage = ''
-      
       try {
-        const response = await axios.put('/profile', { // Changed from '/api/profile' to '/profile'
+        const response = await axios.put('/profile', {
           first_name: this.userInfo.first_name,
           last_name: this.userInfo.last_name,
           email: this.userInfo.email,
@@ -836,18 +1124,16 @@ export default {
         
         if (response.data.status === 'success') {
           this.originalUserInfo = JSON.parse(JSON.stringify(this.userInfo))
-          this.successMessage = 'Personal information updated successfully!'
+          this.showSuccessToast('Personal information updated successfully!')
           
-          // Update full name after saving
           this.userInfo.full_name = `${this.userInfo.first_name} ${this.userInfo.last_name}`
         } else {
           throw new Error(response.data.message || 'Failed to update profile')
         }
       } catch (error) {
         console.error('Error updating profile:', error)
-        this.error = error.response?.data?.message || 'Failed to update profile. Please try again.'
+        this.showErrorToast(error.response?.data?.message || 'Failed to update profile. Please try again.')
         
-        // Rollback changes on error
         this.userInfo = JSON.parse(JSON.stringify(this.originalUserInfo))
       } finally {
         this.saving = false
@@ -858,23 +1144,25 @@ export default {
       if (!this.distributorInfoChanged || this.savingDistributor) return
       
       this.savingDistributor = true
-      this.error = ''
-      this.successMessage = ''
-      
       try {
-        // This would be a separate API endpoint for distributor-specific data
-        // Example: const response = await axios.put('/distributor/profile', this.distributorInfo)
+        // Update distributor information
+        const response = await axios.put('/profile/distributor', {
+          company_name: this.distributorInfo.company_name,
+          business_registration_number: this.distributorInfo.business_registration_number,
+          valid_id_type: this.distributorInfo.valid_id_type,
+          id_number: this.distributorInfo.id_number
+        })
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
-        this.successMessage = 'Distributor information updated successfully!'
+        if (response.data.status === 'success') {
+          this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
+          this.showSuccessToast('Distributor information updated successfully!')
+        } else {
+          throw new Error(response.data.message || 'Failed to update distributor information')
+        }
       } catch (error) {
         console.error('Error updating distributor info:', error)
-        this.error = error.response?.data?.message || 'Failed to update distributor information. Please try again.'
+        this.showErrorToast(error.response?.data?.message || 'Failed to update distributor information. Please try again.')
         
-        // Rollback changes on error
         this.distributorInfo = JSON.parse(JSON.stringify(this.originalDistributorInfo))
       } finally {
         this.savingDistributor = false
@@ -885,20 +1173,16 @@ export default {
       if (!this.canChangePassword || this.changingPassword) return
       
       this.changingPassword = true
-      this.error = ''
-      this.successMessage = ''
-      
       try {
-        const response = await axios.put('/profile/password', { // Changed from '/api/profile/password' to '/profile/password'
+        const response = await axios.put('/profile/password', {
           current_password: this.password.current,
           password: this.password.new,
           password_confirmation: this.password.confirm
         })
         
         if (response.data.status === 'success') {
-          this.successMessage = 'Password changed successfully!'
+          this.showSuccessToast('Password changed successfully!')
           
-          // Reset password fields
           this.password = {
             current: '',
             new: '',
@@ -912,52 +1196,155 @@ export default {
         }
       } catch (error) {
         console.error('Error changing password:', error)
-        this.error = error.response?.data?.message || 'Failed to change password. Please try again.'
+        this.showErrorToast(error.response?.data?.message || 'Failed to change password. Please try again.')
       } finally {
         this.changingPassword = false
       }
     },
 
-    async saveNotificationPreferences() {
-      if (!this.notificationsChanged || this.savingNotifications) return
+    async submitVerification() {
+      if (!this.isVerificationFormValid || this.submittingVerification) return
       
-      this.savingNotifications = true
-      this.error = ''
-      this.successMessage = ''
-      
+      this.submittingVerification = true
       try {
-        // This would be a separate API endpoint for notification preferences
-        // Example: const response = await axios.put('/notifications', {
-        //   email: this.emailPreferences,
-        //   app: this.appPreferences
-        // })
+        const formData = new FormData()
         
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Append text fields
+        formData.append('company_name', this.verificationForm.company_name)
+        formData.append('valid_id_type', this.verificationForm.valid_id_type)
+        formData.append('id_number', this.verificationForm.id_number)
+        formData.append('business_registration_number', this.verificationForm.business_registration_number)
         
-        this.originalNotifications = {
-          email: JSON.parse(JSON.stringify(this.emailPreferences)),
-          app: JSON.parse(JSON.stringify(this.appPreferences))
+        // Append files
+        formData.append('valid_id_photo', this.verificationForm.valid_id_photo)
+        formData.append('dti_certificate_photo', this.verificationForm.dti_certificate_photo)
+        formData.append('mayor_permit_photo', this.verificationForm.mayor_permit_photo)
+        formData.append('barangay_clearance_photo', this.verificationForm.barangay_clearance_photo)
+        formData.append('business_registration_photo', this.verificationForm.business_registration_photo)
+        
+        const response = await axios.post('/distributor/requirements', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        if (response.data.status === 'success') {
+          this.showSuccessToast(response.data.message)
+          this.verificationData = response.data.data
+          
+          // Update distributor info with submitted data
+          this.distributorInfo = {
+            company_name: this.verificationData.company_name,
+            business_registration_number: this.verificationData.business_registration_number,
+            valid_id_type: this.verificationData.valid_id_type,
+            valid_id_type_display: this.verificationData.id_type_name,
+            id_number: this.verificationData.id_number
+          }
+          this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
+          
+          // Reset form
+          this.verificationForm = {
+            company_name: '',
+            valid_id_type: '',
+            id_number: '',
+            valid_id_photo: null,
+            dti_certificate_photo: null,
+            mayor_permit_photo: null,
+            barangay_clearance_photo: null,
+            business_registration_number: '',
+            business_registration_photo: null
+          }
+        } else {
+          throw new Error(response.data.message || 'Failed to submit verification')
         }
-        this.successMessage = 'Notification preferences updated successfully!'
       } catch (error) {
-        console.error('Error updating notification preferences:', error)
-        this.error = error.response?.data?.message || 'Failed to update notification preferences. Please try again.'
+        console.error('Error submitting verification:', error)
+        let errorMessage = error.response?.data?.message || 'Failed to submit verification. Please try again.'
+        
+        if (error.response?.data?.errors) {
+          const errors = Object.values(error.response.data.errors).flat()
+          errorMessage = errors.join(', ')
+        }
+        
+        this.showErrorToast(errorMessage)
       } finally {
-        this.savingNotifications = false
+        this.submittingVerification = false
       }
     },
 
-    async saveAllChanges() {
-      if (this.userInfoChanged) {
-        await this.saveUserInfo()
+    triggerFileInput(field) {
+      this.$refs[field].click()
+    },
+
+    handleFileChange(event, field) {
+      const file = event.target.files[0]
+      if (file) {
+        // Check file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showFileErrorToast(`File "${file.name}" is too large. Maximum size is 5MB.`)
+          return
+        }
+        
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+        if (!validTypes.includes(file.type)) {
+          this.showFileErrorToast(`File "${file.name}" must be JPG, PNG, or PDF.`)
+          return
+        }
+        
+        this.verificationForm[field] = file
       }
-      if (this.userInfo.role === 'distributor' && this.distributorInfoChanged) {
-        await this.saveDistributorInfo()
+    },
+
+    handleFileDrop(event, field) {
+      event.preventDefault()
+      const file = event.dataTransfer.files[0]
+      if (file) {
+        const input = {
+          target: { files: [file] }
+        }
+        this.handleFileChange(input, field)
       }
-      if (this.notificationsChanged) {
-        await this.saveNotificationPreferences()
+    },
+
+    getVerificationStatusTitle() {
+      if (!this.verificationData) return 'Verification Required'
+      
+      switch (this.verificationData.status) {
+        case 'approved':
+          return '✅ Verification Approved'
+        case 'pending':
+          return '⏳ Verification Pending'
+        case 'rejected':
+          return '❌ Verification Rejected'
+        default:
+          return 'Verification Required'
       }
+    },
+
+    getVerificationStatusMessage() {
+      if (!this.verificationData) {
+        return 'Please upload all required documents for business verification. All fields are mandatory for account verification.'
+      }
+      
+      switch (this.verificationData.status) {
+        case 'approved':
+          return 'Your business verification has been approved. You now have full access to all distributor features.'
+        case 'pending':
+          return 'Your documents are under review. Please wait for admin approval. This usually takes 3-5 business days.'
+        case 'rejected':
+          return 'Your verification has been rejected. Please review the reason below and resubmit with corrected documents.'
+        default:
+          return 'Please upload all required documents for business verification.'
+      }
+    },
+
+    formatFieldName(field) {
+      return field
+        .replace(/_/g, ' ')
+        .replace(/(?:^|\s)\S/g, a => a.toUpperCase())
+        .replace('Photo', '')
+        .trim()
     },
 
     getInitials(name) {
@@ -1005,24 +1392,23 @@ export default {
     },
 
     changeProfilePhoto() {
-      alert('Feature to change profile photo would open file picker')
+      this.showInfoToast('Feature to change profile photo would open file picker')
     },
 
     toggleTwoFactor() {
-      // This would be an API call to update 2FA status
-      alert(`Two-factor authentication ${this.twoFactorEnabled ? 'enabled' : 'disabled'}`)
+      this.showInfoToast(`Two-factor authentication ${this.twoFactorEnabled ? 'enabled' : 'disabled'}`)
     },
 
     async logout() {
       if (confirm('Are you sure you want to logout?')) {
         try {
-          await axios.post('/auth/logout') // Changed from '/api/auth/logout' to '/auth/logout'
+          await axios.post('/auth/logout')
           localStorage.removeItem('auth_token')
           localStorage.removeItem('user')
+          this.showInfoToast('Logged out successfully')
           this.$router.push('/Landing/logIn')
         } catch (error) {
           console.error('Logout error:', error)
-          // Still clear local storage and redirect even if API call fails
           localStorage.removeItem('auth_token')
           localStorage.removeItem('user')
           this.$router.push('/Landing/logIn')
@@ -1035,4 +1421,31 @@ export default {
 
 <style scoped>
   @import "../distributor/styles/profileSettings.css";
+</style>
+
+<style>
+/* Custom Toastify Styles to ensure it's always on top */
+.toastify {
+  z-index: 99999 !important;
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  max-width: 400px !important;
+}
+
+/* Ensure toast is always visible */
+.toastify.on {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toastify {
+    max-width: 90% !important;
+    left: 5% !important;
+    right: 5% !important;
+    text-align: center !important;
+  }
+}
 </style>

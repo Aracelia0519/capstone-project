@@ -158,47 +158,55 @@ const routes = [
   {
     path: '/distributor',
     component: DistributorLayout,
-    meta: { requiresAuth: true, role: 'distributor' },
+    meta: { requiresAuth: true, role: 'distributor', requiresVerification: true },
     children: [
       {
         path: 'distributordashboard',
         name: 'distributordashboard',
-        component: DistributorDashboard
+        component: DistributorDashboard,
+        meta: { requiresVerification: true }
       },
       {
         path: 'paintInventory',
         name: 'paintInventory',
-        component: PaintInventory
+        component: PaintInventory,
+        meta: { requiresVerification: true }
       },
       {
         path: 'ordersRequest',
         name: 'ordersRequest',
-        component: OrdersRequest
+        component: OrdersRequest,
+        meta: { requiresVerification: true }
       },
       {
         path: 'ColorDemandInsights',
         name: 'ColorDemandInsights',
-        component: ColorDemandInsights
+        component: ColorDemandInsights,
+        meta: { requiresVerification: true }
       },
       {
         path: 'SalesHistory',
         name: 'SalesHistory',
-        component: SalesHistory
+        component: SalesHistory,
+        meta: { requiresVerification: true }
       },
       {
         path: 'ServiceProviders',
         name: 'ServiceProviders',
-        component: ServiceProviders
+        component: ServiceProviders,
+        meta: { requiresVerification: true }
       },
       {
         path: 'reportsD',
         name: 'reportsD',
-        component: DistributorReports
+        component: DistributorReports,
+        meta: { requiresVerification: true }
       },
       {
         path: 'profileSettings',
         name: 'profileSettings',
-        component: ProfileSettings
+        component: ProfileSettings,
+        meta: { requiresVerification: false } // Always accessible
       },
     ]
   },
@@ -567,7 +575,28 @@ const router = createRouter({
 let isNavigating = false
 let pendingNavigation = null
 
-// Route guard to check authentication
+// Cache for verification status to avoid multiple API calls
+const verificationCache = {
+  data: null,
+  timestamp: null,
+  TTL: 5 * 60 * 1000 // 5 minutes
+}
+
+// Clear verification cache
+const clearVerificationCache = () => {
+  verificationCache.data = null
+  verificationCache.timestamp = null
+}
+
+// Check if verification cache is valid
+const isVerificationCacheValid = () => {
+  if (!verificationCache.data || !verificationCache.timestamp) {
+    return false
+  }
+  return Date.now() - verificationCache.timestamp < verificationCache.TTL
+}
+
+// Route guard to check authentication and verification
 router.beforeEach(async (to, from, next) => {
   // Skip if already navigating
   if (isNavigating) {
@@ -578,6 +607,8 @@ router.beforeEach(async (to, from, next) => {
   isNavigating = true
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiredRole = to.meta.role
+  const requiresVerification = to.matched.some(record => record.meta.requiresVerification)
+  const isProfileSettings = to.path === '/distributor/profileSettings'
 
   if (requiresAuth) {
     try {
@@ -586,6 +617,7 @@ router.beforeEach(async (to, from, next) => {
       
       if (!user) {
         clearAuthData()
+        clearVerificationCache()
         next('/Landing/logIn')
         isNavigating = false
         processPendingNavigation()
@@ -606,9 +638,77 @@ router.beforeEach(async (to, from, next) => {
         return
       }
       
+      // Check verification for distributor routes
+      if (user.role === 'distributor') {
+        try {
+          let verificationData = null
+          
+          // Check cache first
+          if (isVerificationCacheValid()) {
+            verificationData = verificationCache.data
+          } else {
+            // Fetch verification status
+            const response = await axios.get('/distributor/requirements')
+            if (response.data.status === 'success') {
+              verificationData = response.data.data
+              // Update cache
+              verificationCache.data = verificationData
+              verificationCache.timestamp = Date.now()
+            }
+          }
+          
+          // Check if user has submitted requirements
+          const hasRequirements = verificationData && verificationData.status
+          const isApproved = verificationData && verificationData.status === 'approved'
+          
+          // If trying to access protected routes and not approved
+          if (requiresVerification && !isApproved) {
+            // Always allow access to profile settings
+            if (isProfileSettings) {
+              next()
+            } else {
+              // Redirect to profile settings with verification required flag
+              next({
+                path: '/distributor/profileSettings',
+                query: { 
+                  verification_required: true,
+                  status: hasRequirements ? verificationData.status : 'none'
+                }
+              })
+            }
+            isNavigating = false
+            processPendingNavigation()
+            return
+          }
+          
+          // If approved, allow access to all routes
+          if (isApproved) {
+            next()
+            isNavigating = false
+            processPendingNavigation()
+            return
+          }
+          
+        } catch (error) {
+          console.error('Failed to check verification status:', error)
+          // If verification check fails, still allow profile settings access
+          if (isProfileSettings) {
+            next()
+          } else {
+            next('/distributor/profileSettings')
+          }
+          isNavigating = false
+          processPendingNavigation()
+          return
+        }
+      }
+      
+      // If no verification required or user is verified, proceed
       next()
     } catch (error) {
+      console.error('Auth error:', error)
       clearAuthData()
+      clearVerificationCache()
       next('/Landing/logIn')
     } finally {
       isNavigating = false
@@ -636,6 +736,7 @@ axios.interceptors.response.use(
   error => {
     if (error.response && error.response.status === 401) {
       clearAuthData()
+      clearVerificationCache()
       // Only redirect if not already going to login
       if (!router.currentRoute.value.path.includes('/logIn')) {
         router.push('/Landing/logIn')
@@ -644,5 +745,13 @@ axios.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+// Listen for logout to clear cache
+router.afterEach((to, from) => {
+  // Clear verification cache when leaving distributor area
+  if (from.path.includes('/distributor') && !to.path.includes('/distributor')) {
+    clearVerificationCache()
+  }
+})
 
 export default router

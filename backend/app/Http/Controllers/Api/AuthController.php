@@ -9,13 +9,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use App\Jobs\SendRegistrationEmail; 
 
 class AuthController extends Controller
 {
     /**
      * Register a new user
      */
-    public function register(Request $request)
+     public function register(Request $request)
     {
         // Validate request
         $validator = Validator::make($request->all(), [
@@ -42,11 +43,25 @@ class AuthController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => $request->password,
+                'password' => $request->password, // This should be hashed in User model mutator
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => $request->role,
                 'status' => 'pending', // Default to pending until verified
+            ]);
+
+            // ADD THIS: Dispatch the registration email job
+            SendRegistrationEmail::dispatch([
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'role' => $user->role,
+                'status' => $user->status,
+                'created_at' => $user->created_at
             ]);
 
             // Generate token

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
 
-            $table->string('company_name')->nullable(); // ✅ added
+            $table->string('company_name')->nullable();
 
             $table->string('valid_id_type')->nullable();
             $table->string('id_number')->nullable();
@@ -24,9 +24,11 @@ return new class extends Migration
             $table->string('business_registration_photo')->nullable();
 
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->text('rejection_reason')->nullable(); // ✅ ADDED THIS LINE
+            
             $table->timestamps();
+            
         });
-
     }
 
     public function down(): void
@@ -34,4 +36,3 @@ return new class extends Migration
         Schema::dropIfExists('distributor_requirements');
     }
 };
-

@@ -350,7 +350,7 @@
 
             <!-- Call to Action -->
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{{ config('app.url') }}/dashboard" class="cta-button">
+                <a href="{{ env('FRONTEND_URL', 'http://localhost:5173') }}" class="cta-button">
                     Go to Your Dashboard
                 </a>
                 <p style="margin-top: 10px; color: #718096; font-size: 14px;">

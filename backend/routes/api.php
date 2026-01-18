@@ -5,7 +5,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Client\ClientRequirementController;
-use App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController; // ADD THIS
+use App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController;
+use App\Http\Controllers\Api\Distributor\DistributorRequirementController;
 
 // Public routes
 Route::prefix('auth')->group(function () {
@@ -45,48 +46,58 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [UserController::class, 'profile']);
         Route::put('/', [UserController::class, 'updateProfile']);
         Route::put('/password', [UserController::class, 'updatePassword']);
+        // NEW: Distributor profile update route
+        //Route::put('/distributor', [DistributorRequirementController::class, 'updateDistributorInfo']);
     });
 
     // Client Requirements - ID Verification
     Route::prefix('client')->group(function () {
         Route::prefix('requirements')->group(function () {
-            // Get client's own ID verification status
             Route::get('/', [ClientRequirementController::class, 'index']);
-            
-            // Submit ID verification
             Route::post('/', [ClientRequirementController::class, 'store']);
             
-            // Admin routes
             Route::prefix('admin')->middleware('role:admin')->group(function () {
-                // Update verification status
                 Route::put('/{id}', [ClientRequirementController::class, 'update']);
-                
-                // Get all pending verifications
                 Route::get('/pending', [ClientRequirementController::class, 'pending']);
             });
         });
     });
 
-    // Service Provider Requirements - ID Verification (NEW)
+    // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
         Route::prefix('requirements')->group(function () {
-            // Get service provider's own ID verification status
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);
-            
-            // Submit ID verification
             Route::post('/', [ServiceProviderRequirementController::class, 'store']);
             
-            // Admin routes
             Route::prefix('admin')->middleware('role:admin')->group(function () {
-                // Get all pending verifications
                 Route::get('/pending', [ServiceProviderRequirementController::class, 'pending']);
-                
-                // Update verification status
                 Route::put('/{id}', [ServiceProviderRequirementController::class, 'update']);
-                
-                // Get verification statistics
                 Route::get('/statistics', [ServiceProviderRequirementController::class, 'statistics']);
             });
         });
     });
+
+    // Distributor Requirements - Business Verification (NEW)
+    Route::prefix('distributor')->group(function () {
+        Route::prefix('requirements')->group(function () {
+            // Get distributor's own business verification status
+            Route::get('/', [DistributorRequirementController::class, 'index']);
+            
+            // Submit business verification
+            Route::post('/', [DistributorRequirementController::class, 'store']);
+            
+            // Admin routes
+            Route::prefix('admin')->middleware('role:admin')->group(function () {
+                // Get all pending verifications
+                Route::get('/pending', [DistributorRequirementController::class, 'pending']);
+                
+                // Update verification status
+                Route::put('/{id}', [DistributorRequirementController::class, 'update']);
+                
+                // Get verification statistics
+                Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
+            });
+        });
+    });
+
 });

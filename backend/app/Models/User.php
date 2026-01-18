@@ -134,6 +134,39 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the distributor requirement for this user (if they are a distributor)
+     */
+    public function distributorRequirement()
+    {
+        return $this->hasOne(Distributor\DistributorRequirements::class);
+    }
+
+    /**
+     * Check if distributor is verified
+     */
+    public function isDistributorVerified(): bool
+    {
+        if (!$this->isDistributor()) {
+            return false;
+        }
+        
+        $requirement = $this->distributorRequirement;
+        return $requirement && $requirement->status === 'approved';
+    }
+
+    /**
+     * Get distributor verification status
+     */
+    public function getDistributorVerificationStatus(): ?string
+    {
+        if (!$this->isDistributor()) {
+            return null;
+        }
+        
+        return $this->distributorRequirement?->status;
+    }
+
+    /**
      * Check if user has submitted ID verification
      */
     public function hasIdVerification(): bool
