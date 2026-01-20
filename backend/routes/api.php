@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\Client\ClientRequirementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController;
 use App\Http\Controllers\Api\Distributor\DistributorRequirementController;
 
+use App\Http\Controllers\Api\Distributor\OperationalDistributorController; // NEW
+
 // Public routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -97,6 +99,18 @@ Route::middleware('auth:sanctum')->group(function () {
                 // Get verification statistics
                 Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
             });
+        });
+        
+        // NEW: Operational Distributors Routes
+        Route::prefix('operational-distributors')->group(function () {
+            Route::get('/', [OperationalDistributorController::class, 'index']);
+            Route::get('/statistics', [OperationalDistributorController::class, 'statistics']);
+            Route::post('/', [OperationalDistributorController::class, 'store']);
+            Route::get('/{id}', [OperationalDistributorController::class, 'show']);
+            Route::put('/{id}', [OperationalDistributorController::class, 'update']);
+            Route::delete('/{id}', [OperationalDistributorController::class, 'destroy']);
+            Route::post('/{id}/activate', [OperationalDistributorController::class, 'activate']);
+            Route::post('/{id}/deactivate', [OperationalDistributorController::class, 'deactivate']);
         });
     });
 

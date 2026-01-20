@@ -94,6 +94,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is an operational distributor
+     */
+    public function isOperationalDistributor(): bool
+    {
+        return $this->role === 'operational_distributor';
+    }
+
+    /**
      * Check if user is a service provider
      */
     public function isServiceProvider(): bool
@@ -139,6 +147,14 @@ class User extends Authenticatable
     public function distributorRequirement()
     {
         return $this->hasOne(Distributor\DistributorRequirements::class);
+    }
+
+    /**
+     * Get the operational distributor record (if this user is an operational distributor)
+     */
+    public function operationalDistributor()
+    {
+        return $this->hasOne(Distributor\OperationalDistributor::class, 'user_id');
     }
 
     /**

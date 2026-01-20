@@ -17,6 +17,7 @@ import AuditLogs from '@/views/admin/AuditLogs.vue'
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
 import PaintInventory from '@/views/distributor/PaintInventory.vue'
+import ProductAvailable from '@/views/distributor/ProductAvailable.vue'
 import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
 import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
 import SalesHistory from '@/views/distributor/SalesHistory.vue'
@@ -170,6 +171,12 @@ const routes = [
         path: 'paintInventory',
         name: 'paintInventory',
         component: PaintInventory,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'productAvailable',
+        name: 'productAvailable',
+        component: ProductAvailable,
         meta: { requiresVerification: true }
       },
       {

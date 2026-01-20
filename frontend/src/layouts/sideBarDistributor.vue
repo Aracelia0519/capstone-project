@@ -295,6 +295,36 @@
           <li>
             <router-link 
               v-if="isVerified"
+              to="/distributor/ProductAvailable"
+              @click="handleNavigation"
+              class="nav-item group"
+              active-class="nav-item-active"
+            >
+              <div class="nav-icon-wrapper">
+                <div class="nav-icon bg-gradient-to-r from-teal-500 to-cyan-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span v-if="!isCollapsed || isMobile" class="nav-text">Product Available</span>
+              </div>
+              <div v-if="!isCollapsed || isMobile" class="nav-badge bg-teal-500/20 text-teal-300">New</div>
+            </router-link>
+            <div v-else @click="openVerificationModal" class="nav-item group cursor-not-allowed opacity-60">
+              <div class="nav-icon-wrapper">
+                <div class="nav-icon bg-gradient-to-r from-gray-400 to-gray-300">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span v-if="!isCollapsed || isMobile" class="nav-text">Product Available</span>
+              </div>
+              <div v-if="!isCollapsed || isMobile" class="nav-badge bg-gray-500/20 text-gray-300">Locked</div>
+            </div>
+          </li>
+          <li>
+            <router-link 
+              v-if="isVerified"
               to="/distributor/PaintInventory"
               @click="handleNavigation"
               class="nav-item group"
@@ -322,6 +352,7 @@
               <div v-if="!isCollapsed || isMobile" class="nav-badge bg-gray-500/20 text-gray-300">Locked</div>
             </div>
           </li>
+          
         </ul>
       </div>
 

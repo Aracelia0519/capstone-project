@@ -350,9 +350,9 @@
         </div>
       </div>
 
-      <!-- Right Column: Business Verification -->
+      <!-- Right Column: Business Verification and Operational Distributors -->
       <div class="space-y-6" v-if="userInfo.role === 'distributor'">
-        <!-- Verification Requirements Card -->
+        <!-- Business Verification Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-lg md:text-xl font-semibold text-gray-800">Business Verification</h2>
@@ -403,7 +403,7 @@
             </div>
           </div>
 
-          <!-- Verification Form - FIXED CONDITION -->
+          <!-- Verification Form -->
           <div v-if="!verificationData || verificationData.status === 'rejected' || (verificationData && verificationData.has_submitted === false)" class="space-y-8">
             <!-- Company Information -->
             <div>
@@ -721,6 +721,375 @@
             </div>
           </div>
         </div>
+
+        <!-- Operational Distributors Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg md:text-xl font-semibold text-gray-800">Operational Distributors</h2>
+            <div class="p-2 bg-indigo-50 rounded-lg">
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Stats Overview -->
+          <div v-if="operationalStats" class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <p class="text-sm text-gray-600">Total</p>
+              <p class="text-2xl font-bold text-gray-900">{{ operationalStats.total }}</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+              <p class="text-sm text-green-600">Active</p>
+              <p class="text-2xl font-bold text-green-900">{{ operationalStats.active }}</p>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <p class="text-sm text-yellow-600">Pending</p>
+              <p class="text-2xl font-bold text-yellow-900">{{ operationalStats.pending }}</p>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <p class="text-sm text-blue-600">With Accounts</p>
+              <p class="text-2xl font-bold text-blue-900">{{ operationalStats.with_accounts }}</p>
+            </div>
+          </div>
+
+          <!-- Add New Operational Distributor Button -->
+          <div class="mb-6">
+            <button @click="showOperationalForm = !showOperationalForm" 
+              :disabled="!isVerifiedDistributor"
+              :class="[isVerifiedDistributor ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed']"
+              class="w-full px-4 py-3 text-white rounded-lg transition-colors flex items-center justify-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              {{ isVerifiedDistributor ? 'Add New Operational Distributor' : 'Verify Your Business First' }}
+            </button>
+            <p v-if="!isVerifiedDistributor" class="text-sm text-red-600 text-center mt-2">
+              You must be verified as a distributor to create operational distributors
+            </p>
+          </div>
+
+          <!-- Create Operational Distributor Form -->
+          <div v-if="showOperationalForm && isVerifiedDistributor" class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 class="text-md font-semibold text-gray-800 mb-4">Create New Operational Distributor</h3>
+            
+            <div class="space-y-4">
+              <!-- Personal Information -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    First Name <span class="text-red-500">*</span>
+                  </label>
+                  <input v-model="operationalForm.first_name" type="text" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    placeholder="Enter first name">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name <span class="text-red-500">*</span>
+                  </label>
+                  <input v-model="operationalForm.last_name" type="text" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    placeholder="Enter last name">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Email Address <span class="text-red-500">*</span></label>
+                  <input v-model="operationalForm.email" type="email" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    placeholder="Enter email address">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number <span class="text-red-500">*</span>
+                    <span class="text-xs text-gray-500">(11 digits only)</span>
+                  </label>
+                  <input v-model="operationalForm.phone" type="tel" 
+                    @input="validatePhoneNumber"
+                    maxlength="11"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    placeholder="09123456789">
+                  <p v-if="phoneError" class="text-xs text-red-500 mt-1">{{ phoneError }}</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                <textarea v-model="operationalForm.address" rows="2" 
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                  placeholder="Optional"></textarea>
+              </div>
+
+              <!-- Password Fields -->
+              <div class="pt-4 border-t border-gray-200">
+                <h4 class="text-md font-medium text-gray-800 mb-3">Account Password</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Password <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                      <input v-model="operationalForm.password" :type="showOperationalPassword ? 'text' : 'password'" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        placeholder="Enter password">
+                      <button @click="showOperationalPassword = !showOperationalPassword" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="showOperationalPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                          <path v-if="!showOperationalPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="mt-2 space-y-1">
+                      <div v-for="requirement in operationalPasswordRequirements" :key="requirement.text" 
+                        class="flex items-center text-xs">
+                        <svg class="w-3 h-3 mr-1" :class="requirement.met ? 'text-green-500' : 'text-gray-300'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span :class="requirement.met ? 'text-green-600' : 'text-gray-500'">{{ requirement.text }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Confirm Password <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                      <input v-model="operationalForm.password_confirmation" :type="showOperationalConfirmPassword ? 'text' : 'password'" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        placeholder="Confirm password">
+                      <button @click="showOperationalConfirmPassword = !showOperationalConfirmPassword" 
+                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="showOperationalConfirmPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                          <path v-if="!showOperationalConfirmPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="mt-2">
+                      <div v-if="operationalForm.password && operationalForm.password_confirmation" class="flex items-center text-xs">
+                        <svg class="w-3 h-3 mr-1" :class="operationalPasswordMatch ? 'text-green-500' : 'text-red-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="operationalPasswordMatch" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                          <path v-if="!operationalPasswordMatch" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span :class="operationalPasswordMatch ? 'text-green-600' : 'text-red-600'">
+                          {{ operationalPasswordMatch ? 'Passwords match' : 'Passwords do not match' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ID Verification -->
+              <div class="pt-4 border-t border-gray-200">
+                <h4 class="text-md font-medium text-gray-800 mb-3">ID Verification</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Type of Valid ID <span class="text-red-500">*</span>
+                    </label>
+                    <select v-model="operationalForm.valid_id_type" 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                      <option value="">Select ID Type</option>
+                      <option value="passport">Passport</option>
+                      <option value="driver_license">Driver's License</option>
+                      <option value="umid">UMID</option>
+                      <option value="prc">PRC ID</option>
+                      <option value="postal">Postal ID</option>
+                      <option value="voter">Voter's ID</option>
+                      <option value="tin">TIN ID</option>
+                      <option value="sss">SSS ID</option>
+                      <option value="philhealth">PhilHealth ID</option>
+                      <option value="other">Other Government ID</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      ID Number <span class="text-red-500">*</span>
+                    </label>
+                    <input v-model="operationalForm.id_number" type="text" 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      placeholder="Enter ID number">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Photo of Valid ID <span class="text-red-500">*</span>
+                  </label>
+                  <div @click="triggerOperationalFileInput('valid_id_photo')" 
+                    @dragover.prevent @drop.prevent="handleOperationalFileDrop($event, 'valid_id_photo')"
+                    class="cursor-pointer flex justify-center px-4 py-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-indigo-400 transition-colors">
+                    <div class="space-y-1 text-center">
+                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <div class="flex text-sm text-gray-600 justify-center">
+                        <label class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                          <span>Upload ID Photo</span>
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                      </div>
+                      <p class="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                      <p v-if="operationalForm.valid_id_photo" class="text-sm text-green-600 mt-2">
+                        ✓ File selected: {{ operationalForm.valid_id_photo.name }}
+                      </p>
+                    </div>
+                  </div>
+                  <input ref="operational_valid_id_photo" type="file" class="sr-only" accept="image/*,.pdf" 
+                    @change="handleOperationalFileChange($event, 'valid_id_photo')">
+                </div>
+              </div>
+
+              <!-- Form Actions -->
+              <div class="flex gap-3 pt-4 border-t border-gray-200">
+                <button @click="createOperationalDistributor" 
+                  :disabled="!isOperationalFormValid || creatingOperational"
+                  :class="[isOperationalFormValid && !creatingOperational ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed', creatingOperational ? 'bg-indigo-400 cursor-wait' : '']"
+                  class="flex-1 px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center">
+                  <svg v-if="!creatingOperational" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                  <svg v-if="creatingOperational" class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  {{ creatingOperational ? 'Creating...' : 'Create Operational Distributor' }}
+                </button>
+                <button @click="cancelOperationalForm" 
+                  class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Operational Distributors Table -->
+          <div v-if="operationalDistributors.length > 0">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-md font-semibold text-gray-800">Operational Distributors List</h3>
+              <div class="relative">
+                <input v-model="operationalSearch" type="text" 
+                  placeholder="Search..." 
+                  class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-48">
+                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Verification</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="distributor in filteredOperationalDistributors" :key="distributor.id">
+                    <td class="px-4 py-3">
+                      <div>
+                        <p class="font-medium text-gray-900">{{ distributor.full_name }}</p>
+                        <p class="text-sm text-gray-500">Created: {{ formatDate(distributor.created_at) }}</p>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div>
+                        <p class="text-sm text-gray-900">{{ distributor.email || 'No email' }}</p>
+                        <p class="text-sm text-gray-500">{{ distributor.phone || 'No phone' }}</p>
+                        <p v-if="distributor.has_user_account" class="text-xs text-green-600 mt-1">
+                          ✓ User account created
+                        </p>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div>
+                        <p class="text-sm text-gray-900">{{ distributor.id_type_name }}</p>
+                        <p class="text-sm text-gray-500">{{ distributor.id_number }}</p>
+                        <a v-if="distributor.valid_id_photo_url" :href="distributor.valid_id_photo_url" target="_blank" 
+                          class="text-xs text-indigo-600 hover:text-indigo-800">
+                          View ID
+                        </a>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span :class="distributor.status === 'active' ? 'bg-green-100 text-green-800' : distributor.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                        {{ distributor.status | capitalize }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex space-x-2">
+                        <button @click="viewOperationalDistributor(distributor.id)" 
+                          class="p-1 text-indigo-600 hover:text-indigo-800">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                          </svg>
+                        </button>
+                        <button v-if="distributor.status !== 'active'" @click="activateOperationalDistributor(distributor.id)" 
+                          class="p-1 text-green-600 hover:text-green-800">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        </button>
+                        <button v-if="distributor.status === 'active'" @click="deactivateOperationalDistributor(distributor.id)" 
+                          class="p-1 text-yellow-600 hover:text-yellow-800">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                          </svg>
+                        </button>
+                        <button @click="deleteOperationalDistributor(distributor.id)" 
+                          class="p-1 text-red-600 hover:text-red-800">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="operationalPagination" class="mt-4 flex items-center justify-between">
+              <div class="text-sm text-gray-700">
+                Showing {{ operationalPagination.from }} to {{ operationalPagination.to }} of {{ operationalPagination.total }} results
+              </div>
+              <div class="flex space-x-2">
+                <button @click="changeOperationalPage(operationalPagination.current_page - 1)" 
+                  :disabled="operationalPagination.current_page === 1"
+                  class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  Previous
+                </button>
+                <button @click="changeOperationalPage(operationalPagination.current_page + 1)" 
+                  :disabled="operationalPagination.current_page === operationalPagination.last_page"
+                  class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-else class="text-center py-8">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No operational distributors</h3>
+            <p class="mt-1 text-sm text-gray-500">Get started by creating a new operational distributor.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -789,67 +1158,30 @@ export default {
       showCurrentPassword: false,
       showNewPassword: false,
       showConfirmPassword: false,
-      emailPreferences: [
-        {
-          id: 1,
-          label: 'Order Updates',
-          description: 'Receive updates on order status changes',
-          enabled: true
-        },
-        {
-          id: 2,
-          label: 'Stock Alerts',
-          description: 'Get notified when stock is low',
-          enabled: true
-        },
-        {
-          id: 3,
-          label: 'Promotions & Offers',
-          description: 'Receive special offers and promotions',
-          enabled: false
-        },
-        {
-          id: 4,
-          label: 'Monthly Reports',
-          description: 'Receive monthly sales reports',
-          enabled: true
-        },
-        {
-          id: 5,
-          label: 'System Announcements',
-          description: 'Important system updates and maintenance',
-          enabled: true
-        }
-      ],
-      appPreferences: [
-        {
-          id: 1,
-          label: 'Order Notifications',
-          description: 'In-app notifications for new orders',
-          enabled: true
-        },
-        {
-          id: 2,
-          label: 'Price Changes',
-          description: 'Get notified about price updates',
-          enabled: true
-        },
-        {
-          id: 3,
-          label: 'New Features',
-          description: 'Notifications about new system features',
-          enabled: false
-        },
-        {
-          id: 4,
-          label: 'Reminders',
-          description: 'Payment and order follow-up reminders',
-          enabled: true
-        }
-      ],
-      originalNotifications: {},
-      twoFactorEnabled: true,
-      lastLogin: new Date().toISOString()
+      
+      // Operational Distributors
+      showOperationalForm: false,
+      creatingOperational: false,
+      operationalDistributors: [],
+      operationalStats: null,
+      operationalPagination: null,
+      operationalSearch: '',
+      phoneError: '',
+      showOperationalPassword: false,
+      showOperationalConfirmPassword: false,
+      operationalForm: {
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        address: '',
+        valid_id_type: '',
+        id_number: '',
+        valid_id_photo: null,
+        password: '',
+        password_confirmation: ''
+      },
+      currentOperationalPage: 1
     }
   },
   computed: {
@@ -903,15 +1235,8 @@ export default {
     distributorInfoChanged() {
       return JSON.stringify(this.distributorInfo) !== JSON.stringify(this.originalDistributorInfo)
     },
-    notificationsChanged() {
-      const current = {
-        email: this.emailPreferences,
-        app: this.appPreferences
-      }
-      return JSON.stringify(current) !== JSON.stringify(this.originalNotifications)
-    },
     hasUnsavedChanges() {
-      return this.userInfoChanged || this.distributorInfoChanged || this.notificationsChanged
+      return this.userInfoChanged || this.distributorInfoChanged
     },
     isVerificationFormValid() {
       return this.verificationForm.company_name &&
@@ -923,6 +1248,61 @@ export default {
              this.verificationForm.barangay_clearance_photo &&
              this.verificationForm.business_registration_number &&
              this.verificationForm.business_registration_photo
+    },
+    isVerifiedDistributor() {
+      return this.verificationData && this.verificationData.status === 'approved'
+    },
+    operationalPasswordRequirements() {
+      const password = this.operationalForm.password
+      return [
+        {
+          text: 'At least 8 characters',
+          met: password.length >= 8
+        },
+        {
+          text: 'Contains uppercase letter',
+          met: /[A-Z]/.test(password)
+        },
+        {
+          text: 'Contains lowercase letter',
+          met: /[a-z]/.test(password)
+        },
+        {
+          text: 'Contains number',
+          met: /\d/.test(password)
+        }
+      ]
+    },
+    operationalPasswordMatch() {
+      return this.operationalForm.password === this.operationalForm.password_confirmation
+    },
+    isOperationalFormValid() {
+      return this.operationalForm.first_name &&
+             this.operationalForm.last_name &&
+             this.operationalForm.email &&
+             this.operationalForm.phone &&
+             this.operationalForm.phone.length === 11 &&
+             /^\d+$/.test(this.operationalForm.phone) &&
+             this.operationalForm.valid_id_type &&
+             this.operationalForm.id_number &&
+             this.operationalForm.valid_id_photo &&
+             this.operationalForm.password &&
+             this.operationalForm.password_confirmation &&
+             this.operationalPasswordRequirements.every(req => req.met) &&
+             this.operationalPasswordMatch
+    },
+    filteredOperationalDistributors() {
+      if (!this.operationalSearch) {
+        return this.operationalDistributors
+      }
+      
+      const search = this.operationalSearch.toLowerCase()
+      return this.operationalDistributors.filter(distributor => {
+        return distributor.full_name.toLowerCase().includes(search) ||
+               distributor.email?.toLowerCase().includes(search) ||
+               distributor.phone?.toLowerCase().includes(search) ||
+               distributor.id_number.toLowerCase().includes(search)
+      })
     }
   },
   async created() {
@@ -930,6 +1310,8 @@ export default {
     await this.fetchDistributorData()
     if (this.userInfo.role === 'distributor') {
       await this.fetchVerificationData()
+      await this.fetchOperationalDistributors()
+      await this.fetchOperationalStats()
     }
     this.setOriginalData()
   },
@@ -1100,13 +1482,230 @@ export default {
       }
     },
 
+    // Operational Distributor Methods
+    async fetchOperationalDistributors(page = 1) {
+      if (!this.isVerifiedDistributor) return
+      
+      try {
+        const response = await axios.get(`/distributor/operational-distributors?page=${page}&per_page=5`)
+        if (response.data.status === 'success') {
+          this.operationalDistributors = response.data.data.operational_distributors
+          this.operationalPagination = response.data.data.pagination
+        }
+      } catch (error) {
+        console.error('Error fetching operational distributors:', error)
+      }
+    },
+    
+    async fetchOperationalStats() {
+      if (!this.isVerifiedDistributor) return
+      
+      try {
+        const response = await axios.get('/distributor/operational-distributors/statistics')
+        if (response.data.status === 'success') {
+          this.operationalStats = response.data.data
+        }
+      } catch (error) {
+        console.error('Error fetching operational stats:', error)
+      }
+    },
+    
+    validatePhoneNumber() {
+      const phone = this.operationalForm.phone
+      
+      if (phone.length > 0 && phone.length !== 11) {
+        this.phoneError = 'Phone number must be exactly 11 digits'
+      } else if (!/^\d+$/.test(phone)) {
+        this.phoneError = 'Phone number must contain only digits'
+      } else {
+        this.phoneError = ''
+      }
+    },
+    
+    async createOperationalDistributor() {
+      if (!this.isOperationalFormValid || this.creatingOperational) return
+      
+      this.creatingOperational = true
+      try {
+        const formData = new FormData()
+        
+        // Append text fields
+        formData.append('first_name', this.operationalForm.first_name)
+        formData.append('last_name', this.operationalForm.last_name)
+        formData.append('email', this.operationalForm.email)
+        formData.append('phone', this.operationalForm.phone)
+        formData.append('address', this.operationalForm.address)
+        formData.append('valid_id_type', this.operationalForm.valid_id_type)
+        formData.append('id_number', this.operationalForm.id_number)
+        formData.append('password', this.operationalForm.password)
+        formData.append('password_confirmation', this.operationalForm.password_confirmation)
+        
+        // Append file
+        formData.append('valid_id_photo', this.operationalForm.valid_id_photo)
+        
+        const response = await axios.post('/distributor/operational-distributors', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        if (response.data.status === 'success') {
+          this.showSuccessToast(response.data.message)
+          
+          // Reset form
+          this.operationalForm = {
+            first_name: '',
+            last_name: '',
+            email: '',
+            phone: '',
+            address: '',
+            valid_id_type: '',
+            id_number: '',
+            valid_id_photo: null,
+            password: '',
+            password_confirmation: ''
+          }
+          this.phoneError = ''
+          this.showOperationalForm = false
+          
+          // Refresh data
+          await this.fetchOperationalDistributors()
+          await this.fetchOperationalStats()
+        }
+      } catch (error) {
+        console.error('Error creating operational distributor:', error)
+        let errorMessage = error.response?.data?.message || 'Failed to create operational distributor.'
+        
+        if (error.response?.data?.errors) {
+          const errors = Object.values(error.response.data.errors).flat()
+          errorMessage = errors.join(', ')
+        }
+        
+        this.showErrorToast(errorMessage)
+      } finally {
+        this.creatingOperational = false
+      }
+    },
+    
+    async viewOperationalDistributor(id) {
+      try {
+        const response = await axios.get(`/distributor/operational-distributors/${id}`)
+        if (response.data.status === 'success') {
+          const distributor = response.data.data.operational_distributor
+          this.showInfoToast(`Viewing ${distributor.full_name} - Status: ${distributor.status}`)
+        }
+      } catch (error) {
+        console.error('Error viewing operational distributor:', error)
+        this.showErrorToast('Failed to view operational distributor details.')
+      }
+    },
+    
+    async activateOperationalDistributor(id) {
+      try {
+        const response = await axios.post(`/distributor/operational-distributors/${id}/activate`)
+        if (response.data.status === 'success') {
+          this.showSuccessToast('Operational distributor activated successfully.')
+          await this.fetchOperationalDistributors()
+          await this.fetchOperationalStats()
+        }
+      } catch (error) {
+        console.error('Error activating operational distributor:', error)
+        this.showErrorToast('Failed to activate operational distributor.')
+      }
+    },
+    
+    async deactivateOperationalDistributor(id) {
+      try {
+        const response = await axios.post(`/distributor/operational-distributors/${id}/deactivate`)
+        if (response.data.status === 'success') {
+          this.showSuccessToast('Operational distributor deactivated successfully.')
+          await this.fetchOperationalDistributors()
+          await this.fetchOperationalStats()
+        }
+      } catch (error) {
+        console.error('Error deactivating operational distributor:', error)
+        this.showErrorToast('Failed to deactivate operational distributor.')
+      }
+    },
+    
+    async deleteOperationalDistributor(id) {
+      if (!confirm('Are you sure you want to delete this operational distributor? This action cannot be undone.')) {
+        return
+      }
+      
+      try {
+        const response = await axios.delete(`/distributor/operational-distributors/${id}`)
+        if (response.data.status === 'success') {
+          this.showSuccessToast('Operational distributor deleted successfully.')
+          await this.fetchOperationalDistributors()
+          await this.fetchOperationalStats()
+        }
+      } catch (error) {
+        console.error('Error deleting operational distributor:', error)
+        this.showErrorToast('Failed to delete operational distributor.')
+      }
+    },
+    
+    triggerOperationalFileInput(field) {
+      this.$refs[`operational_${field}`].click()
+    },
+    
+    handleOperationalFileChange(event, field) {
+      const file = event.target.files[0]
+      if (file) {
+        // Check file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          this.showFileErrorToast(`File "${file.name}" is too large. Maximum size is 5MB.`)
+          return
+        }
+        
+        // Check file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+        if (!validTypes.includes(file.type)) {
+          this.showFileErrorToast(`File "${file.name}" must be JPG, PNG, or PDF.`)
+          return
+        }
+        
+        this.operationalForm[field] = file
+      }
+    },
+    
+    handleOperationalFileDrop(event, field) {
+      event.preventDefault()
+      const file = event.dataTransfer.files[0]
+      if (file) {
+        const input = {
+          target: { files: [file] }
+        }
+        this.handleOperationalFileChange(input, field)
+      }
+    },
+    
+    cancelOperationalForm() {
+      this.operationalForm = {
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        address: '',
+        valid_id_type: '',
+        id_number: '',
+        valid_id_photo: null,
+        password: '',
+        password_confirmation: ''
+      }
+      this.phoneError = ''
+      this.showOperationalForm = false
+    },
+    
+    changeOperationalPage(page) {
+      this.currentOperationalPage = page
+      this.fetchOperationalDistributors(page)
+    },
+
     setOriginalData() {
       this.originalUserInfo = JSON.parse(JSON.stringify(this.userInfo))
       this.originalDistributorInfo = JSON.parse(JSON.stringify(this.distributorInfo))
-      this.originalNotifications = {
-        email: JSON.parse(JSON.stringify(this.emailPreferences)),
-        app: JSON.parse(JSON.stringify(this.appPreferences))
-      }
     },
 
     async saveUserInfo() {
@@ -1395,10 +1994,6 @@ export default {
       this.showInfoToast('Feature to change profile photo would open file picker')
     },
 
-    toggleTwoFactor() {
-      this.showInfoToast(`Two-factor authentication ${this.twoFactorEnabled ? 'enabled' : 'disabled'}`)
-    },
-
     async logout() {
       if (confirm('Are you sure you want to logout?')) {
         try {
@@ -1413,6 +2008,15 @@ export default {
           localStorage.removeItem('user')
           this.$router.push('/Landing/logIn')
         }
+      }
+    },
+
+    saveAllChanges() {
+      if (this.userInfoChanged) {
+        this.saveUserInfo()
+      }
+      if (this.distributorInfoChanged) {
+        this.saveDistributorInfo()
       }
     }
   }
