@@ -511,6 +511,36 @@
               <div v-if="!isCollapsed || isMobile" class="nav-badge bg-gray-500/20 text-gray-300">Locked</div>
             </div>
           </li>
+          <li>
+            <router-link 
+              v-if="isVerified"
+              to="/distributor/CoreDepartments"
+              @click="handleNavigation"
+              class="nav-item group"
+              active-class="nav-item-active"
+            >
+              <div class="nav-icon-wrapper">
+                <div class="nav-icon bg-gradient-to-r from-indigo-500 to-violet-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <span v-if="!isCollapsed || isMobile" class="nav-text">Core Departments</span>
+              </div>
+              <div v-if="!isCollapsed || isMobile" class="nav-badge bg-indigo-500/20 text-indigo-300">HQ</div>
+            </router-link>
+            <div v-else @click="openVerificationModal" class="nav-item group cursor-not-allowed opacity-60">
+              <div class="nav-icon-wrapper">
+                <div class="nav-icon bg-gradient-to-r from-gray-400 to-gray-300">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <span v-if="!isCollapsed || isMobile" class="nav-text">Core Departments</span>
+              </div>
+              <div v-if="!isCollapsed || isMobile" class="nav-badge bg-gray-500/20 text-gray-300">Locked</div>
+            </div>
+          </li>
         </ul>
       </div>
 

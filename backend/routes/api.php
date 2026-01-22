@@ -8,7 +8,10 @@ use App\Http\Controllers\Api\Client\ClientRequirementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController;
 use App\Http\Controllers\Api\Distributor\DistributorRequirementController;
 
-use App\Http\Controllers\Api\Distributor\OperationalDistributorController; // NEW
+use App\Http\Controllers\Api\Distributor\OperationalDistributorController; 
+use App\Http\Controllers\Api\Distributor\HRManagerController; 
+use App\Http\Controllers\Api\Distributor\FinanceManagerController; 
+
 
 // Public routes
 Route::prefix('auth')->group(function () {
@@ -111,6 +114,34 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{id}', [OperationalDistributorController::class, 'destroy']);
             Route::post('/{id}/activate', [OperationalDistributorController::class, 'activate']);
             Route::post('/{id}/deactivate', [OperationalDistributorController::class, 'deactivate']);
+        });
+
+        // HR Managers Routes
+        Route::prefix('hr-managers')->group(function () {
+            Route::get('/', [HRManagerController::class, 'index']);
+            Route::get('/statistics', [HRManagerController::class, 'statistics']);
+            Route::post('/', [HRManagerController::class, 'store']);
+            Route::get('/{id}', [HRManagerController::class, 'show']);
+            Route::put('/{id}', [HRManagerController::class, 'update']);
+            Route::delete('/{id}', [HRManagerController::class, 'destroy']);
+            Route::post('/{id}/activate', [HRManagerController::class, 'activate']);
+            Route::post('/{id}/deactivate', [HRManagerController::class, 'deactivate']);
+            Route::post('/{id}/put-on-leave', [HRManagerController::class, 'putOnLeave']);
+        });
+
+        // Add to the distributor routes group (around line 139):
+
+// Finance Managers Routes
+        Route::prefix('finance-managers')->group(function () {
+            Route::get('/', [FinanceManagerController::class, 'index']);
+            Route::get('/statistics', [FinanceManagerController::class, 'statistics']);
+            Route::post('/', [FinanceManagerController::class, 'store']);
+            Route::get('/{id}', [FinanceManagerController::class, 'show']);
+            Route::put('/{id}', [FinanceManagerController::class, 'update']);
+            Route::delete('/{id}', [FinanceManagerController::class, 'destroy']);
+            Route::post('/{id}/activate', [FinanceManagerController::class, 'activate']);
+            Route::post('/{id}/deactivate', [FinanceManagerController::class, 'deactivate']);
+            Route::post('/{id}/put-on-leave', [FinanceManagerController::class, 'putOnLeave']);
         });
     });
 

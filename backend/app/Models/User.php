@@ -254,4 +254,37 @@ class User extends Authenticatable
         $this->tokens()->delete();
         $this->update(['remember_token' => null]);
     }
+
+    /**
+     * Check if user is an HR manager
+     */
+    public function isHRManager(): bool
+    {
+        return $this->role === 'hr_manager';
+    }
+
+    /**
+     * Get the HR manager record (if this user is an HR manager)
+     */
+    public function hrManager()
+    {
+        return $this->hasOne(Distributor\HRManager::class, 'user_id');
+    }
+
+    /**
+     * Check if user is a finance manager
+     */
+    public function isFinanceManager(): bool
+    {
+        return $this->role === 'finance_manager';
+    }
+
+    // Also add this method to check finance manager:
+    /**
+     * Get the finance manager record (if this user is a finance manager)
+     */
+    public function financeManager()
+    {
+        return $this->hasOne(Finance\FinanceManager::class, 'user_id');
+    }
 }

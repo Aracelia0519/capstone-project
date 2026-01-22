@@ -22,6 +22,7 @@ import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
 import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
 import SalesHistory from '@/views/distributor/SalesHistory.vue'
 import ServiceProviders from '@/views/distributor/ServiceProviders.vue'
+import CoreDepartments from '@/views/distributor/CoreDepartments.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
 
@@ -201,6 +202,12 @@ const routes = [
         path: 'ServiceProviders',
         name: 'ServiceProviders',
         component: ServiceProviders,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'CoreDepartments',
+        name: 'CoreDepartments',
+        component: CoreDepartments,
         meta: { requiresVerification: true }
       },
       {
