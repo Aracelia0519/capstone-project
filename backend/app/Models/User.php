@@ -287,4 +287,13 @@ class User extends Authenticatable
     {
         return $this->hasOne(Finance\FinanceManager::class, 'user_id');
     }
+
+    /**
+ * Get the service provider requirement for this user (if they are a service provider)
+ */
+public function serviceProviderRequirement()
+{
+    return $this->hasOne(ServiceProvider\ServiceProviderRequirement::class);
+}
+    
 }

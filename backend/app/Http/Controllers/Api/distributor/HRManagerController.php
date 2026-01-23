@@ -262,7 +262,7 @@ class HRManagerController extends Controller
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'hr_manager',
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             // Create HR manager linked to the user account
@@ -283,7 +283,7 @@ class HRManagerController extends Controller
                 'valid_id_photo' => $validIdPhotoPath,
                 'resume' => $resumePath,
                 'employment_contract' => $contractPath,
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             return response()->json([

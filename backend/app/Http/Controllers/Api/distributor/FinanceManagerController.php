@@ -248,7 +248,7 @@ class FinanceManagerController extends Controller
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'finance_manager', 
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             // Create finance manager linked to the user account
@@ -269,7 +269,7 @@ class FinanceManagerController extends Controller
                 'position' => $request->position ?? 'Finance Manager',
                 'resume' => $resumePath,
                 'employment_contract' => $employmentContractPath,
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             return response()->json([

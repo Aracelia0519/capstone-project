@@ -200,7 +200,7 @@ class OperationalDistributorController extends Controller
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'operational_distributor',
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             // Create operational distributor linked to the user account
@@ -215,7 +215,7 @@ class OperationalDistributorController extends Controller
                 'valid_id_type' => $request->valid_id_type,
                 'id_number' => $request->id_number,
                 'valid_id_photo' => $validIdPhotoPath,
-                'status' => 'active'
+                'status' => 'pending'
             ]);
             
             return response()->json([

@@ -1,5 +1,6 @@
 <?php
 
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
@@ -7,10 +8,10 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Client\ClientRequirementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController;
 use App\Http\Controllers\Api\Distributor\DistributorRequirementController;
-
 use App\Http\Controllers\Api\Distributor\OperationalDistributorController; 
 use App\Http\Controllers\Api\Distributor\HRManagerController; 
 use App\Http\Controllers\Api\Distributor\FinanceManagerController; 
+use App\Http\Controllers\Api\Admin\AdminUserController;
 
 
 // Public routes
@@ -38,12 +39,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User management (for admin)
     Route::prefix('users')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->middleware('role:admin');
-        Route::get('/{id}', [UserController::class, 'show'])->middleware('role:admin');
-        Route::put('/{id}', [UserController::class, 'update'])->middleware('role:admin');
-        Route::delete('/{id}', [UserController::class, 'destroy'])->middleware('role:admin');
-        Route::post('/{id}/activate', [UserController::class, 'activate'])->middleware('role:admin');
-        Route::post('/{id}/deactivate', [UserController::class, 'deactivate'])->middleware('role:admin');
+        Route::get('/', [UserController::class, 'index']);
+        Route::get('/{id}', [UserController::class, 'show']);
+        Route::put('/{id}', [UserController::class, 'update']);
+        Route::delete('/{id}', [UserController::class, 'destroy']);
+        Route::post('/{id}/activate', [UserController::class, 'activate']);
+        Route::post('/{id}/deactivate', [UserController::class, 'deactivate']);
     });
 
     // Profile routes (for all authenticated users)
@@ -51,8 +52,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [UserController::class, 'profile']);
         Route::put('/', [UserController::class, 'updateProfile']);
         Route::put('/password', [UserController::class, 'updatePassword']);
-        // NEW: Distributor profile update route
-        //Route::put('/distributor', [DistributorRequirementController::class, 'updateDistributorInfo']);
     });
 
     // Client Requirements - ID Verification
@@ -61,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ClientRequirementController::class, 'index']);
             Route::post('/', [ClientRequirementController::class, 'store']);
             
-            Route::prefix('admin')->middleware('role:admin')->group(function () {
+            Route::prefix('admin')->group(function () {
                 Route::put('/{id}', [ClientRequirementController::class, 'update']);
                 Route::get('/pending', [ClientRequirementController::class, 'pending']);
             });
@@ -74,7 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);
             Route::post('/', [ServiceProviderRequirementController::class, 'store']);
             
-            Route::prefix('admin')->middleware('role:admin')->group(function () {
+            Route::prefix('admin')->group(function () {
                 Route::get('/pending', [ServiceProviderRequirementController::class, 'pending']);
                 Route::put('/{id}', [ServiceProviderRequirementController::class, 'update']);
                 Route::get('/statistics', [ServiceProviderRequirementController::class, 'statistics']);
@@ -82,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Distributor Requirements - Business Verification (NEW)
+    // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
         Route::prefix('requirements')->group(function () {
             // Get distributor's own business verification status
@@ -92,7 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [DistributorRequirementController::class, 'store']);
             
             // Admin routes
-            Route::prefix('admin')->middleware('role:admin')->group(function () {
+            Route::prefix('admin')->group(function () {
                 // Get all pending verifications
                 Route::get('/pending', [DistributorRequirementController::class, 'pending']);
                 
@@ -104,7 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
         
-        // NEW: Operational Distributors Routes
+        // Operational Distributors Routes
         Route::prefix('operational-distributors')->group(function () {
             Route::get('/', [OperationalDistributorController::class, 'index']);
             Route::get('/statistics', [OperationalDistributorController::class, 'statistics']);
@@ -129,9 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/put-on-leave', [HRManagerController::class, 'putOnLeave']);
         });
 
-        // Add to the distributor routes group (around line 139):
-
-// Finance Managers Routes
+        // Finance Managers Routes
         Route::prefix('finance-managers')->group(function () {
             Route::get('/', [FinanceManagerController::class, 'index']);
             Route::get('/statistics', [FinanceManagerController::class, 'statistics']);
@@ -145,4 +142,26 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
+    // Admin User Management Routes
+    // Admin User Management Routes
+// Admin User Management Routes
+    Route::prefix('admin')->group(function () {
+        Route::prefix('users')->group(function () {
+            Route::get('/', [AdminUserController::class, 'index']);
+            Route::post('/', [AdminUserController::class, 'store']);
+            Route::get('/statistics', [AdminUserController::class, 'statistics']);
+            Route::get('/{id}', [AdminUserController::class, 'show']);
+            Route::put('/{id}', [AdminUserController::class, 'update']);
+            Route::delete('/{id}', [AdminUserController::class, 'destroy']);
+            Route::post('/{id}/activate', [AdminUserController::class, 'activate']);
+            Route::post('/{id}/deactivate', [AdminUserController::class, 'deactivate']);
+            Route::post('/{id}/change-password', [AdminUserController::class, 'changePassword']);
+            
+            // Add approve/reject routes
+            Route::post('/{id}/approve', [AdminUserController::class, 'approve']);
+            Route::post('/{id}/reject', [AdminUserController::class, 'reject']);
+            
+            // Quick statistics - MAKE SURE THIS IS INCLUDED
+        });
+    });
 });
