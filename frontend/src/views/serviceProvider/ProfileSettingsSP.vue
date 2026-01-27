@@ -397,9 +397,9 @@
               </div>
             </div>
 
-            <!-- ID Verification Card -->
+            <!-- ID Verification Wizard -->
             <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700 shadow-xl p-6 mb-6">
-              <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-3">
                   <div class="p-2 bg-gradient-to-r from-indigo-500 to-purple-400 rounded-lg">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,7 +408,7 @@
                   </div>
                   <div>
                     <h2 class="text-xl font-bold text-white">ID Verification</h2>
-                    <p class="text-gray-400 text-sm">Upload a valid government ID for verification</p>
+                    <p class="text-gray-400 text-sm">Complete identity verification in 3 easy steps</p>
                     <p v-if="idVerification.rejectionReason" class="text-xs text-red-400 mt-1">
                       Rejection Reason: {{ idVerification.rejectionReason }}
                     </p>
@@ -422,6 +422,7 @@
                 </div>
               </div>
               
+              <!-- Verification Status Indicators -->
               <div v-if="idVerification.status === 'verified'" class="bg-green-900/20 border border-green-800 rounded-xl p-4 mb-6">
                 <div class="flex items-center gap-3">
                   <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -437,283 +438,403 @@
                 </div>
               </div>
               
-              <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- ID Type Selection -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-2">
-                    Select ID Type
-                  </label>
-                  <div class="relative">
-                    <select 
-                      v-model="idVerification.idType"
-                      :disabled="idVerification.status === 'pending'"
-                      class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="" disabled>Select ID Type</option>
-                      <option value="phil_id">Philippine National ID (PhilID/ePhilID)</option>
-                      <option value="passport">Passport</option>
-                      <option value="driver_license">Driver's License</option>
-                      <option value="umid">UMID (SSS/GSIS)</option>
-                      <option value="prc_id">PRC ID</option>
-                      <option value="voter_id">Voter's ID</option>
-                      <option value="postal_id">Postal ID</option>
-                      <option value="philhealth">PhilHealth ID</option>
-                      <option value="nbi">NBI Clearance</option>
-                      <option value="senior_citizen">Senior Citizen ID</option>
-                      <option value="other">Other Valid ID</option>
-                    </select>
-                    <svg class="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                    </svg>
-                    <svg class="absolute right-4 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                  <div v-if="idVerificationErrors.idType" class="mt-2 text-xs text-red-400">
-                    {{ idVerificationErrors.idType }}
-                  </div>
-                </div>
-                
-                <!-- ID Number -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-2">
-                    ID Number
-                  </label>
-                  <div class="relative">
-                    <input 
-                      type="text" 
-                      v-model="idVerification.idNumber"
-                      :disabled="idVerification.status === 'pending'"
-                      class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="Enter ID number"
-                    />
-                    <svg class="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <div v-if="idVerificationErrors.idNumber" class="mt-2 text-xs text-red-400">
-                    {{ idVerificationErrors.idNumber }}
-                  </div>
-                </div>
-                
-                <!-- ID Photo Upload -->
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-300 mb-2">
-                    Upload ID Photo
-                  </label>
-                  <div 
-                    @dragover.prevent="handleDragOver"
-                    @dragleave="handleDragLeave"
-                    @drop.prevent="handleIdDrop"
-                    @click="idVerification.status !== 'pending' ? triggerIdUpload() : null"
-                    class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
-                    :class="[
-                      idUploadClasses,
-                      idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                    ]"
-                  >
-                    <input 
-                      type="file" 
-                      ref="idFileInput"
-                      @change="handleIdUploadChange"
-                      accept="image/*"
-                      class="hidden"
-                      :disabled="idVerification.status === 'pending'"
-                    />
+              <!-- Wizard Navigation -->
+              <div v-if="idVerification.status !== 'verified'" class="mb-8">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <!-- Steps Indicator -->
+                  <div class="flex items-center gap-4 w-full md:w-auto">
+                    <!-- Step 1 -->
+                    <div class="flex flex-col items-center">
+                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
+                           :class="currentStep >= 1 ? 
+                                  'bg-gradient-to-r from-indigo-500 to-purple-500 border-indigo-500' : 
+                                  'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white">1</span>
+                      </div>
+                      <span class="mt-2 text-sm" :class="currentStep >= 1 ? 'text-indigo-400 font-medium' : 'text-gray-500'">
+                        ID Details
+                      </span>
+                    </div>
                     
-                    <div v-if="!idVerification.idPhotoPreview && !idVerification.idPhotoUrl" class="space-y-4">
-                      <svg class="w-16 h-16 text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    <!-- Connector Line -->
+                    <div class="hidden md:block w-16 h-1" :class="currentStep >= 2 ? 'bg-gradient-to-r from-purple-500 to-purple-400' : 'bg-gray-700'"></div>
+                    
+                    <!-- Step 2 -->
+                    <div class="flex flex-col items-center">
+                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
+                           :class="currentStep >= 2 ? 
+                                  'bg-gradient-to-r from-purple-500 to-purple-400 border-purple-500' : 
+                                  'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white">2</span>
+                      </div>
+                      <span class="mt-2 text-sm" :class="currentStep >= 2 ? 'text-purple-400 font-medium' : 'text-gray-500'">
+                        ID Photo
+                      </span>
+                    </div>
+                    
+                    <!-- Connector Line -->
+                    <div class="hidden md:block w-16 h-1" :class="currentStep >= 3 ? 'bg-gradient-to-r from-purple-400 to-purple-300' : 'bg-gray-700'"></div>
+                    
+                    <!-- Step 3 -->
+                    <div class="flex flex-col items-center">
+                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
+                           :class="currentStep >= 3 ? 
+                                  'bg-gradient-to-r from-purple-400 to-purple-300 border-purple-400' : 
+                                  'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white">3</span>
+                      </div>
+                      <span class="mt-2 text-sm" :class="currentStep >= 3 ? 'text-purple-300 font-medium' : 'text-gray-500'">
+                        Selfie
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- Progress -->
+                  <div class="text-sm text-gray-400">
+                    Step {{ currentStep }} of 3
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Wizard Content -->
+              <div v-if="idVerification.status !== 'verified'" class="space-y-6">
+                <!-- Step 1: ID Details -->
+                <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
+                  <div class="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-800/30 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
+                      Step 1: ID Information
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-6">Enter your government-issued ID details</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <!-- ID Type Selection -->
                       <div>
-                        <p class="text-gray-300 font-medium mb-1">Drop your ID photo here or click to browse</p>
-                        <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
-                      </div>
-                      <p class="text-xs text-gray-500 mt-2">
-                        Upload a clear photo of your ID. Make sure all details are readable.
-                      </p>
-                    </div>
-                    
-                    <div v-else class="space-y-4">
-                      <div class="relative inline-block">
-                        <img 
-                          :src="idVerification.idPhotoPreview || idVerification.idPhotoUrl" 
-                          alt="ID Preview"
-                          class="max-h-48 mx-auto rounded-lg shadow-lg"
-                        />
-                        <button 
-                          v-if="idVerification.status !== 'pending'"
-                          @click.stop="removeIdPhoto"
-                          class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 transition-colors"
-                        >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                          Select ID Type <span class="text-red-400">*</span>
+                        </label>
+                        <div class="relative">
+                          <select 
+                            v-model="idVerification.idType"
+                            :disabled="idVerification.status === 'pending'"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="" disabled>Select ID Type</option>
+                            <option value="phil_id">Philippine National ID (PhilID/ePhilID)</option>
+                            <option value="passport">Passport</option>
+                            <option value="driver_license">Driver's License</option>
+                            <option value="umid">UMID (SSS/GSIS)</option>
+                            <option value="prc_id">PRC ID</option>
+                            <option value="voter_id">Voter's ID</option>
+                            <option value="postal_id">Postal ID</option>
+                            <option value="philhealth">PhilHealth ID</option>
+                            <option value="nbi">NBI Clearance</option>
+                            <option value="senior_citizen">Senior Citizen ID</option>
+                            <option value="other">Other Valid ID</option>
+                          </select>
+                          <svg class="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                           </svg>
-                        </button>
+                          <svg class="absolute right-4 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                        <div v-if="idVerificationErrors.idType" class="mt-2 text-xs text-red-400">
+                          {{ idVerificationErrors.idType }}
+                        </div>
                       </div>
-                      <p class="text-green-400 text-sm">
-                        ✓ ID photo uploaded successfully
-                      </p>
-                    </div>
-                    
-                    <div v-if="idUploadProgress > 0 && idUploadProgress < 100" class="mt-4">
-                      <div class="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                          class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-                          :style="{ width: idUploadProgress + '%' }"
-                        ></div>
-                      </div>
-                      <p class="text-gray-400 text-sm mt-2">{{ idUploadProgress }}% uploaded</p>
-                    </div>
-                  </div>
-                  
-                  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-500">
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Clear and readable
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      All corners visible
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      No glare or blur
-                    </div>
-                  </div>
-                  
-                  <div v-if="idVerificationErrors.idPhoto" class="mt-2 text-xs text-red-400">
-                    {{ idVerificationErrors.idPhoto }}
-                  </div>
-                </div>
-                
-                <!-- Selfie with ID Upload -->
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-300 mb-2">
-                    Selfie with ID
-                  </label>
-                  <div 
-                    @dragover.prevent="handleSelfieDragOver"
-                    @dragleave="handleSelfieDragLeave"
-                    @drop.prevent="handleSelfieDrop"
-                    @click="idVerification.status !== 'pending' ? triggerSelfieUpload() : null"
-                    class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
-                    :class="[
-                      selfieUploadClasses,
-                      idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                    ]"
-                  >
-                    <input 
-                      type="file" 
-                      ref="selfieFileInput"
-                      @change="handleSelfieUploadChange"
-                      accept="image/*"
-                      class="hidden"
-                      :disabled="idVerification.status === 'pending'"
-                    />
-                    
-                    <div v-if="!idVerification.selfiePhotoPreview && !idVerification.selfiePhotoUrl" class="space-y-4">
-                      <svg class="w-16 h-16 text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
+                      
+                      <!-- ID Number -->
                       <div>
-                        <p class="text-gray-300 font-medium mb-1">Drop your selfie with ID here or click to browse</p>
-                        <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                          ID Number <span class="text-red-400">*</span>
+                        </label>
+                        <div class="relative">
+                          <input 
+                            type="text" 
+                            v-model="idVerification.idNumber"
+                            :disabled="idVerification.status === 'pending'"
+                            class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder="Enter ID number"
+                          />
+                          <svg class="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                        </div>
+                        <div v-if="idVerificationErrors.idNumber" class="mt-2 text-xs text-red-400">
+                          {{ idVerificationErrors.idNumber }}
+                        </div>
                       </div>
-                      <p class="text-xs text-gray-500 mt-2">
-                        Take a selfie while holding your ID next to your face.
-                      </p>
                     </div>
                     
-                    <div v-else class="space-y-4">
-                      <div class="relative inline-block">
-                        <img 
-                          :src="idVerification.selfiePhotoPreview || idVerification.selfiePhotoUrl" 
-                          alt="Selfie Preview"
-                          class="max-h-48 mx-auto rounded-lg shadow-lg"
-                        />
-                        <button 
-                          v-if="idVerification.status !== 'pending'"
-                          @click.stop="removeSelfiePhoto"
-                          class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 transition-colors"
-                        >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      <p class="text-green-400 text-sm">
-                        ✓ Selfie with ID uploaded successfully
-                      </p>
+                    <!-- Tips for Step 1 -->
+                    <div class="mt-6 p-4 bg-indigo-900/20 rounded-lg border border-indigo-800/30">
+                      <h4 class="text-sm font-medium text-indigo-300 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Important Tips
+                      </h4>
+                      <ul class="text-xs text-gray-400 space-y-1">
+                        <li>• Use a valid, government-issued ID</li>
+                        <li>• Ensure your ID is not expired</li>
+                        <li>• Double-check your ID number for accuracy</li>
+                        <li>• Choose the correct ID type from the list</li>
+                      </ul>
                     </div>
                   </div>
-                  
-                  <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-500">
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Face clearly visible
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      ID next to face
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Good lighting
-                    </div>
-                  </div>
-                  
-                  <div v-if="idVerificationErrors.selfiePhoto" class="mt-2 text-xs text-red-400">
-                    {{ idVerificationErrors.selfiePhoto }}
-                  </div>
-                </div>
-                
-                <!-- Submit ID Verification Button -->
-                <div v-if="idVerification.status !== 'verified' && idVerification.status !== 'pending'" class="md:col-span-2">
-                  <button 
-                    @click="submitIdVerification"
-                    :disabled="!canSubmitIdVerification || idVerificationLoading"
-                    class="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-500 hover:from-indigo-700 hover:to-purple-600 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-indigo-500/25"
-                  >
-                    <svg v-if="!idVerificationLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {{ idVerificationLoading ? 'Submitting...' : 'Submit for Verification' }}
-                  </button>
-                  
-                  <p class="text-xs text-gray-500 text-center mt-3">
-                    Verification typically takes 1-2 business days. You'll be notified via email.
-                  </p>
                 </div>
 
-                <!-- Resubmit Button (for rejected) -->
-                <div v-if="idVerification.status === 'rejected'" class="md:col-span-2">
-                  <div class="bg-red-900/20 border border-red-800 rounded-xl p-4 mb-4">
-                    <div class="flex items-center gap-3">
-                      <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <!-- Step 2: ID Photo -->
+                <div v-show="currentStep === 2" class="space-y-6 animate-fade-in">
+                  <div class="bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-800/30 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <div>
-                        <h3 class="font-semibold text-red-400">Verification Rejected</h3>
-                        <p class="text-gray-300 text-sm">Please address the issue and resubmit your ID verification.</p>
-                        <p v-if="idVerification.rejectionReason" class="text-sm text-gray-400 mt-1">
-                          <strong>Reason:</strong> {{ idVerification.rejectionReason }}
-                        </p>
+                      Step 2: ID Photo Upload
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-6">Upload a clear photo of your ID document</p>
+                    
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Upload ID Photo <span class="text-red-400">*</span>
+                      </label>
+                      <div 
+                        @dragover.prevent="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop.prevent="handleIdDrop"
+                        @click="idVerification.status !== 'pending' ? triggerIdUpload() : null"
+                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
+                        :class="[
+                          idUploadClasses,
+                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-[1.02]'
+                        ]"
+                      >
+                        <input 
+                          type="file" 
+                          ref="idFileInput"
+                          @change="handleIdUploadChange"
+                          accept="image/*"
+                          class="hidden"
+                          :disabled="idVerification.status === 'pending'"
+                        />
+                        
+                        <div v-if="!idVerification.idPhotoPreview && !idVerification.idPhotoUrl" class="space-y-4">
+                          <svg class="w-16 h-16 text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <div>
+                            <p class="text-gray-300 font-medium mb-1">Drop your ID photo here or click to browse</p>
+                            <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-2">
+                            Upload a clear, front-facing photo of your ID. Make sure all details are readable.
+                          </p>
+                        </div>
+                        
+                        <div v-else class="space-y-4">
+                          <div class="relative inline-block">
+                            <img 
+                              :src="idVerification.idPhotoPreview || idVerification.idPhotoUrl" 
+                              alt="ID Preview"
+                              class="max-h-48 mx-auto rounded-lg shadow-lg"
+                            />
+                            <button 
+                              v-if="idVerification.status !== 'pending'"
+                              @click.stop="removeIdPhoto"
+                              class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 transition-colors shadow-lg"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <p class="text-green-400 text-sm">
+                            ✓ ID photo uploaded successfully
+                          </p>
+                        </div>
+                        
+                        <div v-if="idUploadProgress > 0 && idUploadProgress < 100" class="mt-4">
+                          <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
+                              :style="{ width: idUploadProgress + '%' }"
+                            ></div>
+                          </div>
+                          <p class="text-gray-400 text-sm mt-2">{{ idUploadProgress }}% uploaded</p>
+                        </div>
+                      </div>
+                      
+                      <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-500">
+                        <div class="flex items-center gap-2 p-2 bg-purple-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Clear and readable
+                        </div>
+                        <div class="flex items-center gap-2 p-2 bg-purple-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          All corners visible
+                        </div>
+                        <div class="flex items-center gap-2 p-2 bg-purple-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          No glare or blur
+                        </div>
+                      </div>
+                      
+                      <div v-if="idVerificationErrors.idPhoto" class="mt-2 text-xs text-red-400">
+                        {{ idVerificationErrors.idPhoto }}
+                      </div>
+                    </div>
+                    
+                    <!-- Preview & Requirements -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <h4 class="text-sm font-medium text-white mb-2">📸 ID Photo Example</h4>
+                        <div class="text-xs text-gray-400 space-y-2">
+                          <p>• Place ID on a dark surface</p>
+                          <p>• Good lighting, no shadows</p>
+                          <p>• Capture full document</p>
+                          <p>• Ensure text is legible</p>
+                        </div>
+                      </div>
+                      <div class="p-4 bg-red-900/20 rounded-lg border border-red-800/30">
+                        <h4 class="text-sm font-medium text-red-300 mb-2">❌ What to Avoid</h4>
+                        <div class="text-xs text-gray-400 space-y-2">
+                          <p>• Blurry or out-of-focus photos</p>
+                          <p>• Glare or reflections</p>
+                          <p>• Cut-off edges or corners</p>
+                          <p>• Edited or filtered images</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 3: Selfie with ID -->
+                <div v-show="currentStep === 3" class="space-y-6 animate-fade-in">
+                  <div class="bg-gradient-to-br from-pink-900/20 to-rose-900/20 border border-pink-800/30 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Step 3: Selfie with ID
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-6">Take a selfie while holding your ID next to your face</p>
+                    
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Upload Selfie with ID <span class="text-red-400">*</span>
+                      </label>
+                      <div 
+                        @dragover.prevent="handleSelfieDragOver"
+                        @dragleave="handleSelfieDragLeave"
+                        @drop.prevent="handleSelfieDrop"
+                        @click="idVerification.status !== 'pending' ? triggerSelfieUpload() : null"
+                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
+                        :class="[
+                          selfieUploadClasses,
+                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-[1.02]'
+                        ]"
+                      >
+                        <input 
+                          type="file" 
+                          ref="selfieFileInput"
+                          @change="handleSelfieUploadChange"
+                          accept="image/*"
+                          class="hidden"
+                          :disabled="idVerification.status === 'pending'"
+                        />
+                        
+                        <div v-if="!idVerification.selfiePhotoPreview && !idVerification.selfiePhotoUrl" class="space-y-4">
+                          <svg class="w-16 h-16 text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          <div>
+                            <p class="text-gray-300 font-medium mb-1">Drop your selfie here or click to browse</p>
+                            <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
+                          </div>
+                          <p class="text-xs text-gray-500 mt-2">
+                            Take a selfie while holding your ID next to your face. Make sure both your face and ID are clearly visible.
+                          </p>
+                        </div>
+                        
+                        <div v-else class="space-y-4">
+                          <div class="relative inline-block">
+                            <img 
+                              :src="idVerification.selfiePhotoPreview || idVerification.selfiePhotoUrl" 
+                              alt="Selfie Preview"
+                              class="max-h-48 mx-auto rounded-lg shadow-lg"
+                            />
+                            <button 
+                              v-if="idVerification.status !== 'pending'"
+                              @click.stop="removeSelfiePhoto"
+                              class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 transition-colors shadow-lg"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <p class="text-green-400 text-sm">
+                            ✓ Selfie with ID uploaded successfully
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-500">
+                        <div class="flex items-center gap-2 p-2 bg-pink-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Face clearly visible
+                        </div>
+                        <div class="flex items-center gap-2 p-2 bg-pink-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          ID next to face
+                        </div>
+                        <div class="flex items-center gap-2 p-2 bg-pink-900/20 rounded-lg">
+                          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Good lighting
+                        </div>
+                      </div>
+                      
+                      <div v-if="idVerificationErrors.selfiePhoto" class="mt-2 text-xs text-red-400">
+                        {{ idVerificationErrors.selfiePhoto }}
+                      </div>
+                    </div>
+                    
+                    <!-- Example & Tips -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <h4 class="text-sm font-medium text-white mb-2">🤳 How to Take a Good Selfie</h4>
+                        <div class="text-xs text-gray-400 space-y-2">
+                          <p>• Hold ID next to your cheek</p>
+                          <p>• Look directly at camera</p>
+                          <p>• Use natural daylight</p>
+                          <p>• Keep hands visible</p>
+                          <p>• No hats or sunglasses</p>
+                        </div>
+                      </div>
+                      <div class="p-4 bg-green-900/20 rounded-lg border border-green-800/30">
+                        <h4 class="text-sm font-medium text-green-300 mb-2">✅ Verification Checklist</h4>
+                        <div class="text-xs text-gray-400 space-y-2">
+                          <p>• All 3 steps completed ✓</p>
+                          <p>• Information matches ID</p>
+                          <p>• Photos are clear and valid</p>
+                          <p>• Ready for submission</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -729,7 +850,7 @@
                       <div class="flex-1">
                         <h3 class="font-semibold text-yellow-400 mb-1">Verification Under Review</h3>
                         <p class="text-gray-300 text-sm">Your ID verification is being reviewed by our team. This usually takes 1-2 business days.</p>
-                        <div class="mt-4 flex items-center gap-4 text-sm">
+                        <div class="mt-4 flex flex-col md:flex-row gap-4 text-sm">
                           <div class="text-gray-400">
                             <span class="block">Submitted:</span>
                             <span class="text-white">{{ formatDate(idVerification.submittedAt) }}</span>
@@ -738,9 +859,56 @@
                             <span class="block">ID Type:</span>
                             <span class="text-white">{{ getReadableIdType(idVerification.idType) }}</span>
                           </div>
+                          <div class="text-gray-400">
+                            <span class="block">ID Number:</span>
+                            <span class="text-white font-mono">{{ idVerification.idNumber }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Wizard Navigation Buttons -->
+                <div v-if="idVerification.status !== 'pending' && idVerification.status !== 'verified'" class="flex justify-between pt-6 border-t border-gray-800">
+                  <button 
+                    @click="prevStep"
+                    v-show="currentStep > 1"
+                    class="px-6 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-gray-300 font-medium flex items-center gap-2 transition-all duration-300 hover:shadow-lg"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous Step
+                  </button>
+                  
+                  <div class="flex gap-4 ml-auto">
+                    <button 
+                      v-if="currentStep < 3"
+                      @click="nextStep"
+                      :disabled="!canProceedToNextStep"
+                      class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-500 hover:from-indigo-700 hover:to-purple-600 rounded-xl text-white font-medium flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-indigo-500/25"
+                    >
+                      Next Step
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    
+                    <button 
+                      v-if="currentStep === 3"
+                      @click="submitIdVerification"
+                      :disabled="!canSubmitIdVerification || idVerificationLoading"
+                      class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green-500/25"
+                    >
+                      <svg v-if="!idVerificationLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <svg v-else class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {{ idVerificationLoading ? 'Submitting...' : 'Submit for Verification' }}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -977,7 +1145,9 @@ export default {
       idVerificationErrors: {},
       isDraggingId: false,
       isDraggingSelfie: false,
-      idUploadProgress: 0
+      idUploadProgress: 0,
+      // Wizard state
+      currentStep: 1
     }
   },
   computed: {
@@ -1090,16 +1260,16 @@ export default {
       }
     },
     idUploadClasses() {
-      const base = 'border-gray-700 hover:border-indigo-500'
+      const base = 'border-gray-700 hover:border-purple-500'
       if (this.isDraggingId) {
-        return `${base} border-indigo-500 bg-indigo-900/20`
+        return `${base} border-purple-500 bg-purple-900/20`
       }
       return base
     },
     selfieUploadClasses() {
-      const base = 'border-gray-700 hover:border-indigo-500'
+      const base = 'border-gray-700 hover:border-pink-500'
       if (this.isDraggingSelfie) {
-        return `${base} border-indigo-500 bg-indigo-900/20`
+        return `${base} border-pink-500 bg-pink-900/20`
       }
       return base
     },
@@ -1110,6 +1280,18 @@ export default {
              (this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl) &&
              this.idVerification.status !== 'pending' &&
              this.idVerification.status !== 'verified'
+    },
+    canProceedToNextStep() {
+      switch (this.currentStep) {
+        case 1:
+          return this.idVerification.idType && this.idVerification.idNumber.trim()
+        case 2:
+          return this.idVerification.idPhoto || this.idVerification.idPhotoUrl
+        case 3:
+          return this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl
+        default:
+          return false
+      }
     }
   },
   created() {
@@ -1367,6 +1549,19 @@ export default {
       this.showNotification('Avatar upload feature will be available soon', 'info')
     },
 
+    // Wizard Methods
+    nextStep() {
+      if (this.currentStep < 3 && this.canProceedToNextStep) {
+        this.currentStep++
+      }
+    },
+    
+    prevStep() {
+      if (this.currentStep > 1) {
+        this.currentStep--
+      }
+    },
+
     // ID Verification Methods
     async loadIdVerificationStatus() {
       try {
@@ -1388,6 +1583,11 @@ export default {
             submittedAt: data.submitted_at || null,
             reviewedAt: data.reviewed_at || null,
             rejectionReason: data.rejection_reason || null
+          }
+          
+          // Set current step based on status
+          if (this.idVerification.status === 'pending' || this.idVerification.status === 'verified') {
+            this.currentStep = 1
           }
         }
       } catch (error) {
@@ -1530,8 +1730,6 @@ export default {
       this.showNotification('Selfie photo removed', 'info')
     },
 
-    
-
     getReadableIdType(idType) {
       const types = {
         'phil_id': 'Philippine National ID (PhilID/ePhilID)',
@@ -1594,6 +1792,9 @@ export default {
           this.idVerification.idPhotoPreview = null
           this.idVerification.selfiePhoto = null
           this.idVerification.selfiePhotoPreview = null
+          
+          // Reset to step 1
+          this.currentStep = 1
           
           this.showNotification('ID verification submitted successfully! Verification typically takes 1-2 business days.', 'success')
         }
@@ -1848,6 +2049,32 @@ export default {
     }
   }
 
+  /* Wizard animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  /* Step indicator animation */
+  @keyframes pulse-step {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
   /* Responsive notifications */
   @media (max-width: 640px) {
     .notifications-container {
@@ -1860,5 +2087,52 @@ export default {
     .notification {
       padding: 12px;
     }
+    
+    /* Wizard responsive adjustments */
+    .flex-col.md\:flex-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .hidden.md\:block {
+      display: none;
+    }
+    
+    .flex.items-center.gap-4 {
+      gap: 2rem;
+    }
+    
+    .w-12.h-12 {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+  }
+
+  /* Responsive wizard steps */
+  @media (max-width: 768px) {
+    .flex-col.md\:flex-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .w-16.h-1 {
+      display: none;
+    }
+    
+    .flex.items-center.gap-4 {
+      justify-content: space-between;
+      width: 100%;
+    }
+    
+    .grid.grid-cols-1.md\:grid-cols-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Smooth transitions for wizard content */
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
   }
 </style>

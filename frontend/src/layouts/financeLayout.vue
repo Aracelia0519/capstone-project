@@ -16,8 +16,11 @@
          @click="sidebarMobileVisible = false">
     </div>
 
-    <sideBarFinance :class="{ 'mobile-visible': sidebarMobileVisible }" 
-                    @toggle="handleSidebarToggle" />
+    <sideBarFinance 
+      :class="{ 'mobile-visible': sidebarMobileVisible }" 
+      @toggle="handleSidebarToggle"
+      :user-name="userName"
+      :user-role="userRole" />
 
     <main class="finance-content">
       <router-view />
@@ -28,6 +31,48 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import sideBarFinance from './sideBarFinance.vue'
+import axios from '@/utils/axios'
+
+const userName = ref('')
+const userRole = ref('')
+const isLoading = ref(false)
+
+// Fetch user data
+const fetchUserData = async () => {
+  isLoading.value = true
+  try {
+    // Get user profile
+    const userResponse = await axios.get('/auth/me')
+    if (userResponse.data && userResponse.data.user) {
+      const user = userResponse.data.user
+      userName.value = user.name || `${user.first_name} ${user.last_name}` || 'Finance Officer'
+      userRole.value = user.role ? 
+        user.role.charAt(0).toUpperCase() + user.role.slice(1).replace(/_/g, ' ') 
+        : 'Finance Department'
+    }
+  } catch (error) {
+    console.error('Failed to fetch user data:', error)
+    // Fallback to localStorage
+    const storedUser = localStorage.getItem('user_data')
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser)
+        userName.value = user.name || `${user.first_name} ${user.last_name}` || 'Finance Officer'
+        userRole.value = user.role ? 
+          user.role.charAt(0).toUpperCase() + user.role.slice(1).replace(/_/g, ' ') 
+          : 'Finance Department'
+      } catch (e) {
+        console.error('Failed to parse stored user data:', e)
+      }
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchUserData()
+})
 
 const sidebarMobileVisible = ref(false)
 const isMobile = ref(false)
@@ -55,7 +100,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', checkMobile)
 })
 </script>
-
 
 <style scoped>
 .finance-layout {

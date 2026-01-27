@@ -318,6 +318,7 @@ const routes = [
       },
     ]
   },
+  
   {
     path: '/Landing',
     component: LandingLayout,
@@ -356,15 +357,11 @@ const routes = [
     ]
   },
 
-
-  /*
-  no authentication yet
-  */
-
+  // UPDATED: HR routes now require authentication for hr_manager role
   {
     path: '/HR',
     component: HRLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true, role: 'hr_manager' },
     children: [
       {
         path: 'HRdashboard',
@@ -398,10 +395,12 @@ const routes = [
       },
     ]
   },
+  
+  // UPDATED: Finance routes now require authentication for finance_manager role
   {
     path: '/finance',
     component: FinanceLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true, role: 'finance_manager' },
     children: [
       {
         path: 'financeDashboard',
@@ -430,52 +429,12 @@ const routes = [
       },
     ]
   },
-  {
-    path: '/CRM',
-    component: CRMLayout,
-    meta: { requiresAuth: false },
-    children: [
-      {
-        path: 'CRMDashboard',
-        name: 'CRMDashboard',
-        component: CRMDashboard
-      },
-      {
-        path: 'CRMClients',
-        name: 'CRMClients',
-        component: CRMClients
-      },
-      {
-        path: 'CRMDistributors',
-        name: 'CRMDistributors',
-        component: CRMDistributors
-      },
-      {
-        path: 'CRMServiceProviders',
-        name: 'CRMServiceProviders',
-        component: CRMServiceProviders
-      },
-      {
-        path: 'CRMInteractions',
-        name: 'CRMInteractions',
-        component: CRMInteractions
-      },
-      {
-        path: 'CRMFollowUps',
-        name: 'CRMFollowUps',
-        component: CRMFollowUps
-      },
-      {
-        path: 'CRMReports',
-        name: 'CRMReports',
-        component: CRMReports
-      },
-    ]
-  },
+  
+  // UPDATED: E-Commerce routes now require authentication for operational_distributor role
   {
     path: '/ECommerce',
     component: ECommerceLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true, role: 'operational_distributor' },
     children: [
       {
         path: 'ECDashboard',
@@ -529,6 +488,52 @@ const routes = [
       },
     ]
   },
+  
+  // CRM routes (keeping as is, no authentication required for now)
+  {
+    path: '/CRM',
+    component: CRMLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'CRMDashboard',
+        name: 'CRMDashboard',
+        component: CRMDashboard
+      },
+      {
+        path: 'CRMClients',
+        name: 'CRMClients',
+        component: CRMClients
+      },
+      {
+        path: 'CRMDistributors',
+        name: 'CRMDistributors',
+        component: CRMDistributors
+      },
+      {
+        path: 'CRMServiceProviders',
+        name: 'CRMServiceProviders',
+        component: CRMServiceProviders
+      },
+      {
+        path: 'CRMInteractions',
+        name: 'CRMInteractions',
+        component: CRMInteractions
+      },
+      {
+        path: 'CRMFollowUps',
+        name: 'CRMFollowUps',
+        component: CRMFollowUps
+      },
+      {
+        path: 'CRMReports',
+        name: 'CRMReports',
+        component: CRMReports
+      },
+    ]
+  },
+  
+  // Client E-Commerce routes (keeping as is, no authentication required for now)
   {
     path: '/ECommerceClient',
     component: ECommerceClientLayout,
@@ -571,7 +576,6 @@ const routes = [
       },
     ]
   },
-
 
   // Catch all route - redirect to home
   {
@@ -640,13 +644,26 @@ router.beforeEach(async (to, from, next) => {
       
       // Check role if required
       if (requiredRole && user.role !== requiredRole) {
+        // Define routes for each role - UPDATED with new roles
         const roleRoutes = {
           admin: '/admin/dashboard',
           distributor: '/distributor/distributordashboard',
           service_provider: '/serviceProvider/dashboardSP',
-          client: '/Clients/dashboardC'
+          client: '/Clients/dashboardC',
+          operational_distributor: '/ECommerce/ECDashboard',
+          finance_manager: '/finance/financeDashboard',
+          hr_manager: '/HR/HRdashboard'
         }
-        next(roleRoutes[user.role] || '/Landing/homeLanding')
+        
+        const redirectRoute = roleRoutes[user.role] || '/Landing/homeLanding'
+        
+        // Don't redirect if already going to correct route
+        if (to.path.startsWith(redirectRoute)) {
+          next()
+        } else {
+          next(redirectRoute)
+        }
+        
         isNavigating = false
         processPendingNavigation()
         return

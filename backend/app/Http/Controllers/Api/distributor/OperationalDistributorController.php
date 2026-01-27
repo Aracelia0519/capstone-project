@@ -118,145 +118,149 @@ class OperationalDistributorController extends Controller
     /**
      * Create a new operational distributor
      */
-     public function store(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            
-            // Only allow distributor users
-            if ($user->role !== 'distributor') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized access'
-                ], 403);
-            }
-            
-            // Check if parent distributor is verified
-            $parentVerification = $user->distributorRequirement;
-            if (!$parentVerification || $parentVerification->status !== 'approved') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You must be verified as a distributor to create operational distributors'
-                ], 403);
-            }
-            
-            // Validate request
-            $validator = Validator::make($request->all(), [
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'email' => 'required|email|max:255|unique:users,email|unique:operational_distributors,email',
-                'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
-                'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
-                'id_number' => 'required|string|max:100',
-                'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-                'password' => 'required|string|min:8|confirmed',
-                'password_confirmation' => 'required|string|min:8'
-            ], [
-                'first_name.required' => 'First name is required',
-                'last_name.required' => 'Last name is required',
-                'email.required' => 'Email address is required',
-                'email.email' => 'Please enter a valid email address',
-                'email.unique' => 'This email is already registered',
-                'phone.required' => 'Phone number is required',
-                'phone.max' => 'Phone number must be exactly 11 digits',
-                'phone.min' => 'Phone number must be exactly 11 digits',
-                'phone.regex' => 'Phone number must contain only digits',
-                'valid_id_type.required' => 'Please select a valid ID type',
-                'id_number.required' => 'ID number is required',
-                'valid_id_photo.required' => 'Valid ID photo is required',
-                'valid_id_photo.mimes' => 'Only JPG, PNG, and PDF files are allowed',
-                'valid_id_photo.max' => 'File size must be less than 5MB',
-                'password.required' => 'Password is required',
-                'password.min' => 'Password must be at least 8 characters',
-                'password.confirmed' => 'Password confirmation does not match'
-            ]);
-            
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-            
-            // Handle file upload
-            $validIdPhotoPath = null;
-            if ($request->hasFile('valid_id_photo')) {
-                $file = $request->file('valid_id_photo');
-                $fileName = 'operational_distributor_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $folderPath = 'operational_distributors/valid_ids';
-                
-                $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
-                $validIdPhotoPath = $folderPath . '/' . $fileName;
-            }
-            
-            // Create the user account with role 'operational_distributor'
-            $userAccount = User::create([
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'role' => 'operational_distributor',
-                'status' => 'pending'
-            ]);
-            
-            // Create operational distributor linked to the user account
-            $operationalDistributor = OperationalDistributor::create([
-                'parent_distributor_id' => $user->id,
-                'user_id' => $userAccount->id,
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'address' => $request->address,
-                'valid_id_type' => $request->valid_id_type,
-                'id_number' => $request->id_number,
-                'valid_id_photo' => $validIdPhotoPath,
-                'status' => 'pending'
-            ]);
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Operational distributor created successfully. User account has been created.',
-                'data' => [
-                    'operational_distributor' => [
-                        'id' => $operationalDistributor->id,
-                        'first_name' => $operationalDistributor->first_name,
-                        'last_name' => $operationalDistributor->last_name,
-                        'full_name' => $operationalDistributor->full_name,
-                        'email' => $operationalDistributor->email,
-                        'phone' => $operationalDistributor->phone,
-                        'address' => $operationalDistributor->address,
-                        'valid_id_type' => $operationalDistributor->valid_id_type,
-                        'id_type_name' => $operationalDistributor->id_type_name,
-                        'id_number' => $operationalDistributor->id_number,
-                        'valid_id_photo_url' => $operationalDistributor->valid_id_photo_url,
-                        'status' => $operationalDistributor->status,
-                        'status_class' => $operationalDistributor->status_class,
-                        'has_user_account' => true,
-                        'user_id' => $operationalDistributor->user_id,
-                        'created_at' => $operationalDistributor->created_at->format('Y-m-d H:i:s')
-                    ]
-                ]
-            ], 201);
-            
-        } catch (\Exception $e) {
-            Log::error('Error creating operational distributor:', [
-                'user_id' => Auth::id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
+     /**
+ * Create a new operational distributor
+ */
+public function store(Request $request)
+{
+    try {
+        $user = Auth::user();
+        
+        // Only allow distributor users
+        if ($user->role !== 'distributor') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to create operational distributor',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Unauthorized access'
+            ], 403);
         }
+        
+        // Check if parent distributor is verified
+        $parentVerification = $user->distributorRequirement;
+        if (!$parentVerification || $parentVerification->status !== 'approved') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You must be verified as a distributor to create operational distributors'
+            ], 403);
+        }
+        
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email|unique:operational_distributors,email',
+            'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
+            'address' => 'nullable|string|max:500',
+            'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
+            'id_number' => 'required|string|max:100',
+            'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'password' => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string|min:8'
+        ], [
+            'first_name.required' => 'First name is required',
+            'last_name.required' => 'Last name is required',
+            'email.required' => 'Email address is required',
+            'email.email' => 'Please enter a valid email address',
+            'email.unique' => 'This email is already registered',
+            'phone.required' => 'Phone number is required',
+            'phone.max' => 'Phone number must be exactly 11 digits',
+            'phone.min' => 'Phone number must be exactly 11 digits',
+            'phone.regex' => 'Phone number must contain only digits',
+            'valid_id_type.required' => 'Please select a valid ID type',
+            'id_number.required' => 'ID number is required',
+            'valid_id_photo.required' => 'Valid ID photo is required',
+            'valid_id_photo.mimes' => 'Only JPG, PNG, and PDF files are allowed',
+            'valid_id_photo.max' => 'File size must be less than 5MB',
+            'password.required' => 'Password is required',
+            'password.min' => 'Password must be at least 8 characters',
+            'password.confirmed' => 'Password confirmation does not match'
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        
+        // Handle file upload
+        $validIdPhotoPath = null;
+        if ($request->hasFile('valid_id_photo')) {
+            $file = $request->file('valid_id_photo');
+            $fileName = 'operational_distributor_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $folderPath = 'operational_distributors/valid_ids';
+            
+            $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
+            $validIdPhotoPath = $folderPath . '/' . $fileName;
+        }
+        
+        // Create the user account with role 'operational_distributor'
+        $userAccount = User::create([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'password' => $request->password, // plain password; mutator will hash it
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'role' => 'operational_distributor',
+            'status' => 'pending'
+        ]);
+        
+        // Create operational distributor linked to the user account
+        $operationalDistributor = OperationalDistributor::create([
+            'parent_distributor_id' => $user->id,
+            'user_id' => $userAccount->id,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'valid_id_type' => $request->valid_id_type,
+            'id_number' => $request->id_number,
+            'valid_id_photo' => $validIdPhotoPath,
+            'status' => 'pending'
+        ]);
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Operational distributor created successfully. User account has been created.',
+            'data' => [
+                'operational_distributor' => [
+                    'id' => $operationalDistributor->id,
+                    'first_name' => $operationalDistributor->first_name,
+                    'last_name' => $operationalDistributor->last_name,
+                    'full_name' => $operationalDistributor->full_name,
+                    'email' => $operationalDistributor->email,
+                    'phone' => $operationalDistributor->phone,
+                    'address' => $operationalDistributor->address,
+                    'valid_id_type' => $operationalDistributor->valid_id_type,
+                    'id_type_name' => $operationalDistributor->id_type_name,
+                    'id_number' => $operationalDistributor->id_number,
+                    'valid_id_photo_url' => $operationalDistributor->valid_id_photo_url,
+                    'status' => $operationalDistributor->status,
+                    'status_class' => $operationalDistributor->status_class,
+                    'has_user_account' => true,
+                    'user_id' => $operationalDistributor->user_id,
+                    'created_at' => $operationalDistributor->created_at->format('Y-m-d H:i:s')
+                ]
+            ]
+        ], 201);
+        
+    } catch (\Exception $e) {
+        Log::error('Error creating operational distributor:', [
+            'user_id' => Auth::id(),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to create operational distributor',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
 
     /**
      * Get specific operational distributor

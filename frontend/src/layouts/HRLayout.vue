@@ -15,6 +15,8 @@
     </div>
 
     <sideBarHR :class="{ 'mobile-visible': sidebarMobileVisible }" 
+               :user-data="userData"
+               :dashboard-data="dashboardData"
                @toggle="handleSidebarToggle" />
 
     <main class="hr-content">
@@ -26,6 +28,30 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import sideBarHR from '@/layouts/sideBarHR.vue'
+import axios from '@/utils/axios'
+
+const userData = ref(null)
+const dashboardData = ref(null)
+const isLoading = ref(false)
+
+// Fetch user data and dashboard data
+const fetchData = async () => {
+  isLoading.value = true
+  try {
+    // Get user profile
+    const userResponse = await axios.get('/auth/me')
+    userData.value = userResponse.data.user
+    
+  } catch (error) {
+    console.error('Failed to fetch HR data:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
 
 const sidebarMobileVisible = ref(false)
 const isMobile = ref(false)

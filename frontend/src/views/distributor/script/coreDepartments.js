@@ -16,7 +16,8 @@ export default {
       activeTab: 'operational',
       loading: false,
       
-      // Operational Distributors
+      // Operational Distributors Wizard
+      operationalWizardStep: 1,
       showOperationalForm: false,
       creatingOperational: false,
       operationalDistributors: [],
@@ -30,7 +31,8 @@ export default {
       showOperationalConfirmPassword: false,
       operationalPhoneError: '',
       
-      // HR Managers
+      // HR Managers Wizard
+      hrWizardStep: 1,
       showHRForm: false,
       creatingHR: false,
       hrManagers: [],
@@ -45,7 +47,8 @@ export default {
       showHRConfirmPassword: false,
       hrPhoneError: '',
       
-      // Finance Managers
+      // Finance Managers Wizard
+      financeWizardStep: 1,
       showFinanceForm: false,
       creatingFinance: false,
       financeManagers: [],
@@ -198,6 +201,29 @@ export default {
              this.operationalPasswordRequirements.every(req => req.met) &&
              this.operationalPasswordMatch
     },
+    isOperationalStepValid() {
+      switch (this.operationalWizardStep) {
+        case 1:
+          return this.operationalForm.first_name &&
+                 this.operationalForm.last_name &&
+                 this.operationalForm.email &&
+                 this.operationalForm.phone &&
+                 this.operationalForm.phone.length === 11 &&
+                 /^\d+$/.test(this.operationalForm.phone) &&
+                 /^0/.test(this.operationalForm.phone)
+        case 2:
+          return this.operationalForm.valid_id_type &&
+                 this.operationalForm.id_number &&
+                 this.operationalForm.valid_id_photo
+        case 3:
+          return this.operationalForm.password &&
+                 this.operationalForm.password_confirmation &&
+                 this.operationalPasswordRequirements.every(req => req.met) &&
+                 this.operationalPasswordMatch
+        default:
+          return false
+      }
+    },
     
     // HR Manager Computed Properties
     hrPasswordRequirements() {
@@ -243,6 +269,33 @@ export default {
              this.hrPasswordRequirements.every(req => req.met) &&
              this.hrPasswordMatch
     },
+    isHRStepValid() {
+      switch (this.hrWizardStep) {
+        case 1:
+          return this.hrForm.first_name &&
+                 this.hrForm.last_name &&
+                 this.hrForm.email &&
+                 this.hrForm.phone &&
+                 this.hrForm.phone.length === 11 &&
+                 /^\d+$/.test(this.hrForm.phone) &&
+                 /^0/.test(this.hrForm.phone)
+        case 2:
+          return this.hrForm.employment_type &&
+                 this.hrForm.hire_date &&
+                 this.hrForm.salary
+        case 3:
+          return this.hrForm.valid_id_type &&
+                 this.hrForm.id_number &&
+                 this.hrForm.valid_id_photo
+        case 4:
+          return this.hrForm.password &&
+                 this.hrForm.password_confirmation &&
+                 this.hrPasswordRequirements.every(req => req.met) &&
+                 this.hrPasswordMatch
+        default:
+          return false
+      }
+    },
     
     // Finance Manager Computed Properties
     financePasswordRequirements() {
@@ -287,6 +340,33 @@ export default {
              this.financeForm.password_confirmation &&
              this.financePasswordRequirements.every(req => req.met) &&
              this.financePasswordMatch
+    },
+    isFinanceStepValid() {
+      switch (this.financeWizardStep) {
+        case 1:
+          return this.financeForm.first_name &&
+                 this.financeForm.last_name &&
+                 this.financeForm.email &&
+                 this.financeForm.phone &&
+                 this.financeForm.phone.length === 11 &&
+                 /^\d+$/.test(this.financeForm.phone) &&
+                 /^0/.test(this.financeForm.phone)
+        case 2:
+          return this.financeForm.employment_type &&
+                 this.financeForm.hire_date &&
+                 this.financeForm.salary
+        case 3:
+          return this.financeForm.valid_id_type &&
+                 this.financeForm.id_number &&
+                 this.financeForm.valid_id_photo
+        case 4:
+          return this.financeForm.password &&
+                 this.financeForm.password_confirmation &&
+                 this.financePasswordRequirements.every(req => req.met) &&
+                 this.financePasswordMatch
+        default:
+          return false
+      }
     },
     
     // Common Computed Properties
@@ -590,6 +670,61 @@ export default {
         }
       } catch (error) {
         console.error('Error fetching finance stats:', error)
+      }
+    },
+
+    // Wizard Navigation Methods
+    setOperationalWizardStep(step) {
+      if (step > 0 && step <= 3) {
+        this.operationalWizardStep = step
+      }
+    },
+
+    nextOperationalStep() {
+      if (this.operationalWizardStep < 3 && this.isOperationalStepValid) {
+        this.operationalWizardStep++
+      }
+    },
+
+    previousOperationalStep() {
+      if (this.operationalWizardStep > 1) {
+        this.operationalWizardStep--
+      }
+    },
+
+    setHRWizardStep(step) {
+      if (step > 0 && step <= 4) {
+        this.hrWizardStep = step
+      }
+    },
+
+    nextHRStep() {
+      if (this.hrWizardStep < 4 && this.isHRStepValid) {
+        this.hrWizardStep++
+      }
+    },
+
+    previousHRStep() {
+      if (this.hrWizardStep > 1) {
+        this.hrWizardStep--
+      }
+    },
+
+    setFinanceWizardStep(step) {
+      if (step > 0 && step <= 4) {
+        this.financeWizardStep = step
+      }
+    },
+
+    nextFinanceStep() {
+      if (this.financeWizardStep < 4 && this.isFinanceStepValid) {
+        this.financeWizardStep++
+      }
+    },
+
+    previousFinanceStep() {
+      if (this.financeWizardStep > 1) {
+        this.financeWizardStep--
       }
     },
 
@@ -1084,6 +1219,7 @@ export default {
       }
       this.operationalPhoneError = ''
       this.showOperationalForm = false
+      this.operationalWizardStep = 1
     },
     
     cancelHRForm() {
@@ -1107,6 +1243,7 @@ export default {
       }
       this.hrPhoneError = ''
       this.showHRForm = false
+      this.hrWizardStep = 1
     },
     
     cancelFinanceForm() {
@@ -1130,6 +1267,7 @@ export default {
       }
       this.financePhoneError = ''
       this.showFinanceForm = false
+      this.financeWizardStep = 1
     },
 
     // Pagination Methods

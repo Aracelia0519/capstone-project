@@ -128,6 +128,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/put-on-leave', [HRManagerController::class, 'putOnLeave']);
         });
 
+        
+
         // Finance Managers Routes
         Route::prefix('finance-managers')->group(function () {
             Route::get('/', [FinanceManagerController::class, 'index']);
@@ -143,8 +145,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Admin User Management Routes
-    // Admin User Management Routes
-// Admin User Management Routes
     Route::prefix('admin')->group(function () {
         Route::prefix('users')->group(function () {
             Route::get('/', [AdminUserController::class, 'index']);
@@ -157,11 +157,24 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/deactivate', [AdminUserController::class, 'deactivate']);
             Route::post('/{id}/change-password', [AdminUserController::class, 'changePassword']);
             
-            // Add approve/reject routes
             Route::post('/{id}/approve', [AdminUserController::class, 'approve']);
             Route::post('/{id}/reject', [AdminUserController::class, 'reject']);
             
-            // Quick statistics - MAKE SURE THIS IS INCLUDED
         });
     });
+
+    // HR Employees Routes
+    Route::prefix('hr')->middleware(['auth:sanctum'])->group(function () {
+        Route::prefix('employees')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'index']);
+            Route::get('/statistics', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'statistics']);
+            Route::post('/', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'destroy']);
+            Route::post('/{id}/regularize', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'regularize']);
+        });
+    });
+
+    
 });

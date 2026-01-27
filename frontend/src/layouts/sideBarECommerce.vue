@@ -18,14 +18,14 @@
       </svg>
     </button>
 
-    <!-- Sidebar Header -->
+    <!-- Sidebar Header with User Info -->
     <div class="sidebar-header">
       <div class="flex items-center space-x-4">
-        <!-- E-commerce Logo -->
+        <!-- User Avatar -->
         <div class="relative">
           <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-2xl animate-pulse-slow">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
           <!-- Online indicator -->
@@ -38,7 +38,10 @@
           </h2>
           <p class="text-xs text-gray-200 flex items-center mt-0.5">
             <span class="w-2 h-2 bg-green-400 rounded-full mr-1.5 animate-pulse"></span>
-            Paint Store Dashboard
+            {{ userRole || 'Store Dashboard' }}
+          </p>
+          <p class="text-xs text-gray-400 mt-1">
+            Welcome, {{ userName || 'User' }}
           </p>
         </div>
       </div>
@@ -314,7 +317,7 @@
         </ul>
       </div>
 
-      <!-- Settings Section -->
+      <!-- Account Section -->
       <div class="nav-section account-section">
         <ul class="nav-list">
           <!-- Settings -->
@@ -340,7 +343,7 @@
           <!-- Logout -->
           <li>
             <button 
-              @click="handleLogout"
+              @click="$emit('logout-click')"
               class="nav-item group logout-btn w-full hover:bg-gradient-to-r hover:from-red-500/10 hover:to-pink-500/10"
             >
               <div class="nav-icon-wrapper">
@@ -389,8 +392,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
 
 export default {
   name: 'SideBarECommerce',
@@ -398,18 +400,59 @@ export default {
     mobileVisible: {
       type: Boolean,
       default: false
+    },
+    userData: {
+      type: Object,
+      default: null
+    },
+    dashboardData: {
+      type: Object,
+      default: null
     }
   },
   setup(props, { emit }) {
-    const router = useRouter()
     const isCollapsed = ref(false)
     const isMobile = ref(false)
     
-    const stats = {
-      totalOrders: 156,
-      products: 89,
-      revenue: '$12.4K'
-    }
+    // User info
+    const userName = computed(() => {
+      if (props.userData) {
+        return props.userData.name || 
+               `${props.userData.first_name || ''} ${props.userData.last_name || ''}`.trim() || 
+               'Store User'
+      }
+      return 'Store User'
+    })
+    
+    const userRole = computed(() => {
+      if (props.userData) {
+        const roleMap = {
+          admin: 'Administrator',
+          distributor: 'Distributor',
+          service_provider: 'Service Provider',
+          client: 'Client',
+          customer: 'Customer'
+        }
+        return roleMap[props.userData.role] || 'Store User'
+      }
+      return 'Store Dashboard'
+    })
+    
+    // Stats with fallback to dashboard data
+    const stats = computed(() => {
+      if (props.dashboardData) {
+        return {
+          totalOrders: props.dashboardData.total_orders || 156,
+          products: props.dashboardData.total_products || 89,
+          revenue: props.dashboardData.revenue || '$12.4K'
+        }
+      }
+      return {
+        totalOrders: 156,
+        products: 89,
+        revenue: '$12.4K'
+      }
+    })
 
     const closeSidebar = () => {
       emit('toggle')
@@ -427,12 +470,6 @@ export default {
       }
     }
     
-    const handleLogout = () => {
-      // Logout logic here
-      console.log('Logging out...')
-      router.push('/login')
-    }
-    
     const checkMobile = () => {
       isMobile.value = window.innerWidth <= 768
     }
@@ -446,10 +483,11 @@ export default {
       isCollapsed,
       isMobile,
       stats,
+      userName,
+      userRole,
       closeSidebar,
       toggleCollapse,
       handleNavigation,
-      handleLogout,
       checkMobile
     }
   },
@@ -458,7 +496,7 @@ export default {
     window.removeEventListener('resize', this.checkMobile)
   },
   
-  emits: ['toggle', 'link-click', 'collapsed']
+  emits: ['toggle', 'link-click', 'collapsed', 'logout-click']
 }
 </script>
 

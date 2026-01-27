@@ -258,12 +258,13 @@ class HRManagerController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => $request->password, // <-- removed Hash::make
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'hr_manager',
                 'status' => 'pending'
             ]);
+
             
             // Create HR manager linked to the user account
             $hrManager = HRManager::create([

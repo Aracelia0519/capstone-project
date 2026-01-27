@@ -401,12 +401,15 @@ const validationErrors = reactive({
   password: ''
 })
 
-// Role-based redirect routes
+// Role-based redirect routes - UPDATED with new roles
 const roleRoutes = {
   admin: '/admin/dashboard',
   distributor: '/distributor/distributordashboard',
   service_provider: '/serviceProvider/dashboardSP',
-  client: '/Clients/dashboardC'
+  client: '/Clients/dashboardC',
+  operational_distributor: '/ECommerce/ECDashboard',
+  finance_manager: '/finance/financeDashboard',
+  hr_manager: '/HR/HRdashboard'
 }
 
 // Particle system
@@ -542,7 +545,14 @@ const handleLogin = async () => {
       showNotification('Success!', 'Redirecting to dashboard...', 'success')
       
       setTimeout(() => {
-        const redirectRoute = roleRoutes[response.data.user.role] || '/'
+        const userRole = response.data.user.role
+        const redirectRoute = roleRoutes[userRole] || '/'
+        
+        // Handle unknown roles
+        if (!roleRoutes[userRole]) {
+          console.warn(`Unknown role: ${userRole}, redirecting to home`)
+        }
+        
         router.push(redirectRoute)
       }, 1500)
     } else {
