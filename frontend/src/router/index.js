@@ -22,6 +22,9 @@ import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
 import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
 import SalesHistory from '@/views/distributor/SalesHistory.vue'
 import ServiceProviders from '@/views/distributor/ServiceProviders.vue'
+import OperationalDistributors from '@/views/distributor/OperationalDistributors.vue'
+import HRManagers from '@/views/distributor/HRManagers.vue'
+import FinanceManagers from '@/views/distributor/FinanceManagers.vue'
 import CoreDepartments from '@/views/distributor/CoreDepartments.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
@@ -99,6 +102,7 @@ import ECommerceCart from '@/views/ClientE-Commerce/ECommerceCart.vue'
 import ECommerceCheckout from '@/views/ClientE-Commerce/ECommerceCheckout.vue'
 import ClientECommerceOrders from '@/views/ClientE-Commerce/ECommerceOrders.vue'
 import ECommerceProfile from '@/views/ClientE-Commerce/ECommerceProfile.vue'
+
 
 const routes = [
   {
@@ -204,10 +208,29 @@ const routes = [
         component: ServiceProviders,
         meta: { requiresVerification: true }
       },
-      {
+      /*{
         path: 'CoreDepartments',
         name: 'CoreDepartments',
         component: CoreDepartments,
+        meta: { requiresVerification: true }
+      },*/
+      
+      {
+        path: 'OperationalDistributorD',
+        name: 'OperationalDistributorD',
+        component: OperationalDistributors,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'HRmanagerD',
+        name: 'HRmanagerD',
+        component: HRManagers,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'FinanceManagerD',
+        name: 'FinanceManagerD',
+        component: FinanceManagers,
         meta: { requiresVerification: true }
       },
       {

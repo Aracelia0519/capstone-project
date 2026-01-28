@@ -33,7 +33,6 @@ return new class extends Migration
             // Employment Details
             $table->string('department');
             $table->string('position');
-            $table->string('job_title');
             $table->enum('employment_type', ['full_time', 'part_time', 'contract', 'probationary', 'intern'])->default('full_time');
             $table->enum('employment_status', ['probationary', 'regular', 'contractual', 'resigned', 'terminated', 'retired'])->default('probationary');
             $table->date('hire_date');

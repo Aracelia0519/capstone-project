@@ -174,6 +174,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'destroy']);
             Route::post('/{id}/regularize', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'regularize']);
         });
+
+        Route::prefix('positions')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\HR\PositionController::class, 'index']);
+            Route::get('/statistics', [\App\Http\Controllers\Api\HR\PositionController::class, 'statistics']);
+            Route::get('/departments', [\App\Http\Controllers\Api\HR\PositionController::class, 'departments']);
+            Route::get('/distributors', [\App\Http\Controllers\Api\HR\PositionController::class, 'distributors']);
+            Route::post('/', [\App\Http\Controllers\Api\HR\PositionController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'destroy']);
+        });
     });
 
     

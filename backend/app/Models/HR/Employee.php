@@ -32,7 +32,6 @@ class Employee extends Model
         'nationality',
         'department',
         'position',
-        'job_title',
         'employment_type',
         'employment_status',
         'hire_date',

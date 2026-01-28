@@ -174,7 +174,6 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ employee.position }}</div>
-                <div class="text-xs text-gray-500">{{ employee.job_title }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="px-3 py-1 text-xs rounded-full shadow-sm" :class="getDeptColor(employee.department)">
@@ -532,37 +531,39 @@
                     <label class="block text-sm font-medium text-gray-700">
                       Department <span class="text-red-500">*</span>
                     </label>
-                    <input 
+                    <select 
                       v-model="newEmployee.department" 
-                      type="text" 
                       required 
-                      placeholder="e.g., Human Resources" 
+                      @change="loadPositionsForDepartment"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                     >
+                      <option value="">Select Department</option>
+                      <option v-for="dept in availableDepartments" :key="dept" :value="dept">
+                        {{ dept }}
+                      </option>
+                    </select>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
                       Position <span class="text-red-500">*</span>
                     </label>
-                    <input 
+                    <select 
                       v-model="newEmployee.position" 
-                      type="text" 
                       required 
-                      placeholder="e.g., HR Staff" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :disabled="!newEmployee.department || availablePositions.length === 0"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                  </div>
-                  <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      Job Title <span class="text-red-500">*</span>
-                    </label>
-                    <input 
-                      v-model="newEmployee.job_title" 
-                      type="text" 
-                      required 
-                      placeholder="e.g., Human Resources Specialist" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
+                      <option value="">Select Position</option>
+                      <option v-for="position in availablePositions" :key="position.id" :value="position.title">
+                        {{ position.title }}
+                      </option>
+                    </select>
+                    <p v-if="!newEmployee.department" class="text-xs text-gray-500">
+                      Please select a department first
+                    </p>
+                    <p v-if="newEmployee.department && availablePositions.length === 0" class="text-xs text-yellow-600">
+                      No positions available for this department. Please add positions first in the Positions section.
+                    </p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -1172,6 +1173,8 @@ const statistics = ref(null)
 const companyInfo = ref(null)
 const userInfo = ref(null)
 const currentStep = ref(1)
+const availableDepartments = ref([])
+const availablePositions = ref([])
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 const currentYear = new Date().getFullYear()
@@ -1190,6 +1193,7 @@ onMounted(async () => {
   try {
     userInfo.value = await getCurrentUser()
     fetchEmployees()
+    fetchDepartments()
   } catch (err) {
     console.error('Failed to get user info:', err)
   }
@@ -1218,7 +1222,6 @@ const newEmployee = reactive({
   // Employment Details
   department: '',
   position: '',
-  job_title: '',
   employment_type: 'full_time',
   employment_status: 'probationary',
   hire_date: today.value,
@@ -1299,6 +1302,53 @@ const handleFileUpload = (event, field) => {
       return
     }
     newEmployee[field] = file
+  }
+}
+
+// Fetch departments from positions
+const fetchDepartments = async () => {
+  try {
+    const response = await axios.get('/hr/positions/departments')
+    if (response.data.success) {
+      availableDepartments.value = response.data.data.map(dept => dept.name)
+    }
+  } catch (err) {
+    console.error('Failed to fetch departments:', err)
+    // Fallback to departments from employees if positions API fails
+    if (departments.value.length > 0) {
+      availableDepartments.value = departments.value
+    }
+  }
+}
+
+// Load positions for selected department
+const loadPositionsForDepartment = async () => {
+  if (!newEmployee.department) {
+    availablePositions.value = []
+    return
+  }
+  
+  try {
+    // Clear position when department changes
+    newEmployee.position = ''
+    
+    // Fetch positions for the selected department
+    const response = await axios.get('/hr/positions', {
+      params: {
+        department: newEmployee.department,
+        status: 'active',
+        per_page: 100 // Get all positions for this department
+      }
+    })
+    
+    if (response.data.success) {
+      availablePositions.value = response.data.data.data || []
+    } else {
+      availablePositions.value = []
+    }
+  } catch (err) {
+    console.error('Failed to fetch positions:', err)
+    availablePositions.value = []
   }
 }
 
@@ -1457,6 +1507,9 @@ const saveEmployee = async () => {
         else newEmployee[key] = ''
       })
       
+      // Reset position dropdowns
+      availablePositions.value = []
+      
       // Reset wizard to first step
       currentStep.value = 1
       
@@ -1533,6 +1586,9 @@ const closeAddModal = () => {
     else if (key === 'salary') newEmployee[key] = 0
     else newEmployee[key] = ''
   })
+  
+  // Reset position dropdowns
+  availablePositions.value = []
 }
 
 const exportToCSV = () => {

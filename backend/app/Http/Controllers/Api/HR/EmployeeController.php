@@ -105,7 +105,6 @@ class EmployeeController extends Controller
                     'phone' => $employee->phone,
                     'department' => $employee->department,
                     'position' => $employee->position,
-                    'job_title' => $employee->job_title,
                     'employment_type' => $employee->employment_type,
                     'employment_status' => $employee->employment_status,
                     'hire_date' => $employee->hire_date->format('Y-m-d'),
@@ -199,7 +198,6 @@ class EmployeeController extends Controller
                 'nationality' => $employee->nationality,
                 'department' => $employee->department,
                 'position' => $employee->position,
-                'job_title' => $employee->job_title,
                 'employment_type' => $employee->employment_type,
                 'employment_status' => $employee->employment_status,
                 'hire_date' => $employee->hire_date->format('Y-m-d'),
@@ -303,7 +301,6 @@ class EmployeeController extends Controller
                 // Employment Details
                 'department' => 'required|string|max:255',
                 'position' => 'required|string|max:255',
-                'job_title' => 'required|string|max:255',
                 'employment_type' => 'required|in:full_time,part_time,contract,probationary,intern',
                 'employment_status' => 'required|in:probationary,regular,contractual,resigned,terminated,retired',
                 'hire_date' => 'required|date',
@@ -363,7 +360,7 @@ class EmployeeController extends Controller
                 'first_name', 'middle_name', 'last_name', 'email', 'phone',
                 'emergency_contact', 'address', 'date_of_birth', 'gender',
                 'marital_status', 'nationality', 'department', 'position',
-                'job_title', 'employment_type', 'employment_status', 'hire_date',
+                'employment_type', 'employment_status', 'hire_date',
                 'probation_end_date', 'regularization_date', 'salary',
                 'salary_currency', 'payment_frequency', 'bank_name',
                 'bank_account_number', 'bank_account_name', 'sss_number',
@@ -475,7 +472,6 @@ class EmployeeController extends Controller
                 // Only allow updating certain fields
                 'department' => 'sometimes|string|max:255',
                 'position' => 'sometimes|string|max:255',
-                'job_title' => 'sometimes|string|max:255',
                 'employment_status' => 'sometimes|in:probationary,regular,contractual,resigned,terminated,retired',
                 'salary' => 'sometimes|numeric|min:0',
                 'salary_currency' => 'sometimes|string|max:3',
@@ -493,7 +489,7 @@ class EmployeeController extends Controller
             
             // Update employee
             $updateData = $request->only([
-                'department', 'position', 'job_title', 'employment_status',
+                'department', 'position', 'employment_status',
                 'salary', 'salary_currency', 'status', 'notes'
             ]);
             
