@@ -118,6 +118,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is an employee
+     */
+    public function isEmployee(): bool
+    {
+        return $this->role === 'employee';
+    }
+
+    /**
+     * Check if user is an HR manager
+     */
+    public function isHRManager(): bool
+    {
+        return $this->role === 'hr_manager';
+    }
+
+    /**
+     * Check if user is a finance manager
+     */
+    public function isFinanceManager(): bool
+    {
+        return $this->role === 'finance_manager';
+    }
+
+    /**
      * Check if user is active
      */
     public function isActive(): bool
@@ -157,6 +181,38 @@ class User extends Authenticatable
         return $this->hasOne(Distributor\OperationalDistributor::class, 'user_id');
     }
 
+    /**
+     * Get the HR manager record (if this user is an HR manager)
+     */
+    public function hrManager()
+    {
+        return $this->hasOne(Distributor\HRManager::class, 'user_id');
+    }
+
+    /**
+     * Get the finance manager record (if this user is a finance manager)
+     */
+    public function financeManager()
+    {
+        return $this->hasOne(Finance\FinanceManager::class, 'user_id');
+    }
+
+    /**
+     * Get the employee record (if this user is an employee)
+     */
+    public function employee()
+    {
+        return $this->hasOne(HR\Employee::class, 'user_id');
+    }
+
+    /**
+     * Get the service provider requirement for this user (if they are a service provider)
+     */
+    public function serviceProviderRequirement()
+    {
+        return $this->hasOne(ServiceProvider\ServiceProviderRequirement::class);
+    }
+    
     /**
      * Check if distributor is verified
      */
@@ -254,46 +310,4 @@ class User extends Authenticatable
         $this->tokens()->delete();
         $this->update(['remember_token' => null]);
     }
-
-    /**
-     * Check if user is an HR manager
-     */
-    public function isHRManager(): bool
-    {
-        return $this->role === 'hr_manager';
-    }
-
-    /**
-     * Get the HR manager record (if this user is an HR manager)
-     */
-    public function hrManager()
-    {
-        return $this->hasOne(Distributor\HRManager::class, 'user_id');
-    }
-
-    /**
-     * Check if user is a finance manager
-     */
-    public function isFinanceManager(): bool
-    {
-        return $this->role === 'finance_manager';
-    }
-
-    // Also add this method to check finance manager:
-    /**
-     * Get the finance manager record (if this user is a finance manager)
-     */
-    public function financeManager()
-    {
-        return $this->hasOne(Finance\FinanceManager::class, 'user_id');
-    }
-
-    /**
- * Get the service provider requirement for this user (if they are a service provider)
- */
-public function serviceProviderRequirement()
-{
-    return $this->hasOne(ServiceProvider\ServiceProviderRequirement::class);
-}
-    
 }

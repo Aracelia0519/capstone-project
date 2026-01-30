@@ -1,6 +1,5 @@
 <?php
 
-
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
@@ -173,6 +172,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'destroy']);
             Route::post('/{id}/regularize', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'regularize']);
+            // New route for employee accessibility
+            Route::get('/{id}/accessibility', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'getEmployeeAccessibility']);
+            // Add this route in your HR routes section
         });
 
         Route::prefix('positions')->group(function () {
@@ -184,6 +186,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'show']);
             Route::put('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'destroy']);
+            Route::get('/{id}/accessibility', [\App\Http\Controllers\Api\HR\PositionController::class, 'getEmployeeAccessibility']);
+            Route::get('/hr/positions/employee-accessibility/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'getEmployeeSidebarAccessibility']);
         });
     });
 

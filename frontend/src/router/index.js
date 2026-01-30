@@ -65,6 +65,9 @@ import PositionsRoles from '@/views/humanResource/PositionsRoles.vue'
 import Departments from '@/views/humanResource/Departments.vue'
 import EmploymentStatus from '@/views/humanResource/EmploymentStatus.vue'
 import ReportsHR from '@/views/humanResource/Reports.vue'
+import RecruitmentApplication from '@/views/humanResource/RecruitmentApplication.vue'
+import PayrollManagement from '@/views/humanResource/PayrollManagement.vue'
+
 
 import FinanceLayout from '@/layouts/financeLayout.vue'
 import FinanceDashboard from '@/views/finance/financeDashboard.vue'
@@ -102,6 +105,15 @@ import ECommerceCart from '@/views/ClientE-Commerce/ECommerceCart.vue'
 import ECommerceCheckout from '@/views/ClientE-Commerce/ECommerceCheckout.vue'
 import ClientECommerceOrders from '@/views/ClientE-Commerce/ECommerceOrders.vue'
 import ECommerceProfile from '@/views/ClientE-Commerce/ECommerceProfile.vue'
+
+import EmployeeLayout from '@/layouts/EmployeeLayout.vue'
+import DashboardEmployee from '@/views/Employees/DashboardEmployee.vue'
+import AttendanceEmployee from '@/views/Employees/AttendanceEmployee.vue'
+import PayrollEmployee from '@/views/Employees/PayrollEmployee.vue'
+import LeavesEmployee from '@/views/Employees/LeavesEmployee.vue'
+import RequestsEmployee from '@/views/Employees/RequestsEmployee.vue'
+import ProfileEmployee from '@/views/Employees/ProfileEmployee.vue'
+import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
 
 
 const routes = [
@@ -384,7 +396,10 @@ const routes = [
   {
     path: '/HR',
     component: HRLayout,
-    meta: { requiresAuth: true, role: 'hr_manager' },
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['hr_manager', 'employee'] 
+    },
     children: [
       {
         path: 'HRdashboard',
@@ -412,6 +427,16 @@ const routes = [
         component: EmploymentStatus
       },
       {
+        path: 'recruitmentApplication',
+        name: 'recruitmentApplication',
+        component: RecruitmentApplication
+      },
+      {
+        path: 'payrollHR',
+        name: 'payrollHR',
+        component: PayrollManagement
+      },
+      {
         path: 'reportsHR',
         name: 'reportsHR',
         component: ReportsHR
@@ -423,7 +448,10 @@ const routes = [
   {
     path: '/finance',
     component: FinanceLayout,
-    meta: { requiresAuth: true, role: 'finance_manager' },
+    meta: { 
+      requiresAuth: true,
+      allowedRoles: ['finance_manager', 'employee'] 
+    },
     children: [
       {
         path: 'financeDashboard',
@@ -596,6 +624,49 @@ const routes = [
         path: 'EccommerceProfile',
         name: 'EccommerceProfile',
         component: ECommerceProfile
+      },
+    ]
+  },
+
+  {
+    path: '/Employees',
+    component: EmployeeLayout,
+    meta: { requiresAuth: false },
+    children: [
+      {
+        path: 'DashboardEmployee',
+        name: 'DashboardEmployee',
+        component: DashboardEmployee
+      },
+      {
+        path: 'AttendanceEmployee',
+        name: 'AttendanceEmployee',
+        component: AttendanceEmployee
+      },
+      {
+        path: 'PayrollEmployee',
+        name: 'PayrollEmployee',
+        component: PayrollEmployee
+      },
+      {
+        path: 'LeavesEmployee',
+        name: 'LeavesEmployee',
+        component: LeavesEmployee
+      },
+      {
+        path: 'RequestEmployee',
+        name: 'RequestEmployee',
+        component: RequestsEmployee
+      },
+      {
+        path: 'ProfileEmployee',
+        name: 'ProfileEmployee',
+        component: ProfileEmployee
+      },
+      {
+        path: 'NotificationEmployee',
+        name: 'NotificationEmployee',
+        component: NotificationsEmployee
       },
     ]
   },

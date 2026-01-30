@@ -4,19 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\HR\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-use App\Jobs\SendRegistrationEmail; 
+use App\Jobs\SendRegistrationEmail;
 
 class AuthController extends Controller
 {
     /**
      * Register a new user
      */
-     public function register(Request $request)
+    public function register(Request $request)
     {
         // Validate request
         $validator = Validator::make($request->all(), [
@@ -43,14 +44,14 @@ class AuthController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => $request->password, // This should be hashed in User model mutator
+                'password' => $request->password,
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => $request->role,
-                'status' => 'pending', // Default to pending until verified
+                'status' => 'pending',
             ]);
 
-            // ADD THIS: Dispatch the registration email job
+            // Dispatch the registration email job
             SendRegistrationEmail::dispatch([
                 'id' => $user->id,
                 'first_name' => $user->first_name,
@@ -90,7 +91,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Login user - Modified to allow pending status
+     * Login user - Modified to include employee department data
      */
     public function login(Request $request)
     {
@@ -128,7 +129,7 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            // MODIFIED: Only block inactive users, allow pending users
+            // Only block inactive users, allow pending users
             if ($user->status === 'inactive') {
                 return response()->json([
                     'status' => 'error',
@@ -136,8 +137,43 @@ class AuthController extends Controller
                 ], 403);
             }
 
+            // Initialize employee data
+            $employeeData = null;
+            
+            // If user is an employee, get their department from hr_employees table
+            if ($user->isEmployee()) {
+                $employee = Employee::where('user_id', $user->id)->first();
+                
+                if ($employee) {
+                    $employeeData = [
+                        'department' => $employee->department,
+                        'position' => $employee->position,
+                        'employee_code' => $employee->employee_code,
+                        'employment_status' => $employee->employment_status
+                    ];
+                }
+            }
+
             // Generate token and store in remember_token
             $token = $user->createPersonalToken($request->remember);
+            
+            // Prepare user data
+            $userData = [
+                'id' => $user->id,
+                'name' => $user->full_name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => $user->status,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'phone' => $user->phone,
+                'address' => $user->address
+            ];
+            
+            // Add employee data if exists
+            if ($employeeData) {
+                $userData['employee_data'] = $employeeData;
+            }
             
             // Prepare response based on status
             $response = [
@@ -145,17 +181,7 @@ class AuthController extends Controller
                 'message' => $user->status === 'pending' 
                     ? 'Login successful. Your account is pending approval.' 
                     : 'Login successful',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->full_name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'status' => $user->status,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'phone' => $user->phone,
-                    'address' => $user->address
-                ],
+                'user' => $userData,
                 'token' => $token
             ];
             
@@ -200,7 +226,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user
+     * Get authenticated user - Updated to include employee data
      */
     public function me(Request $request)
     {
@@ -213,21 +239,70 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Initialize employee data
+        $employeeData = null;
+        
+        // If user is an employee, get their department from hr_employees table
+        if ($user->isEmployee()) {
+            $employee = Employee::where('user_id', $user->id)->first();
+            
+            if ($employee) {
+                // Find position to get accessibility
+                $position = \App\Models\HR\Position::where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->where('status', 'active')
+                    ->first();
+                
+                $accessibilityKeys = [];
+                
+                if ($position) {
+                    // Get from position_accessibilities table
+                    $accessibilitySettings = \App\Models\HR\PositionAccessibility::where('position_id', $position->id)
+                        ->where('is_granted', true)
+                        ->get();
+                    
+                    if ($accessibilitySettings->count() > 0) {
+                        $accessibilityKeys = $accessibilitySettings->pluck('permission_key')->toArray();
+                    } 
+                    // Fallback to requirements
+                    elseif ($position->requirements && isset($position->requirements['accessibility'])) {
+                        $accessibilityKeys = $position->requirements['accessibility'];
+                    }
+                }
+                
+                $employeeData = [
+                    'department' => $employee->department,
+                    'position' => $employee->position,
+                    'employee_code' => $employee->employee_code,
+                    'employment_status' => $employee->employment_status,
+                    'accessibility_keys' => $accessibilityKeys
+                ];
+            }
+        }
+
+        // Prepare user data
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->full_name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'phone' => $user->phone,
+            'address' => $user->address,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at
+        ];
+        
+        // Add employee data if exists
+        if ($employeeData) {
+            $userData['employee_data'] = $employeeData;
+        }
+
         return response()->json([
             'status' => 'success',
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->full_name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'status' => $user->status,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'phone' => $user->phone,
-                'address' => $user->address,
-                'created_at' => $user->created_at,
-                'updated_at' => $user->updated_at
-            ]
+            'user' => $userData
         ]);
     }
 

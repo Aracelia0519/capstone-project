@@ -207,289 +207,342 @@
     </div>
 
     <!-- Position Wizard Modal -->
-    <div v-if="showPositionWizard" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 backdrop-blur-sm" @click="closeWizard"></div>
-      
-      <div class="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-appear">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-2xl font-bold text-white mb-1">
-                {{ editingPosition ? 'Edit Position' : 'Create New Position' }}
-              </h2>
-              <p class="text-blue-100">Define roles and responsibilities for your team</p>
-            </div>
-            <button @click="closeWizard" class="p-2 text-white hover:bg-white/20 rounded-full transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <!-- Progress Steps -->
-          <div class="mt-8 flex items-center justify-center">
-            <div class="flex items-center">
-              <!-- Step 1 -->
-              <div class="flex items-center">
-                <div :class="['w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
-                  currentStep >= 1 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
-                  <span class="font-semibold">1</span>
-                </div>
-                <div :class="['ml-2 text-sm font-medium transition-all duration-300', 
-                  currentStep >= 1 ? 'text-white' : 'text-blue-300']">Basic Info</div>
-              </div>
-              
-              <!-- Connector -->
-              <div :class="['w-16 h-1 mx-2 transition-all duration-300', 
-                currentStep >= 2 ? 'bg-white' : 'bg-blue-300']"></div>
-              
-              <!-- Step 2 -->
-              <div class="flex items-center">
-                <div :class="['w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
-                  currentStep >= 2 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
-                  <span class="font-semibold">2</span>
-                </div>
-                <div :class="['ml-2 text-sm font-medium transition-all duration-300', 
-                  currentStep >= 2 ? 'text-white' : 'text-blue-300']">Details</div>
-              </div>
-              
-              <!-- Connector -->
-              <div :class="['w-16 h-1 mx-2 transition-all duration-300', 
-                currentStep >= 3 ? 'bg-white' : 'bg-blue-300']"></div>
-              
-              <!-- Step 3 -->
-              <div class="flex items-center">
-                <div :class="['w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
-                  currentStep >= 3 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
-                  <span class="font-semibold">3</span>
-                </div>
-                <div :class="['ml-2 text-sm font-medium transition-all duration-300', 
-                  currentStep >= 3 ? 'text-white' : 'text-blue-300']">Review</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div v-if="showPositionWizard" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 backdrop-blur-sm" @click="closeWizard"></div>
         
-        <!-- Wizard Content -->
-        <div class="p-8">
-          <!-- Step 1: Basic Information -->
-          <div v-if="currentStep === 1" class="space-y-6">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Title & Department</h3>
-              <p class="text-gray-600 mb-6">Start by providing the basic information about the position.</p>
-              
-              <div class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-500">*</span> Position Title
-                  </label>
-                  <div class="relative">
-                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <input v-model="positionForm.title" type="text" required 
-                      class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
-                      placeholder="e.g., Senior Software Engineer, HR Manager">
-                  </div>
-                  <p class="text-xs text-gray-500 mt-2">Enter a clear and descriptive title for this position</p>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-500">*</span> Department
-                  </label>
-                  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <button v-for="dept in allDepartments.slice(0, 9)" :key="dept"
-                      @click="positionForm.department = dept"
-                      :class="['px-4 py-3 rounded-lg border transition-all text-sm font-medium', 
-                      positionForm.department === dept 
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
-                      {{ dept }}
-                    </button>
-                    <button @click="positionForm.department = 'other'; showCustomDept = true"
-                      :class="['px-4 py-3 rounded-lg border transition-all text-sm font-medium', 
-                      positionForm.department === 'other' 
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
-                      + Custom Department
-                    </button>
-                  </div>
-                  
-                  <div v-if="showCustomDept" class="mt-4">
-                    <input v-model="positionForm.custom_department" type="text" required
-                      class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
-                      placeholder="Enter custom department name...">
-                  </div>
-                </div>
+        <!-- Modal Container -->
+        <div class="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden animate-modal-appear flex flex-col">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 md:p-6 flex-shrink-0">
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <h2 class="text-xl md:text-2xl font-bold text-white mb-1 truncate">
+                  {{ editingPosition ? 'Edit Position' : 'Create New Position' }}
+                </h2>
+                <p class="text-blue-100 text-sm md:text-base truncate">Define roles and responsibilities for your team</p>
               </div>
-            </div>
-          </div>
-          
-          <!-- Step 2: Details -->
-          <div v-if="currentStep === 2" class="space-y-6">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Details</h3>
-              <p class="text-gray-600 mb-6">Define the responsibilities and compensation for this role.</p>
-              
-              <div class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <span class="text-red-500">*</span> Role Description
-                  </label>
-                  <textarea v-model="positionForm.description" rows="5" required
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all resize-none"
-                    placeholder="Describe the key responsibilities, requirements, and expectations for this position..."></textarea>
-                  <p class="text-xs text-gray-500 mt-2">Be specific about duties, required skills, and daily tasks</p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
-                    <div class="space-y-3">
-                      <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                        <input v-model="positionForm.min_salary" type="number" step="0.01" min="0"
-                          class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
-                          placeholder="Minimum salary">
-                      </div>
-                      <div class="text-center text-gray-400">to</div>
-                      <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                        <input v-model="positionForm.max_salary" type="number" step="0.01" min="0"
-                          class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
-                          placeholder="Maximum salary">
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                    <div class="grid grid-cols-2 gap-3">
-                      <button @click="positionForm.status = 'active'"
-                        :class="['px-4 py-3 rounded-lg border transition-all text-sm font-medium', 
-                        positionForm.status === 'active' 
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-500 text-green-700 ring-2 ring-green-200' 
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
-                        <div class="flex items-center justify-center">
-                          <div class="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-                          Active
-                        </div>
-                      </button>
-                      <button @click="positionForm.status = 'inactive'"
-                        :class="['px-4 py-3 rounded-lg border transition-all text-sm font-medium', 
-                        positionForm.status === 'inactive' 
-                          ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 text-gray-700 ring-2 ring-gray-200' 
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
-                        <div class="flex items-center justify-center">
-                          <div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div>
-                          Inactive
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Step 3: Review -->
-          <div v-if="currentStep === 3" class="space-y-6">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Review & Confirm</h3>
-              <p class="text-gray-600 mb-6">Please review all the information before saving.</p>
-              
-              <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-6 space-y-4">
-                <div class="flex items-start">
-                  <div class="w-32 text-sm font-medium text-gray-600">Title:</div>
-                  <div class="flex-1 font-medium text-gray-800">{{ positionForm.title }}</div>
-                </div>
-                <div class="flex items-start">
-                  <div class="w-32 text-sm font-medium text-gray-600">Department:</div>
-                  <div class="flex-1">
-                    <span class="inline-block px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-full text-sm font-medium">
-                      {{ positionForm.department === 'other' ? positionForm.custom_department : positionForm.department }}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex items-start">
-                  <div class="w-32 text-sm font-medium text-gray-600">Status:</div>
-                  <div class="flex-1">
-                    <span :class="['inline-flex items-center px-3 py-1 rounded-full text-sm font-medium', 
-                      positionForm.status === 'active' 
-                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700' 
-                        : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700']">
-                      <span :class="['w-2 h-2 rounded-full mr-2', 
-                        positionForm.status === 'active' ? 'bg-green-500' : 'bg-gray-500']"></span>
-                      {{ positionForm.status }}
-                    </span>
-                  </div>
-                </div>
-                <div v-if="positionForm.min_salary || positionForm.max_salary" class="flex items-start">
-                  <div class="w-32 text-sm font-medium text-gray-600">Salary Range:</div>
-                  <div class="flex-1 font-medium text-gray-800">
-                    <span v-if="positionForm.min_salary && positionForm.max_salary">
-                      ${{ formatSalary(positionForm.min_salary) }} - ${{ formatSalary(positionForm.max_salary) }}
-                    </span>
-                    <span v-else-if="positionForm.min_salary">
-                      From ${{ formatSalary(positionForm.min_salary) }}
-                    </span>
-                    <span v-else-if="positionForm.max_salary">
-                      Up to ${{ formatSalary(positionForm.max_salary) }}
-                    </span>
-                  </div>
-                </div>
-                <div class="flex items-start">
-                  <div class="w-32 text-sm font-medium text-gray-600">Description:</div>
-                  <div class="flex-1 text-gray-700">{{ positionForm.description }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Footer Navigation -->
-        <div class="px-8 py-6 bg-gray-50 border-t border-gray-200">
-          <div class="flex justify-between items-center">
-            <div>
-              <button v-if="currentStep > 1" @click="previousStep" 
-                class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              <button @click="closeWizard" class="ml-4 p-2 text-white hover:bg-white/20 rounded-full transition-colors flex-shrink-0">
+                <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                Back
               </button>
             </div>
             
-            <div class="flex items-center space-x-3">
-              <button v-if="currentStep < 3" @click="nextStep" 
-                :disabled="!canProceed"
-                :class="['px-6 py-2.5 rounded-lg transition-all flex items-center font-medium', 
-                canProceed 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg' 
-                  : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
-                Continue
-                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+            <!-- Progress Steps -->
+            <div class="mt-6 md:mt-8">
+              <div class="flex items-center justify-center">
+                <div class="flex items-center flex-wrap justify-center gap-2">
+                  <!-- Step 1 -->
+                  <div class="flex items-center">
+                    <div :class="['w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
+                      currentStep >= 1 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
+                      <span class="font-semibold text-sm md:text-base">1</span>
+                    </div>
+                    <div :class="['ml-1 md:ml-2 text-xs md:text-sm font-medium transition-all duration-300 whitespace-nowrap', 
+                      currentStep >= 1 ? 'text-white' : 'text-blue-300']">Basic Info</div>
+                  </div>
+                  
+                  <!-- Connector -->
+                  <div :class="['w-8 h-1 md:w-16 md:h-1 mx-1 md:mx-2 transition-all duration-300', 
+                    currentStep >= 2 ? 'bg-white' : 'bg-blue-300']"></div>
+                  
+                  <!-- Step 2 -->
+                  <div class="flex items-center">
+                    <div :class="['w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
+                      currentStep >= 2 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
+                      <span class="font-semibold text-sm md:text-base">2</span>
+                    </div>
+                    <div :class="['ml-1 md:ml-2 text-xs md:text-sm font-medium transition-all duration-300 whitespace-nowrap', 
+                      currentStep >= 2 ? 'text-white' : 'text-blue-300']">Details</div>
+                  </div>
+                  
+                  <!-- Connector -->
+                  <div :class="['w-8 h-1 md:w-16 md:h-1 mx-1 md:mx-2 transition-all duration-300', 
+                    currentStep >= 3 ? 'bg-white' : 'bg-blue-300']"></div>
+                  
+                  <!-- Step 3 -->
+                  <div class="flex items-center">
+                    <div :class="['w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300', 
+                      currentStep >= 3 ? 'bg-white border-white text-blue-600' : 'border-blue-300 text-blue-300']">
+                      <span class="font-semibold text-sm md:text-base">3</span>
+                    </div>
+                    <div :class="['ml-1 md:ml-2 text-xs md:text-sm font-medium transition-all duration-300 whitespace-nowrap', 
+                      currentStep >= 3 ? 'text-white' : 'text-blue-300']">Review</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Wizard Content (Scrollable) -->
+          <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            <!-- Step 1: Basic Information -->
+            <div v-if="currentStep === 1" class="space-y-4 md:space-y-6">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Title & Department</h3>
+                <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Start by providing the basic information about the position.</p>
+                
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      <span class="text-red-500">*</span> Position Title
+                    </label>
+                    <div class="relative">
+                      <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <input v-model="positionForm.title" type="text" required 
+                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
+                        placeholder="e.g., Senior Software Engineer, HR Manager">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Enter a clear and descriptive title for this position</p>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      <span class="text-red-500">*</span> Department
+                    </label>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                      <button v-for="dept in allDepartments.slice(0, 9)" :key="dept"
+                        @click="positionForm.department = dept"
+                        :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium', 
+                        positionForm.department === dept 
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                        {{ dept }}
+                      </button>
+                      <button @click="positionForm.department = 'other'; showCustomDept = true"
+                        :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium col-span-2 md:col-span-1', 
+                        positionForm.department === 'other' 
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                        + Custom Department
+                      </button>
+                    </div>
+                    
+                    <div v-if="showCustomDept" class="mt-4">
+                      <input v-model="positionForm.custom_department" type="text" required
+                        class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
+                        placeholder="Enter custom department name...">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Step 2: Details -->
+            <div v-if="currentStep === 2" class="space-y-4 md:space-y-6">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Details</h3>
+                <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Define the responsibilities and compensation for this role.</p>
+                
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      <span class="text-red-500">*</span> Role Description
+                    </label>
+                    <textarea v-model="positionForm.description" rows="4" required
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all resize-none"
+                      placeholder="Describe the key responsibilities, requirements, and expectations for this position..."></textarea>
+                    <p class="text-xs text-gray-500 mt-2">Be specific about duties, required skills, and daily tasks</p>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
+                      <div class="space-y-3">
+                        <div class="relative">
+                          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <input v-model="positionForm.min_salary" type="number" step="0.01" min="0"
+                            class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
+                            placeholder="Minimum salary">
+                        </div>
+                        <div class="text-center text-gray-400">to</div>
+                        <div class="relative">
+                          <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                          <input v-model="positionForm.max_salary" type="number" step="0.01" min="0"
+                            class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline-blue transition-all"
+                            placeholder="Maximum salary">
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <div class="grid grid-cols-2 gap-3">
+                        <button @click="positionForm.status = 'active'"
+                          :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-sm font-medium', 
+                          positionForm.status === 'active' 
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-500 text-green-700 ring-2 ring-green-200' 
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                          <div class="flex items-center justify-center">
+                            <div class="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                            Active
+                          </div>
+                        </button>
+                        <button @click="positionForm.status = 'inactive'"
+                          :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-sm font-medium', 
+                          positionForm.status === 'inactive' 
+                            ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 text-gray-700 ring-2 ring-gray-200' 
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                          <div class="flex items-center justify-center">
+                            <div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div>
+                            Inactive
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Accessibility Settings (for HR Department only) -->
+                  <div v-if="positionForm.department === 'Human Resources'" class="mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Accessibility Settings</h4>
+                    <p class="text-gray-600 mb-4 text-sm md:text-base">Select which sidebar items this position can access:</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                      <div v-for="item in accessibilityOptions" :key="item.id"
+                        class="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                        @click="toggleAccessibilityItem(item.id)">
+                        <div class="flex items-center h-5">
+                          <input :id="`accessibility-${item.id}`" type="checkbox" 
+                            :checked="positionForm.accessibility.includes(item.id)"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        </div>
+                        <label :for="`accessibility-${item.id}`" 
+                          class="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
+                          {{ item.label }}
+                        </label>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                      Note: These settings determine which HR sidebar items will be accessible to users assigned to this position.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Step 3: Review -->
+            <div v-if="currentStep === 3" class="space-y-4 md:space-y-6">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Review & Confirm</h3>
+                <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Please review all the information before saving.</p>
+                
+                <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-4 md:p-6 space-y-3 md:space-y-4">
+                  <div class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Title:</div>
+                    <div class="flex-1 font-medium text-gray-800 break-words">{{ positionForm.title }}</div>
+                  </div>
+                  <div class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Department:</div>
+                    <div class="flex-1">
+                      <span class="inline-block px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-full text-sm font-medium">
+                        {{ positionForm.department === 'other' ? positionForm.custom_department : positionForm.department }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Status:</div>
+                    <div class="flex-1">
+                      <span :class="['inline-flex items-center px-3 py-1 rounded-full text-sm font-medium', 
+                        positionForm.status === 'active' 
+                          ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700' 
+                          : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700']">
+                        <span :class="['w-2 h-2 rounded-full mr-2', 
+                          positionForm.status === 'active' ? 'bg-green-500' : 'bg-gray-500']"></span>
+                        {{ positionForm.status }}
+                      </span>
+                    </div>
+                  </div>
+                  <div v-if="positionForm.min_salary || positionForm.max_salary" class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Salary Range:</div>
+                    <div class="flex-1 font-medium text-gray-800">
+                      <span v-if="positionForm.min_salary && positionForm.max_salary">
+                        ${{ formatSalary(positionForm.min_salary) }} - ${{ formatSalary(positionForm.max_salary) }}
+                      </span>
+                      <span v-else-if="positionForm.min_salary">
+                        From ${{ formatSalary(positionForm.min_salary) }}
+                      </span>
+                      <span v-else-if="positionForm.max_salary">
+                        Up to ${{ formatSalary(positionForm.max_salary) }}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- Accessibility Review -->
+                  <div v-if="positionForm.department === 'Human Resources'" class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Accessibility:</div>
+                    <div class="flex-1">
+                      <div v-if="positionForm.accessibility.length > 0" class="space-y-2">
+                        <div class="flex flex-wrap gap-2">
+                          <div v-for="item in accessibilityOptions.filter(opt => positionForm.accessibility.includes(opt.id))" :key="item.id"
+                            class="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-full text-sm font-medium">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            {{ item.label }}
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="text-gray-500 italic">
+                        No accessibility permissions selected
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="flex flex-col md:flex-row md:items-start">
+                    <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Description:</div>
+                    <div class="flex-1 text-gray-700 break-words">{{ positionForm.description }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer Navigation (Fixed at bottom) -->
+          <div class="px-4 md:px-8 py-4 md:py-6 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+            <div class="flex justify-between items-center">
+              <div>
+                <button v-if="currentStep > 1" @click="previousStep" 
+                  class="px-4 py-2 md:px-5 md:py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all flex items-center text-sm md:text-base">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </button>
+              </div>
               
-              <button v-if="currentStep === 3" @click="savePosition" :disabled="saving"
-                :class="['px-6 py-2.5 rounded-lg transition-all flex items-center font-medium', 
-                saving 
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' 
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-md hover:shadow-lg']">
-                <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>{{ saving ? 'Saving...' : (editingPosition ? 'Update Position' : 'Create Position') }}</span>
-              </button>
-              
-              <button @click="closeWizard" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                Cancel
-              </button>
+              <div class="flex items-center space-x-2 md:space-x-3">
+                <button v-if="currentStep < 3" @click="nextStep" 
+                  :disabled="!canProceed"
+                  :class="['px-4 py-2 md:px-6 md:py-2.5 rounded-lg transition-all flex items-center font-medium text-sm md:text-base', 
+                  canProceed 
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg' 
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
+                  Continue
+                  <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                
+                <button v-if="currentStep === 3" @click="savePosition" :disabled="saving"
+                  :class="['px-4 py-2 md:px-6 md:py-2.5 rounded-lg transition-all flex items-center font-medium text-sm md:text-base', 
+                  saving 
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-md hover:shadow-lg']">
+                  <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{{ saving ? 'Saving...' : (editingPosition ? 'Update Position' : 'Create Position') }}</span>
+                </button>
+                
+                <button @click="closeWizard" class="px-4 py-2 md:px-5 md:py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors text-sm md:text-base">
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -544,15 +597,21 @@ let searchTimeout = null
 
 // Default departments
 const defaultDepartments = [
-  'Administration',
   'Human Resources',
   'Finance',
   'Distributor Assistant',
-  'Operations',
-  'Logistics',
-  'IT',
-  'Sales',
-  'Marketing'
+  'Operational Distributor',
+]
+
+// Accessibility options for HR department
+const accessibilityOptions = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'employee_list', label: 'Employee List' },
+  { id: 'positions_roles', label: 'Position & Roles' },
+  { id: 'departments', label: 'Departments' },
+  { id: 'employee_status', label: 'Employee Status' },
+  { id: 'recruitment_application', label: 'Recruitment Application' },
+  { id: 'payroll_management', label: 'Payroll Management' }
 ]
 
 const positions = ref([])
@@ -572,7 +631,8 @@ const positionForm = ref({
   description: '',
   min_salary: '',
   max_salary: '',
-  status: 'active'
+  status: 'active',
+  accessibility: [] // New field for accessibility settings
 })
 
 // Computed properties
@@ -680,7 +740,8 @@ const startNewPosition = () => {
     description: '',
     min_salary: '',
     max_salary: '',
-    status: 'active'
+    status: 'active',
+    accessibility: []
   }
   showPositionWizard.value = true
 }
@@ -689,6 +750,13 @@ const editPosition = (position) => {
   editingPosition.value = position
   currentStep.value = 1
   showCustomDept.value = false
+  
+  // Parse accessibility from requirements or set empty array
+  let accessibility = []
+  if (position.requirements && position.requirements.accessibility) {
+    accessibility = position.requirements.accessibility
+  }
+  
   positionForm.value = {
     title: position.title,
     department: position.department,
@@ -696,9 +764,19 @@ const editPosition = (position) => {
     description: position.description,
     min_salary: position.min_salary,
     max_salary: position.max_salary,
-    status: position.status
+    status: position.status,
+    accessibility: accessibility
   }
   showPositionWizard.value = true
+}
+
+const toggleAccessibilityItem = (itemId) => {
+  const index = positionForm.value.accessibility.indexOf(itemId)
+  if (index === -1) {
+    positionForm.value.accessibility.push(itemId)
+  } else {
+    positionForm.value.accessibility.splice(index, 1)
+  }
 }
 
 const deletePosition = async (positionId) => {
@@ -745,7 +823,8 @@ const closeWizard = () => {
     description: '',
     min_salary: '',
     max_salary: '',
-    status: 'active'
+    status: 'active',
+    accessibility: []
   }
 }
 
@@ -769,13 +848,27 @@ const savePosition = async () => {
       ? positionForm.value.custom_department 
       : positionForm.value.department
 
-    const payload = {
-      ...positionForm.value,
-      department: department
+    // Prepare requirements with accessibility for HR department
+    let requirements = null
+    if (department === 'Human Resources') {
+      requirements = {
+        accessibility: positionForm.value.accessibility,
+        permissions: positionForm.value.accessibility.map(item => {
+          const option = accessibilityOptions.find(opt => opt.id === item)
+          return option ? option.label : item
+        })
+      }
     }
 
-    // Remove custom_department from payload
+    const payload = {
+      ...positionForm.value,
+      department: department,
+      requirements: requirements
+    }
+
+    // Remove custom_department and accessibility from payload
     delete payload.custom_department
+    delete payload.accessibility
 
     // Convert empty strings to null for salary fields
     if (payload.min_salary === '') payload.min_salary = null
@@ -914,5 +1007,14 @@ onMounted(() => {
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
+}
+
+/* Ensure the modal content is properly scrollable */
+.fixed.inset-0.z-50.overflow-y-auto {
+  overflow-y: auto !important;
+}
+
+.max-h-\[90vh\] {
+  max-height: 90vh !important;
 }
 </style>

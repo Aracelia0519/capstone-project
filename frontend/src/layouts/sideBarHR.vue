@@ -155,6 +155,17 @@
       </div>
     </transition>
 
+    <!-- Loading overlay for accessibility -->
+    <transition name="fade">
+      <div v-if="isLoading" class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="text-center">
+          <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p class="text-white font-medium">Loading your access permissions...</p>
+          <p class="text-gray-400 text-sm mt-2">This may take a moment</p>
+        </div>
+      </div>
+    </transition>
+
     <!-- Logo Section -->
     <div class="logo-section" @click="logoClicked">
       <div class="logo">
@@ -163,7 +174,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
         </div>
-        <h2 v-if="!isCollapsed" class="text-lg font-bold">HR Module</h2>
+        <h2 v-if="!isCollapsed" class="text-lg font-bold">Human Resource</h2>
       </div>
       <button class="toggle-btn" @click.stop="toggleCollapse">
         <span v-if="!isCollapsed">«</span>
@@ -177,12 +188,18 @@
         <div class="section-label" v-if="!isCollapsed">HR MANAGEMENT</div>
         <ul>
           <li 
-            v-for="item in hrNavItems" 
+            v-for="item in accessibleHrNavItems" 
             :key="item.id"
-            :class="{ active: activeItem === item.id }"
+            :class="{ active: activeItem === item.id, 'disabled': !item.enabled && !isLoading }"
             @click="setActiveItem(item.id)"
           >
-            <router-link :to="item.route" class="nav-link" @click="handleNavClick">
+            <router-link 
+              :to="item.route" 
+              class="nav-link" 
+              @click="handleNavClick"
+              :class="{ 'disabled-link': !item.enabled && !isLoading }"
+              :title="!item.enabled ? 'Access restricted based on your position' : ''"
+            >
               <span class="nav-icon">
                 <!-- Dashboard Icon -->
                 <svg v-if="item.id === 'dashboard'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,24 +225,46 @@
                 <svg v-if="item.id === 'status'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
+                
+                <!-- Payroll Icon -->
+                <svg v-if="item.id === 'payroll'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                
+                <!-- Recruitment Icon -->
+                <svg v-if="item.id === 'recruitment'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
               </span>
               <span class="nav-text" v-if="!isCollapsed">{{ item.text }}</span>
               <span class="badge" v-if="item.badge && !isCollapsed">{{ item.badge }}</span>
+              <!-- Access Restriction Indicator -->
+              <span v-if="!item.enabled && !isCollapsed && !isLoading" class="access-restricted">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </span>
             </router-link>
           </li>
         </ul>
       </div>
 
-      <div class="nav-section" v-if="!isCollapsed">
+      <div class="nav-section" v-if="!isCollapsed && accessibleToolsNavItems.length > 0">
         <div class="section-label">TOOLS</div>
         <ul>
           <li 
-            v-for="item in toolsNavItems" 
+            v-for="item in accessibleToolsNavItems" 
             :key="item.id"
-            :class="{ active: activeItem === item.id }"
+            :class="{ active: activeItem === item.id, 'disabled': !item.enabled && !isLoading }"
             @click="setActiveItem(item.id)"
           >
-            <router-link :to="item.route" class="nav-link" @click="handleNavClick">
+            <router-link 
+              :to="item.route" 
+              class="nav-link" 
+              @click="handleNavClick"
+              :class="{ 'disabled-link': !item.enabled && !isLoading }"
+              :title="!item.enabled ? 'Access restricted based on your position' : ''"
+            >
               <span class="nav-icon">
                 <!-- Reports Icon -->
                 <svg v-if="item.id === 'reports'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,6 +278,12 @@
                 </svg>
               </span>
               <span class="nav-text">{{ item.text }}</span>
+              <!-- Access Restriction Indicator -->
+              <span v-if="!item.enabled && !isCollapsed && !isLoading" class="access-restricted">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </span>
             </router-link>
           </li>
         </ul>
@@ -255,7 +300,16 @@
         </div>
         <div class="user-info">
           <strong>{{ userName || 'HR Manager' }}</strong>
-          <small>Human Resources</small>
+          <small>{{ userPosition || 'Human Resources' }}</small>
+          <small v-if="userRole !== 'hr_manager'" class="text-xs text-gray-400 mt-1 block">
+            Access Level: {{ accessibilityStatus }}
+          </small>
+          <small v-if="isLoading" class="text-xs text-blue-400 mt-1 block">
+            <span class="inline-flex items-center">
+              <span class="w-2 h-2 bg-blue-400 rounded-full animate-ping mr-1"></span>
+              Loading permissions...
+            </span>
+          </small>
         </div>
       </div>
       <button class="logout-btn" @click="showLogoutModal = true">
@@ -271,7 +325,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 
@@ -297,34 +351,147 @@ export default {
     const isCollapsed = ref(false)
     const activeItem = ref('dashboard')
     const userName = ref('')
+    const userRole = ref('')
+    const userPosition = ref('')
+    const userAccessibility = ref([])
     const showLogoutModal = ref(false)
     const showSuccessToast = ref(false)
     const showErrorToast = ref(false)
     const errorMessage = ref('')
     const isLoggingOut = ref(false)
+    const isLoadingAccessibility = ref(false)
 
-    // Updated navigation items to match your routes
+    // Navigation items mapping with their permission keys
     const hrNavItems = ref([
-      { id: 'dashboard', icon: 'dashboard', text: 'Dashboard', route: '/HR/HRdashboard', badge: 'Live' },
-      { id: 'employees', icon: 'employees', text: 'Employee List', route: '/HR/employeesListHR', badge: '24' },
-      { id: 'positions', icon: 'positions', text: 'Positions & Roles', route: '/HR/positionRolesHR' },
-      { id: 'departments', icon: 'departments', text: 'Departments', route: '/HR/departmentsHR' },
-      { id: 'status', icon: 'status', text: 'Employment Status', route: '/HR/employmentStatusHR' },
+      { id: 'dashboard', icon: 'dashboard', text: 'Dashboard', route: '/HR/HRdashboard', badge: 'Live', permissionKey: 'dashboard' },
+      { id: 'employees', icon: 'employees', text: 'Employee List', route: '/HR/employeesListHR', badge: '24', permissionKey: 'employee_list' },
+      { id: 'positions', icon: 'positions', text: 'Positions & Roles', route: '/HR/positionRolesHR', permissionKey: 'positions_roles' },
+      { id: 'departments', icon: 'departments', text: 'Departments', route: '/HR/departmentsHR', permissionKey: 'departments' },
+      { id: 'status', icon: 'status', text: 'Employment Status', route: '/HR/employmentStatusHR', permissionKey: 'employment_status' },
+      { id: 'recruitment', icon: 'recruitment', text: 'Recruitment Application', route: '/HR/recruitmentApplication', badge: 'New', permissionKey: 'recruitment' },
+      { id: 'payroll', icon: 'payroll', text: 'Payroll Management', route: '/HR/payrollHR', permissionKey: 'payroll_management' }, 
     ])
 
     const toolsNavItems = ref([
-      { id: 'reports', icon: 'reports', text: 'HR Reports', route: '/HR/reportsHR' },
-      { id: 'settings', icon: 'settings', text: 'HR Settings', route: '/HR/settings' },
+      { id: 'reports', icon: 'reports', text: 'HR Reports', route: '/HR/reportsHR', permissionKey: 'reports' },
+      { id: 'settings', icon: 'settings', text: 'HR Settings', route: '/HR/settings', permissionKey: 'settings' },
     ])
 
-    const loadUserData = () => {
+    // Check if item is accessible based on user role and accessibility settings
+    const isItemAccessible = (permissionKey) => {
+      // HR Managers have full access
+      if (userRole.value === 'hr_manager') {
+        return true
+      }
+      
+      // For employees, check against their position accessibility
+      if (userRole.value === 'employee' && userAccessibility.value.length > 0) {
+        return userAccessibility.value.includes(permissionKey)
+      }
+      
+      return false
+    }
+
+    // Computed properties for accessible navigation items
+    const accessibleHrNavItems = computed(() => {
+      return hrNavItems.value.map(item => ({
+        ...item,
+        enabled: isItemAccessible(item.permissionKey)
+      }))
+    })
+
+    const accessibleToolsNavItems = computed(() => {
+      return toolsNavItems.value
+        .map(item => ({
+          ...item,
+          enabled: isItemAccessible(item.permissionKey)
+        }))
+        .filter(item => userRole.value === 'hr_manager' || item.enabled)
+    })
+
+    // Accessibility status text
+    const accessibilityStatus = computed(() => {
+      if (userRole.value === 'hr_manager') {
+        return 'Full Access'
+      }
+      if (userRole.value === 'employee') {
+        const count = userAccessibility.value.length
+        return `${count} module${count !== 1 ? 's' : ''} accessible`
+      }
+      return 'Limited Access'
+    })
+
+    // Computed property to check if loading
+    const isLoading = computed(() => {
+      return isLoadingAccessibility.value
+    })
+
+    // Load user data and accessibility
+    const loadUserData = async () => {
       const userData = localStorage.getItem('user_data')
+      const userRoleData = localStorage.getItem('user_role')
+      
       if (userData) {
         try {
           const user = JSON.parse(userData)
-          userName.value = user.name || `${user.first_name} ${user.last_name}` || 'HR Manager'
+          userName.value = user.name || `${user.first_name} ${user.last_name}` || 'HR User'
+          userRole.value = userRoleData || user.role || ''
+          userAccessibility.value = user.employee_data?.accessibility_keys || []
+          userPosition.value = user.employee_data?.position || 'Employee'
+          
+          // Load user data from props if available
+          if (props.userData && props.userData.name) {
+            userName.value = props.userData.name
+          }
+          
+          // For employees, fetch their position and accessibility if not already available
+          if (userRole.value === 'employee' && (!userAccessibility.value || userAccessibility.value.length === 0)) {
+            await fetchEmployeeAccessibility(user.id)
+          }
         } catch (e) {
           console.error('Failed to parse user data:', e)
+        }
+      }
+    }
+
+    // Fetch employee's position accessibility
+    const fetchEmployeeAccessibility = async (userId) => {
+      try {
+        isLoadingAccessibility.value = true
+        
+        // Use the new API endpoint to get employee accessibility
+        const response = await api.get(`/hr/positions/employee-accessibility/${userId}`)
+        
+        if (response.data.status === 'success') {
+          userPosition.value = response.data.data.position || 'Employee'
+          userAccessibility.value = response.data.data.accessibility_keys || []
+          
+          console.log('Employee accessibility loaded:', {
+            position: userPosition.value,
+            accessibility: userAccessibility.value
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch employee accessibility:', error)
+        // If API fails, try to get from localStorage
+        const userData = localStorage.getItem('user_data')
+        if (userData) {
+          const user = JSON.parse(userData)
+          userAccessibility.value = user.employee_data?.accessibility_keys || []
+          userPosition.value = user.employee_data?.position || 'Employee'
+        }
+      } finally {
+        isLoadingAccessibility.value = false
+      }
+    }
+
+    // Load employee accessibility on component mount for employees
+    const loadEmployeeAccessibility = async () => {
+      if (userRole.value === 'employee') {
+        const userData = localStorage.getItem('user_data')
+        if (userData) {
+          const user = JSON.parse(userData)
+          await fetchEmployeeAccessibility(user.id)
         }
       }
     }
@@ -338,7 +505,17 @@ export default {
     }
 
     const setActiveItem = (itemId) => {
-      activeItem.value = itemId
+      // Check if the item is enabled before setting as active
+      const allItems = [...accessibleHrNavItems.value, ...accessibleToolsNavItems.value]
+      const item = allItems.find(item => item.id === itemId)
+      
+      if (item && item.enabled) {
+        activeItem.value = itemId
+      } else if (item && !item.enabled) {
+        // Show notification that access is restricted
+        showErrorToast.value = true
+        errorMessage.value = `Access to "${item.text}" is restricted based on your position.`
+      }
     }
 
     const cancelLogout = () => {
@@ -436,20 +613,26 @@ export default {
 
     onMounted(() => {
       loadUserData()
-      
-      // Also load user data from props if available
-      if (props.userData && props.userData.name) {
-        userName.value = props.userData.name
-      }
     })
 
     // Watch route changes to update active item
     watch(() => route.path, (newPath) => {
       // Find the active item based on current route
-      const allItems = [...hrNavItems.value, ...toolsNavItems.value]
+      const allItems = [...accessibleHrNavItems.value, ...accessibleToolsNavItems.value]
       const active = allItems.find(item => item.route === newPath)
-      if (active) {
+      if (active && active.enabled) {
         activeItem.value = active.id
+      }
+    }, { immediate: true })
+
+    // Watch for user role changes and load accessibility
+    watch(() => userRole.value, (newRole) => {
+      if (newRole === 'employee') {
+        const userData = localStorage.getItem('user_data')
+        if (userData) {
+          const user = JSON.parse(userData)
+          fetchEmployeeAccessibility(user.id)
+        }
       }
     }, { immediate: true })
 
@@ -457,13 +640,18 @@ export default {
       isCollapsed,
       activeItem,
       userName,
-      hrNavItems,
-      toolsNavItems,
+      userRole,
+      userPosition,
+      accessibilityStatus,
+      accessibleHrNavItems,
+      accessibleToolsNavItems,
       showLogoutModal,
       showSuccessToast,
       showErrorToast,
       errorMessage,
       isLoggingOut,
+      isLoadingAccessibility,
+      isLoading,
       logoClicked,
       toggleCollapse,
       setActiveItem,
@@ -478,6 +666,7 @@ export default {
 </script>
 
 <style scoped>
+/* All existing styles remain the same, only code above was modified */
 .sidebar {
   width: 280px;
   min-height: 100vh;
@@ -571,6 +760,10 @@ li {
   position: relative;
 }
 
+li.disabled {
+  opacity: 0.6;
+}
+
 .nav-link {
   display: flex;
   align-items: center;
@@ -591,6 +784,32 @@ li.active .nav-link {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%);
   color: white;
   border-left: 3px solid #3b82f6;
+}
+
+/* Disabled link styles */
+.disabled-link {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.disabled-link:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.disabled-link .nav-icon {
+  opacity: 0.6;
+}
+
+.disabled-link .nav-text {
+  opacity: 0.7;
+}
+
+.access-restricted {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .nav-icon {
@@ -653,6 +872,11 @@ li.active .nav-link {
 .user-info small {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
+  display: block;
+}
+
+.user-info small.text-gray-400 {
+  margin-top: 2px;
 }
 
 .logout-btn {

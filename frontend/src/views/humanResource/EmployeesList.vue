@@ -418,6 +418,47 @@
                     >
                   </div>
                 </div>
+                <!-- Add this after the emergency contact field in Step 1 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                  <!-- Password Section -->
+                  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100">
+                    <h5 class="font-semibold text-blue-800 mb-4 flex items-center">
+                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Account Password
+                    </h5>
+                    <div class="space-y-4">
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">
+                          Password <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                          v-model="newEmployee.password" 
+                          type="password" 
+                          required 
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          placeholder="Create a password"
+                          autocomplete="new-password"
+                        >
+                        <p class="text-xs text-gray-500">Minimum 8 characters</p>
+                      </div>
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">
+                          Confirm Password <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                          v-model="newEmployee.password_confirmation" 
+                          type="password" 
+                          required 
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          placeholder="Confirm password"
+                          autocomplete="new-password"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1211,6 +1252,8 @@ const newEmployee = reactive({
   middle_name: '',
   last_name: '',
   email: '',
+  password: '',
+  password_confirmation: '',
   phone: '',
   emergency_contact: '',
   address: '',
@@ -1218,6 +1261,7 @@ const newEmployee = reactive({
   gender: 'male',
   marital_status: 'single',
   nationality: 'Filipino',
+
   
   // Employment Details
   department: '',
@@ -1584,8 +1628,15 @@ const closeAddModal = () => {
     else if (key === 'payment_frequency') newEmployee[key] = 'monthly'
     else if (key === 'year_graduated') newEmployee[key] = currentYear
     else if (key === 'salary') newEmployee[key] = 0
-    else newEmployee[key] = ''
+    // Don't reset password fields - let them be empty
+    else if (key !== 'password' && key !== 'password_confirmation') {
+      newEmployee[key] = ''
+    }
   })
+  
+  // Reset password fields separately
+  newEmployee.password = ''
+  newEmployee.password_confirmation = ''
   
   // Reset position dropdowns
   availablePositions.value = []

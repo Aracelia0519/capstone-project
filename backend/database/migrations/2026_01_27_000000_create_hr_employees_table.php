@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('parent_distributor_id')->comment('References users.id where role=distributor');
             $table->unsignedBigInteger('hr_manager_id')->nullable()->comment('References hr_managers.id');
             $table->unsignedBigInteger('created_by_user_id')->comment('User who created this employee');
+            $table->unsignedBigInteger('user_id')->nullable()->comment('References users.id where role=employee');
             
             // Basic Information
             $table->string('employee_code')->unique();
@@ -29,6 +30,9 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'other'])->default('male');
             $table->enum('marital_status', ['single', 'married', 'widowed', 'separated', 'divorced'])->default('single');
             $table->string('nationality')->default('Filipino');
+            
+            // Password for employee login (kept for backup, but primary login is through User table)
+            $table->string('password');
             
             // Employment Details
             $table->string('department');
@@ -85,6 +89,7 @@ return new class extends Migration
             $table->index('parent_distributor_id');
             $table->index('hr_manager_id');
             $table->index('created_by_user_id');
+            $table->index('user_id');
             $table->index('employee_code');
             $table->index('department');
             $table->index('employment_status');
@@ -96,6 +101,7 @@ return new class extends Migration
             $table->foreign('parent_distributor_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('hr_manager_id')->references('id')->on('hr_managers')->onDelete('set null');
             $table->foreign('created_by_user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
         });
     }
 

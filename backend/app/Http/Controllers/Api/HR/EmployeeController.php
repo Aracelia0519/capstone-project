@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
@@ -53,6 +54,9 @@ class EmployeeController extends Controller
                 }])
                 ->with(['hrManager' => function($q) {
                     $q->select('id', 'first_name', 'last_name', 'email');
+                }])
+                ->with(['user' => function($q) {
+                    $q->select('id', 'email', 'role', 'status', 'created_at');
                 }]);
             
             // Apply search filter
@@ -92,7 +96,7 @@ class EmployeeController extends Controller
             $employees = $query->orderBy('created_at', 'desc')
                 ->paginate($perPage);
             
-            // Transform data
+            // Transform data (excluding password)
             $transformedEmployees = $employees->map(function ($employee) {
                 return [
                     'id' => $employee->id,
@@ -110,6 +114,11 @@ class EmployeeController extends Controller
                     'hire_date' => $employee->hire_date->format('Y-m-d'),
                     'salary' => $employee->formatted_salary,
                     'status' => $employee->status,
+                    'user_id' => $employee->user_id,
+                    'user' => $employee->user ? [
+                        'status' => $employee->user->status,
+                        'created_at' => $employee->user->created_at->format('Y-m-d H:i:s')
+                    ] : null,
                     'created_by' => $employee->createdBy ? [
                         'name' => $employee->createdBy->full_name,
                         'email' => $employee->createdBy->email
@@ -173,7 +182,7 @@ class EmployeeController extends Controller
             }
             
             $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
-                ->with(['createdBy', 'hrManager', 'parentDistributor'])
+                ->with(['createdBy', 'hrManager', 'parentDistributor', 'user'])
                 ->findOrFail($id);
             
             // Get distributor company name
@@ -223,6 +232,14 @@ class EmployeeController extends Controller
                 'course' => $employee->course,
                 'status' => $employee->status,
                 'notes' => $employee->notes,
+                'user_id' => $employee->user_id,
+                'user' => $employee->user ? [
+                    'id' => $employee->user->id,
+                    'email' => $employee->user->email,
+                    'role' => $employee->user->role,
+                    'status' => $employee->user->status,
+                    'created_at' => $employee->user->created_at->format('Y-m-d H:i:s')
+                ] : null,
                 'company_name' => $companyName,
                 'created_by' => $employee->createdBy ? [
                     'name' => $employee->createdBy->full_name,
@@ -262,6 +279,8 @@ class EmployeeController extends Controller
     // Create new employee
     public function store(Request $request)
     {
+        DB::beginTransaction();
+        
         try {
             /** @var \App\Models\User $user */
             $user = Auth::user();
@@ -289,7 +308,9 @@ class EmployeeController extends Controller
                 'first_name' => 'required|string|max:255',
                 'middle_name' => 'nullable|string|max:255',
                 'last_name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:hr_employees,email',
+                'email' => 'required|string|email|max:255|unique:hr_employees,email|unique:users,email',
+                'password' => 'required|string|min:8|confirmed',
+                'password_confirmation' => 'required|string|min:8',
                 'phone' => 'required|string|max:20',
                 'emergency_contact' => 'nullable|string|max:20',
                 'address' => 'required|string|max:500',
@@ -355,10 +376,24 @@ class EmployeeController extends Controller
             // Generate employee code
             $employeeCode = Employee::generateEmployeeCode($hrManager->parent_distributor_id);
             
-            // Create employee data array
+            // Step 1: Create User account
+            $userData = [
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => $request->email,
+                'password' => $request->password,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'role' => 'employee', // New role for employees
+                'status' => 'active' // Employees should be active by default
+            ];
+            
+            $employeeUser = User::create($userData);
+            
+            // Step 2: Create employee data array
             $employeeData = $request->only([
-                'first_name', 'middle_name', 'last_name', 'email', 'phone',
-                'emergency_contact', 'address', 'date_of_birth', 'gender',
+                'first_name', 'middle_name', 'last_name', 'email', 'password',
+                'phone', 'emergency_contact', 'address', 'date_of_birth', 'gender',
                 'marital_status', 'nationality', 'department', 'position',
                 'employment_type', 'employment_status', 'hire_date',
                 'probation_end_date', 'regularization_date', 'salary',
@@ -374,6 +409,7 @@ class EmployeeController extends Controller
             $employeeData['parent_distributor_id'] = $hrManager->parent_distributor_id;
             $employeeData['hr_manager_id'] = $hrManager->id;
             $employeeData['created_by_user_id'] = $user->id;
+            $employeeData['user_id'] = $employeeUser->id; // Link to User table
             $employeeData['status'] = 'active';
             
             // Handle file uploads
@@ -395,17 +431,21 @@ class EmployeeController extends Controller
                 }
             }
             
-            // Create employee
+            // Create employee (password will be automatically hashed via mutator)
             $employee = Employee::create($employeeData);
             
             // Log the creation
             Log::info('Employee created', [
                 'employee_id' => $employee->id,
                 'employee_code' => $employee->employee_code,
+                'user_id' => $employeeUser->id,
                 'created_by' => $user->id,
                 'company' => $hrManager->parent_distributor_id,
                 'timestamp' => now()
             ]);
+            
+            // Commit transaction
+            DB::commit();
             
             // Get company name for response
             $distributorRequirement = DistributorRequirements::where('user_id', $hrManager->parent_distributor_id)->first();
@@ -413,7 +453,7 @@ class EmployeeController extends Controller
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'Employee created successfully',
+                'message' => 'Employee created successfully with user account',
                 'data' => [
                     'employee' => [
                         'id' => $employee->id,
@@ -426,12 +466,16 @@ class EmployeeController extends Controller
                         'hire_date' => $employee->hire_date->format('Y-m-d'),
                         'formatted_salary' => $employee->formatted_salary,
                         'company_name' => $companyName,
+                        'user_id' => $employeeUser->id,
+                        'user_status' => $employeeUser->status,
                         'created_by' => $user->full_name
                     ]
                 ]
             ], 201);
             
         } catch (\Exception $e) {
+            DB::rollBack();
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to create employee',
@@ -443,6 +487,8 @@ class EmployeeController extends Controller
     // Update employee
     public function update(Request $request, $id)
     {
+        DB::beginTransaction();
+        
         try {
             /** @var \App\Models\User $user */
             $user = Auth::user();
@@ -476,6 +522,8 @@ class EmployeeController extends Controller
                 'salary' => 'sometimes|numeric|min:0',
                 'salary_currency' => 'sometimes|string|max:3',
                 'status' => 'sometimes|in:active,inactive,on_leave',
+                'password' => 'nullable|string|min:8|confirmed',
+                'password_confirmation' => 'nullable|string|min:8',
                 'notes' => 'nullable|string',
             ]);
             
@@ -493,7 +541,31 @@ class EmployeeController extends Controller
                 'salary', 'salary_currency', 'status', 'notes'
             ]);
             
+            // Only update password if provided
+            if ($request->filled('password')) {
+                $updateData['password'] = $request->password;
+                
+                // Also update the corresponding User account password
+                if ($employee->user_id) {
+                    $user = User::find($employee->user_id);
+                    if ($user) {
+                        $user->update(['password' => $request->password]);
+                    }
+                }
+            }
+            
             $employee->update($updateData);
+            
+            // Update User status if employee status changed
+            if ($request->has('status') && $employee->user_id) {
+                $user = User::find($employee->user_id);
+                if ($user) {
+                    $userStatus = $request->status === 'active' ? 'active' : 'inactive';
+                    $user->update(['status' => $userStatus]);
+                }
+            }
+            
+            DB::commit();
             
             return response()->json([
                 'status' => 'success',
@@ -512,6 +584,8 @@ class EmployeeController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            DB::rollBack();
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to update employee',
@@ -523,6 +597,8 @@ class EmployeeController extends Controller
     // Delete employee (soft delete)
     public function destroy($id)
     {
+        DB::beginTransaction();
+        
         try {
             /** @var \App\Models\User $user */
             $user = Auth::user();
@@ -547,15 +623,27 @@ class EmployeeController extends Controller
             $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
                 ->findOrFail($id);
             
-            // Soft delete
+            // Also deactivate the User account
+            if ($employee->user_id) {
+                $userAccount = User::find($employee->user_id);
+                if ($userAccount) {
+                    $userAccount->update(['status' => 'inactive']);
+                }
+            }
+            
+            // Soft delete employee
             $employee->delete();
+            
+            DB::commit();
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'Employee deleted successfully'
+                'message' => 'Employee deleted successfully and user account deactivated'
             ]);
             
         } catch (\Exception $e) {
+            DB::rollBack();
+            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to delete employee',

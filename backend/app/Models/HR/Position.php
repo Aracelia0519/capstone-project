@@ -5,6 +5,7 @@ namespace App\Models\HR;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\User;
 
 class Position extends Model
@@ -35,7 +36,8 @@ class Position extends Model
     protected $appends = [
         'department_color',
         'company_name',
-        'distributor_name'
+        'distributor_name',
+        'accessibility' // New appended attribute
     ];
 
     /**
@@ -59,6 +61,14 @@ class Position extends Model
             'distributor_id', // Local key on positions table
             'id' // Local key on users table
         );
+    }
+
+    /**
+     * Get the accessibility settings for this position.
+     */
+    public function accessibilitySettings(): HasMany
+    {
+        return $this->hasMany(PositionAccessibility::class, 'position_id');
     }
 
     /**
@@ -119,6 +129,62 @@ class Position extends Model
     }
 
     /**
+     * Get the accessibility attribute.
+     */
+    public function getAccessibilityAttribute(): array
+    {
+        if ($this->department !== 'Human Resources') {
+            return [];
+        }
+
+        // Try to get from requirements first (for backward compatibility)
+        if ($this->requirements && isset($this->requirements['accessibility'])) {
+            return $this->requirements['accessibility'];
+        }
+
+        // Get from position_accessibilities table
+        return $this->accessibilitySettings()
+            ->granted()
+            ->pluck('permission_key')
+            ->toArray();
+    }
+
+    /**
+     * Check if position has specific permission.
+     */
+    public function hasPermission(string $permissionKey): bool
+    {
+        if ($this->department !== 'Human Resources') {
+            return false;
+        }
+
+        // Check in requirements (backward compatibility)
+        if ($this->requirements && isset($this->requirements['accessibility'])) {
+            return in_array($permissionKey, $this->requirements['accessibility']);
+        }
+
+        // Check in position_accessibilities table
+        return $this->accessibilitySettings()
+            ->where('permission_key', $permissionKey)
+            ->granted()
+            ->exists();
+    }
+
+    /**
+     * Update accessibility for this position.
+     */
+    public function updateAccessibility(array $accessibilityData): void
+    {
+        PositionAccessibility::updateForPosition($this, $accessibilityData);
+        
+        // Also update requirements for backward compatibility
+        $requirements = $this->requirements ?? [];
+        $requirements['accessibility'] = $accessibilityData;
+        $this->requirements = $requirements;
+        $this->save();
+    }
+
+    /**
      * Scope a query to only include active positions.
      */
     public function scopeActive($query)
@@ -151,6 +217,17 @@ class Position extends Model
             $q->where('title', 'like', "%{$search}%")
               ->orWhere('description', 'like', "%{$search}%")
               ->orWhere('department', 'like', "%{$search}%");
+        });
+    }
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted()
+    {
+        static::deleting(function ($position) {
+            // Delete associated accessibility records
+            $position->accessibilitySettings()->delete();
         });
     }
 }

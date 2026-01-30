@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
-use App\Models\Distributor\DistributorRequirements;
 
 class Employee extends Model
 {
@@ -18,11 +17,13 @@ class Employee extends Model
         'parent_distributor_id',
         'hr_manager_id',
         'created_by_user_id',
+        'user_id',
         'employee_code',
         'first_name',
         'middle_name',
         'last_name',
         'email',
+        'password',
         'phone',
         'emergency_contact',
         'address',
@@ -63,6 +64,10 @@ class Employee extends Model
         'notes'
     ];
 
+    protected $hidden = [
+        'password',
+    ];
+
     protected $casts = [
         'date_of_birth' => 'date',
         'hire_date' => 'date',
@@ -80,9 +85,14 @@ class Employee extends Model
         return $this->belongsTo(User::class, 'parent_distributor_id');
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public function distributorRequirement()
     {
-        return $this->belongsTo(DistributorRequirements::class, 'parent_distributor_id', 'user_id');
+        return $this->belongsTo(\App\Models\Distributor\DistributorRequirements::class, 'parent_distributor_id', 'user_id');
     }
 
     public function hrManager()
@@ -184,6 +194,14 @@ class Employee extends Model
             'employment_status' => 'terminated',
             'notes' => $this->notes . "\nTermination: " . now()->format('Y-m-d') . " - " . $reason
         ]);
+
+        // Also update User account status
+        if ($this->user_id) {
+            $user = User::find($this->user_id);
+            if ($user) {
+                $user->update(['status' => 'inactive']);
+            }
+        }
     }
 
     public function getDistributorCompanyName()
@@ -214,5 +232,13 @@ class Employee extends Model
         }
 
         return "EMP-{$distributorCode}-{$year}{$month}-{$sequence}";
+    }
+
+    // Password setter (to hash the password)
+    public function setPasswordAttribute($value)
+    {
+        if ($value) {
+            $this->attributes['password'] = bcrypt($value);
+        }
     }
 }

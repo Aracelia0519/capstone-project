@@ -272,7 +272,7 @@
 
             <!-- Animated Divider -->
             <div class="relative animate-expand-width-delay flex justify-center">
-              <div class="w-full max-w-md"> <!-- Adjust max-w-md to your preferred width -->
+              <div class="w-full max-w-md">
                 <div class="absolute inset-0 flex items-center">
                   <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
                 </div>
@@ -401,15 +401,56 @@ const validationErrors = reactive({
   password: ''
 })
 
-// Role-based redirect routes - UPDATED with new roles
-const roleRoutes = {
-  admin: '/admin/dashboard',
-  distributor: '/distributor/distributordashboard',
-  service_provider: '/serviceProvider/dashboardSP',
-  client: '/Clients/dashboardC',
-  operational_distributor: '/ECommerce/ECDashboard',
-  finance_manager: '/finance/financeDashboard',
-  hr_manager: '/HR/HRdashboard'
+// Enhanced Role-based redirect routes with employee department-based routing
+// Enhanced Role-based redirect routes with employee department-based routing
+const getRedirectRoute = (user) => {
+  const { role, employee_data } = user;
+  
+  console.log('User data for routing:', user); // Debug log
+  
+  // Handle hr_manager role (from your database)
+  if (role === 'hr_manager') {
+    return '/HR/HRdashboard';
+  }
+  
+  // Employee routing based on department
+  if (role === 'employee' && employee_data) {
+    const department = employee_data.department?.toLowerCase() || '';
+    const position = employee_data.position?.toLowerCase() || '';
+    
+    console.log('Employee department/position:', { department, position }); // Debug log
+    
+    // Route based on department
+    if (department.includes('human resource') || department.includes('hr')) {
+      return '/HR/HRdashboard';
+    } 
+    else if (department.includes('finance') || department.includes('accounting')) {
+      return '/finance/financeDashboard';
+    }
+    else if (department.includes('distributor') || position.includes('distributor assistant')) {
+      return '/distributor/distributordashboard';
+    }
+    else if (department.includes('operational') || position.includes('operational distributor')) {
+      return '/ECommerce/ECDashboard';
+    }
+    // Default employee route
+    return '/employee/dashboard';
+  }
+  
+  // Existing role-based routing
+  const roleRoutes = {
+    admin: '/admin/dashboard',
+    distributor: '/distributor/distributordashboard',
+    service_provider: '/serviceProvider/dashboardSP',
+    client: '/Clients/dashboardC',
+    operational_distributor: '/ECommerce/ECDashboard',
+    finance_manager: '/finance/financeDashboard',
+    hr_manager: '/HR/HRdashboard', // Added this line
+    employee: '/employee/dashboard' // Default employee route
+  };
+  
+  console.log('Route for role', role, ':', roleRoutes[role] || '/'); // Debug log
+  return roleRoutes[role] || '/';
 }
 
 // Particle system
@@ -545,12 +586,14 @@ const handleLogin = async () => {
       showNotification('Success!', 'Redirecting to dashboard...', 'success')
       
       setTimeout(() => {
-        const userRole = response.data.user.role
-        const redirectRoute = roleRoutes[userRole] || '/'
+        const user = response.data.user
+        const redirectRoute = getRedirectRoute(user)
         
-        // Handle unknown roles
-        if (!roleRoutes[userRole]) {
-          console.warn(`Unknown role: ${userRole}, redirecting to home`)
+        // Handle unknown roles or departments
+        if (!redirectRoute) {
+          console.warn(`No route found for role: ${user.role}, department: ${user.employee_data?.department}`)
+          showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
+          return
         }
         
         router.push(redirectRoute)
