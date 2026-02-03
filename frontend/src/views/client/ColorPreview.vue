@@ -1,363 +1,567 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-slate-950 p-3 sm:p-4 md:p-6">
-    <!-- Page Header -->
-    <div class="mb-4 sm:mb-6 md:mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div class="max-w-full overflow-hidden">
-          <div class="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-            <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm border border-purple-500/20">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-slate-950 p-4 sm:p-6">
+    <!-- Header -->
+    <div class="text-center mb-8 sm:mb-12">
+      <div class="inline-flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center animate-pulse">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-rose-300">
+          Color Mixing Lab
+        </h1>
+      </div>
+      <p class="text-gray-300 text-lg">Create and explore color combinations with advanced visualization tools</p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-6xl mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <!-- Left Column: Color Inputs -->
+        <div class="lg:col-span-2 space-y-6 sm:space-y-8">
+          <!-- Color Mixer -->
+          <div class="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-2xl p-6 border border-gray-700/50 backdrop-blur-sm">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-6">Color Mixer Controls</h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+              <!-- Color 1 -->
+              <div v-if="colors[0]" class="bg-gray-800/30 rounded-xl p-4 border-2" :class="colors[0].active ? 'border-purple-500' : 'border-gray-700'">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold text-white">Color 1</h3>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="colors[0].active" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+                
+                <div class="space-y-4">
+                  <div class="h-32 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0" :style="{ backgroundColor: colors[0].hex }"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <div class="absolute bottom-3 left-3 right-3">
+                      <div class="text-center">
+                        <p class="text-sm font-semibold text-white">Color Code: {{ colors[0].hex }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-3">
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Select Your Color</label>
+                      <input type="color" v-model="colors[0].hex" @input="onColorChange(0, $event)" class="w-full h-10 rounded-lg cursor-pointer">
+                    </div>
+                    
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Blending Strength: {{ colors[0].weight }}%</label>
+                      <input type="range" v-model="colors[0].weight" min="0" max="100" 
+                             class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500">
+                      <p class="text-xs text-gray-400 mt-1">Higher percentage gives this color more influence in the mix</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Color 2 -->
+              <div v-if="colors[1]" class="bg-gray-800/30 rounded-xl p-4 border-2" :class="colors[1].active ? 'border-pink-500' : 'border-gray-700'">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold text-white">Color 2</h3>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="colors[1].active" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                  </label>
+                </div>
+                
+                <div class="space-y-4">
+                  <div class="h-32 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0" :style="{ backgroundColor: colors[1].hex }"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <div class="absolute bottom-3 left-3 right-3">
+                      <div class="text-center">
+                        <p class="text-sm font-semibold text-white">Color Code: {{ colors[1].hex }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-3">
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Select Your Color</label>
+                      <input type="color" v-model="colors[1].hex" @input="onColorChange(1, $event)" class="w-full h-10 rounded-lg cursor-pointer">
+                    </div>
+                    
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Blending Strength: {{ colors[1].weight }}%</label>
+                      <input type="range" v-model="colors[1].weight" min="0" max="100" 
+                             class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-pink-500">
+                      <p class="text-xs text-gray-400 mt-1">Higher percentage gives this color more influence in the mix</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Color 3 -->
+              <div v-if="colors[2]" class="bg-gray-800/30 rounded-xl p-4 border-2" :class="colors[2].active ? 'border-cyan-500' : 'border-gray-700'">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-lg font-semibold text-white">Color 3</h3>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="colors[2].active" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                  </label>
+                </div>
+                
+                <div class="space-y-4">
+                  <div class="h-32 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0" :style="{ backgroundColor: colors[2].hex }"></div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <div class="absolute bottom-3 left-3 right-3">
+                      <div class="text-center">
+                        <p class="text-sm font-semibold text-white">Color Code: {{ colors[2].hex }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-3">
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Select Your Color</label>
+                      <input type="color" v-model="colors[2].hex" @input="onColorChange(2, $event)" class="w-full h-10 rounded-lg cursor-pointer">
+                    </div>
+                    
+                    <div>
+                      <label class="text-sm text-gray-300 mb-2 block">Blending Strength: {{ colors[2].weight }}%</label>
+                      <input type="range" v-model="colors[2].weight" min="0" max="100" 
+                             class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500">
+                      <p class="text-xs text-gray-400 mt-1">Higher percentage gives this color more influence in the mix</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-rose-300 leading-tight sm:leading-normal">
-              Color Visualization
-            </h1>
+            
+            <!-- Quick Actions -->
+            <div class="flex flex-wrap gap-3 justify-center">
+              <button @click="randomizeColors" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold hover:scale-105 transition-transform flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Random Colors
+              </button>
+              <button @click="balanceWeights" class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full font-semibold hover:scale-105 transition-transform flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Equal Blending
+              </button>
+              <button @click="resetColors" class="px-5 py-2.5 bg-gray-700 text-white rounded-full font-semibold hover:bg-gray-600 transition-colors flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Reset All Colors
+              </button>
+            </div>
           </div>
-          <p class="text-gray-400 text-sm sm:text-base">Interactive 3D preview of your selected wall colors</p>
+          
+          <!-- COLOR MIX RESULT VISUALIZATION -->
+          <div class="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-2xl p-6 border border-gray-700/50 backdrop-blur-sm">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-6">Mixed Color Result</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Color Visualization -->
+              <div class="space-y-4">
+                <!-- Animated Color Sphere -->
+                <div class="relative h-48 sm:h-64 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black">
+                  <!-- Background Grid -->
+                  <div class="absolute inset-0 opacity-20">
+                    <div class="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]"></div>
+                  </div>
+                  
+                  <!-- 3D Sphere Container -->
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <!-- Outer Color Ring -->
+                    <div class="absolute w-48 h-48 rounded-full animate-spin-slow" 
+                         :style="{
+                           background: `conic-gradient(from 0deg, transparent, ${colors[0] && colors[0].active ? colors[0].hex : '#666'}, ${colors[1] && colors[1].active ? colors[1].hex : '#666'}, ${colors[2] && colors[2].active ? colors[2].hex : '#666'}, transparent)`
+                         }">
+                    </div>
+                    
+                    <!-- Main Color Sphere -->
+                    <div class="relative w-40 h-40">
+                      <!-- 3D Sphere -->
+                      <div class="absolute inset-0 rounded-full animate-float" 
+                           :style="{
+                             background: `radial-gradient(circle at 30% 30%, ${mixedColor.hex}, ${mixedColor.hex}80, transparent 70%)`,
+                             boxShadow: `0 0 60px ${mixedColor.hex}40, inset 0 0 40px ${mixedColor.hex}20`
+                           }">
+                      </div>
+                      
+                      <!-- Color Orbit Rings -->
+                      <div v-for="(color, index) in colors" :key="index" 
+                           v-if="color && color.active"
+                           class="absolute rounded-full animate-orbit"
+                           :style="{
+                             width: `${40 + (index * 20)}px`,
+                             height: `${40 + (index * 20)}px`,
+                             border: `1px solid ${color.hex}80`,
+                             boxShadow: `0 0 20px ${color.hex}40`,
+                             animationDuration: `${3 + index}s`,
+                             top: `calc(50% - ${20 + (index * 10)}px)`,
+                             left: `calc(50% - ${20 + (index * 10)}px)`
+                           }">
+                      </div>
+                      
+                      <!-- Color Particles -->
+                      <div v-for="i in 8" :key="`particle-${i}`"
+                           class="absolute w-1 h-1 rounded-full animate-pulse"
+                           :style="{
+                             backgroundColor: mixedColor.hex,
+                             boxShadow: `0 0 10px ${mixedColor.hex}`,
+                             top: `${Math.cos((i * 45) * Math.PI / 180) * 40 + 50}%`,
+                             left: `${Math.sin((i * 45) * Math.PI / 180) * 40 + 50}%`,
+                             animationDelay: `${i * 0.2}s`
+                           }">
+                      </div>
+                    </div>
+                    
+                    <!-- Color Information Display -->
+                    <div class="absolute bottom-4 left-4 right-4">
+                      <div class="bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-white/10">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg" :style="{ backgroundColor: mixedColor.hex }"></div>
+                            <div>
+                              <p class="text-sm font-semibold text-white">{{ mixedColor.name }}</p>
+                              <p class="text-xs text-gray-300">Color Code: {{ mixedColor.hex }}</p>
+                            </div>
+                          </div>
+                          <div class="text-xs text-gray-400">
+                            <span class="inline-flex items-center gap-1">
+                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                              Color Mixing Active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Color Blending Analysis -->
+                <div class="bg-black/40 rounded-xl p-4 border border-white/10">
+                  <h4 class="text-lg font-semibold text-white mb-3">Color Blending Breakdown</h4>
+                  <div class="space-y-2">
+                    <div v-for="(color, index) in colors" :key="index" v-if="color && color.active"
+                         class="flex items-center gap-3">
+                      <div class="w-6 h-6 rounded-full" :style="{ backgroundColor: color.hex }"></div>
+                      <div class="flex-1">
+                        <div class="flex justify-between text-sm">
+                          <span class="text-gray-300">Source Color {{ index + 1 }}</span>
+                          <span class="text-white font-bold">{{ color.weight }}% influence</span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full overflow-hidden bg-gray-800">
+                          <div class="h-full rounded-full transition-all duration-300" 
+                               :style="{ 
+                                 width: `${color.weight}%`, 
+                                 background: `linear-gradient(90deg, ${color.hex}, ${color.hex}80)` 
+                               }"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Color Technical Details -->
+              <div class="space-y-4">
+                <!-- Color Codes -->
+                <div class="bg-black/40 rounded-xl p-4 border border-white/10">
+                  <h4 class="text-lg font-semibold text-white mb-3">Color Technical Details</h4>
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="text-center">
+                        <div class="bg-black/60 rounded-lg p-3">
+                          <p class="text-xs text-gray-400 mb-1">HEX COLOR CODE</p>
+                          <p class="text-lg font-mono font-bold text-white animate-pulse" 
+                             :style="{ textShadow: `0 0 10px ${mixedColor.hex}` }">
+                            {{ mixedColor.hex }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <div class="bg-black/60 rounded-lg p-3">
+                          <p class="text-xs text-gray-400 mb-1">RGB VALUES</p>
+                          <p class="text-lg font-mono font-bold text-white">{{ mixedColor.rgb }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="bg-black/60 rounded-lg p-3">
+                      <p class="text-xs text-gray-400 mb-1">HSL VALUES (Hue, Saturation, Lightness)</p>
+                      <p class="text-sm font-mono text-white">{{ mixedColor.hsl }}</p>
+                    </div>
+
+                    <!-- Save Color Button -->
+                    <div class="mt-4">
+                      <button 
+                        @click="saveMixedColor" 
+                        :disabled="isSaveDisabled"
+                        class="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Save This Color
+                      </button>
+                      <p class="text-xs text-gray-400 mt-2 text-center">
+                        Save this color blend to your collection
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Color Properties -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-black/40 rounded-xl p-4 text-center border border-white/10">
+                    <div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+                         :style="{ 
+                           background: `conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)`
+                         }">
+                      <span class="text-sm font-bold text-white bg-black/50 rounded-full w-6 h-6 flex items-center justify-center">
+                        {{ mixedColor.hue }}°
+                      </span>
+                    </div>
+                    <p class="text-xs text-gray-300">Color Hue Angle</p>
+                  </div>
+                  
+                  <div class="bg-black/40 rounded-xl p-4 text-center border border-white/10">
+                    <div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+                         :style="{ 
+                           background: `conic-gradient(from 0deg, ${mixedColor.hex}00, ${mixedColor.hex}ff)`
+                         }">
+                      <span class="text-sm font-bold text-white bg-black/50 rounded-full w-6 h-6 flex items-center justify-center">
+                        {{ mixedColor.saturation }}%
+                      </span>
+                    </div>
+                    <p class="text-xs text-gray-300">Color Intensity</p>
+                  </div>
+                  
+                  <div class="bg-black/40 rounded-xl p-4 text-center border border-white/10">
+                    <div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+                         :style="{ 
+                           background: `linear-gradient(to bottom, white, black)`
+                         }">
+                      <span class="text-sm font-bold text-white bg-black/50 rounded-full w-6 h-6 flex items-center justify-center"
+                            :style="{ transform: `translateY(${50 - mixedColor.lightness/2}%)` }">
+                        {{ mixedColor.lightness }}%
+                      </span>
+                    </div>
+                    <p class="text-xs text-gray-300">Brightness Level</p>
+                  </div>
+                  
+                  <div class="bg-black/40 rounded-xl p-4 text-center border border-white/10">
+                    <div class="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+                         :style="{ 
+                           background: mixedColor.hex,
+                           boxShadow: `0 0 20px ${mixedColor.hex}`
+                         }">
+                      <span class="text-xs font-bold text-white">
+                        {{ mixedColor.family }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-gray-300">Color Family</p>
+                  </div>
+                </div>
+                
+                <!-- Color Characteristics -->
+                <div class="bg-black/40 rounded-xl p-4 border border-white/10">
+                  <h4 class="text-lg font-semibold text-white mb-3">Color Characteristics</h4>
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-gray-300">Color Temperature</span>
+                      <span class="text-sm font-semibold" :class="mixedColor.temperature === 'Warm' ? 'text-orange-400' : mixedColor.temperature === 'Cool' ? 'text-blue-400' : 'text-gray-400'">
+                        {{ mixedColor.temperature }}
+                        <span class="inline-block w-2 h-2 rounded-full ml-1 animate-pulse"
+                              :class="mixedColor.temperature === 'Warm' ? 'bg-orange-400' : mixedColor.temperature === 'Cool' ? 'bg-blue-400' : 'bg-gray-400'"></span>
+                      </span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-gray-300">Brightness</span>
+                      <span class="text-sm font-semibold text-white">
+                        {{ mixedColor.luminance }}%
+                        <div class="inline-block w-16 h-1.5 bg-gray-800 rounded-full ml-2 overflow-hidden">
+                          <div class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                               :style="{ width: `${mixedColor.luminance}%` }"></div>
+                        </div>
+                      </span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-gray-300">Text Readability</span>
+                      <span class="text-sm font-semibold text-white">
+                        Rating: {{ mixedColor.contrast }}:1
+                        <span class="text-xs ml-1" :class="mixedColor.accessibility === 'Good' ? 'text-green-400' : mixedColor.accessibility === 'Poor' ? 'text-red-400' : 'text-yellow-400'">
+                          ({{ mixedColor.accessibility }})
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <!-- Unity Badge -->
-        <div class="mt-3 sm:mt-0">
-          <div class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 backdrop-blur-sm border border-purple-500/30">
-            <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
-              <span class="text-xs sm:text-sm font-bold text-white">U</span>
+        <!-- Right Column: Color Palettes & Suggestions -->
+        <div class="space-y-6 sm:space-y-8">
+          <!-- Quick Color Suggestions -->
+          <div class="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-2xl p-6 border border-gray-700/50 backdrop-blur-sm">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-6">Color Suggestions</h2>
+            
+            <div class="grid grid-cols-2 gap-3">
+              <button v-for="suggestion in colorSuggestions" :key="suggestion.name"
+                      @click="applySuggestion(suggestion)"
+                      class="group relative overflow-hidden rounded-xl p-4 text-left transition-all hover:scale-105">
+                <div class="absolute inset-0" :style="{ backgroundColor: suggestion.hex }"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div class="relative z-10">
+                  <p class="text-sm font-semibold text-white">{{ suggestion.name }}</p>
+                  <p class="text-xs text-white/80 mt-1">Code: {{ suggestion.hex }}</p>
+                </div>
+              </button>
             </div>
-            <span class="text-xs sm:text-sm font-semibold text-purple-300">UNITY 3D</span>
-            <span class="text-xs text-gray-400 hidden sm:inline">• View Only</span>
+          </div>
+          
+          <!-- Color Harmony Palettes -->
+          <div class="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-2xl p-6 border border-gray-700/50 backdrop-blur-sm">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-6">Color Harmony Palettes</h2>
+            
+            <div class="space-y-4">
+              <!-- Monochromatic -->
+              <div>
+                <p class="text-sm text-gray-300 mb-2">Same Color Family (Monochromatic)</p>
+                <div class="flex h-10 rounded-lg overflow-hidden border border-white/10">
+                  <div v-for="(shade, i) in monochromaticPalette" :key="i" 
+                       class="flex-1 group relative cursor-pointer" :style="{ backgroundColor: shade }"
+                       @click="copyColor(shade)">
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Five shades from light to dark of your mixed color</p>
+              </div>
+              
+              <!-- Analogous -->
+              <div>
+                <p class="text-sm text-gray-300 mb-2">Adjacent Colors (Analogous)</p>
+                <div class="flex h-10 rounded-lg overflow-hidden border border-white/10">
+                  <div v-for="(color, i) in analogousPalette" :key="i" 
+                       class="flex-1 group relative cursor-pointer" :style="{ backgroundColor: color }"
+                       @click="copyColor(color)">
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Colors that are next to each other on the color wheel</p>
+              </div>
+              
+              <!-- Complementary -->
+              <div>
+                <p class="text-sm text-gray-300 mb-2">Opposite Colors (Complementary)</p>
+                <div class="flex h-10 rounded-lg overflow-hidden border border-white/10">
+                  <div v-for="(color, i) in complementaryPalette" :key="i" 
+                       class="flex-1 group relative cursor-pointer" :style="{ backgroundColor: color }"
+                       @click="copyColor(color)">
+                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">Your color plus its opposite for high contrast</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Color Statistics -->
+          <div class="bg-gradient-to-br from-gray-800/40 to-gray-900/40 rounded-2xl p-6 border border-gray-700/50 backdrop-blur-sm">
+            <h2 class="text-xl sm:text-2xl font-bold text-white mb-6">Color Statistics</h2>
+            
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-gray-300">Active Color Sources</span>
+                <div class="flex items-center gap-2">
+                  <div class="w-16 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                         :style="{ width: `${activeColorsCount * 33}%` }"></div>
+                  </div>
+                  <span class="text-sm font-semibold text-white">{{ activeColorsCount }} out of 3</span>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <span class="text-gray-300">Color Balance</span>
+                <span class="font-semibold text-green-400">
+                  {{ mixedColor.stability }}
+                </span>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <span class="text-gray-300">Visual Vibrancy</span>
+                <span class="font-semibold text-cyan-400">
+                  {{ mixedColor.frequency }} (scale)
+                </span>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <span class="text-gray-300">Blending Complexity</span>
+                <span class="font-semibold text-purple-400">
+                  {{ mixedColor.quantumState }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Color Tips -->
+          <div class="bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-2xl p-6 border border-purple-500/30 backdrop-blur-sm">
+            <h3 class="text-lg font-bold text-white mb-3">💡 Color Mixing Tips</h3>
+            <p class="text-gray-200 text-sm">
+              {{ tips[currentTip] }}
+            </p>
+            <div class="flex justify-center mt-4">
+              <button @click="nextTip" class="text-sm text-purple-300 hover:text-purple-200 flex items-center gap-1">
+                Show Another Tip
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
       
-      <!-- Quick Info Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
-        <div class="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3">
-            <div class="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-blue-500/10">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-            </div>
-            <div class="min-w-0">
-              <p class="text-gray-400 text-xs sm:text-sm">Active Preview</p>
-              <p class="text-lg sm:text-xl font-bold text-white truncate">Living Room Wall</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3">
-            <div class="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-purple-500/10">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-              </svg>
-            </div>
-            <div class="min-w-0">
-              <p class="text-gray-400 text-xs sm:text-sm">Selected Color</p>
-              <div class="flex items-center gap-2">
-                <div class="w-5 h-5 rounded-md border border-gray-600" :style="{ backgroundColor: activeColor.hex }"></div>
-                <p class="text-lg sm:text-xl font-bold text-white truncate">{{ activeColor.name }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3">
-            <div class="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-cyan-500/10">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <div class="min-w-0">
-              <p class="text-gray-400 text-xs sm:text-sm">View Mode</p>
-              <p class="text-lg sm:text-xl font-bold text-cyan-300 truncate">Read Only</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3">
-            <div class="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-emerald-500/10">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="min-w-0">
-              <p class="text-gray-400 text-xs sm:text-sm">Last Updated</p>
-              <p class="text-lg sm:text-xl font-bold text-emerald-300 truncate">Today, 10:30 AM</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-      <!-- Unity Preview Container (2/3 width on desktop) -->
-      <div class="lg:col-span-2">
-        <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-2xl border border-gray-700/50 backdrop-blur-sm overflow-hidden h-[400px] sm:h-[500px] md:h-[600px] relative">
-          <!-- Unity WebGL Loading/Placeholder -->
-          <div class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-900/80 to-slate-900/80">
-            <div class="text-center p-4 sm:p-6">
-              <!-- Unity Logo Animation -->
-              <div class="relative mx-auto mb-4 sm:mb-6">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-purple-600 via-pink-500 to-rose-500 flex items-center justify-center animate-pulse mx-auto">
-                  <span class="text-2xl sm:text-3xl md:text-4xl font-bold text-white">U</span>
-                </div>
-                <div class="absolute inset-0 rounded-2xl border-2 border-purple-400/30 animate-ping"></div>
-              </div>
-              
-              <h3 class="text-lg sm:text-xl md:text-2xl font-bold text-white mb-2">3D Color Visualization</h3>
-              <p class="text-gray-300 text-sm sm:text-base mb-4 max-w-md mx-auto">
-                Interactive Unity WebGL preview of your selected wall color
-              </p>
-              
-              <!-- Loading Animation -->
-              <div class="flex items-center justify-center gap-2 mb-6">
-                <div class="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style="animation-delay: 0s"></div>
-                <div class="w-2 h-2 rounded-full bg-pink-500 animate-bounce" style="animation-delay: 0.2s"></div>
-                <div class="w-2 h-2 rounded-full bg-rose-500 animate-bounce" style="animation-delay: 0.4s"></div>
-              </div>
-              
-              <!-- View Controls (Read Only) -->
-              <div class="flex flex-wrap gap-2 justify-center">
-                <button class="px-3 py-1.5 bg-gray-700/50 text-gray-300 rounded-lg text-xs sm:text-sm border border-gray-600 flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <span>View Only</span>
-                </button>
-                <button class="px-3 py-1.5 bg-gray-700/50 text-gray-300 rounded-lg text-xs sm:text-sm border border-gray-600 flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
-                  </svg>
-                  <span>Orbit Camera</span>
-                </button>
-                <button class="px-3 py-1.5 bg-gray-700/50 text-gray-300 rounded-lg text-xs sm:text-sm border border-gray-600 flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>Zoom</span>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Unity Canvas Placeholder -->
-          <div class="absolute inset-0 bg-gradient-to-br from-gray-800 to-slate-900 opacity-50"></div>
-          
-          <!-- Color Preview Overlay -->
-          <div class="absolute bottom-4 left-4 right-4">
-            <div class="bg-gray-900/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-700/50">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg" :style="{ backgroundColor: activeColor.hex }"></div>
-                  <div>
-                    <p class="text-sm sm:text-base font-semibold text-white">{{ activeColor.name }}</p>
-                    <p class="text-xs sm:text-sm text-gray-300">{{ activeColor.hex }} • RGB({{ activeColor.rgb }})</p>
-                  </div>
-                </div>
-                <div class="text-xs sm:text-sm text-gray-400">
-                  <span class="inline-flex items-center gap-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Preview Mode: View Only
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Scene Controls -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
-          <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-lg p-3 border border-gray-700/50 backdrop-blur-sm text-center">
-            <div class="text-xs sm:text-sm text-gray-400 mb-1">Lighting</div>
-            <div class="flex items-center justify-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 flex items-center justify-center">
-                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                </svg>
-              </div>
-              <span class="text-sm sm:text-base font-medium text-white">Daylight</span>
-            </div>
-          </div>
-          
-          <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-lg p-3 border border-gray-700/50 backdrop-blur-sm text-center">
-            <div class="text-xs sm:text-sm text-gray-400 mb-1">View Angle</div>
-            <div class="flex items-center justify-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-cyan-300 flex items-center justify-center">
-                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </div>
-              <span class="text-sm sm:text-base font-medium text-white">Front View</span>
-            </div>
-          </div>
-          
-          <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-lg p-3 border border-gray-700/50 backdrop-blur-sm text-center">
-            <div class="text-xs sm:text-sm text-gray-400 mb-1">Quality</div>
-            <div class="flex items-center justify-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-gradient-to-r from-emerald-400 to-green-300 flex items-center justify-center">
-                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-              </div>
-              <span class="text-sm sm:text-base font-medium text-white">High</span>
-            </div>
-          </div>
-          
-          <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-lg p-3 border border-gray-700/50 backdrop-blur-sm text-center">
-            <div class="text-xs sm:text-sm text-gray-400 mb-1">Scale</div>
-            <div class="flex items-center justify-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-gradient-to-r from-purple-400 to-pink-300 flex items-center justify-center">
-                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                </svg>
-              </div>
-              <span class="text-sm sm:text-base font-medium text-white">100%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Color Information Panel (1/3 width on desktop) -->
-      <div class="space-y-4 sm:space-y-6">
-        <!-- Selected Color Details -->
-        <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-            </svg>
-            <h3 class="text-lg sm:text-xl font-bold text-white">Selected Color Details</h3>
-          </div>
-          
-          <div class="space-y-3 sm:space-y-4">
-            <!-- Color Preview -->
-            <div class="flex items-center gap-3 sm:gap-4">
-              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl border-2 border-gray-600" :style="{ backgroundColor: activeColor.hex }"></div>
-              <div class="flex-1 min-w-0">
-                <h4 class="text-base sm:text-lg font-semibold text-white mb-1 truncate">{{ activeColor.name }}</h4>
-                <p class="text-sm text-gray-300 mb-2">{{ activeColor.description }}</p>
-                <div class="flex flex-wrap gap-2">
-                  <span class="px-2 py-1 bg-gray-800/50 rounded text-xs font-mono text-gray-300">{{ activeColor.hex }}</span>
-                  <span class="px-2 py-1 bg-gray-800/50 rounded text-xs font-mono text-gray-300">RGB({{ activeColor.rgb }})</span>
-                  <span class="px-2 py-1 bg-gray-800/50 rounded text-xs font-mono text-gray-300">CMYK({{ activeColor.cmyk }})</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Color Properties -->
-            <div class="grid grid-cols-2 gap-2 sm:gap-3">
-              <div class="bg-gray-800/30 rounded-lg p-2 sm:p-3">
-                <p class="text-xs sm:text-sm text-gray-400 mb-1">Color Family</p>
-                <p class="text-sm sm:text-base font-medium text-white">{{ activeColor.family }}</p>
-              </div>
-              <div class="bg-gray-800/30 rounded-lg p-2 sm:p-3">
-                <p class="text-xs sm:text-sm text-gray-400 mb-1">Finish Type</p>
-                <p class="text-sm sm:text-base font-medium text-white">{{ activeColor.finish }}</p>
-              </div>
-              <div class="bg-gray-800/30 rounded-lg p-2 sm:p-3">
-                <p class="text-xs sm:text-sm text-gray-400 mb-1">Light Reflectance</p>
-                <p class="text-sm sm:text-base font-medium text-white">{{ activeColor.lrv }}%</p>
-              </div>
-              <div class="bg-gray-800/30 rounded-lg p-2 sm:p-3">
-                <p class="text-xs sm:text-sm text-gray-400 mb-1">Opacity</p>
-                <p class="text-sm sm:text-base font-medium text-white">{{ activeColor.opacity }}%</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Alternative Colors -->
-        <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-            <h3 class="text-lg sm:text-xl font-bold text-white">Suggested Alternatives</h3>
-          </div>
-          
-          <div class="space-y-3">
-            <div v-for="color in alternativeColors" :key="color.id" 
-                 class="flex items-center gap-3 p-2 sm:p-3 rounded-lg hover:bg-gray-700/30 transition-colors cursor-pointer"
-                 @click="selectAlternative(color)">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border border-gray-600" :style="{ backgroundColor: color.hex }"></div>
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm sm:text-base font-medium text-white truncate">{{ color.name }}</h4>
-                <p class="text-xs text-gray-400 truncate">{{ color.hex }}</p>
-              </div>
-              <div class="text-xs text-gray-500">
-                {{ color.similarity }}% match
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Visualization Notes -->
-        <div class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-700/50 backdrop-blur-sm">
-          <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 class="text-lg sm:text-xl font-bold text-white">Visualization Notes</h3>
-          </div>
-          
-          <div class="space-y-3">
-            <div class="text-sm text-gray-300">
-              <p class="mb-2">This is a <span class="text-cyan-300 font-semibold">read-only visualization</span> of your selected wall color in a 3D environment.</p>
-              <ul class="space-y-2 text-sm">
-                <li class="flex items-start gap-2">
-                  <svg class="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Colors are displayed in <span class="text-white font-medium">realistic lighting</span> conditions</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <svg class="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span><span class="text-white font-medium">Interactive camera controls</span> allow different viewing angles</span>
-                </li>
-                <li class="flex items-start gap-2">
-                  <svg class="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Scene lighting can be adjusted to simulate <span class="text-white font-medium">different times of day</span></span>
-                </li>
-              </ul>
-            </div>
-            
-            <div class="pt-3 border-t border-gray-700/50">
-              <div class="text-xs text-gray-400 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span>This is a view-only preview. Contact your service provider for color modifications.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mobile View Instructions -->
-    <div class="lg:hidden mt-4 sm:mt-6">
-      <div class="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 rounded-xl sm:rounded-2xl p-4 border border-cyan-500/30 backdrop-blur-sm">
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      <!-- Copy Notification -->
+      <div v-if="showCopyNotification" class="fixed bottom-4 right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg animate-slide-up backdrop-blur-sm">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <div class="flex-1">
-            <h4 class="text-sm sm:text-base font-semibold text-white mb-1">Mobile View Instructions</h4>
-            <p class="text-xs sm:text-sm text-gray-300">
-              For best experience, rotate your device to landscape mode. Use pinch to zoom and drag to rotate the 3D view.
-              Unity WebGL may have limited functionality on some mobile browsers.
-            </p>
-          </div>
+          Color code copied to clipboard!
+        </div>
+      </div>
+
+      <!-- Save Success Notification -->
+      <div v-if="showSaveNotification" class="fixed bottom-4 right-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-slide-up backdrop-blur-sm z-50">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Color saved to your collection!
+        </div>
+      </div>
+
+      <!-- Save Error Notification -->
+      <div v-if="showErrorNotification" class="fixed bottom-4 right-4 bg-gradient-to-r from-red-500 to-rose-500 text-white px-4 py-2 rounded-lg shadow-lg animate-slide-up backdrop-blur-sm z-50">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Failed to save color. Please try again.
         </div>
       </div>
     </div>
@@ -365,222 +569,769 @@
 </template>
 
 <script>
+import api from '@/utils/axios'
+
 export default {
-  name: 'ColorPreview',
+  name: 'ColorMixer',
   data() {
     return {
-      activeColor: {
-        id: 1,
-        name: 'Ocean Blue',
-        hex: '#3B82F6',
-        rgb: '59, 130, 246',
-        cmyk: '76, 47, 0, 4',
-        family: 'Blue',
-        finish: 'Matte',
-        lrv: '45',
-        opacity: '98',
-        description: 'A calming blue shade perfect for living spaces'
+      colors: [
+        {
+          id: 1,
+          name: 'Vibrant Red',
+          hex: '#FF3636',
+          rgb: '255, 54, 54',
+          active: true,
+          weight: 40
+        },
+        {
+          id: 2,
+          name: 'Sunshine Yellow',
+          hex: '#FFE436',
+          rgb: '255, 228, 54',
+          active: true,
+          weight: 35
+        },
+        {
+          id: 3,
+          name: 'Ocean Blue',
+          hex: '#00C8FF',
+          rgb: '0, 200, 255',
+          active: true,
+          weight: 25
+        }
+      ],
+      mixedColor: {
+        name: 'Blended Color Result',
+        hex: '#FF6B6B',
+        rgb: '255, 107, 107',
+        hsl: '0°, 100%, 71%',
+        hue: 0,
+        saturation: 100,
+        lightness: 71,
+        contrast: 4.5,
+        luminance: 65,
+        temperature: 'Warm',
+        accessibility: 'Good',
+        family: 'Red',
+        stability: 'Stable',
+        frequency: '432',
+        quantumState: 'Two Colors Blended'
       },
-      alternativeColors: [
-        { id: 1, name: 'Sky Blue', hex: '#60A5FA', similarity: 85 },
-        { id: 2, name: 'Royal Blue', hex: '#1D4ED8', similarity: 75 },
-        { id: 3, name: 'Teal Accent', hex: '#0D9488', similarity: 60 },
-        { id: 4, name: 'Steel Blue', hex: '#475569', similarity: 55 }
-      ]
+      colorSuggestions: [
+        { name: 'Vibrant Red', hex: '#FF3636' },
+        { name: 'Sunshine Yellow', hex: '#FFE436' },
+        { name: 'Ocean Blue', hex: '#00C8FF' },
+        { name: 'Electric Purple', hex: '#9E00F6' },
+        { name: 'Mint Green', hex: '#00FF9D' },
+        { name: 'Coral Pink', hex: '#FF7F83' }
+      ],
+      tips: [
+        "Color blending uses weighted mixing for accurate results",
+        "Adjust the 'Blending Strength' sliders to control how much each color influences the mix",
+        "Higher saturation creates more vibrant colors",
+        "Try complementary colors for maximum visual impact",
+        "Adjust lightness to make colors brighter or darker",
+        "Monochromatic palettes create harmonious color schemes",
+        "Use analogous colors for smooth transitions",
+        "Complementary colors work well for contrast and emphasis"
+      ],
+      currentTip: 0,
+      showCopyNotification: false,
+      showSaveNotification: false,
+      showErrorNotification: false
     }
   },
+  computed: {
+    activeColorsCount() {
+      return this.colors.filter(c => c && c.active).length;
+    },
+    monochromaticPalette() {
+      return [
+        this.lightenColor(this.mixedColor.hex, 40),
+        this.lightenColor(this.mixedColor.hex, 20),
+        this.mixedColor.hex,
+        this.darkenColor(this.mixedColor.hex, 20),
+        this.darkenColor(this.mixedColor.hex, 40)
+      ];
+    },
+    analogousPalette() {
+      const baseHue = this.mixedColor.hue;
+      return [
+        this.hslToHex((baseHue - 30 + 360) % 360, 80, 60),
+        this.hslToHex((baseHue - 15 + 360) % 360, 90, 65),
+        this.mixedColor.hex,
+        this.hslToHex((baseHue + 15) % 360, 90, 65),
+        this.hslToHex((baseHue + 30) % 360, 80, 60)
+      ];
+    },
+    complementaryPalette() {
+      const baseHue = this.mixedColor.hue;
+      const compHue = (baseHue + 180) % 360;
+      return [
+        this.mixedColor.hex,
+        this.lightenColor(this.mixedColor.hex, 30),
+        this.hslToHex(compHue, 80, 60),
+        this.darkenColor(this.hslToHex(compHue, 80, 60), 30),
+        '#FFFFFF'
+      ];
+    },
+    isSaveDisabled() {
+      return this.activeColorsCount === 0;
+    }
+  },
+  watch: {
+    colors: {
+      deep: true,
+      handler() {
+        this.calculateMixedColor();
+      }
+    }
+  },
+  mounted() {
+    this.calculateMixedColor();
+  },
   methods: {
-    selectAlternative(color) {
-      console.log('Selected alternative color:', color)
-      // In a real app, this would update the Unity visualization
-      // For demo purposes, we'll just show a notification
+    async saveMixedColor() {
+      try {
+        const colorData = {
+          name: String(this.mixedColor.name || 'Unnamed Color').substring(0, 255),
+          hex: String(this.mixedColor.hex || '#000000').toUpperCase(),
+          rgb: String(this.mixedColor.rgb || '0, 0, 0'),
+          hsl: String(this.mixedColor.hsl || '0°, 0%, 0%'),
+          hue: parseInt(this.mixedColor.hue) || 0,
+          saturation: parseInt(this.mixedColor.saturation) || 0,
+          lightness: parseInt(this.mixedColor.lightness) || 0,
+          contrast: parseFloat(this.mixedColor.contrast) || 4.5,
+          luminance: parseInt(this.mixedColor.luminance) || 0,
+          temperature: String(this.mixedColor.temperature || 'Neutral').substring(0, 50),
+          accessibility: String(this.mixedColor.accessibility || 'Good').substring(0, 50),
+          family: String(this.mixedColor.family || 'Unknown').substring(0, 50),
+          stability: String(this.mixedColor.stability || 'Stable').substring(0, 50),
+          frequency: String(this.mixedColor.frequency || '0').substring(0, 50),
+          quantumState: String(this.mixedColor.quantumState || 'Mixed Colors').substring(0, 50),
+          sourceColors: this.colors.filter(c => c && c.active).map(color => ({
+            hex: color.hex,
+            weight: color.weight,
+            active: color.active
+          })),
+          palettes: {
+            monochromatic: this.monochromaticPalette || [],
+            analogous: this.analogousPalette || [],
+            complementary: this.complementaryPalette || []
+          },
+          isFavorite: false
+        };
+
+        if (colorData.sourceColors.length === 0) {
+          colorData.sourceColors = null;
+        }
+
+        const response = await api.post('/client/save-color', colorData);
+        
+        if (response.data.success) {
+          this.showSaveNotification = true;
+          setTimeout(() => {
+            this.showSaveNotification = false;
+          }, 3000);
+          
+          this.$emit('color-saved', response.data.data);
+        } else {
+          this.showErrorNotification = true;
+          setTimeout(() => {
+            this.showErrorNotification = false;
+          }, 3000);
+        }
+      } catch (error) {
+        this.showErrorNotification = true;
+        setTimeout(() => {
+          this.showErrorNotification = false;
+        }, 3000);
+        
+        if (error.response) {
+          if (error.response.status === 401) {
+            this.$router.push('/Landing/logIn');
+          }
+        }
+      }
+    },
+    
+    onColorChange(index, event) {
+      this.colors[index].hex = event.target.value.toUpperCase();
+      this.updateRGBFromHex(index);
+      this.calculateMixedColor();
+    },
+    
+    updateRGBFromHex(index) {
+      if (!this.colors[index] || !this.colors[index].hex) return;
+      
+      const hex = this.colors[index].hex.replace('#', '');
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        this.colors[index].rgb = `${r}, ${g}, ${b}`;
+      }
+    },
+    
+    calculateMixedColor() {
+      const activeColors = this.colors.filter(c => c && c.active);
+      
+      if (activeColors.length === 0) {
+        this.mixedColor = {
+          name: 'No Colors Selected',
+          hex: '#666666',
+          rgb: '102, 102, 102',
+          hsl: '0°, 0%, 40%',
+          hue: 0,
+          saturation: 0,
+          lightness: 40,
+          contrast: 4.5,
+          luminance: 40,
+          temperature: 'Neutral',
+          accessibility: 'Good',
+          family: 'Gray',
+          stability: 'Inactive',
+          frequency: '0',
+          quantumState: 'No Colors'
+        };
+        return;
+      }
+      
+      if (activeColors.length === 1) {
+        const color = activeColors[0];
+        const [r, g, b] = color.rgb.split(',').map(num => parseInt(num.trim()));
+        const hsl = this.rgbToHSL(r, g, b);
+        
+        this.mixedColor = {
+          name: `Pure ${this.getColorFamily(hsl.h)}`,
+          hex: color.hex,
+          rgb: color.rgb,
+          hsl: `${Math.round(hsl.h)}°, ${Math.round(hsl.s * 100)}%, ${Math.round(hsl.l * 100)}%`,
+          hue: Math.round(hsl.h),
+          saturation: Math.round(hsl.s * 100),
+          lightness: Math.round(hsl.l * 100),
+          contrast: this.calculateContrast(color.hex),
+          luminance: this.calculateLuminance(r, g, b),
+          temperature: this.getColorTemperature(hsl.h, hsl.l),
+          accessibility: this.calculateAccessibility(color.hex),
+          family: this.getColorFamily(hsl.h),
+          stability: 'Single Color',
+          frequency: Math.round(432 + (hsl.s * 100 * 0.5)),
+          quantumState: 'Single Color'
+        };
+        return;
+      }
+      
+      let totalWeight = activeColors.reduce((sum, c) => sum + c.weight, 0);
+      if (totalWeight === 0) totalWeight = 1;
+      
+      let linearR = 0, linearG = 0, linearB = 0;
+      
+      activeColors.forEach(color => {
+        const [r, g, b] = color.rgb.split(',').map(num => parseInt(num.trim()));
+        const weight = color.weight / totalWeight;
+        
+        const linearize = (val) => {
+          val = val / 255;
+          return val <= 0.04045 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+        };
+        
+        linearR += linearize(r) * weight;
+        linearG += linearize(g) * weight;
+        linearB += linearize(b) * weight;
+      });
+      
+      const delinearize = (val) => {
+        return val <= 0.0031308 ? 12.92 * val : 1.055 * Math.pow(val, 1/2.4) - 0.055;
+      };
+      
+      let r = Math.round(delinearize(linearR) * 255);
+      let g = Math.round(delinearize(linearG) * 255);
+      let b = Math.round(delinearize(linearB) * 255);
+      
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+      
+      const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+      const hsl = this.rgbToHSL(r, g, b);
+      const hue = Math.round(hsl.h);
+      const saturation = Math.round(hsl.s * 100);
+      const lightness = Math.round(hsl.l * 100);
+      
+      const stability = this.calculateStability(hsl.s, hsl.l);
+      const frequency = Math.round(432 + (saturation * 0.3) + (lightness * 0.2));
+      const quantumState = this.getQuantumState(activeColors.length);
+      const temperature = this.getColorTemperature(hue, lightness);
+      const family = this.getColorFamily(hue);
+      const name = this.generateColorName(family, saturation, lightness, activeColors.length);
+      
+      this.mixedColor = {
+        name: name,
+        hex: hex,
+        rgb: `${r}, ${g}, ${b}`,
+        hsl: `${hue}°, ${saturation}%, ${lightness}%`,
+        hue: hue,
+        saturation: saturation,
+        lightness: lightness,
+        contrast: this.calculateContrast(hex),
+        luminance: this.calculateLuminance(r, g, b),
+        temperature: temperature,
+        accessibility: this.calculateAccessibility(hex),
+        family: family,
+        stability: stability,
+        frequency: frequency,
+        quantumState: quantumState
+      };
+    },
+    
+    rgbToHSL(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      
+      return { h: h * 360, s: s, l: l };
+    },
+    
+    hslToHex(h, s, l) {
+      h /= 360;
+      s /= 100;
+      l /= 100;
+      
+      let r, g, b;
+      
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+        
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      
+      const toHex = x => {
+        const hex = Math.round(x * 255).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+    },
+    
+    lightenColor(hex, percent) {
+      if (!hex || !hex.startsWith('#')) return '#FFFFFF';
+      const [r, g, b] = hex.match(/\w\w/g).map(x => parseInt(x, 16));
+      
+      const hsl = this.rgbToHSL(r, g, b);
+      hsl.l = Math.min(1, hsl.l + (percent / 100));
+      
+      return this.hslToHex(hsl.h, hsl.s * 100, hsl.l * 100);
+    },
+    
+    darkenColor(hex, percent) {
+      if (!hex || !hex.startsWith('#')) return '#000000';
+      const [r, g, b] = hex.match(/\w\w/g).map(x => parseInt(x, 16));
+      
+      const hsl = this.rgbToHSL(r, g, b);
+      hsl.l = Math.max(0, hsl.l - (percent / 100));
+      
+      return this.hslToHex(hsl.h, hsl.s * 100, hsl.l * 100);
+    },
+    
+    calculateLuminance(r, g, b) {
+      const a = [r, g, b].map(v => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return Math.round((a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722) * 100);
+    },
+    
+    calculateContrast(hex) {
+      if (!hex || !hex.startsWith('#')) return 4.5;
+      const [r, g, b] = hex.match(/\w\w/g).map(x => parseInt(x, 16));
+      const luminance = this.calculateLuminance(r, g, b) / 100;
+      const whiteLuminance = 1;
+      const contrast = (Math.max(whiteLuminance, luminance) + 0.05) / (Math.min(whiteLuminance, luminance) + 0.05);
+      return Math.round(contrast * 10) / 10;
+    },
+    
+    calculateAccessibility(hex) {
+      const contrast = this.calculateContrast(hex);
+      return contrast >= 7 ? 'Excellent' : contrast >= 4.5 ? 'Good' : 'Poor';
+    },
+    
+    getColorFamily(hue) {
+      if (hue >= 0 && hue < 15) return 'Red';
+      if (hue >= 15 && hue < 45) return 'Orange';
+      if (hue >= 45 && hue < 75) return 'Yellow';
+      if (hue >= 75 && hue < 165) return 'Green';
+      if (hue >= 165 && hue < 195) return 'Cyan';
+      if (hue >= 195 && hue < 255) return 'Blue';
+      if (hue >= 255 && hue < 285) return 'Purple';
+      if (hue >= 285 && hue < 315) return 'Magenta';
+      if (hue >= 315 && hue < 345) return 'Pink';
+      return 'Red';
+    },
+    
+    getColorTemperature(hue, lightness) {
+      if ((hue >= 0 && hue < 45) || (hue >= 315 && hue <= 360)) {
+        return lightness > 60 ? 'Warm' : 'Deep Warm';
+      }
+      if (hue >= 45 && hue < 315) {
+        return lightness > 60 ? 'Cool' : 'Deep Cool';
+      }
+      return 'Neutral';
+    },
+    
+    calculateStability(saturation, lightness) {
+      if (saturation < 0.3) return 'Very Stable';
+      if (saturation < 0.6) return 'Stable';
+      if (saturation < 0.8) return 'Dynamic';
+      return 'Highly Vibrant';
+    },
+    
+    getQuantumState(activeCount) {
+      switch(activeCount) {
+        case 1: return 'Single Color';
+        case 2: return 'Two Colors Blended';
+        case 3: return 'Three Colors Blended';
+        default: return 'Mixed Colors';
+      }
+    },
+    
+    generateColorName(family, saturation, lightness, activeCount) {
+      const prefixes = ['Blended', 'Mixed', 'Harmonic', 'Balanced', 'Created'];
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      
+      let descriptor = '';
+      if (saturation > 80) descriptor = 'Vibrant ';
+      else if (saturation > 60) descriptor = 'Rich ';
+      else if (saturation > 40) descriptor = 'Muted ';
+      else descriptor = 'Soft ';
+      
+      if (lightness > 80) descriptor += 'Light ';
+      else if (lightness < 30) descriptor += 'Dark ';
+      
+      const suffix = activeCount > 1 ? ' Blend' : ' Color';
+      
+      return `${prefix} ${descriptor}${family}${suffix}`;
+    },
+    
+    randomizeColors() {
+      const hues = [0, 30, 60, 120, 180, 240, 300, 330];
+      
+      this.colors.forEach((color, index) => {
+        const hue = hues[Math.floor(Math.random() * hues.length)];
+        const saturation = 70 + Math.random() * 30;
+        const lightness = 40 + Math.random() * 40;
+        
+        color.hex = this.hslToHex(hue, saturation, lightness);
+        color.weight = Math.floor(Math.random() * 30) + 20;
+        color.active = true;
+        this.updateRGBFromHex(index);
+      });
+      
+      this.calculateMixedColor();
+    },
+    
+    resetColors() {
+      this.colors = [
+        {
+          id: 1,
+          name: 'Vibrant Red',
+          hex: '#FF3636',
+          rgb: '255, 54, 54',
+          active: true,
+          weight: 40
+        },
+        {
+          id: 2,
+          name: 'Sunshine Yellow',
+          hex: '#FFE436',
+          rgb: '255, 228, 54',
+          active: true,
+          weight: 35
+        },
+        {
+          id: 3,
+          name: 'Ocean Blue',
+          hex: '#00C8FF',
+          rgb: '0, 200, 255',
+          active: true,
+          weight: 25
+        }
+      ];
+      this.calculateMixedColor();
+    },
+    
+    balanceWeights() {
+      const activeCount = this.colors.filter(c => c && c.active).length;
+      if (activeCount === 0) return;
+      
+      const equalWeight = Math.floor(100 / activeCount);
+      this.colors.forEach(color => {
+        if (color && color.active) {
+          color.weight = equalWeight;
+        }
+      });
+      
+      this.calculateMixedColor();
+    },
+    
+    applySuggestion(suggestion) {
+      for (let i = 0; i < this.colors.length; i++) {
+        if (!this.colors[i].active) {
+          this.colors[i].hex = suggestion.hex;
+          this.colors[i].active = true;
+          this.updateRGBFromHex(i);
+          this.calculateMixedColor();
+          break;
+        }
+      }
+    },
+    
+    copyColor(color) {
+      navigator.clipboard.writeText(color).then(() => {
+        this.showCopyNotification = true;
+        setTimeout(() => {
+          this.showCopyNotification = false;
+        }, 2000);
+      });
+    },
+    
+    nextTip() {
+      this.currentTip = (this.currentTip + 1) % this.tips.length;
     }
   }
 }
 </script>
 
 <style scoped>
-/* Custom scrollbar */
+/* Futuristic Animations */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-10px) scale(1.05); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+}
+
+.animate-orbit {
+  animation: orbit linear infinite;
+}
+
+@keyframes slide-up {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Futuristic Grid Background */
+.bg-grid-white\/\[0\.02\] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(255 255 255 / 0.05)'%3e%3cpath d='M0 .5H31.5V32'/%3e%3c/svg%3e");
+}
+
+/* Cyberpunk Glow Effects */
+.cyber-glow {
+  filter: drop-shadow(0 0 20px currentColor);
+}
+
+/* Glass Morphism */
+.backdrop-blur-sm {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Gradient Text */
+.text-transparent {
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: rgba(30, 41, 59, 0.3);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #8b5cf6, #ec4899);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #7c3aed, #db2777);
 }
 
-/* Smooth transitions */
-* {
-  transition: all 0.2s ease-in-out;
+/* Range Slider Futuristic */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
 }
 
-/* Card hover effects */
-.bg-gradient-to-br {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 10px currentColor;
+  cursor: pointer;
+  background: transparent;
 }
 
-.bg-gradient-to-br:hover {
-  transform: translateY(-1px);
+input[type="range"]::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 10px currentColor;
+  cursor: pointer;
+  background: transparent;
 }
 
-/* Unity logo animation */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
+/* Color Input Styling */
+input[type="color"] {
+  -webkit-appearance: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-.animate-pulse {
-  animation: pulse 2s infinite;
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 6px;
 }
 
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
 }
 
-.animate-ping {
-  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+/* Holographic Effects */
+.hologram {
+  background: linear-gradient(
+    45deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 50%,
+    transparent 75%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 20px 20px;
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
+/* Quantum Particle Effects */
+.quantum-particle {
+  position: absolute;
+  pointer-events: none;
+  background: radial-gradient(circle at center, currentColor, transparent 70%);
 }
 
-.animate-bounce {
-  animation: bounce 1s infinite;
-}
-
-/* Backdrop blur for glass effect */
-.backdrop-blur-sm {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-/* Gradient text effects */
-.text-transparent {
-  background-clip: text;
-  -webkit-background-clip: text;
-}
-
-/* Smooth border transitions */
-.border {
-  transition: border-color 0.3s ease;
-}
-
-/* Text truncation */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Extra small devices (phones, less than 400px) */
-@media (max-width: 399px) {
-  .min-h-screen {
-    padding: 0.75rem;
+/* Responsive Design */
+@media (max-width: 640px) {
+  .grid-cols-2 {
+    grid-template-columns: repeat(1, 1fr);
   }
   
-  .text-2xl {
-    font-size: 1.5rem;
+  .text-3xl {
+    font-size: 2rem;
   }
   
-  .h-\[400px\] {
-    height: 300px;
-  }
-}
-
-/* Small devices (phones, 400px to 639px) */
-@media (min-width: 400px) and (max-width: 639px) {
-  .min-h-screen {
-    padding: 1rem;
-  }
-  
-  .text-2xl {
-    font-size: 1.75rem;
-  }
-  
-  .h-\[400px\] {
-    height: 350px;
-  }
-}
-
-/* Medium devices (tablets, 640px to 767px) */
-@media (min-width: 640px) and (max-width: 767px) {
-  .min-h-screen {
+  .p-6 {
     padding: 1.5rem;
   }
   
-  .h-\[400px\] {
-    height: 400px;
+  .h-48 {
+    height: 12rem;
   }
 }
 
-/* Large devices (desktops, 768px and up) */
-@media (min-width: 768px) {
-  .min-h-screen {
-    padding: 1.5rem;
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+  .bg-gradient-to-br {
+    background-image: linear-gradient(
+      to bottom right,
+      rgba(30, 41, 59, 0.6),
+      rgba(15, 23, 42, 0.6)
+    );
   }
 }
 
-/* Extra large devices (large desktops, 1024px and up) */
-@media (min-width: 1024px) {
-  .min-h-screen {
-    padding: 2rem;
-  }
-}
-
-/* Safe area insets for modern mobile devices */
-@supports (padding: max(0px)) {
-  .min-h-screen {
-    padding-left: max(0.75rem, env(safe-area-inset-left));
-    padding-right: max(0.75rem, env(safe-area-inset-right));
-    padding-top: max(0.75rem, env(safe-area-inset-top));
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-  }
-}
-
-/* Touch-friendly tap targets */
-button {
-  min-height: 36px;
-  min-width: 36px;
-}
-
-/* Prevent text selection on interactive elements */
-button {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Smooth scrolling for the entire page */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Optimize for reduced motion */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -591,131 +1342,113 @@ html {
   }
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .bg-gradient-to-br {
-    border-width: 2px;
-  }
-  
-  .text-gray-400 {
-    color: #4b5563 !important;
-  }
+/* Neon Border Effect */
+.neon-border {
+  border: 1px solid;
+  border-image: linear-gradient(45deg, #8b5cf6, #ec4899, #00c8ff) 1;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
-/* Container queries for responsive text */
-@container (max-width: 400px) {
-  .text-xs {
-    font-size: 0.7rem;
-  }
-  
-  .text-sm {
-    font-size: 0.8rem;
-  }
+/* Data Stream Effect */
+.data-stream {
+  position: relative;
+  overflow: hidden;
 }
 
-/* Responsive font sizes for better readability */
-@media (max-width: 380px) {
-  .text-lg {
-    font-size: 1rem;
-  }
-  
-  .text-xl {
-    font-size: 1.125rem;
-  }
-  
-  .text-2xl {
-    font-size: 1.375rem;
-  }
+.data-stream::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  animation: data-stream-flow 3s linear infinite;
 }
 
-/* Improve touch targets on very small screens */
-@media (max-width: 320px) {
-  button {
-    min-height: 40px;
-    min-width: 40px;
-  }
-  
-  .gap-1 {
-    gap: 0.25rem;
-  }
-  
-  .gap-2 {
-    gap: 0.5rem;
-  }
+@keyframes data-stream-flow {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
 }
 
-/* Landscape mode optimizations */
-@media (max-height: 500px) and (orientation: landscape) {
-  .min-h-screen {
-    padding: 1rem;
-  }
-  
-  .h-\[400px\] {
-    height: 250px;
-  }
-  
-  .lg\:col-span-2 {
-    height: 60vh;
-  }
+/* Cyberpunk Button Effects */
+button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-/* Dark mode optimizations */
-@media (prefers-color-scheme: dark) {
-  .bg-gradient-to-br {
-    background-image: linear-gradient(to bottom right, rgba(30, 41, 59, 0.5), rgba(15, 23, 42, 0.5));
-  }
+button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    transparent 30%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg);
+  transition: all 0.5s ease;
+  opacity: 0;
 }
 
-/* Print styles */
-@media print {
-  .bg-gradient-to-br {
-    background: white !important;
-    border: 1px solid #e5e7eb !important;
-  }
-  
-  .text-white {
-    color: #1f2937 !important;
-  }
-  
-  .text-gray-400 {
-    color: #6b7280 !important;
-  }
+button:hover::after {
+  opacity: 1;
+  animation: button-glow 1.5s linear infinite;
 }
 
-/* Custom color swatch hover effect */
-[style*="background-color:"] {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+@keyframes button-glow {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
 }
 
-[style*="background-color:"]:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+/* Quantum Wave Effect */
+.quantum-wave {
+  position: relative;
 }
 
-/* Unity container specific styles */
-.relative > .absolute {
-  pointer-events: none;
+.quantum-wave::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    currentColor 90deg,
+    transparent 180deg,
+    currentColor 270deg,
+    transparent 360deg
+  );
+  opacity: 0.1;
+  animation: quantum-spin 10s linear infinite;
 }
 
-.relative > .absolute + .absolute {
-  pointer-events: auto;
+@keyframes quantum-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Mobile-specific optimization for 3D container */
-@media (max-width: 767px) {
-  .h-\[400px\] {
-    height: 300px;
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* Holographic Text */
+.holographic-text {
+  background: linear-gradient(45deg, #8b5cf6, #ec4899, #00c8ff);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: holographic-shift 3s ease infinite;
 }
 
-/* Tablet-specific adjustments */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .lg\:col-span-2 {
-    height: 500px;
-  }
+@keyframes holographic-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 </style>

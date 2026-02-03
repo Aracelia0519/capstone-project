@@ -75,6 +75,8 @@ import Transactions from '@/views/finance/Transactions.vue'
 import PaymentMethods from '@/views/finance/PaymentMethods.vue'
 import Invoices from '@/views/finance/Invoices.vue'
 import ReportsFinance from '@/views/finance/ReportsFinance.vue'
+import ProcurementRequestFinance from '@/views/finance/ProcurementRequestFinance.vue'
+
 
 import CRMLayout from '@/layouts/CRMLayout.vue'
 import CRMDashboard from '@/views/CRM/CRMDashboard.vue'
@@ -87,7 +89,7 @@ import CRMReports from '@/views/CRM/CRMReports.vue'
 
 import ECommerceLayout from '@/layouts/ECommerceLayout.vue'
 import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
-import ECommerceProducts from '@/views/E-commerce/ECommerceProducts.vue'
+import ProcurementRequests from '@/views/E-commerce/ProcurementRequests.vue'
 import ECommerceCategories from '@/views/E-commerce/ECommerceCategories.vue'
 import ECommerceOrders from '@/views/E-commerce/ECommerceOrders.vue'
 import ECommercePayments from '@/views/E-commerce/ECommercePayments.vue'
@@ -478,6 +480,11 @@ const routes = [
         name: 'reportFinance',
         component: ReportsFinance
       },
+      {
+        path: 'procurementRequestFinance',
+        name: 'procurementRequestFinance',
+        component: ProcurementRequestFinance
+      },
     ]
   },
   
@@ -493,9 +500,9 @@ const routes = [
         component: ECommerceDashboard
       },
       {
-        path: 'ECProducts',
-        name: 'ECProducts',
-        component: ECommerceProducts
+        path: 'ECProcurement',
+        name: 'ECProcurement',
+        component: ProcurementRequests
       },
       {
         path: 'ECCategories',

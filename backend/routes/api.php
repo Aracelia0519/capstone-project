@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Distributor\OperationalDistributorController;
 use App\Http\Controllers\Api\Distributor\HRManagerController; 
 use App\Http\Controllers\Api\Distributor\FinanceManagerController; 
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Distributor\ProductController;
 
 
 // Public routes
@@ -141,6 +142,16 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/deactivate', [FinanceManagerController::class, 'deactivate']);
             Route::post('/{id}/put-on-leave', [FinanceManagerController::class, 'putOnLeave']);
         });
+
+        // Add this to your existing distributor routes in api.php
+        Route::prefix('products')->group(function () {
+            Route::get('/', [ProductController::class, 'index']);
+            Route::post('/', [ProductController::class, 'store']);
+            Route::get('/statistics', [ProductController::class, 'statistics']);
+            Route::get('/{id}', [ProductController::class, 'show']);
+            Route::put('/{id}', [ProductController::class, 'update']);
+            Route::delete('/{id}', [ProductController::class, 'destroy']);
+        });
     });
 
     // Admin User Management Routes
@@ -190,6 +201,39 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/hr/positions/employee-accessibility/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'getEmployeeSidebarAccessibility']);
         });
     });
+
+    // Color Management Routes
+    Route::prefix('client')->group(function () {
+        Route::post('/save-color', [\App\Http\Controllers\Api\Client\ColorController::class, 'saveColor']);
+        Route::get('/colors', [\App\Http\Controllers\Api\Client\ColorController::class, 'getSavedColors']);
+        Route::get('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColor']);
+        Route::delete('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'deleteColor']);
+        Route::post('/colors/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ColorController::class, 'toggleFavorite']);
+        Route::get('/color-stats', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColorStats']);
+    });
+
+    // Procurement Requests Routes
+    Route::prefix('procurement')->group(function () {
+        Route::get('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'index']);
+        Route::get('/available-products', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'availableProducts']);
+        Route::post('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'store']);
+        Route::get('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'show']);
+        Route::put('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'update']);
+        Route::post('/requests/{id}/cancel', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'cancel']);
+        Route::get('/statistics', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'statistics']);
+    });
+
+    // Finance Procurement Routes
+    Route::prefix('finance')->middleware(['auth:sanctum'])->group(function () {
+        Route::prefix('procurement')->group(function () {
+            Route::get('/requests', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'index']);
+            Route::get('/requests/{id}', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'show']);
+            Route::post('/requests/{id}/approve', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'approve']);
+            Route::post('/requests/{id}/reject', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'reject']);
+            Route::get('/statistics', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'statistics']);
+        });
+    });
+
 
     
 });

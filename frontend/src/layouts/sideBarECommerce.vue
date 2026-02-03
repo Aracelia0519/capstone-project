@@ -111,7 +111,7 @@
           <!-- Products -->
           <li>
             <router-link 
-              :to="{ name: 'ECProducts' }"
+              :to="{ name: 'ECProcurement' }"
               @click="handleNavigation"
               class="nav-item group"
               active-class="nav-item-active"
@@ -122,7 +122,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <span v-if="!isCollapsed || isMobile" class="nav-text">Products</span>
+                <span v-if="!isCollapsed || isMobile" class="nav-text">Procurement Request</span>
               </div>
             </router-link>
           </li>

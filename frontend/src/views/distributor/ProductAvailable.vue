@@ -10,9 +10,9 @@
               <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
               <line x1="12" y1="22.08" x2="12" y2="12"></line>
             </svg>
-            <h1>CaviteGo Distributor</h1>
+            <h1>{{ distributorName }}</h1>
           </div>
-          <p class="tagline">Professional Paint & Supplies Procurement</p>
+          <p class="tagline">Available Products Catalog</p>
         </div>
         
         <div class="header-actions">
@@ -29,17 +29,16 @@
             >
           </div>
           
-          <button class="cart-btn" @click="showCart = !showCart">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
-            <span class="cart-count" v-if="procurementRequests.length > 0">
-              {{ procurementRequests.length }}
-            </span>
-            <span>Request List</span>
-          </button>
+          <div class="catalog-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total Products</span>
+              <span class="stat-value">{{ totalProducts }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Categories</span>
+              <span class="stat-value">{{ uniqueCategories }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -96,7 +95,7 @@
             <h4>Size</h4>
             <div class="filter-chips">
               <button 
-                v-for="size in popularSizes" 
+                v-for="size in allSizes" 
                 :key="size"
                 @click="toggleSize(size)"
                 :class="['size-chip', { active: selectedSizes.includes(size) }]"
@@ -106,7 +105,7 @@
             </div>
           </div>
           
-          <div class="filter-group" v-if="selectedCategories.includes('Paint Products')">
+          <div class="filter-group" v-if="selectedCategories.includes('Paint Products') || selectedCategories.includes('Spray Paints')">
             <h4>Color</h4>
             <div class="color-filters">
               <div 
@@ -137,10 +136,13 @@
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            Quick Add Product
+            Product Management
           </h3>
           <button @click="showAddModal = true" class="add-product-btn">
             Add New Product
+          </button>
+          <button @click="exportCatalog" class="export-btn">
+            Export Catalog
           </button>
         </div>
       </aside>
@@ -165,11 +167,14 @@
             v-for="product in sortedProducts" 
             :key="product.id"
             class="product-card"
-            :class="{ 'in-request': isInRequestList(product.id) }"
           >
             <div class="product-image">
-              <img v-if="product.image" :src="product.image" :alt="product.name">
-              <div v-else class="image-placeholder" :style="{ backgroundColor: product.rgb || '#f0f0f0' }">
+              <img v-if="product.image_url" 
+                   :src="getFullImageUrl(product.image_url)" 
+                   :alt="product.name"
+                   @error="handleImageError"
+                   class="product-img">
+              <div v-else class="image-placeholder" :style="{ backgroundColor: product.color_code || '#f0f0f0' }">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                   <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -177,13 +182,13 @@
                 </svg>
               </div>
               <span class="category-badge" :class="getCategoryClass(product.category)">
-                {{ product.category.split(' ')[0] }}
+                {{ getCategoryShortName(product.category) }}
               </span>
               <button 
-                v-if="product.rgb" 
+                v-if="product.color_code" 
                 class="color-preview"
-                :style="{ backgroundColor: product.rgb }"
-                :title="product.rgb"
+                :style="{ backgroundColor: product.color_code }"
+                :title="product.color_code"
               ></button>
             </div>
             
@@ -196,34 +201,43 @@
               <div class="product-meta">
                 <span class="product-type">{{ product.type }}</span>
                 <span class="product-size">{{ product.size }}</span>
+                <span v-if="product.sku_code" class="product-sku">SKU: {{ product.sku_code }}</span>
               </div>
               
               <p v-if="product.description" class="product-description">
                 {{ truncateDescription(product.description) }}
               </p>
               
+              <div class="product-specs">
+                <div class="spec-item">
+                  <span class="spec-label">Reference Stock:</span>
+                  <span class="spec-value">Min: {{ product.min_stock_level || 'N/A' }} | Max: {{ product.max_stock_level || 'N/A' }}</span>
+                </div>
+                <div v-if="product.cost" class="spec-item">
+                  <span class="spec-label">Cost Price:</span>
+                  <span class="spec-value">₱{{ formatPrice(product.cost) }}</span>
+                </div>
+                <div v-if="product.category" class="spec-item">
+                  <span class="spec-label">Packaging:</span>
+                  <span class="spec-value">{{ getDefaultPackaging(product.category) }}</span>
+                </div>
+              </div>
+              
               <div class="product-actions">
-                <button 
-                  @click="toggleRequest(product)"
-                  :class="['request-btn', { 'in-cart': isInRequestList(product.id) }]"
-                >
-                  <svg v-if="isInRequestList(product.id)" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="9" cy="21" r="1"></circle>
-                    <circle cx="20" cy="21" r="1"></circle>
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                  </svg>
-                  {{ isInRequestList(product.id) ? 'In Request List' : 'Add to Request' }}
-                </button>
-                
-                <button @click="editProduct(product)" class="details-btn">
+                <button @click="editProduct(product)" class="edit-btn">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                   </svg>
                   Edit
+                </button>
+                
+                <button @click="deleteProduct(product.id)" class="delete-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  Delete
                 </button>
               </div>
             </div>
@@ -240,96 +254,9 @@
           <p>Try adjusting your filters or add a new product</p>
         </div>
       </div>
-
-      <!-- Procurement Request Sidebar (Cart) -->
-      <div class="cart-sidebar" :class="{ active: showCart }">
-        <div class="cart-header">
-          <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-            Procurement Request List
-          </h3>
-          <button @click="showCart = false" class="close-cart">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="cart-content">
-          <div v-if="procurementRequests.length === 0" class="empty-cart">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
-            <p>Your request list is empty</p>
-            <p class="hint">Add products from the catalog</p>
-          </div>
-          
-          <div v-else class="cart-items">
-            <div 
-              v-for="item in procurementRequests" 
-              :key="item.id"
-              class="cart-item"
-            >
-              <div class="cart-item-image">
-                <img v-if="item.image" :src="item.image" :alt="item.name">
-                <div v-else class="item-placeholder" :style="{ backgroundColor: item.rgb || '#f0f0f0' }"></div>
-              </div>
-              
-              <div class="cart-item-info">
-                <h4>{{ item.name }}</h4>
-                <div class="item-meta">
-                  <span class="item-type">{{ item.type }}</span>
-                  <span class="item-size">{{ item.size }}</span>
-                </div>
-                <div class="item-price">₱{{ formatPrice(item.price) }}</div>
-              </div>
-              
-              <button @click="removeFromRequest(item.id)" class="remove-item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <div v-if="procurementRequests.length > 0" class="cart-summary">
-            <div class="summary-row">
-              <span>Total Items:</span>
-              <span>{{ procurementRequests.length }}</span>
-            </div>
-            <div class="summary-row total">
-              <span>Estimated Total:</span>
-              <span>₱{{ formatPrice(totalRequestValue) }}</span>
-            </div>
-            
-            <div class="cart-actions">
-              <button @click="clearRequestList" class="btn-clear">
-                Clear All
-              </button>
-              <button @click="submitProcurementRequest" class="btn-submit">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Submit Request
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Overlay for cart sidebar -->
-      <div v-if="showCart" class="cart-overlay" @click="showCart = false"></div>
     </main>
 
-    <!-- Add Product Modal -->
+    <!-- Add/Edit Product Modal with Wizard -->
     <div v-if="showAddModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
         <div class="modal-header">
@@ -348,155 +275,427 @@
           </button>
         </div>
         
-        <form @submit.prevent="isEditing ? updateProduct() : addProduct()" class="add-product-form">
-          <div class="form-group">
-            <label for="category">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        <!-- Wizard Progress -->
+        <div class="wizard-progress">
+          <div 
+            v-for="(step, index) in wizardSteps" 
+            :key="index"
+            :class="['wizard-step', 
+                     { 'active': currentStep === index + 1, 
+                       'completed': currentStep > index + 1 }]"
+          >
+            <div class="wizard-step-circle">
+              <span v-if="currentStep <= index + 1">{{ index + 1 }}</span>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-              Category *
-            </label>
-            <select id="category" v-model="newProduct.category" required @change="onCategoryChange" class="form-select">
-              <option value="">Select Category</option>
-              <option value="Paint Products">Paint Products</option>
-              <option value="Coatings & Chemicals">Coatings & Chemicals</option>
-              <option value="Solvents & Thinners">Solvents & Thinners</option>
-              <option value="Painting Tools & Accessories">Painting Tools & Accessories</option>
-              <option value="Packaging & Containers">Packaging & Containers</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="type">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
-              Type *
-            </label>
-            <select id="type" v-model="newProduct.type" required :disabled="!newProduct.category" class="form-select">
-              <option value="">Select Type</option>
-              <option v-for="type in filteredTypes" :key="type" :value="type">{{ type }}</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="name">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                <line x1="7" y1="7" x2="7.01" y2="7"></line>
-              </svg>
-              Product Name *
-            </label>
-            <input type="text" id="name" v-model="newProduct.name" placeholder="Enter product name" required class="form-input">
-          </div>
-
-          <div class="form-group">
-            <label for="size">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-              </svg>
-              Size *
-            </label>
-            <select id="size" v-model="newProduct.size" required class="form-select">
-              <option value="">Select Size</option>
-              <option v-for="size in sizes" :key="size" :value="size">{{ size }}</option>
-            </select>
-          </div>
-
-          <div class="form-group" v-if="showColorField">
-            <label for="rgb">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <circle cx="12" cy="12" r="10"></circle>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              Color (RGB/Hex)
-            </label>
-            <div class="color-input-group">
-              <input type="text" id="rgb" v-model="newProduct.rgb" placeholder="#FFFFFF or rgb(255,255,255)" class="form-input">
-              <div class="color-preview-display" :style="{ backgroundColor: newProduct.rgb || 'transparent' }"></div>
             </div>
+            <span class="wizard-step-label">{{ step.label }}</span>
           </div>
+        </div>
+        
+        <!-- Step Indicator for Mobile -->
+        <div class="wizard-step-indicator">
+          Step {{ currentStep }} of {{ wizardSteps.length }}: {{ wizardSteps[currentStep - 1].label }}
+        </div>
+        
+        <form @submit.prevent="isEditing ? updateProduct() : addProduct()" class="add-product-form" enctype="multipart/form-data">
+          <div class="wizard-form-content">
+            
+            <!-- Step 1: Product Basics -->
+            <div v-if="currentStep === 1" class="wizard-form-step">
+              <div class="wizard-form-row">
+                <div class="wizard-form-group">
+                  <label for="category">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    Category <span class="required">*</span>
+                  </label>
+                  <select id="category" v-model="newProduct.category" required @change="onCategoryChange" class="form-select">
+                    <option value="">Select Category</option>
+                    <optgroup label="🎨 PAINT PRODUCTS">
+                      <option value="Interior Paints">🏠 Interior Paints</option>
+                      <option value="Exterior Paints">🌦️ Exterior Paints</option>
+                      <option value="Industrial & Protective Paints">🏭 Industrial & Protective Paints</option>
+                      <option value="Specialty Paints">🎭 Specialty Paints</option>
+                      <option value="Spray Paints">🎯 Spray Paints</option>
+                    </optgroup>
+                    <optgroup label="🧪 COATINGS & CHEMICALS">
+                      <option value="Primers & Sealers">🧴 Primers & Sealers</option>
+                    </optgroup>
+                    <optgroup label="🛢️ SOLVENTS & THINNERS">
+                      <option value="Solvents & Thinners">🛢️ Solvents & Thinners</option>
+                    </optgroup>
+                    <optgroup label="🧰 PAINTING TOOLS & ACCESSORIES">
+                      <option value="Application Tools">🎨 Application Tools</option>
+                      <option value="Surface Preparation">🧱 Surface Preparation</option>
+                      <option value="Safety Equipment">🦺 Safety Equipment</option>
+                    </optgroup>
+                    <optgroup label="📦 PACKAGING & CONTAINERS">
+                      <option value="Packaging & Containers">📦 Packaging & Containers</option>
+                    </optgroup>
+                  </select>
+                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.category }">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Please select a category
+                  </div>
+                </div>
 
-          <div class="form-group">
-            <label for="price">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-              </svg>
-              Price (₱) *
-            </label>
-            <input type="number" id="price" v-model="newProduct.price" placeholder="0.00" min="0" step="0.01" required class="form-input">
-          </div>
+                <div class="wizard-form-group">
+                  <label for="type">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                      <polyline points="2 17 12 22 22 17"></polyline>
+                      <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    Type <span class="required">*</span>
+                  </label>
+                  <select id="type" v-model="newProduct.type" required :disabled="!newProduct.category" class="form-select">
+                    <option value="">Select Type</option>
+                    <option v-for="type in filteredTypes" :key="type" :value="type">{{ type }}</option>
+                  </select>
+                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.type }">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Please select a type
+                  </div>
+                </div>
+              </div>
 
-          <div class="form-group">
-            <label for="description">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-              Description
-            </label>
-            <textarea id="description" v-model="newProduct.description" rows="3" placeholder="Enter product description..." class="form-textarea"></textarea>
-          </div>
-
-          <div class="form-group">
-            <label>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-              </svg>
-              Product Image
-            </label>
-            <div class="image-upload">
-              <input type="file" id="image" ref="fileInput" @change="handleImageUpload" accept="image/*" class="file-input">
-              <label for="image" class="upload-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <span>{{ imagePreview || newProduct.image ? 'Change Image' : 'Upload Image' }}</span>
-              </label>
-              <div v-if="imagePreview || newProduct.image" class="image-preview">
-                <img :src="imagePreview || newProduct.image" alt="Preview">
-                <button type="button" @click="removeImage" class="remove-image">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
+              <div class="wizard-form-group wizard-form-full">
+                <label for="name">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
                   </svg>
-                </button>
+                  Product Name <span class="required">*</span>
+                </label>
+                <input type="text" id="name" v-model="newProduct.name" placeholder="Enter product name" required class="form-input">
+                <div class="wizard-step-validation" :class="{ 'hidden': newProduct.name && newProduct.name.trim() }">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                  Please enter a product name
+                </div>
+              </div>
+
+              <div class="wizard-form-row">
+                <div class="wizard-form-group">
+                  <label for="sku">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <path d="M9 9h6v6H9z"></path>
+                    </svg>
+                    SKU Code
+                  </label>
+                  <input type="text" id="sku" v-model="newProduct.sku_code" placeholder="Enter SKU (optional)" class="form-input">
+                </div>
+
+                <div class="wizard-form-group">
+                  <label for="size">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="9" y1="9" x2="15" y2="15"></line>
+                      <line x1="15" y1="9" x2="9" y2="15"></line>
+                    </svg>
+                    Size <span class="required">*</span>
+                  </label>
+                  <select id="size" v-model="newProduct.size" required class="form-select">
+                    <option value="">Select Size</option>
+                    <optgroup v-if="newProduct.category.includes('Paint')" label="Paint Sizes">
+                      <option v-for="size in paintSizes" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                    <optgroup v-if="newProduct.category.includes('Spray')" label="Spray Sizes">
+                      <option v-for="size in spraySizes" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                    <optgroup v-if="newProduct.category.includes('Solvents')" label="Solvent Sizes">
+                      <option v-for="size in solventSizes" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                    <optgroup v-if="newProduct.category.includes('Tools') || newProduct.category.includes('Safety')" label="Tool Sizes">
+                      <option v-for="size in toolSizes" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                    <optgroup v-if="newProduct.category.includes('Packaging')" label="Packaging Sizes">
+                      <option v-for="size in packagingSizes" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                    <optgroup v-if="newProduct.category.includes('Sandpaper')" label="Sandpaper Grits">
+                      <option v-for="size in sandpaperGrits" :key="size" :value="size">{{ size }}</option>
+                    </optgroup>
+                  </select>
+                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.size }">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Please select a size
+                  </div>
+                </div>
+              </div>
+
+              <div class="wizard-form-group" v-if="showColorField">
+                <label for="color_code">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  Color (Hex)
+                </label>
+                <div class="color-input-group">
+                  <input type="text" id="color_code" v-model="newProduct.color_code" placeholder="#FFFFFF" maxlength="20" class="form-input">
+                  <div class="color-preview-display" :style="{ backgroundColor: newProduct.color_code || 'transparent' }"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Pricing & Inventory -->
+            <div v-else-if="currentStep === 2" class="wizard-form-step">
+              <div class="wizard-form-row">
+                <div class="wizard-form-group">
+                  <label for="price">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Selling Price (₱) <span class="required">*</span>
+                  </label>
+                  <input type="number" id="price" v-model="newProduct.price" placeholder="0.00" min="0" step="0.01" required class="form-input">
+                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.price && parseFloat(newProduct.price) > 0 }">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Please enter a valid price
+                  </div>
+                </div>
+
+                <div class="wizard-form-group">
+                  <label for="cost">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Cost Price (₱)
+                  </label>
+                  <input type="number" id="cost" v-model="newProduct.cost" placeholder="0.00" min="0" step="0.01" class="form-input">
+                </div>
+              </div>
+
+              <div class="wizard-form-row">
+                <div class="wizard-form-group">
+                  <label for="min_stock_level">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <path d="M6 9l6 6 6-6"></path>
+                    </svg>
+                    Min Reference Stock
+                  </label>
+                  <input type="number" id="min_stock_level" v-model="newProduct.min_stock_level" placeholder="10" min="0" class="form-input">
+                </div>
+
+                <div class="wizard-form-group">
+                  <label for="max_stock_level">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                      <path d="M18 15l-6-6-6 6"></path>
+                    </svg>
+                    Max Reference Stock
+                  </label>
+                  <input type="number" id="max_stock_level" v-model="newProduct.max_stock_level" placeholder="100" min="0" class="form-input">
+                </div>
+              </div>
+
+              <div class="wizard-form-group wizard-form-full">
+                <label for="description">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  Description
+                </label>
+                <textarea id="description" v-model="newProduct.description" rows="3" placeholder="Enter product description..." class="form-textarea"></textarea>
+              </div>
+            </div>
+
+            <!-- Step 3: Image Upload -->
+            <div v-else-if="currentStep === 3" class="wizard-form-step">
+              <div class="wizard-form-group wizard-form-full">
+                <label>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  Product Image
+                </label>
+                <div class="image-upload">
+                  <input type="file" id="image" ref="fileInput" @change="handleImageUpload" accept="image/*" class="file-input">
+                  <div @click="triggerFileInput"
+                    @dragover.prevent @drop.prevent="handleFileDrop"
+                    class="file-upload-area cursor-pointer flex flex-col items-center justify-center px-6 pt-8 pb-8 border-2 border-dashed rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]"
+                    :class="imagePreview || newProduct.image_url ? 'border-green-300 bg-green-50' : 'border-gray-300'">
+                    <svg class="h-12 w-12 mb-4" :class="imagePreview || newProduct.image_url ? 'text-green-500' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <div class="text-center">
+                      <p class="text-sm font-medium text-gray-700">
+                        <span class="text-blue-600 hover:text-blue-500">Click to upload image</span>
+                        <span class="text-gray-500 ml-1">or drag and drop</span>
+                      </p>
+                      <p class="text-xs text-gray-500 mt-1">PNG, JPG, JPEG up to 2MB</p>
+                      <p v-if="imagePreview || newProduct.image_url" class="text-sm text-green-600 font-medium mt-2">
+                        ✓ Image selected
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div v-if="imagePreview || newProduct.image_url" class="image-preview mt-4">
+                    <img :src="imagePreview || getFullImageUrl(newProduct.image_url)" alt="Preview">
+                    <button type="button" @click="removeImage" class="remove-image">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="wizard-form-group wizard-form-full">
+                <p class="text-sm text-gray-600">
+                  <strong>Note:</strong> Image is optional. If no image is provided, a colored placeholder will be shown based on the product color or a default gray background.
+                </p>
+              </div>
+            </div>
+
+            <!-- Step 4: Review & Submit -->
+            <div v-else-if="currentStep === 4" class="wizard-form-step">
+              <div class="wizard-summary">
+                <h4 class="text-lg font-semibold mb-4 text-gray-800">Product Summary</h4>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Product Name:</div>
+                  <div class="wizard-summary-value">{{ newProduct.name || 'Not provided' }}</div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Category:</div>
+                  <div class="wizard-summary-value">{{ newProduct.category || 'Not provided' }}</div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Type:</div>
+                  <div class="wizard-summary-value">{{ newProduct.type || 'Not provided' }}</div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Size:</div>
+                  <div class="wizard-summary-value">{{ newProduct.size || 'Not provided' }}</div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">SKU Code:</div>
+                  <div class="wizard-summary-value">{{ newProduct.sku_code || 'Not provided' }}</div>
+                </div>
+                
+                <div v-if="newProduct.color_code" class="wizard-summary-item">
+                  <div class="wizard-summary-label">Color:</div>
+                  <div class="wizard-summary-value">
+                    <div class="flex items-center gap-2">
+                      <div class="w--4 h-4 rounded-full border" :style="{ backgroundColor: newProduct.color_code }"></div>
+                      {{ newProduct.color_code }}
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Selling Price:</div>
+                  <div class="wizard-summary-value font-semibold">₱{{ formatPrice(newProduct.price) || '0.00' }}</div>
+                </div>
+                
+                <div v-if="newProduct.cost" class="wizard-summary-item">
+                  <div class="wizard-summary-label">Cost Price:</div>
+                  <div class="wizard-summary-value">₱{{ formatPrice(newProduct.cost) }}</div>
+                </div>
+                
+                <div class="wizard-summary-item">
+                  <div class="wizard-summary-label">Reference Stock:</div>
+                  <div class="wizard-summary-value">
+                    Min: {{ newProduct.min_stock_level || '10' }} | Max: {{ newProduct.max_stock_level || '100' }}
+                  </div>
+                </div>
+                
+                <div v-if="newProduct.description" class="wizard-summary-item">
+                  <div class="wizard-summary-label">Description:</div>
+                  <div class="wizard-summary-value">{{ newProduct.description }}</div>
+                </div>
+                
+                <div v-if="imagePreview || newProduct.image_url" class="wizard-summary-image">
+                  <p class="text-sm font-medium text-gray-700 mb-2">Product Image:</p>
+                  <img :src="imagePreview || getFullImageUrl(newProduct.image_url)" alt="Product Image Preview">
+                </div>
+              </div>
+              
+              <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                <h5 class="font-semibold text-blue-800 mb-2">Ready to {{ isEditing ? 'update' : 'add' }} this product?</h5>
+                <p class="text-sm text-blue-700">
+                  Review all the information above. If everything looks correct, click the "{{ isEditing ? 'Update Product' : 'Add Product' }}" button below.
+                  To make changes, use the Previous button or click on any step in the progress bar.
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="form-actions">
-            <button type="button" @click="closeModal" class="btn-cancel">
-              Cancel
+          <!-- Wizard Navigation -->
+          <div class="wizard-form-actions">
+            <button 
+              type="button" 
+              @click="prevStep" 
+              class="wizard-btn-prev"
+              :disabled="currentStep === 1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+              Previous
             </button>
-            <button v-if="isEditing" type="submit" class="btn-submit">
+            
+            <button 
+              v-if="currentStep < wizardSteps.length"
+              type="button" 
+              @click="nextStep" 
+              class="wizard-btn-next"
+              :disabled="!validateCurrentStep"
+            >
+              Next
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+            
+            <button 
+              v-else
+              type="submit" 
+              class="wizard-btn-submit"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <path d="M19 21H5a2 2 0 0 1-2 2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                 <polyline points="7 3 7 8 15 8"></polyline>
               </svg>
-              Update Product
-            </button>
-            <button v-else type="submit" class="btn-submit">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-              Add Product
+              {{ isEditing ? 'Update Product' : 'Add Product' }}
             </button>
           </div>
         </form>
@@ -506,8 +705,12 @@
 </template>
 
 <script>
+import api from '@/utils/axios'
+import Toastify from 'toastify-js'
+import "toastify-js/src/toastify.css"
+
 export default {
-  name: 'ProductAvailableEcommerce',
+  name: 'DistributorProductsCatalog',
   data() {
     return {
       searchQuery: '',
@@ -516,190 +719,186 @@ export default {
       selectedSizes: [],
       selectedColor: '',
       sortOption: 'newest',
-      showCart: false,
       showAddModal: false,
-      procurementRequests: [],
       isEditing: false,
       editingId: null,
       imagePreview: '',
+      uploadedImage: null,
+      distributorName: 'CaviteGo Distributor',
+      
+      // Wizard state
+      currentStep: 1,
+      wizardSteps: [
+        { label: 'Product Basics', completed: false },
+        { label: 'Pricing & Inventory', completed: false },
+        { label: 'Image Upload', completed: false },
+        { label: 'Review & Submit', completed: false }
+      ],
       
       newProduct: {
         category: '',
         type: '',
         name: '',
+        sku_code: '',
         size: '',
-        rgb: '',
+        color_code: '',
         price: '',
+        cost: '',
+        min_stock_level: 10,
+        max_stock_level: 100,
         description: '',
-        image: ''
+        image_url: ''
       },
       
-      products: [
-        {
-          id: 1,
-          name: 'Premium Latex Paint',
-          category: 'Paint Products',
-          type: 'Latex / Acrylic',
-          size: '4L',
-          rgb: '#FFFFFF',
-          price: 1250.00,
-          description: 'High-quality interior latex paint, perfect for walls and ceilings.',
-          image: ''
-        },
-        {
-          id: 2,
-          name: 'Weather-Resistant Exterior Paint',
-          category: 'Paint Products',
-          type: 'Weather-resistant',
-          size: '20L',
-          rgb: '#B0C4DE',
-          price: 4500.00,
-          description: 'Durable exterior paint with UV protection.',
-          image: ''
-        },
-        {
-          id: 3,
-          name: 'Metal Primer',
-          category: 'Coatings & Chemicals',
-          type: 'Metal primer',
-          size: '4L',
-          price: 850.00,
-          description: 'Anti-rust primer for metal surfaces.',
-          image: ''
-        },
-        {
-          id: 4,
-          name: 'Paint Brushes Set',
-          category: 'Painting Tools & Accessories',
-          type: 'Paint brushes',
-          size: 'Medium',
-          price: 350.00,
-          description: 'Professional grade paint brushes set.',
-          image: ''
-        },
-        {
-          id: 5,
-          name: 'Paint Thinner',
-          category: 'Solvents & Thinners',
-          type: 'Paint thinner',
-          size: '1L',
-          price: 120.00,
-          description: 'High-quality paint thinner.',
-          image: ''
-        },
-        {
-          id: 6,
-          name: 'Paint Cans',
-          category: 'Packaging & Containers',
-          type: 'Metal cans',
-          size: '4L',
-          price: 45.00,
-          description: 'Empty metal paint cans.',
-          image: ''
-        }
-      ],
+      products: [],
       
+      // Comprehensive Product Types based on your data
       productTypes: {
-        'Paint Products': [
-          'Latex / Acrylic', 'Water-based', 'Low-VOC', 'Anti-mold', 'Washable',
-          'Weather-resistant', 'Waterproof', 'UV-resistant', 'Epoxy paint',
-          'Enamel paint', 'Anti-rust', 'Chalk paint', 'Textured paint',
-          'Metallic paint', 'General spray', 'Industrial spray',
-          'Decorative spray', 'Protective spray'
+        'Interior Paints': [
+          'Latex / Acrylic', 'Water-based', 'Low-VOC', 'Anti-mold', 'Washable interior paint'
         ],
-        'Coatings & Chemicals': [
-          'Wall primer', 'Metal primer', 'Wood primer', 'Sealer',
-          'Clear varnish', 'Satin varnish', 'Gloss varnish',
-          'Fast-dry lacquer', 'Protective finish', 'Liquid waterproofing',
-          'Hardeners', 'Thinners'
+        'Exterior Paints': [
+          'Weather-resistant', 'Waterproof', 'UV-resistant', 'Elastomeric'
+        ],
+        'Industrial & Protective Paints': [
+          'Epoxy (Part A & Part B)', 'Enamel', 'Anti-rust', 'Heat-resistant', 'Chemical-resistant coating'
+        ],
+        'Specialty Paints': [
+          'Chalk paint', 'Textured paint', 'Metallic paint', 'Fire-retardant', 'Anti-graffiti'
+        ],
+        'Spray Paints': [
+          'General spray paint', 'Decorative spray paint', 'Industrial spray paint', 'Protective spray coating'
+        ],
+        'Primers & Sealers': [
+          'Wall primer', 'Metal primer', 'Wood primer', 'Concrete sealer', 'Varnish',
+          'Lacquer', 'Clear coat', 'Waterproofing solution', 'Paint additives'
         ],
         'Solvents & Thinners': [
-          'Paint thinner', 'Mineral spirits', 'Turpentine',
-          'Cleaning solvents', 'Degreasers'
+          'Paint thinner', 'Mineral spirits', 'Turpentine', 'Degreasers', 'Cleaning solvents'
         ],
-        'Painting Tools & Accessories': [
-          'Paint brushes', 'Rollers', 'Roller covers', 'Spray guns',
-          'Paint trays', 'Sandpaper', 'Scrapers', 'Putty knives',
-          'Wire brushes', 'Gloves', 'Face masks', 'Respirators',
-          'Safety goggles', 'Coveralls'
+        'Application Tools': [
+          'Paint Brushes', 'Paint Rollers', 'Roller Covers', 'Spray Guns',
+          'Paint trays', 'Mixing sticks'
+        ],
+        'Surface Preparation': [
+          'Sandpaper', 'Scrapers', 'Putty knives', 'Wire brushes'
+        ],
+        'Safety Equipment': [
+          'Gloves', 'Face masks', 'Respirators', 'Safety goggles', 'Coveralls'
         ],
         'Packaging & Containers': [
-          'Metal cans', 'Plastic buckets', 'Steel drums',
-          'Plastic drums', 'Aerosol cans', 'Plastic containers'
+          'Paint cans', 'Plastic buckets', 'Steel drums', 'Spray cans', 'Mixing containers'
         ]
       },
       
-      sizes: [
-        '1L', '4L', '20L', '400ml', '600ml', '500ml',
-        'Small', 'Medium', 'Large', '4"', '6"', '9"',
-        '80 grit', '120 grit', '220 grit', '6"', '2"', '4"',
-        '10L', '50L', '200L', '5L', 'Disposable', 'Reusable',
-        'Half-mask', 'Full-face', 'Standard', 'Anti-fog', 'XL'
-      ],
+      // Size options by category
+      paintSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters'],
+      spraySizes: ['200 ml', '300 ml', '400 ml'],
+      solventSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '20 Liters'],
+      toolSizes: ['1 inch', '1.5 inch', '2 inch', '2.5 inch', '3 inch', '4 inch', 'Small', 'Medium', 'Large', '4"', '6"', '7"', '9"', '12"'],
+      packagingSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters', '200 Liters'],
+      sandpaperGrits: ['80 grit', '120 grit', '180 grit', '220 grit', '320 grit', '400 grit'],
       
       categories: [
-        { value: 'Paint Products', label: 'Paint Products', class: 'cat-paint', count: 2 },
-        { value: 'Coatings & Chemicals', label: 'Coatings', class: 'cat-coatings', count: 1 },
-        { value: 'Solvents & Thinners', label: 'Solvents', class: 'cat-solvents', count: 1 },
-        { value: 'Painting Tools & Accessories', label: 'Tools', class: 'cat-tools', count: 1 },
-        { value: 'Packaging & Containers', label: 'Packaging', class: 'cat-packaging', count: 1 }
+        { value: 'Interior Paints', label: 'Interior Paints', class: 'cat-interior', count: 0 },
+        { value: 'Exterior Paints', label: 'Exterior Paints', class: 'cat-exterior', count: 0 },
+        { value: 'Industrial & Protective Paints', label: 'Industrial Paints', class: 'cat-industrial', count: 0 },
+        { value: 'Specialty Paints', label: 'Specialty Paints', class: 'cat-specialty', count: 0 },
+        { value: 'Spray Paints', label: 'Spray Paints', class: 'cat-spray', count: 0 },
+        { value: 'Primers & Sealers', label: 'Primers & Sealers', class: 'cat-primers', count: 0 },
+        { value: 'Solvents & Thinners', label: 'Solvents', class: 'cat-solvents', count: 0 },
+        { value: 'Application Tools', label: 'Application Tools', class: 'cat-tools', count: 0 },
+        { value: 'Surface Preparation', label: 'Surface Prep', class: 'cat-prep', count: 0 },
+        { value: 'Safety Equipment', label: 'Safety Equipment', class: 'cat-safety', count: 0 },
+        { value: 'Packaging & Containers', label: 'Packaging', class: 'cat-packaging', count: 0 }
       ],
       
-      popularSizes: ['1L', '4L', '20L', 'Small', 'Medium', 'Large'],
+      // Packaging options
+      packagingOptions: {
+        'Interior Paints': 'Plastic pail / Metal can',
+        'Exterior Paints': 'Plastic pail / Metal can',
+        'Industrial & Protective Paints': 'Metal can / Steel pail',
+        'Spray Paints': 'Aerosol can',
+        'Solvents & Thinners': 'Plastic bottle / Metal container / Jerry can',
+        'Packaging & Containers': 'Various containers'
+      },
       
       colorOptions: [
         { name: 'White', value: '#FFFFFF' },
         { name: 'Beige', value: '#F5F5DC' },
         { name: 'Light Blue', value: '#B0C4DE' },
         { name: 'Gray', value: '#708090' },
-        { name: 'Red', value: '#8B0000' }
-      ],
-      
-      nextId: 7
+        { name: 'Red', value: '#8B0000' },
+        { name: 'Blue', value: '#0000FF' },
+        { name: 'Green', value: '#008000' },
+        { name: 'Yellow', value: '#FFFF00' },
+        { name: 'Black', value: '#000000' },
+        { name: 'Brown', value: '#8B4513' }
+      ]
     };
   },
   computed: {
     availableTypes() {
+      if (!Array.isArray(this.products)) {
+        return [];
+      }
       const types = new Set();
       this.products.forEach(product => {
-        types.add(product.type);
+        if (product && product.type) {
+          types.add(product.type);
+        }
       });
       return Array.from(types);
     },
     
+    allSizes() {
+      const all = [...this.paintSizes, ...this.spraySizes, ...this.solventSizes, ...this.toolSizes, ...this.packagingSizes, ...this.sandpaperGrits];
+      return [...new Set(all)].sort();
+    },
+    
     filteredProducts() {
+      if (!Array.isArray(this.products)) {
+        return [];
+      }
+      
       let filtered = this.products;
       
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
-        filtered = filtered.filter(product =>
-          product.name.toLowerCase().includes(query) ||
-          product.type.toLowerCase().includes(query) ||
-          (product.description && product.description.toLowerCase().includes(query))
-        );
+        filtered = filtered.filter(product => {
+          if (!product) return false;
+          return (
+            (product.name && product.name.toLowerCase().includes(query)) ||
+            (product.type && product.type.toLowerCase().includes(query)) ||
+            (product.description && product.description.toLowerCase().includes(query)) ||
+            (product.sku_code && product.sku_code.toLowerCase().includes(query))
+          );
+        });
       }
       
       if (this.selectedCategories.length > 0) {
         filtered = filtered.filter(product => 
-          this.selectedCategories.includes(product.category)
+          product && product.category && this.selectedCategories.includes(product.category)
         );
       }
       
       if (this.selectedType) {
         filtered = filtered.filter(product => 
-          product.type === this.selectedType
+          product && product.type === this.selectedType
         );
       }
       
       if (this.selectedSizes.length > 0) {
         filtered = filtered.filter(product => 
-          this.selectedSizes.includes(product.size)
+          product && product.size && this.selectedSizes.includes(product.size)
         );
       }
       
-      if (this.selectedColor && this.selectedCategories.includes('Paint Products')) {
+      if (this.selectedColor && (this.selectedCategories.includes('Interior Paints') || 
+                                 this.selectedCategories.includes('Exterior Paints') ||
+                                 this.selectedCategories.includes('Specialty Paints'))) {
         filtered = filtered.filter(product => 
-          product.rgb && product.rgb.toLowerCase() === this.selectedColor.toLowerCase()
+          product && product.color_code && product.color_code.toLowerCase() === this.selectedColor.toLowerCase()
         );
       }
       
@@ -707,24 +906,39 @@ export default {
     },
     
     sortedProducts() {
+      if (!Array.isArray(this.filteredProducts)) {
+        return [];
+      }
+      
       const products = [...this.filteredProducts];
       
       switch (this.sortOption) {
         case 'name':
-          return products.sort((a, b) => a.name.localeCompare(b.name));
+          return products.sort((a, b) => {
+            if (!a.name || !b.name) return 0;
+            return a.name.localeCompare(b.name);
+          });
         case 'price_low':
-          return products.sort((a, b) => a.price - b.price);
+          return products.sort((a, b) => (a.price || 0) - (b.price || 0));
         case 'price_high':
-          return products.sort((a, b) => b.price - a.price);
+          return products.sort((a, b) => (b.price || 0) - (a.price || 0));
         case 'newest':
-          return products.sort((a, b) => b.id - a.id);
+          return products.sort((a, b) => (b.id || 0) - (a.id || 0));
         default:
           return products;
       }
     },
     
-    totalRequestValue() {
-      return this.procurementRequests.reduce((total, item) => total + item.price, 0);
+    totalProducts() {
+      return Array.isArray(this.products) ? this.products.length : 0;
+    },
+    
+    uniqueCategories() {
+      if (!Array.isArray(this.products)) {
+        return 0;
+      }
+      const categories = new Set(this.products.map(p => p && p.category).filter(Boolean));
+      return categories.size;
     },
     
     filteredTypes() {
@@ -733,19 +947,252 @@ export default {
     },
     
     showColorField() {
-      return this.newProduct.category === 'Paint Products';
+      const paintCategories = ['Interior Paints', 'Exterior Paints', 'Specialty Paints', 'Spray Paints'];
+      return paintCategories.includes(this.newProduct.category);
+    },
+    
+    // Wizard validation
+    validateCurrentStep() {
+      switch (this.currentStep) {
+        case 1:
+          return this.newProduct.category && 
+                 this.newProduct.type && 
+                 this.newProduct.name && 
+                 this.newProduct.name.trim() && 
+                 this.newProduct.size;
+        case 2:
+          return this.newProduct.price && 
+                 parseFloat(this.newProduct.price) > 0;
+        case 3:
+          // Image is optional, so always valid
+          return true;
+        case 4:
+          // All previous validations passed
+          return true;
+        default:
+          return false;
+      }
     }
   },
   methods: {
+    // Wizard navigation
+    nextStep() {
+      if (this.currentStep < this.wizardSteps.length && this.validateCurrentStep) {
+        this.wizardSteps[this.currentStep - 1].completed = true;
+        this.currentStep++;
+      }
+    },
+    
+    prevStep() {
+      if (this.currentStep > 1) {
+        this.currentStep--;
+      }
+    },
+    
+    // Clean: No console messages
+    getFullImageUrl(imageUrl) {
+      if (!imageUrl) return '';
+      return imageUrl;
+    },
+    
+    handleImageError(event) {
+      const img = event.target;
+      img.style.display = 'none';
+      
+      const placeholder = img.parentElement.querySelector('.image-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+      }
+    },
+    
     getCategoryClass(category) {
+      if (!category) return '';
       const classes = {
-        'Paint Products': 'cat-paint',
-        'Coatings & Chemicals': 'cat-coatings',
+        'Interior Paints': 'cat-paint',
+        'Exterior Paints': 'cat-exterior',
+        'Industrial & Protective Paints': 'cat-industrial',
+        'Specialty Paints': 'cat-specialty',
+        'Spray Paints': 'cat-spray',
+        'Primers & Sealers': 'cat-primers',
         'Solvents & Thinners': 'cat-solvents',
-        'Painting Tools & Accessories': 'cat-tools',
+        'Application Tools': 'cat-tools',
+        'Surface Preparation': 'cat-prep',
+        'Safety Equipment': 'cat-safety',
         'Packaging & Containers': 'cat-packaging'
       };
-      return classes[category] || '';
+      return classes[category] || 'cat-paint';
+    },
+    
+    getCategoryShortName(category) {
+      if (!category) return '';
+      const shortNames = {
+        'Interior Paints': 'Interior',
+        'Exterior Paints': 'Exterior',
+        'Industrial & Protective Paints': 'Industrial',
+        'Specialty Paints': 'Specialty',
+        'Spray Paints': 'Spray',
+        'Primers & Sealers': 'Primer',
+        'Solvents & Thinners': 'Solvent',
+        'Application Tools': 'Tool',
+        'Surface Preparation': 'Prep',
+        'Safety Equipment': 'Safety',
+        'Packaging & Containers': 'Packaging'
+      };
+      return shortNames[category] || category.split(' ')[0];
+    },
+    
+    getDefaultPackaging(category) {
+      return this.packagingOptions[category] || 'Standard packaging';
+    },
+    
+    showSuccessToast(message) {
+      Toastify({
+        text: message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #10b981, #059669)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "12px 16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
+        }
+      }).showToast();
+    },
+    
+    showErrorToast(message) {
+      Toastify({
+        text: message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #ef4444, #dc2626)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "12px 16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
+        }
+      }).showToast();
+    },
+    
+    showWarningToast(message) {
+      Toastify({
+        text: message,
+        duration: 4000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #f59e0b, #d97706)",
+          color: "#ffffff",
+          borderRadius: "8px",
+          padding: "12px 16px",
+          fontSize: "14px",
+          fontWeight: "500",
+          boxShadow: "0 4px 12px rgba(245, 158, 11, 0.2)"
+        }
+      }).showToast();
+    },
+    
+    async loadProducts() {
+      try {
+        const response = await api.get('/distributor/products');
+        
+        if (response.data && response.data.success) {
+          this.products = Array.isArray(response.data.data) ? response.data.data : [];
+        } else {
+          this.products = [];
+        }
+        this.updateCategoryCounts();
+      } catch (error) {
+        this.loadSampleData();
+      }
+    },
+    
+    loadSampleData() {
+      this.products = [
+        {
+          id: 1,
+          name: 'Premium Latex Paint - White',
+          category: 'Interior Paints',
+          type: 'Latex / Acrylic',
+          sku_code: 'PLP-WH-001',
+          size: '4 Liters',
+          color_code: '#FFFFFF',
+          price: 1250.00,
+          cost: 850.00,
+          min_stock_level: 10,
+          max_stock_level: 100,
+          description: 'High-quality interior latex paint, perfect for walls and ceilings.',
+          image_url: ''
+        },
+        {
+          id: 2,
+          name: 'Weather-Resistant Exterior Paint',
+          category: 'Exterior Paints',
+          type: 'Weather-resistant',
+          sku_code: 'WREP-BL-001',
+          size: '20 Liters',
+          color_code: '#0000FF',
+          price: 3200.00,
+          cost: 2200.00,
+          min_stock_level: 5,
+          max_stock_level: 50,
+          description: 'Professional-grade waterproof coating for roofs and walls.',
+          image_url: ''
+        },
+        {
+          id: 3,
+          name: 'Professional Paint Brush Set',
+          category: 'Application Tools',
+          type: 'Paint Brushes',
+          sku_code: 'PBS-001',
+          size: 'Set of 5',
+          color_code: null,
+          price: 450.00,
+          cost: 250.00,
+          min_stock_level: 20,
+          max_stock_level: 200,
+          description: 'Set of 5 professional paint brushes for various surfaces.',
+          image_url: ''
+        },
+        {
+          id: 4,
+          name: 'Paint Thinner',
+          category: 'Solvents & Thinners',
+          type: 'Paint thinner',
+          sku_code: 'PT-001',
+          size: '1 Liter',
+          color_code: null,
+          price: 150.00,
+          cost: 80.00,
+          min_stock_level: 30,
+          max_stock_level: 300,
+          description: 'High-quality paint thinner for cleaning brushes and thinning paint.',
+          image_url: ''
+        },
+        {
+          id: 5,
+          name: 'Safety Goggles',
+          category: 'Safety Equipment',
+          type: 'Safety goggles',
+          sku_code: 'SG-001',
+          size: 'Standard',
+          color_code: null,
+          price: 120.00,
+          cost: 60.00,
+          min_stock_level: 25,
+          max_stock_level: 250,
+          description: 'Protective safety goggles for painting and construction work.',
+          image_url: ''
+        }
+      ];
+      this.updateCategoryCounts();
     },
     
     toggleSize(size) {
@@ -757,66 +1204,170 @@ export default {
       }
     },
     
-    toggleRequest(product) {
-      const index = this.procurementRequests.findIndex(item => item.id === product.id);
-      if (index > -1) {
-        this.procurementRequests.splice(index, 1);
-      } else {
-        this.procurementRequests.push({ ...product });
-      }
-    },
-    
-    isInRequestList(productId) {
-      return this.procurementRequests.some(item => item.id === productId);
-    },
-    
-    removeFromRequest(productId) {
-      this.procurementRequests = this.procurementRequests.filter(item => item.id !== productId);
-    },
-    
-    clearRequestList() {
-      if (confirm('Clear all items from request list?')) {
-        this.procurementRequests = [];
-      }
-    },
-    
-    submitProcurementRequest() {
-      if (this.procurementRequests.length === 0) {
-        alert('Please add products to your request list.');
-        return;
-      }
+    async addProduct() {
+      if (!this.validateProduct()) return;
       
-      alert(`Procurement request submitted for ${this.procurementRequests.length} items! Total: ₱${this.formatPrice(this.totalRequestValue)}`);
-      this.procurementRequests = [];
-      this.showCart = false;
+      try {
+        const formData = new FormData();
+        
+        formData.append('category', this.newProduct.category);
+        formData.append('type', this.newProduct.type);
+        formData.append('name', this.newProduct.name);
+        if (this.newProduct.sku_code) {
+          formData.append('sku_code', this.newProduct.sku_code);
+        }
+        formData.append('size', this.newProduct.size);
+        if (this.newProduct.color_code) {
+          formData.append('color_code', this.newProduct.color_code);
+        }
+        formData.append('price', parseFloat(this.newProduct.price));
+        if (this.newProduct.cost) {
+          formData.append('cost', parseFloat(this.newProduct.cost));
+        }
+        if (this.newProduct.min_stock_level) {
+          formData.append('min_stock_level', parseInt(this.newProduct.min_stock_level));
+        }
+        if (this.newProduct.max_stock_level) {
+          formData.append('max_stock_level', parseInt(this.newProduct.max_stock_level));
+        }
+        if (this.newProduct.description) {
+          formData.append('description', this.newProduct.description);
+        }
+        
+        if (this.uploadedImage) {
+          formData.append('image', this.uploadedImage);
+        }
+        
+        const response = await api.post('/distributor/products', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          this.products.unshift(response.data.data);
+          this.updateCategoryCounts();
+          this.showSuccessToast('Product added successfully!');
+          this.closeModal();
+        } else {
+          this.showErrorToast('Failed to add product. Please try again.');
+        }
+      } catch (error) {
+        let errorMessage = 'Error adding product. Please try again.';
+        if (error.response?.data?.errors) {
+          const errors = Object.values(error.response.data.errors).flat();
+          errorMessage = errors.join(', ');
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        this.showErrorToast(errorMessage);
+      }
     },
     
     editProduct(product) {
       this.isEditing = true;
       this.editingId = product.id;
       this.newProduct = { 
-        ...product,
-        price: product.price.toString()
+        category: product.category || '',
+        type: product.type || '',
+        name: product.name || '',
+        sku_code: product.sku_code || '',
+        size: product.size || '',
+        color_code: product.color_code || '',
+        price: product.price ? product.price.toString() : '',
+        cost: product.cost ? product.cost.toString() : '',
+        min_stock_level: product.min_stock_level ? product.min_stock_level.toString() : '10',
+        max_stock_level: product.max_stock_level ? product.max_stock_level.toString() : '100',
+        description: product.description || '',
+        image_url: product.image_url || ''
       };
-      this.imagePreview = product.image;
+      this.imagePreview = product.image_url;
+      this.uploadedImage = null;
+      this.currentStep = 1;
+      this.wizardSteps.forEach(step => step.completed = false);
       this.showAddModal = true;
     },
     
-    updateProduct() {
+    async updateProduct() {
       if (!this.validateProduct()) return;
       
-      const index = this.products.findIndex(p => p.id === this.editingId);
-      if (index !== -1) {
-        this.products[index] = {
-          id: this.editingId,
-          ...this.newProduct,
-          price: parseFloat(this.newProduct.price),
-          image: this.imagePreview || this.newProduct.image
-        };
+      try {
+        const formData = new FormData();
         
-        this.updateCategoryCounts();
-        alert('Product updated successfully!');
-        this.closeModal();
+        formData.append('category', this.newProduct.category);
+        formData.append('type', this.newProduct.type);
+        formData.append('name', this.newProduct.name);
+        if (this.newProduct.sku_code) {
+          formData.append('sku_code', this.newProduct.sku_code);
+        }
+        formData.append('size', this.newProduct.size);
+        if (this.newProduct.color_code) {
+          formData.append('color_code', this.newProduct.color_code);
+        }
+        formData.append('price', parseFloat(this.newProduct.price));
+        if (this.newProduct.cost) {
+          formData.append('cost', parseFloat(this.newProduct.cost));
+        }
+        if (this.newProduct.min_stock_level) {
+          formData.append('min_stock_level', parseInt(this.newProduct.min_stock_level));
+        }
+        if (this.newProduct.max_stock_level) {
+          formData.append('max_stock_level', parseInt(this.newProduct.max_stock_level));
+        }
+        if (this.newProduct.description) {
+          formData.append('description', this.newProduct.description);
+        }
+        
+        if (this.uploadedImage) {
+          formData.append('image', this.uploadedImage);
+        }
+        
+        const response = await api.put(`/distributor/products/${this.editingId}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        if (response.data && response.data.success) {
+          const index = this.products.findIndex(p => p.id === this.editingId);
+          if (index !== -1) {
+            this.products[index] = response.data.data;
+            this.updateCategoryCounts();
+            this.showSuccessToast('Product updated successfully!');
+            this.closeModal();
+          }
+        } else {
+          this.showErrorToast('Failed to update product. Please try again.');
+        }
+      } catch (error) {
+        let errorMessage = 'Error updating product. Please try again.';
+        if (error.response?.data?.errors) {
+          const errors = Object.values(error.response.data.errors).flat();
+          errorMessage = errors.join(', ');
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        this.showErrorToast(errorMessage);
+      }
+    },
+    
+    async deleteProduct(productId) {
+      if (!confirm('Are you sure you want to delete this product?')) return;
+      
+      try {
+        const response = await api.delete(`/distributor/products/${productId}`);
+        
+        if (response.data && response.data.success) {
+          this.products = this.products.filter(product => product.id !== productId);
+          this.updateCategoryCounts();
+          this.showSuccessToast('Product deleted successfully!');
+        } else {
+          this.showErrorToast('Failed to delete product. Please try again.');
+        }
+      } catch (error) {
+        this.showErrorToast('Error deleting product. Please try again.');
       }
     },
     
@@ -832,57 +1383,61 @@ export default {
       this.showAddModal = false;
       this.isEditing = false;
       this.editingId = null;
+      this.currentStep = 1;
+      this.wizardSteps.forEach(step => step.completed = false);
       this.resetForm();
     },
     
     onCategoryChange() {
       this.newProduct.type = '';
+      this.newProduct.size = '';
+    },
+    
+    triggerFileInput() {
+      this.$refs.fileInput.click();
     },
     
     handleImageUpload(event) {
       const file = event.target.files[0];
       if (file) {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            this.imagePreview = e.target.result;
-            this.newProduct.image = e.target.result;
-          };
-          reader.readAsDataURL(file);
-        } else {
-          alert('Please select an image file.');
-          this.$refs.fileInput.value = '';
-        }
+        this.processImageFile(file);
       }
+    },
+    
+    handleFileDrop(event) {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        this.processImageFile(file);
+      }
+    },
+    
+    processImageFile(file) {
+      if (!file.type.startsWith('image/')) {
+        this.showErrorToast('Please select an image file (JPG, PNG, etc.).');
+        return;
+      }
+      
+      if (file.size > 2 * 1024 * 1024) {
+        this.showErrorToast('Image size should be less than 2MB. Please compress or choose a smaller image.');
+        return;
+      }
+      
+      this.uploadedImage = file;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.imagePreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
     },
     
     removeImage() {
       this.imagePreview = '';
-      this.newProduct.image = '';
+      this.uploadedImage = null;
+      this.newProduct.image_url = '';
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = '';
-      }
-    },
-    
-    addProduct() {
-      if (!this.validateProduct()) return;
-      
-      const product = {
-        id: this.nextId++,
-        ...this.newProduct,
-        price: parseFloat(this.newProduct.price),
-        image: this.imagePreview || this.newProduct.image
-      };
-      
-      this.products.unshift(product);
-      this.updateCategoryCounts();
-      this.closeModal();
-    },
-    
-    deleteProduct(id) {
-      if (confirm('Are you sure you want to delete this product?')) {
-        this.products = this.products.filter(product => product.id !== id);
-        this.updateCategoryCounts();
       }
     },
     
@@ -891,13 +1446,18 @@ export default {
         category: '',
         type: '',
         name: '',
+        sku_code: '',
         size: '',
-        rgb: '',
+        color_code: '',
         price: '',
+        cost: '',
+        min_stock_level: 10,
+        max_stock_level: 100,
         description: '',
-        image: ''
+        image_url: ''
       };
       this.imagePreview = '';
+      this.uploadedImage = null;
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = '';
       }
@@ -905,1168 +1465,274 @@ export default {
     
     validateProduct() {
       if (!this.newProduct.category) {
-        alert('Please select a category.');
+        this.showWarningToast('Please select a category.');
         return false;
       }
       if (!this.newProduct.type) {
-        alert('Please select a type.');
+        this.showWarningToast('Please select a type.');
         return false;
       }
-      if (!this.newProduct.name.trim()) {
-        alert('Please enter a product name.');
+      if (!this.newProduct.name || !this.newProduct.name.trim()) {
+        this.showWarningToast('Please enter a product name.');
         return false;
       }
       if (!this.newProduct.size) {
-        alert('Please select a size.');
+        this.showWarningToast('Please select a size.');
         return false;
       }
       if (!this.newProduct.price || parseFloat(this.newProduct.price) <= 0) {
-        alert('Please enter a valid price.');
+        this.showWarningToast('Please enter a valid price.');
+        return false;
+      }
+      if (this.newProduct.color_code && !this.newProduct.color_code.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
+        this.showWarningToast('Please enter a valid hex color code (e.g., #FFFFFF or #FFF).');
         return false;
       }
       return true;
     },
     
     updateCategoryCounts() {
+      if (!Array.isArray(this.products)) {
+        this.products = [];
+      }
+      
       this.categories = this.categories.map(category => {
-        const count = this.products.filter(p => p.category === category.value).length;
+        const count = this.products.filter(p => p && p.category === category.value).length;
         return { ...category, count };
       });
     },
     
     formatPrice(price) {
+      if (!price) return '0.00';
       return parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     },
     
     truncateDescription(desc, length = 60) {
+      if (!desc) return '';
       return desc.length > length ? desc.substring(0, length) + '...' : desc;
+    },
+    
+    exportCatalog() {
+      if (!Array.isArray(this.products) || this.products.length === 0) {
+        this.showWarningToast('No products to export.');
+        return;
+      }
+      
+      const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Cost Price', 'Min Ref Stock', 'Max Ref Stock', 'Description'];
+      const csvContent = [
+        headers.join(','),
+        ...this.products.map(product => [
+          `"${product.name || ''}"`,
+          `"${product.category || ''}"`,
+          `"${product.type || ''}"`,
+          `"${product.sku_code || ''}"`,
+          `"${product.size || ''}"`,
+          `"${product.color_code || ''}"`,
+          product.price || '0',
+          product.cost || '0',
+          product.min_stock_level || '0',
+          product.max_stock_level || '0',
+          `"${product.description || ''}"`
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `product-catalog-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      this.showSuccessToast('Catalog exported successfully!');
     }
+  },
+  mounted() {
+    this.loadProducts();
   }
 };
 </script>
 
 <style scoped>
-.ecommerce-container {
-  min-height: 100vh;
-  background: #f8f9fa;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-}
-
-/* Header Styles */
-.ecommerce-header {
-  background: white;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.brand-section .logo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.brand-section h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-}
-
-.tagline {
-  color: #718096;
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.search-container {
-  position: relative;
-  background: #f7fafc;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 300px;
-}
-
-.search-container svg {
-  color: #a0aec0;
-  flex-shrink: 0;
-}
-
-.search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  font-size: 0.95rem;
-}
-
-.cart-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  position: relative;
-}
-
-.cart-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-}
-
-.cart-count {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #f56565;
-  color: white;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Main Content Layout */
-.main-content {
-  max-width: 1400px;
-  margin: 2rem auto;
-  padding: 0 2rem;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 2rem;
-  position: relative;
-}
-
-@media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
+  @import "../distributor/styles/ProductAvailable.css";
+  
+  /* Additional styles for catalog */
+  .catalog-stats {
+    display: flex;
+    gap: 2rem;
+    background: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   }
-}
-
-/* Sidebar Styles */
-.sidebar-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.sidebar-card h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 1.25rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.filter-group {
-  margin-bottom: 1.5rem;
-}
-
-.filter-group h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5568;
-  margin: 0 0 0.75rem 0;
-}
-
-.filter-options {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.filter-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  padding: 0.25rem 0;
-  position: relative;
-}
-
-.filter-checkbox input[type="checkbox"] {
-  display: none;
-}
-
-.checkbox-custom {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #e2e8f0;
-  border-radius: 4px;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.filter-checkbox input:checked + .checkbox-custom {
-  background: #667eea;
-  border-color: #667eea;
-}
-
-.filter-checkbox input:checked + .checkbox-custom::after {
-  content: '';
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 5px;
-  height: 9px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.filter-label {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: #4a5568;
-}
-
-.category-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.cat-paint { background: #4299e1; }
-.cat-coatings { background: #48bb78; }
-.cat-solvents { background: #ed8936; }
-.cat-tools { background: #9f7aea; }
-.cat-packaging { background: #38b2ac; }
-
-.filter-count {
-  font-size: 0.8rem;
-  color: #a0aec0;
-}
-
-.filter-select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.9rem;
-  color: #4a5568;
-  cursor: pointer;
-  outline: none;
-}
-
-.filter-select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.size-chip {
-  padding: 0.5rem 0.75rem;
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: #4a5568;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.size-chip:hover {
-  border-color: #cbd5e0;
-}
-
-.size-chip.active {
-  background: #667eea;
-  border-color: #667eea;
-  color: white;
-}
-
-.color-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.color-option {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.color-option:hover {
-  transform: scale(1.1);
-}
-
-.color-option.active {
-  border-color: #2d3748;
-  box-shadow: 0 0 0 2px white, 0 0 0 4px #667eea;
-}
-
-.clear-filters {
-  width: 100%;
-  padding: 0.75rem;
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  color: #718096;
-  font-size: 0.9rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.clear-filters:hover {
-  background: #edf2f7;
-  border-color: #cbd5e0;
-}
-
-.add-product-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.add-product-card h3 {
-  color: white;
-}
-
-.add-product-btn {
-  width: 100%;
-  padding: 0.875rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  backdrop-filter: blur(10px);
-}
-
-.add-product-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Product Grid */
-.product-grid-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.grid-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.grid-header h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-}
-
-.product-count {
-  color: #718096;
-  font-weight: 400;
-}
-
-.sort-options {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.sort-options span {
-  font-size: 0.9rem;
-  color: #718096;
-}
-
-.sort-select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: white;
-  font-size: 0.9rem;
-  color: #4a5568;
-  cursor: pointer;
-  outline: none;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  }
-}
-
-.product-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-.product-card.in-request {
-  border-color: #667eea;
-  border-width: 2px;
-}
-
-.product-image {
-  position: relative;
-  height: 200px;
-  background: #f7fafc;
-  overflow: hidden;
-}
-
-.product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #cbd5e0;
-}
-
-.category-badge {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.cat-paint { background: #4299e1; }
-.cat-coatings { background: #48bb78; }
-.cat-solvents { background: #ed8936; }
-.cat-tools { background: #9f7aea; }
-.cat-packaging { background: #38b2ac; }
-
-.color-preview {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.product-info {
-  padding: 1.25rem;
-}
-
-.product-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.product-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-  flex: 1;
-  line-height: 1.4;
-}
-
-.product-price {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #38a169;
-  margin-left: 0.5rem;
-}
-
-.product-meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.product-type,
-.product-size {
-  font-size: 0.85rem;
-  padding: 0.25rem 0.5rem;
-  background: #f7fafc;
-  border-radius: 4px;
-  color: #718096;
-}
-
-.product-description {
-  font-size: 0.9rem;
-  color: #718096;
-  line-height: 1.5;
-  margin-bottom: 1rem;
-  min-height: 40px;
-}
-
-.product-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.request-btn,
-.details-btn {
-  flex: 1;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.request-btn {
-  background: #edf2f7;
-  color: #4a5568;
-}
-
-.request-btn:hover {
-  background: #e2e8f0;
-}
-
-.request-btn.in-cart {
-  background: #48bb78;
-  color: white;
-}
-
-.request-btn.in-cart:hover {
-  background: #38a169;
-}
-
-.details-btn {
-  background: #667eea;
-  color: white;
-}
-
-.details-btn:hover {
-  background: #5a67d8;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #a0aec0;
-}
-
-.empty-state svg {
-  margin-bottom: 1rem;
-  color: #e2e8f0;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  color: #718096;
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-state p {
-  margin: 0;
-}
-
-/* Cart Sidebar */
-.cart-sidebar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 380px;
-  height: 100vh;
-  background: white;
-  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
-  transform: translateX(100%);
-  transition: transform 0.3s ease;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-}
-
-.cart-sidebar.active {
-  transform: translateX(0);
-}
-
-.cart-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.cart-header h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.close-cart {
-  background: none;
-  border: none;
-  color: #718096;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.close-cart:hover {
-  background: #f7fafc;
-}
-
-.cart-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-}
-
-.empty-cart {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #a0aec0;
-}
-
-.empty-cart svg {
-  margin-bottom: 1rem;
-  color: #e2e8f0;
-}
-
-.empty-cart p {
-  margin: 0.5rem 0;
-}
-
-.hint {
-  font-size: 0.9rem;
-  color: #cbd5e0;
-}
-
-.cart-items {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.cart-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  position: relative;
-}
-
-.cart-item-image {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.cart-item-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.item-placeholder {
-  width: 100%;
-  height: 100%;
-  background: #e2e8f0;
-}
-
-.cart-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.cart-item-info h4 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 0.25rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-meta {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #718096;
-  margin-bottom: 0.25rem;
-}
-
-.item-price {
-  font-weight: 700;
-  color: #38a169;
-  font-size: 0.95rem;
-}
-
-.remove-item {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  background: rgba(229, 62, 62, 0.1);
-  border: none;
-  color: #e53e3e;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.remove-item:hover {
-  background: rgba(229, 62, 62, 0.2);
-}
-
-.cart-summary {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #e2e8f0;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  font-size: 0.95rem;
-  color: #4a5568;
-}
-
-.summary-row.total {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.cart-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-.btn-clear,
-.btn-submit {
-  flex: 1;
-  padding: 0.875rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-clear {
-  background: #fed7d7;
-  color: #c53030;
-}
-
-.btn-clear:hover {
-  background: #feb2b2;
-}
-
-.btn-submit {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-}
-
-.cart-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(3px);
-}
-
-/* Add Product Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  padding: 1rem;
-  backdrop-filter: blur(3px);
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.close-modal {
-  background: none;
-  border: none;
-  color: #718096;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.close-modal:hover {
-  background: #f7fafc;
-}
-
-.add-product-form {
-  padding: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-.form-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5568;
-  margin-bottom: 0.5rem;
-}
-
-.form-input,
-.form-select,
-.form-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  color: #4a5568;
-  background: white;
-  transition: all 0.3s;
-}
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 80px;
-  font-family: inherit;
-}
-
-.form-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-.form-input[type="number"]::-webkit-outer-spin-button,
-.form-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.color-input-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.color-input-group input {
-  flex: 1;
-}
-
-.color-preview-display {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  border: 2px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.image-upload {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.file-input {
-  display: none;
-}
-
-.upload-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: #f8f9fa;
-  border: 2px dashed #dee2e6;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-  color: #495057;
-  font-weight: 500;
-}
-
-.upload-label:hover {
-  background: #e9ecef;
-  border-color: #667eea;
-}
-
-.image-preview {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #e0e0e0;
-}
-
-.image-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.remove-image {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: background 0.3s;
-}
-
-.remove-image:hover {
-  background: rgba(0, 0, 0, 0.9);
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.btn-cancel,
-.btn-submit {
-  flex: 1;
-  padding: 0.875rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn-cancel {
-  background: #f7fafc;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-}
-
-.btn-cancel:hover {
-  background: #edf2f7;
-}
-
-.btn-submit {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.btn-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .header-content {
+  
+  .stat-item {
+    display: flex;
     flex-direction: column;
-    text-align: center;
-    padding: 1rem;
+    align-items: center;
   }
   
-  .search-container {
-    min-width: 100%;
+  .stat-label {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-bottom: 0.25rem;
   }
   
-  .main-content {
-    padding: 0 1rem;
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d3748;
   }
   
-  .cart-sidebar {
-    width: 100%;
+  .product-sku {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    background: #f7fafc;
+    border-radius: 4px;
+    color: #718096;
   }
   
-  .product-grid {
-    grid-template-columns: 1fr;
+  .product-specs {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 6px;
+  }
+  
+  .spec-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .spec-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .spec-label {
+    color: #4a5568;
+    font-weight: 500;
+  }
+  
+  .spec-value {
+    color: #2d3748;
   }
   
   .product-actions {
-    flex-direction: column;
+    display: flex;
+    gap: 0.75rem;
   }
   
-  .modal-content {
-    margin: 1rem;
-    max-height: 85vh;
+  .edit-btn, .delete-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
-}
+  
+  .edit-btn {
+    background: #667eea;
+    color: white;
+  }
+  
+  .edit-btn:hover {
+    background: #5a67d8;
+  }
+  
+  .delete-btn {
+    background: #fed7d7;
+    color: #c53030;
+  }
+  
+  .delete-btn:hover {
+    background: #feb2b2;
+  }
+  
+  .export-btn {
+    width: 100%;
+    padding: 0.875rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(10px);
+    margin-top: 0.75rem;
+  }
+  
+  .export-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .form-row {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .form-row .form-group {
+    flex: 1;
+  }
+  
+  /* File upload area styling */
+  .file-upload-area {
+    border: 2px dashed #e2e8f0;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .file-upload-area:hover {
+    border-color: #667eea;
+    background: #edf2f7;
+  }
+  
+  /* Product image styling */
+  .product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  /* New category badge colors */
+  .cat-interior { background: #4299e1; }
+  .cat-exterior { background: #48bb78; }
+  .cat-industrial { background: #ed8936; }
+  .cat-specialty { background: #9f7aea; }
+  .cat-spray { background: #f56565; }
+  .cat-primers { background: #38b2ac; }
+  .cat-solvents { background: #ecc94b; }
+  .cat-tools { background: #667eea; }
+  .cat-prep { background: #ed64a6; }
+  .cat-safety { background: #4fd1c7; }
+  .cat-packaging { background: #a0aec0; }
+  
+  @media (max-width: 768px) {
+    .catalog-stats {
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    
+    .form-row {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .product-actions {
+      flex-direction: column;
+    }
+  }
 </style>

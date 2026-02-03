@@ -325,7 +325,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 
@@ -360,6 +360,7 @@ export default {
     const errorMessage = ref('')
     const isLoggingOut = ref(false)
     const isLoadingAccessibility = ref(false)
+    const hasLoadedInitialData = ref(false)
 
     // Navigation items mapping with their permission keys
     const hrNavItems = ref([
@@ -426,8 +427,8 @@ export default {
       return isLoadingAccessibility.value
     })
 
-    // Load user data and accessibility
-    const loadUserData = async () => {
+    // Load user data from localStorage (no API call needed)
+    const loadUserData = () => {
       const userData = localStorage.getItem('user_data')
       const userRoleData = localStorage.getItem('user_role')
       
@@ -436,44 +437,64 @@ export default {
           const user = JSON.parse(userData)
           userName.value = user.name || `${user.first_name} ${user.last_name}` || 'HR User'
           userRole.value = userRoleData || user.role || ''
-          userAccessibility.value = user.employee_data?.accessibility_keys || []
           userPosition.value = user.employee_data?.position || 'Employee'
           
-          // Load user data from props if available
-          if (props.userData && props.userData.name) {
-            userName.value = props.userData.name
-          }
+          // Get accessibility from localStorage (already available from login)
+          userAccessibility.value = user.employee_data?.accessibility_keys || []
           
-          // For employees, fetch their position and accessibility if not already available
-          if (userRole.value === 'employee' && (!userAccessibility.value || userAccessibility.value.length === 0)) {
-            await fetchEmployeeAccessibility(user.id)
-          }
+          // REMOVED CONSOLE LOG:
+          // console.log('User data loaded from localStorage:', {...})
+          
+          // Mark as loaded
+          hasLoadedInitialData.value = true
         } catch (e) {
-          console.error('Failed to parse user data:', e)
+          // Keep error logging for debugging but remove in production
+          // console.error('Failed to parse user data:', e)
         }
       }
     }
 
-    // Fetch employee's position accessibility
-    const fetchEmployeeAccessibility = async (userId) => {
+    // Only fetch from API if accessibility is empty and user is employee
+    const fetchEmployeeAccessibilityIfNeeded = async () => {
+      // If we already have accessibility data, don't fetch
+      if (userAccessibility.value.length > 0) {
+        // REMOVED CONSOLE LOG:
+        // console.log('Accessibility already available, skipping API call')
+        isLoadingAccessibility.value = false
+        return
+      }
+      
+      // Only fetch for employees
+      if (userRole.value !== 'employee') {
+        isLoadingAccessibility.value = false
+        return
+      }
+      
       try {
         isLoadingAccessibility.value = true
-        
-        // Use the new API endpoint to get employee accessibility
-        const response = await api.get(`/hr/positions/employee-accessibility/${userId}`)
-        
-        if (response.data.status === 'success') {
-          userPosition.value = response.data.data.position || 'Employee'
-          userAccessibility.value = response.data.data.accessibility_keys || []
+        const userData = localStorage.getItem('user_data')
+        if (userData) {
+          const user = JSON.parse(userData)
           
-          console.log('Employee accessibility loaded:', {
-            position: userPosition.value,
-            accessibility: userAccessibility.value
-          })
+          // Try to fetch from API (but don't fail if endpoint doesn't exist)
+          try {
+            const response = await api.get(`/hr/positions/employee-accessibility/${user.id}`)
+            if (response.data.status === 'success') {
+              userPosition.value = response.data.data.position || 'Employee'
+              userAccessibility.value = response.data.data.accessibility_keys || []
+              // REMOVED CONSOLE LOG:
+              // console.log('Employee accessibility loaded from API:', userAccessibility.value)
+            }
+          } catch (apiError) {
+            // REMOVED CONSOLE LOG:
+            // console.log('API endpoint not available, using localStorage data')
+            // Keep using localStorage data
+          }
         }
       } catch (error) {
-        console.error('Failed to fetch employee accessibility:', error)
-        // If API fails, try to get from localStorage
+        // REMOVED CONSOLE LOG:
+        // console.log('Using localStorage data instead of API')
+        // Use localStorage data as fallback
         const userData = localStorage.getItem('user_data')
         if (userData) {
           const user = JSON.parse(userData)
@@ -482,17 +503,6 @@ export default {
         }
       } finally {
         isLoadingAccessibility.value = false
-      }
-    }
-
-    // Load employee accessibility on component mount for employees
-    const loadEmployeeAccessibility = async () => {
-      if (userRole.value === 'employee') {
-        const userData = localStorage.getItem('user_data')
-        if (userData) {
-          const user = JSON.parse(userData)
-          await fetchEmployeeAccessibility(user.id)
-        }
       }
     }
 
@@ -530,7 +540,8 @@ export default {
         const response = await api.post('/auth/logout')
         
         if (response.data.status === 'success') {
-          console.log('Logout successful')
+          // REMOVED CONSOLE LOG:
+          // console.log('Logout successful')
           
           // Clear all local storage items
           localStorage.removeItem('auth_token')
@@ -555,14 +566,16 @@ export default {
           }, 2000)
           
         } else {
-          console.error('Logout failed:', response.data.message)
+          // Keep error logging for debugging
+          // console.error('Logout failed:', response.data.message)
           errorMessage.value = response.data.message || 'Logout failed. Please try again.'
           showLogoutModal.value = false
           showErrorToast.value = true
         }
         
       } catch (error) {
-        console.error('Logout error:', error)
+        // Keep error logging for debugging
+        // console.error('Logout error:', error)
         
         // Even if API call fails, clear local data
         localStorage.removeItem('auth_token')
@@ -575,7 +588,7 @@ export default {
         
         // Show appropriate error message
         if (error.response) {
-          console.error('Response error:', error.response.data)
+          // console.error('Response error:', error.response.data)
           // Check if the error is actually success
           if (error.response.data.status === 'success') {
             showSuccessToast.value = true
@@ -612,10 +625,16 @@ export default {
     }
 
     onMounted(() => {
+      // Initial load from localStorage
       loadUserData()
+      
+      // If accessibility is empty, try to fetch (but don't block UI)
+      if (userRole.value === 'employee' && userAccessibility.value.length === 0) {
+        fetchEmployeeAccessibilityIfNeeded()
+      }
     })
 
-    // Watch route changes to update active item
+    // Watch for route changes to update active item
     watch(() => route.path, (newPath) => {
       // Find the active item based on current route
       const allItems = [...accessibleHrNavItems.value, ...accessibleToolsNavItems.value]
@@ -625,16 +644,19 @@ export default {
       }
     }, { immediate: true })
 
-    // Watch for user role changes and load accessibility
-    watch(() => userRole.value, (newRole) => {
-      if (newRole === 'employee') {
-        const userData = localStorage.getItem('user_data')
-        if (userData) {
-          const user = JSON.parse(userData)
-          fetchEmployeeAccessibility(user.id)
+    // Watch for props changes (if parent component passes updated data)
+    watch(() => props.userData, (newUserData) => {
+      if (newUserData && newUserData.name && !hasLoadedInitialData.value) {
+        // REMOVED CONSOLE LOG:
+        // console.log('User data prop updated')
+        userName.value = newUserData.name
+        userRole.value = newUserData.role || ''
+        if (newUserData.employee_data) {
+          userPosition.value = newUserData.employee_data.position || 'Employee'
+          userAccessibility.value = newUserData.employee_data.accessibility_keys || []
         }
       }
-    }, { immediate: true })
+    }, { deep: true })
 
     return {
       isCollapsed,

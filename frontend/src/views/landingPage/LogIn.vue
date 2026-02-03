@@ -402,11 +402,8 @@ const validationErrors = reactive({
 })
 
 // Enhanced Role-based redirect routes with employee department-based routing
-// Enhanced Role-based redirect routes with employee department-based routing
 const getRedirectRoute = (user) => {
   const { role, employee_data } = user;
-  
-  console.log('User data for routing:', user); // Debug log
   
   // Handle hr_manager role (from your database)
   if (role === 'hr_manager') {
@@ -417,8 +414,6 @@ const getRedirectRoute = (user) => {
   if (role === 'employee' && employee_data) {
     const department = employee_data.department?.toLowerCase() || '';
     const position = employee_data.position?.toLowerCase() || '';
-    
-    console.log('Employee department/position:', { department, position }); // Debug log
     
     // Route based on department
     if (department.includes('human resource') || department.includes('hr')) {
@@ -449,7 +444,6 @@ const getRedirectRoute = (user) => {
     employee: '/employee/dashboard' // Default employee route
   };
   
-  console.log('Route for role', role, ':', roleRoutes[role] || '/'); // Debug log
   return roleRoutes[role] || '/';
 }
 
@@ -591,7 +585,6 @@ const handleLogin = async () => {
         
         // Handle unknown roles or departments
         if (!redirectRoute) {
-          console.warn(`No route found for role: ${user.role}, department: ${user.employee_data?.department}`)
           showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
           return
         }
@@ -653,7 +646,6 @@ onMounted(() => {
     if (cleanup) cleanup()
   })
 })
-
 </script>
 
 <style scoped>
