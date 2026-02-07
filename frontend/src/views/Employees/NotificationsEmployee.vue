@@ -1,6 +1,5 @@
 <template>
-  <div class="notifications-employee">
-    <!-- Header -->
+  <div class="notifications-employee p-4 md:p-6">
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -8,30 +7,38 @@
           <p class="text-gray-500 mt-1">System alerts and updates</p>
         </div>
         <div class="mt-4 md:mt-0 flex space-x-3">
-          <button @click="markAllAsRead"
-                  class="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+          <Button 
+            variant="outline" 
+            @click="markAllAsRead"
+            class="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
             Mark All as Read
-          </button>
-          <button @click="clearAll"
-                  class="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+          </Button>
+          <Button 
+            variant="outline" 
+            @click="clearAll"
+            class="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
             Clear All
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
-    <!-- Notification Filters -->
     <div class="mb-6">
       <div class="flex flex-wrap gap-2">
-        <button v-for="filter in filters" 
-                :key="filter.id"
-                @click="activeFilter = filter.id"
-                :class="[
-                  'px-4 py-2 rounded-lg font-medium text-sm transition-colors',
-                  activeFilter === filter.id 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                ]">
+        <Button 
+          v-for="filter in filters" 
+          :key="filter.id"
+          @click="activeFilter = filter.id"
+          :variant="activeFilter === filter.id ? 'default' : 'secondary'"
+          :class="[
+            'rounded-lg font-medium text-sm transition-colors h-9',
+            activeFilter === filter.id 
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-none'
+          ]"
+        >
           {{ filter.label }}
           <span v-if="filter.count" 
                 :class="[
@@ -42,13 +49,11 @@
                 ]">
             {{ filter.count }}
           </span>
-        </button>
+        </Button>
       </div>
     </div>
 
-    <!-- Notifications List -->
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-      <!-- Unread Notifications -->
+    <Card class="bg-white rounded-xl shadow-lg overflow-hidden border-0">
       <div v-if="filteredNotifications.length > 0">
         <div v-for="notification in filteredNotifications" 
              :key="notification.id"
@@ -57,7 +62,6 @@
                notification.read ? 'bg-white' : 'bg-blue-50'
              ]">
           <div class="flex items-start">
-            <!-- Icon -->
             <div :class="[
               'p-3 rounded-lg mr-4',
               getNotificationType(notification.type).colorClass
@@ -65,7 +69,6 @@
               <i :class="[getNotificationType(notification.type).icon, getNotificationType(notification.type).iconColor, 'text-lg']"></i>
             </div>
             
-            <!-- Content -->
             <div class="flex-1">
               <div class="flex items-start justify-between">
                 <div>
@@ -77,40 +80,47 @@
                   </p>
                 </div>
                 <div class="flex items-center space-x-3 ml-4">
-                  <button v-if="!notification.read" 
-                          @click="markAsRead(notification.id)"
-                          class="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
-                          title="Mark as read">
+                  <Button 
+                    v-if="!notification.read" 
+                    @click="markAsRead(notification.id)"
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-transparent"
+                    title="Mark as read"
+                  >
                     <i class="far fa-circle"></i>
-                  </button>
-                  <button @click="deleteNotification(notification.id)"
-                          class="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete">
+                  </Button>
+                  <Button 
+                    @click="deleteNotification(notification.id)"
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-transparent"
+                    title="Delete"
+                  >
                     <i class="far fa-trash-alt"></i>
-                  </button>
+                  </Button>
                 </div>
               </div>
               
-              <!-- Actions for specific notifications -->
               <div v-if="notification.action" class="mt-4 flex space-x-3">
-                <button v-for="action in notification.action.buttons" 
+                <Button v-for="action in notification.action.buttons" 
                         :key="action.label"
                         @click="handleAction(notification.id, action.type)"
+                        :variant="action.type === 'primary' ? 'default' : 'secondary'"
                         :class="[
-                          'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                          'rounded-lg text-sm font-medium transition-colors',
                           action.type === 'primary' 
                             ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         ]">
                   {{ action.label }}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Empty State -->
       <div v-else class="p-12 text-center">
         <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
           <i class="far fa-bell text-gray-400 text-3xl"></i>
@@ -118,12 +128,11 @@
         <h3 class="text-lg font-semibold text-gray-800 mb-2">No notifications</h3>
         <p class="text-gray-500">You're all caught up! New notifications will appear here.</p>
       </div>
-    </div>
+    </Card>
 
-    <!-- Notification Stats -->
     <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <div class="flex items-center">
+      <Card class="shadow-lg border-0">
+        <div class="p-6 flex items-center">
           <div class="p-3 bg-blue-50 rounded-lg mr-4">
             <i class="fas fa-bell text-blue-600 text-xl"></i>
           </div>
@@ -132,10 +141,10 @@
             <p class="text-2xl font-bold text-gray-800">{{ totalNotifications }}</p>
           </div>
         </div>
-      </div>
+      </Card>
       
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <div class="flex items-center">
+      <Card class="shadow-lg border-0">
+        <div class="p-6 flex items-center">
           <div class="p-3 bg-green-50 rounded-lg mr-4">
             <i class="fas fa-check-circle text-green-600 text-xl"></i>
           </div>
@@ -144,10 +153,10 @@
             <p class="text-2xl font-bold text-gray-800">{{ unreadCount }}</p>
           </div>
         </div>
-      </div>
+      </Card>
       
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <div class="flex items-center">
+      <Card class="shadow-lg border-0">
+        <div class="p-6 flex items-center">
           <div class="p-3 bg-purple-50 rounded-lg mr-4">
             <i class="fas fa-file-invoice-dollar text-purple-600 text-xl"></i>
           </div>
@@ -156,13 +165,15 @@
             <p class="text-2xl font-bold text-gray-800">{{ payslipNotifications }}</p>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 const activeFilter = ref('all')
 
@@ -239,7 +250,7 @@ const handleAction = (id, actionType) => {
 
 <style scoped>
 .notifications-employee {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 </style>

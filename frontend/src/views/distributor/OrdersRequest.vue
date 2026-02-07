@@ -1,6 +1,5 @@
 <template>
   <div class="p-6">
-    <!-- Page Header -->
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -8,29 +7,28 @@
           <p class="text-gray-600 mt-2">Manage incoming paint distribution requests</p>
         </div>
         <div class="flex items-center gap-3">
-          <!-- Filter Dropdown -->
-          <div class="relative">
-            <select v-model="statusFilter" 
-                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer">
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="fulfilled">Fulfilled</option>
-              <option value="rejected">Rejected</option>
-            </select>
-            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
-              <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-              </svg>
-            </div>
+          <div class="relative w-[180px]">
+             <Select v-model="statusFilter">
+              <SelectTrigger class="w-full bg-white border-gray-300">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <!-- Search -->
-          <div class="relative">
-            <input type="text" 
-                   v-model="searchQuery"
-                   placeholder="Search requests..." 
-                   class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <div class="relative w-full sm:w-64">
+            <Input 
+              type="text" 
+              v-model="searchQuery"
+              placeholder="Search requests..." 
+              class="pl-10 pr-4 w-full border-gray-300"
+            />
             <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
@@ -38,10 +36,9 @@
         </div>
       </div>
 
-      <!-- Stats Cards -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-          <div class="flex items-center justify-between">
+        <Card class="bg-white border-gray-200 shadow-sm">
+          <CardContent class="p-4 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Total Requests</p>
               <p class="text-2xl font-bold text-gray-800 mt-1">{{ totalRequests }}</p>
@@ -51,11 +48,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
               </svg>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-          <div class="flex items-center justify-between">
+        <Card class="bg-white border-gray-200 shadow-sm">
+          <CardContent class="p-4 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Pending</p>
               <p class="text-2xl font-bold text-yellow-600 mt-1">{{ pendingCount }}</p>
@@ -65,11 +62,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-          <div class="flex items-center justify-between">
+        <Card class="bg-white border-gray-200 shadow-sm">
+          <CardContent class="p-4 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Approved</p>
               <p class="text-2xl font-bold text-green-600 mt-1">{{ approvedCount }}</p>
@@ -79,11 +76,11 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-          <div class="flex items-center justify-between">
+        <Card class="bg-white border-gray-200 shadow-sm">
+          <CardContent class="p-4 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-600">Fulfilled</p>
               <p class="text-2xl font-bold text-purple-600 mt-1">{{ fulfilledCount }}</p>
@@ -93,37 +90,34 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <!-- Table Header -->
+    <Card class="bg-white border-gray-200 shadow-sm overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 class="text-lg font-semibold text-gray-800">Incoming Requests</h2>
           <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600">{{ filteredRequests.length }} requests</span>
-            <button @click="refreshData" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <Button variant="ghost" size="icon" @click="refreshData" class="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      <!-- Mobile View -->
       <div class="md:hidden">
         <div v-for="request in filteredRequests" :key="request.id" class="p-4 border-b border-gray-200">
           <div class="flex justify-between items-start mb-3">
             <div>
               <span class="font-medium text-gray-900">#{{ request.id }}</span>
-              <span :class="statusClasses(request.status)" class="ml-2 px-2 py-1 rounded-full text-xs font-medium">
+              <Badge :class="statusClasses(request.status)" class="ml-2 px-2 py-1 rounded-full text-xs font-medium border border-current bg-opacity-10">
                 {{ request.status }}
-              </span>
+              </Badge>
             </div>
             <div class="text-right">
               <p class="font-semibold text-gray-900">₱{{ formatCurrency(request.totalAmount) }}</p>
@@ -153,67 +147,69 @@
             </div>
           </div>
 
-          <!-- Mobile Actions -->
           <div class="mt-4 pt-4 border-t border-gray-200">
             <div class="flex justify-between gap-2">
-              <button v-if="request.status === 'pending'" 
+              <Button v-if="request.status === 'pending'" 
                       @click="approveRequest(request.id)"
-                      class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-sm font-medium transition-colors">
+                      variant="ghost"
+                      class="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 h-9">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
                 Approve
-              </button>
-              <button v-if="request.status === 'pending'" 
+              </Button>
+              <Button v-if="request.status === 'pending'" 
                       @click="rejectRequest(request.id)"
-                      class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors">
+                      variant="ghost"
+                      class="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 h-9">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
                 Reject
-              </button>
-              <button v-if="request.status === 'approved'" 
+              </Button>
+              <Button v-if="request.status === 'approved'" 
                       @click="markAsFulfilled(request.id)"
-                      class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-sm font-medium transition-colors">
+                      variant="ghost"
+                      class="flex-1 flex items-center justify-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 h-9">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 Fulfill
-              </button>
-              <button @click="viewDetails(request)"
-                      class="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors">
+              </Button>
+              <Button @click="viewDetails(request)"
+                      variant="ghost"
+                      class="flex-1 flex items-center justify-center gap-2 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-gray-900 h-9">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 Details
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Desktop Table -->
       <div class="hidden md:block overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Request ID</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Service Provider</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Client</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Paint Details</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Quantity</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
-              <th class="py-3 px-6 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="request in filteredRequests" :key="request.id" class="hover:bg-gray-50 transition-colors">
-              <td class="py-4 px-6">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow class="hover:bg-gray-50">
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Request ID</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Service Provider</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Client</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Paint Details</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Quantity</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Status</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Date</TableHead>
+              <TableHead class="text-xs font-medium text-gray-700 uppercase tracking-wider py-3 px-6">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-gray-200">
+            <TableRow v-for="request in filteredRequests" :key="request.id" class="hover:bg-gray-50 transition-colors">
+              <TableCell class="py-4 px-6">
                 <div class="font-medium text-gray-900">#{{ request.id }}</div>
                 <div class="text-sm text-gray-500">₱{{ formatCurrency(request.totalAmount) }}</div>
-              </td>
-              <td class="py-4 px-6">
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
                     <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,12 +221,12 @@
                     <div class="text-sm text-gray-500">{{ request.providerContact }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="py-4 px-6">
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="font-medium text-gray-900">{{ request.clientName }}</div>
                 <div class="text-sm text-gray-500">{{ request.clientLocation }}</div>
-              </td>
-              <td class="py-4 px-6">
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-lg" :style="{ backgroundColor: request.paintColor }"></div>
                   <div>
@@ -238,63 +234,66 @@
                     <div class="text-sm text-gray-500">{{ request.paintBrand }} • {{ request.paintFinish }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="py-4 px-6">
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="font-medium text-gray-900">{{ request.quantity }} gallons</div>
                 <div class="text-sm text-gray-500">{{ request.weight }} kg total</div>
-              </td>
-              <td class="py-4 px-6">
-                <span :class="statusClasses(request.status)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+              </TableCell>
+              <TableCell class="py-4 px-6">
+                <Badge :class="statusClasses(request.status)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border-0">
                   <span class="w-2 h-2 rounded-full mr-2" :class="statusDotClasses(request.status)"></span>
                   {{ request.status }}
-                </span>
-              </td>
-              <td class="py-4 px-6">
+                </Badge>
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="text-gray-900">{{ request.date }}</div>
                 <div class="text-sm text-gray-500">{{ request.time }}</div>
-              </td>
-              <td class="py-4 px-6">
+              </TableCell>
+              <TableCell class="py-4 px-6">
                 <div class="flex items-center gap-2">
-                  <button v-if="request.status === 'pending'" 
+                  <Button v-if="request.status === 'pending'" 
                           @click="approveRequest(request.id)"
-                          class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          variant="ghost" size="icon"
+                          class="text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
                           title="Approve Request">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                  </button>
-                  <button v-if="request.status === 'pending'" 
+                  </Button>
+                  <Button v-if="request.status === 'pending'" 
                           @click="rejectRequest(request.id)"
-                          class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          variant="ghost" size="icon"
+                          class="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                           title="Reject Request">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
-                  </button>
-                  <button v-if="request.status === 'approved'" 
+                  </Button>
+                  <Button v-if="request.status === 'approved'" 
                           @click="markAsFulfilled(request.id)"
-                          class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          variant="ghost" size="icon"
+                          class="text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
                           title="Mark as Fulfilled">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                  </button>
-                  <button @click="viewDetails(request)"
-                          class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  </Button>
+                  <Button @click="viewDetails(request)"
+                          variant="ghost" size="icon"
+                          class="text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                           title="View Details">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                     </svg>
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
-      <!-- Empty State -->
       <div v-if="filteredRequests.length === 0" class="text-center py-12">
         <div class="w-16 h-16 mx-auto mb-4 text-gray-400">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,9 +303,8 @@
         <h3 class="text-lg font-medium text-gray-900 mb-2">No requests found</h3>
         <p class="text-gray-500 max-w-sm mx-auto">Try adjusting your search or filter to find what you're looking for.</p>
       </div>
-    </div>
+    </Card>
 
-    <!-- Pagination -->
     <div v-if="filteredRequests.length > 0" class="mt-6 flex items-center justify-between">
       <div class="text-sm text-gray-700">
         Showing <span class="font-medium">{{ Math.min((currentPage - 1) * itemsPerPage + 1, filteredRequests.length) }}</span>
@@ -314,27 +312,75 @@
         of <span class="font-medium">{{ filteredRequests.length }}</span> requests
       </div>
       <div class="flex items-center gap-2">
-        <button @click="prevPage" :disabled="currentPage === 1" 
-                class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          @click="prevPage" 
+          :disabled="currentPage === 1" 
+          class="h-8 w-8"
+        >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
           </svg>
-        </button>
-        <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium">{{ currentPage }}</span>
-        <button @click="nextPage" :disabled="currentPage * itemsPerPage >= filteredRequests.length" 
-                class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+        </Button>
+        <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium text-sm">{{ currentPage }}</span>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          @click="nextPage" 
+          :disabled="currentPage * itemsPerPage >= filteredRequests.length" 
+          class="h-8 w-8"
+        >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
-        </button>
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
 export default {
   name: 'OrdersRequests',
+  components: {
+    Button,
+    Input,
+    Card,
+    CardContent,
+    Badge,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+  },
   data() {
     return {
       searchQuery: '',
@@ -516,12 +562,12 @@ export default {
   methods: {
     statusClasses(status) {
       const classes = {
-        'pending': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-        'approved': 'bg-green-50 text-green-700 border border-green-200',
-        'fulfilled': 'bg-purple-50 text-purple-700 border border-purple-200',
-        'rejected': 'bg-red-50 text-red-700 border border-red-200'
+        'pending': 'bg-yellow-50 text-yellow-700',
+        'approved': 'bg-green-50 text-green-700',
+        'fulfilled': 'bg-purple-50 text-purple-700',
+        'rejected': 'bg-red-50 text-red-700'
       }
-      return classes[status] || 'bg-gray-50 text-gray-700 border border-gray-200'
+      return classes[status] || 'bg-gray-50 text-gray-700'
     },
     statusDotClasses(status) {
       const classes = {
@@ -589,63 +635,6 @@ export default {
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
-  
-  .overflow-x-auto::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 2px;
-  }
-}
-
-/* Smooth transitions for interactive elements */
-button, select, input {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Hover effects for table rows */
-.hover\\:bg-gray-50:hover {
-  transition: background-color 0.2s ease;
-}
-
-/* Custom focus styles */
-select:focus, input:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Responsive table adjustments */
-@media (max-width: 767px) {
-  :deep(.text-2xl) {
-    font-size: 1.5rem;
-  }
-  
-  :deep(.text-3xl) {
-    font-size: 1.75rem;
-  }
-}
-
-/* Animation for status changes */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-tbody tr {
-  animation: fadeIn 0.3s ease-out;
 }
 
 /* Custom color dots for paint samples */

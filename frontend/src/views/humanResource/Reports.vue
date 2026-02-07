@@ -1,158 +1,164 @@
 <template>
-  <div class="reports p-4 md:p-6">
-    <!-- Header -->
+  <div class="p-4 md:p-6 min-h-[calc(100vh-80px)]">
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">HR Reports</h1>
         <p class="text-gray-600">Generate and export HR reports for analysis</p>
       </div>
       <div class="mt-4 md:mt-0 flex space-x-3">
-        <button @click="generateReport" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="generateReport">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Generate Report
-        </button>
-        <button @click="exportAll" class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+        </Button>
+        <Button variant="outline" @click="exportAll">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           Export All
-        </button>
+        </Button>
       </div>
     </div>
 
-    <!-- Report Types Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-      <div v-for="report in reportTypes" :key="report.id" 
-           class="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:border-blue-200 transition-colors cursor-pointer"
+      <Card v-for="report in reportTypes" :key="report.id" 
+           class="cursor-pointer hover:border-blue-200 transition-colors p-6 flex flex-col justify-between"
            @click="selectReport(report)">
-        <div class="flex items-start justify-between mb-4">
-          <div class="p-3 rounded-lg mr-4" :class="report.bgClass">
-            <component :is="report.icon" class="w-6 h-6" :class="report.iconClass" />
+        <div>
+          <div class="flex items-start justify-between mb-4">
+            <div class="p-3 rounded-lg mr-4" :class="report.bgClass">
+              <component :is="report.icon" class="w-6 h-6" :class="report.iconClass" />
+            </div>
+            <span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600">{{ report.type }}</span>
           </div>
-          <span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-600">{{ report.type }}</span>
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ report.title }}</h3>
+          <p class="text-sm text-gray-600 mb-4">{{ report.description }}</p>
         </div>
-        <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ report.title }}</h3>
-        <p class="text-sm text-gray-600 mb-4">{{ report.description }}</p>
-        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div class="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
           <span class="text-xs text-gray-500">Last generated: {{ report.lastGenerated }}</span>
-          <button @click.stop="generateSpecificReport(report)" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+          <Button variant="link" class="p-0 h-auto text-blue-600" @click.stop="generateSpecificReport(report)">
             Generate
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
 
-    <!-- Report Configuration -->
-    <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+    <Card class="p-6 mb-8">
       <h2 class="text-lg font-semibold text-gray-800 mb-6">Report Configuration</h2>
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Report Type Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
-          <select v-model="selectedReportType" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option v-for="report in reportTypes" :key="report.id" :value="report.id">{{ report.title }}</option>
-          </select>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Report Type</label>
+          <Select v-model="selectedReportType">
+            <SelectTrigger>
+                <SelectValue placeholder="Select Report Type" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem v-for="report in reportTypes" :key="report.id" :value="String(report.id)">{{ report.title }}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
-        <!-- Date Range -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Date Range</label>
           <div class="flex space-x-2">
-            <input v-model="dateRange.start" type="date" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <input v-model="dateRange.end" type="date" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <Input v-model="dateRange.start" type="date" />
+            <Input v-model="dateRange.end" type="date" />
           </div>
         </div>
         
-        <!-- Format Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Export Format</label>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Export Format</label>
           <div class="flex space-x-2">
-            <button @click="exportFormat = 'PDF'" :class="exportFormat === 'PDF' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+            <Button @click="exportFormat = 'PDF'" :variant="exportFormat === 'PDF' ? 'default' : 'outline'" 
+                    :class="[exportFormat === 'PDF' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-100 hover:bg-gray-200', 'flex-1']">
               PDF
-            </button>
-            <button @click="exportFormat = 'CSV'" :class="exportFormat === 'CSV' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+            </Button>
+            <Button @click="exportFormat = 'CSV'" :variant="exportFormat === 'CSV' ? 'default' : 'outline'" 
+                    :class="[exportFormat === 'CSV' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-100 hover:bg-gray-200', 'flex-1']">
               CSV
-            </button>
-            <button @click="exportFormat = 'Excel'" :class="exportFormat === 'Excel' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'"
-                    class="flex-1 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+            </Button>
+            <Button @click="exportFormat = 'Excel'" :variant="exportFormat === 'Excel' ? 'default' : 'outline'" 
+                    :class="[exportFormat === 'Excel' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-100 hover:bg-gray-200', 'flex-1']">
               Excel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
       
-      <!-- Filters -->
       <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-          <select v-model="filters.department" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">All Departments</option>
-            <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
-          </select>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Department</label>
+           <Select v-model="filters.department">
+            <SelectTrigger>
+                <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                <SelectItem v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
-          <select v-model="filters.status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">All Status</option>
-            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
-          </select>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Employment Status</label>
+          <Select v-model="filters.status">
+            <SelectTrigger>
+                <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem v-for="status in statusOptions" :key="status" :value="status">{{ status }}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Include Data</label>
-          <div class="flex space-x-4">
-            <label class="flex items-center">
-              <input v-model="filters.includeInactive" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-              <span class="ml-2 text-sm text-gray-700">Inactive</span>
-            </label>
-            <label class="flex items-center">
-              <input v-model="filters.includeHistory" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-              <span class="ml-2 text-sm text-gray-700">History</span>
-            </label>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700">Include Data</label>
+          <div class="flex space-x-4 pt-2">
+            <div class="flex items-center space-x-2">
+              <Checkbox id="includeInactive" v-model:checked="filters.includeInactive" />
+              <label for="includeInactive" class="text-sm text-gray-700 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Inactive</label>
+            </div>
+             <div class="flex items-center space-x-2">
+              <Checkbox id="includeHistory" v-model:checked="filters.includeHistory" />
+              <label for="includeHistory" class="text-sm text-gray-700 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">History</label>
+            </div>
           </div>
         </div>
       </div>
       
-      <!-- Generate Button -->
       <div class="mt-8 pt-6 border-t border-gray-200">
-        <button @click="generateCustomReport" class="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <Button @click="generateCustomReport" class="w-full h-12 text-base bg-blue-600 hover:bg-blue-700">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Generate Custom Report
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
 
-    <!-- Report Preview -->
-    <div v-if="showPreview" class="bg-white rounded-xl shadow-md p-6 mb-8">
+    <Card v-if="showPreview" class="p-6 mb-8">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-gray-800">Report Preview</h2>
         <div class="flex space-x-3">
-          <button @click="downloadReport" class="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+          <Button class="bg-green-600 hover:bg-green-700 text-white" @click="downloadReport">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Download {{ exportFormat }}
-          </button>
-          <button @click="showPreview = false" class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+          </Button>
+          <Button variant="outline" @click="showPreview = false">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
             Close
-          </button>
+          </Button>
         </div>
       </div>
       
-      <!-- Preview Content -->
       <div class="border border-gray-200 rounded-lg overflow-hidden">
-        <!-- Report Header -->
         <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <div class="flex items-center justify-between">
             <div>
@@ -166,30 +172,26 @@
           </div>
         </div>
         
-        <!-- Report Body -->
         <div class="p-6">
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th v-for="column in previewData.columns" :key="column" 
-                      class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead v-for="column in previewData.columns" :key="column">
                     {{ column }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr v-for="(row, index) in previewData.rows" :key="index" class="hover:bg-gray-50">
-                  <td v-for="(cell, cellIndex) in row" :key="cellIndex" 
-                      class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="(row, index) in previewData.rows" :key="index">
+                  <TableCell v-for="(cell, cellIndex) in row" :key="cellIndex">
                     {{ cell }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
           
-          <!-- Summary -->
           <div class="mt-6 pt-6 border-t border-gray-200">
             <h4 class="text-sm font-medium text-gray-700 mb-3">Summary Statistics</h4>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -201,32 +203,31 @@
           </div>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <!-- Recent Reports -->
-    <div class="bg-white rounded-xl shadow-md p-6">
+    <Card class="p-6">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-lg font-semibold text-gray-800">Recent Reports</h2>
-        <button @click="viewReportHistory" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+        <Button variant="link" class="text-blue-600 p-0 h-auto" @click="viewReportHistory">
           View History
-        </button>
+        </Button>
       </div>
       
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead>
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Format</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="report in recentReports" :key="report.id" class="hover:bg-gray-50">
-              <td class="px-4 py-3 whitespace-nowrap">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Report Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Generated</TableHead>
+              <TableHead>Format</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="report in recentReports" :key="report.id">
+              <TableCell>
                 <div class="flex items-center">
                   <div class="p-2 rounded-lg mr-3" :class="getReportTypeColor(report.type)">
                     <component :is="getReportIcon(report.type)" class="w-4 h-4" />
@@ -236,69 +237,54 @@
                     <p class="text-xs text-gray-500">{{ report.description }}</p>
                   </div>
                 </div>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">{{ report.type }}</span>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ formatDate(report.generatedDate) }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="text-sm text-gray-700">{{ report.format }}</span>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{{ report.size }}</td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <div class="flex space-x-3">
-                  <button @click="downloadExistingReport(report)" class="text-blue-600 hover:text-blue-800">
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary">{{ report.type }}</Badge>
+              </TableCell>
+              <TableCell class="text-gray-700">{{ formatDate(report.generatedDate) }}</TableCell>
+              <TableCell class="text-gray-700">{{ report.format }}</TableCell>
+              <TableCell class="text-gray-700">{{ report.size }}</TableCell>
+              <TableCell>
+                <div class="flex space-x-2">
+                  <Button variant="ghost" size="icon" class="h-8 w-8 text-blue-600 hover:text-blue-800" @click="downloadExistingReport(report)">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                  </button>
-                  <button @click="deleteReport(report.id)" class="text-red-600 hover:text-red-800">
+                  </Button>
+                  <Button variant="ghost" size="icon" class="h-8 w-8 text-red-600 hover:text-red-800" @click="deleteReport(report.id)">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
-    </div>
-
-    <!-- Note Section -->
-    
+    </Card>
   </div>
 </template>
 
 <script setup>
 import { ref, defineComponent } from 'vue'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 // Define SVG icon components
-const UsersIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0c-.832.055-1.68.113-2.5.113-4.97 0-9-2.239-9-5s4.03-5 9-5c1.72 0 3.32.404 4.786 1.09" /></svg>`
-})
+const UsersIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0c-.832.055-1.68.113-2.5.113-4.97 0-9-2.239-9-5s4.03-5 9-5c1.72 0 3.32.404 4.786 1.09" /></svg>` })
+const BuildingIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>` })
+const ChartBarIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>` })
+const CalendarIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>` })
+const DocumentTextIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>` })
+const ClockIcon = defineComponent({ template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>` })
 
-const BuildingIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>`
-})
-
-const ChartBarIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`
-})
-
-const CalendarIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>`
-})
-
-const DocumentTextIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`
-})
-
-const ClockIcon = defineComponent({
-  template: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`
-})
-
-const selectedReportType = ref(1)
+const selectedReportType = ref('1')
 const exportFormat = ref('PDF')
 const showPreview = ref(false)
 
@@ -308,8 +294,8 @@ const dateRange = ref({
 })
 
 const filters = ref({
-  department: '',
-  status: '',
+  department: 'all',
+  status: 'all',
   includeInactive: true,
   includeHistory: false
 })
@@ -350,17 +336,11 @@ const previewData = ref({
 })
 
 const selectReport = (report) => {
-  selectedReportType.value = report.id
+  selectedReportType.value = String(report.id)
 }
 
 const generateSpecificReport = (report) => {
-  // Generate sample data based on report type
-  const today = new Date().toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })
-  
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   previewData.value.title = report.title
   previewData.value.generatedDate = today
   previewData.value.dateRange = `${dateRange.value.start} to ${dateRange.value.end}`
@@ -382,7 +362,6 @@ const generateSpecificReport = (report) => {
         { label: 'Departments', value: '5' }
       ]
       break
-      
     case 'Status':
       previewData.value.columns = ['Status', 'Count', 'Percentage', 'Department', 'Last Updated']
       previewData.value.rows = [
@@ -399,7 +378,6 @@ const generateSpecificReport = (report) => {
         { label: 'Turnover', value: '4%' }
       ]
       break
-      
     case 'Hiring':
       previewData.value.columns = ['Name', 'Employee ID', 'Department', 'Position', 'Hire Date', 'Status']
       previewData.value.rows = [
@@ -415,6 +393,11 @@ const generateSpecificReport = (report) => {
         { label: 'Retention Rate', value: '75%' }
       ]
       break
+    default:
+        // Default data for other reports
+        previewData.value.columns = ['Column A', 'Column B']
+        previewData.value.rows = [['Data 1', 'Data 2']]
+        previewData.value.summary = []
   }
   
   previewData.value.totalRecords = previewData.value.rows.length
@@ -422,14 +405,13 @@ const generateSpecificReport = (report) => {
 }
 
 const generateCustomReport = () => {
-  const selectedReport = reportTypes.value.find(r => r.id === selectedReportType.value)
+  const selectedReport = reportTypes.value.find(r => String(r.id) === selectedReportType.value)
   if (selectedReport) {
     generateSpecificReport(selectedReport)
   }
 }
 
 const generateReport = () => {
-  // Default to first report type
   generateSpecificReport(reportTypes.value[0])
 }
 
@@ -456,7 +438,6 @@ const deleteReport = (reportId) => {
 
 const viewReportHistory = () => {
   console.log('Viewing report history...')
-  // In a real app, navigate to full history page
 }
 
 const formatDate = (dateString) => {
@@ -486,9 +467,3 @@ const getReportIcon = (type) => {
   return icons[type] || DocumentTextIcon
 }
 </script>
-
-<style scoped>
-.reports {
-  min-height: calc(100vh - 80px);
-}
-</style>

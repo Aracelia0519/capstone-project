@@ -1,303 +1,171 @@
 <template>
-  <div class="client-layout">
-    <!-- Mobile Toggle Button -->
-    <button class="mobile-toggle-btn" @click="toggleSidebarMobile" v-if="isMobile">
-      <i :class="sidebarMobileVisible ? 'fas fa-times' : 'fas fa-user'"></i>
-    </button>
+  <SidebarProvider>
+    <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-sky-500/30 overflow-hidden">
+      <Toaster position="top-right" />
 
-    <!-- Sidebar with Mobile Overlay -->
-    <div class="sidebar-overlay" 
-         v-if="isMobile && sidebarMobileVisible" 
-         @click="sidebarMobileVisible = false">
+      <SideBarClient @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
+
+      <SidebarInset class="main-content-area bg-slate-900 border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+        <!-- Logout Overlay with Progress -->
+        <transition name="fade">
+          <div 
+            v-if="isLoggingOut" 
+            class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center"
+          >
+            <div class="w-full max-w-md p-8 text-center">
+              <div class="relative mb-8">
+                <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-sky-500/20 to-cyan-500/20 flex items-center justify-center mb-4">
+                  <LogOut class="w-12 h-12 text-sky-400" />
+                </div>
+                <div class="absolute -inset-4 bg-sky-500/10 rounded-full animate-pulse" />
+              </div>
+              
+              <h3 class="text-2xl font-bold text-white mb-2">Logging Out</h3>
+              <p class="text-slate-400 mb-8">Please wait while we end your session...</p>
+              
+              <div class="space-y-4">
+                <Progress 
+                  :model-value="logoutProgress" 
+                  class="h-2 bg-slate-800"
+                />
+                <p class="text-sm text-slate-400">{{ logoutProgress }}%</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <header class="flex h-16 shrink-0 items-center gap-2 px-4 md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50">
+          <SidebarTrigger class="-ml-1 text-sky-500 hover:bg-slate-800" />
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Client Portal</span>
+        </header>
+
+        <main class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1">
+          <Suspense>
+            <template #default>
+              <router-view v-slot="{ Component }">
+                <transition name="page-slide" mode="out-in">
+                  <component 
+                    :is="Component" 
+                    v-if="userData" 
+                    :user="userData" 
+                    :dashboard-data="dashboardData" 
+                  />
+                </transition>
+              </router-view>
+            </template>
+            <template #fallback>
+              <div class="flex items-center justify-center min-h-[50vh]">
+                <div class="w-12 h-12 border-3 border-sky-500/30 border-t-sky-500 rounded-full animate-spin" />
+              </div>
+            </template>
+          </Suspense>
+        </main>
+
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-sky-900/10 opacity-50 pointer-events-none" />
+      </SidebarInset>
     </div>
-
-    <SideBarClient 
-      :mobileVisible="sidebarMobileVisible"
-      @toggle="handleSidebarToggle"
-      @link-click="handleSidebarToggle"
-      @collapsed="handleSidebarCollapsed" />
-
-    <!-- Main Content - Dynamically adjusts based on sidebar collapse state -->
-    <div 
-      class="client-content"
-      :class="{ 
-        'sidebar-collapsed': sidebarCollapsed && !isMobile,
-        'loading': isLoading && !dashboardData
-      }"
-      :style="sidebarCollapsed && !isMobile ? 'margin-left: 80px' : 'margin-left: 280px'"
-    >
-      <div v-if="isLoading && !dashboardData" class="content-loading">
-        <div class="loading-spinner"></div>
-        <p>Loading dashboard...</p>
-      </div>
-      <template v-else>
-        <!-- Pass user data to child components if needed -->
-        <router-view v-if="userData" :user="userData" :dashboard-data="dashboardData" />
-        <router-view v-else />
-      </template>
-    </div>
-  </div>
+  </SidebarProvider>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { Toaster } from '@/components/ui/sonner'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { Progress } from '@/components/ui/progress'
 import SideBarClient from './sideBarClient.vue'
 import axios from '@/utils/axios'
 import { getCurrentUser } from '@/utils/auth'
+import { LogOut } from 'lucide-vue-next'
 
 const router = useRouter()
-
 const userData = ref(null)
 const dashboardData = ref(null)
 const isLoading = ref(false)
+const isLoggingOut = ref(false)
+const logoutProgress = ref(0)
+let progressInterval = null
 
-// Sidebar states
-const sidebarMobileVisible = ref(false)
-const isMobile = ref(false)
-const sidebarCollapsed = ref(false)
-
-// Get user data from cache first
-const initializeUserData = () => {
-  const storedUserData = localStorage.getItem('user_data')
-  if (storedUserData) {
-    userData.value = JSON.parse(storedUserData)
-  }
+const handleLogoutStart = () => {
+  isLoggingOut.value = true
+  logoutProgress.value = 0
+  
+  // Simulate progress animation
+  progressInterval = setInterval(() => {
+    if (logoutProgress.value < 90) {
+      logoutProgress.value += 10
+    }
+  }, 300)
 }
 
-// Fetch dashboard data only
+const handleLogoutFinish = () => {
+  // Complete the progress
+  logoutProgress.value = 100
+  setTimeout(() => {
+    if (progressInterval) clearInterval(progressInterval)
+    isLoggingOut.value = false
+    logoutProgress.value = 0
+  }, 500)
+}
+
+const initializeUserData = () => {
+  const stored = localStorage.getItem('user_data')
+  if (stored) userData.value = JSON.parse(stored)
+}
+
 const fetchDashboardData = async () => {
   if (!userData.value) return
-  
-  // Check if we already have recent dashboard data
-  const lastDashboardFetch = localStorage.getItem(`last_dashboard_fetch_${userData.value.role}`)
   const now = Date.now()
+  const lastFetch = localStorage.getItem(`last_dashboard_fetch_${userData.value.role}`)
   
-  // If fetched less than 2 minutes ago, use cached data
-  if (lastDashboardFetch && dashboardData.value && (now - parseInt(lastDashboardFetch)) < 2 * 60 * 1000) {
-    return
-  }
-  
+  if (lastFetch && dashboardData.value && (now - parseInt(lastFetch)) < 120000) return
+
   isLoading.value = true
   try {
-    const roleEndpoints = {
-      admin: '/dashboard/admin',
-      distributor: '/dashboard/distributor',
-      service_provider: '/dashboard/service-provider',
-      client: '/dashboard/client'
+    const endpoints = { 
+      admin: '/dashboard/admin', 
+      distributor: '/dashboard/distributor', 
+      service_provider: '/dashboard/service-provider', 
+      client: '/dashboard/client' 
     }
-    
-    if (roleEndpoints[userData.value.role]) {
-      const dashboardResponse = await axios.get(roleEndpoints[userData.value.role])
-      dashboardData.value = dashboardResponse.data.data
-      // Cache the fetch time
+    if (endpoints[userData.value.role]) {
+      const res = await axios.get(endpoints[userData.value.role])
+      dashboardData.value = res.data.data
       localStorage.setItem(`last_dashboard_fetch_${userData.value.role}`, now.toString())
     }
-  } catch (error) {
-    console.error('Failed to fetch dashboard data:', error)
-    // Don't show error to user for dashboard data
+  } catch (e) {
+    console.error('Dashboard fetch error:', e)
   } finally {
-    isLoading.value = false
+    setTimeout(() => { isLoading.value = false }, 500)
   }
 }
 
-// Initialize data on mount
 onMounted(async () => {
   initializeUserData()
-  
-  // If no cached user data, fetch it
   if (!userData.value) {
-    isLoading.value = true
     try {
-      const user = await getCurrentUser()
-      userData.value = user
-      localStorage.setItem('user_data', JSON.stringify(user))
-    } catch (error) {
-      console.error('Failed to fetch user data:', error)
-      // Redirect to login if we can't get user data
+      userData.value = await getCurrentUser()
+      localStorage.setItem('user_data', JSON.stringify(userData.value))
+    } catch {
       router.push('/Landing/logIn')
-      return
-    } finally {
-      isLoading.value = false
     }
   }
-  
-  // Fetch dashboard data in background
   fetchDashboardData()
-  
-  // Setup responsive behavior
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
 })
 
-// Responsive methods
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-  if (!isMobile.value) {
-    sidebarMobileVisible.value = false
+watch(() => router.currentRoute.value.path, (path, oldPath) => {
+  if (path.includes('dashboard') && !oldPath.includes('dashboard')) {
+    fetchDashboardData()
   }
-}
-
-const toggleSidebarMobile = () => {
-  sidebarMobileVisible.value = !sidebarMobileVisible.value
-}
-
-const handleSidebarToggle = () => {
-  if (isMobile.value) {
-    sidebarMobileVisible.value = !sidebarMobileVisible.value
-  }
-}
-
-const handleSidebarCollapsed = (isCollapsed) => {
-  sidebarCollapsed.value = isCollapsed
-}
-
-// Cleanup
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkMobile)
 })
-
-// Watch for route changes to refresh dashboard data if needed
-watch(
-  () => router.currentRoute.value.path,
-  (newPath, oldPath) => {
-    // Refresh dashboard data when navigating to dashboard
-    if (newPath.includes('dashboard') && !oldPath.includes('dashboard')) {
-      fetchDashboardData()
-    }
-  }
-)
 </script>
 
 <style scoped>
-.client-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-}
-
-.client-content {
-  flex: 1;
-  min-height: 100vh;
-  overflow-y: auto;
-  margin-left: 280px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: transparent;
-  position: relative;
-  width: calc(100% - 280px);
-}
-
-/* When sidebar is collapsed on desktop */
-.client-content.sidebar-collapsed {
-  margin-left: 80px;
-  width: calc(100% - 80px);
-}
-
-/* Loading state */
-.client-content.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.content-loading {
-  text-align: center;
-  color: #94a3b8;
-  z-index: 10;
-}
-
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 3px solid rgba(56, 189, 248, 0.3);
-  border-radius: 50%;
-  border-top-color: #38bdf8;
-  animation: spin 1s ease-in-out infinite;
-  margin: 0 auto 20px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Animated background for client area */
-.client-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(20, 184, 166, 0.1) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-/* Mobile: no left margin since sidebar overlays */
-@media (max-width: 768px) {
-  .client-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-}
-
-/* Mobile Toggle Button */
-.mobile-toggle-btn {
-  display: none;
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 1100;
-  background: linear-gradient(45deg, #38bdf8, #0ea5e9);
-  color: white;
-  border: none;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 1.3rem;
-  box-shadow: 0 6px 12px rgba(56, 189, 248, 0.3);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mobile-toggle-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 16px rgba(56, 189, 248, 0.4);
-}
-
-/* Sidebar Overlay for Mobile */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.7);
-  z-index: 999;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .mobile-toggle-btn {
-    display: flex;
-  }
-}
-
-/* Smooth transition for the main content when sidebar collapses/expands */
-.client-content {
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.fade-enter-active, .fade-leave-active { transition: all 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.page-slide-enter-active, .page-slide-leave-active { transition: all 0.4s ease; }
+.page-slide-enter-from { opacity: 0; transform: translateX(20px); filter: blur(4px); }
+.page-slide-leave-to { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
+@keyframes pulse-slow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.05); } }
+.animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
 </style>

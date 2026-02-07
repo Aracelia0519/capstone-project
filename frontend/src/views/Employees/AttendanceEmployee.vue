@@ -1,172 +1,177 @@
 <template>
-  <div class="attendance-employee">
-    <!-- Header with Action Buttons -->
-    <div class="mb-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between">
+  <div class="attendance-employee p-4 md:p-6">
+    <div class="mb-6 md:mb-8">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Time Tracking</h1>
-          <p class="text-gray-500 mt-1">Monitor your attendance and working hours</p>
+          <p class="text-gray-500 mt-1 text-sm md:text-base">Monitor your attendance and working hours</p>
         </div>
-        <div class="mt-4 md:mt-0 flex gap-3">
-          <button class="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-lg">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <Button class="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-12 px-6 text-base w-full sm:w-auto justify-center">
             <i class="fas fa-clock mr-2"></i>
             Clock In/Out
-          </button>
-          <button class="px-6 py-3 bg-white text-indigo-600 border border-indigo-600 rounded-lg font-semibold hover:bg-indigo-50 transition-colors">
+          </Button>
+          <Button variant="outline" class="border-indigo-600 text-indigo-600 hover:bg-indigo-50 h-12 px-6 text-base w-full sm:w-auto justify-center">
             <i class="fas fa-edit mr-2"></i>
             Request Correction
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
-    <!-- Current Status Card -->
-    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 text-white mb-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between">
-        <div>
-          <h3 class="text-xl font-semibold mb-2">Today's Attendance</h3>
-          <div class="flex items-center">
-            <div class="w-3 h-3 bg-green-400 rounded-full mr-3"></div>
-            <span class="text-lg">Currently Clocked In</span>
-          </div>
-          <p class="mt-2 opacity-90">Duration: 6 hours 30 minutes</p>
-        </div>
-        <div class="mt-4 md:mt-0 text-center">
-          <div class="text-4xl font-bold mb-1">8:30 AM</div>
-          <p class="opacity-90">Time In</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tabs Navigation -->
-    <div class="mb-8">
-      <div class="border-b border-gray-200">
-        <nav class="flex space-x-8 overflow-x-auto">
-          <button v-for="tab in tabs" 
-                  :key="tab.id"
-                  @click="activeTab = tab.id"
-                  :class="[
-                    'py-3 px-1 font-medium text-sm border-b-2 transition-colors whitespace-nowrap',
-                    activeTab === tab.id 
-                      ? 'border-indigo-600 text-indigo-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  ]">
-            <i :class="tab.icon + ' mr-2'"></i>
-            {{ tab.label }}
-          </button>
-        </nav>
-      </div>
-    </div>
-
-    <!-- Tab Content -->
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <!-- Daily Time Record -->
-      <div v-if="activeTab === 'daily'">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Time Record</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="bg-gray-50">
-                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time In</th>
-                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time Out</th>
-                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Hours</th>
-                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-for="record in dailyRecords" :key="record.date">
-                <td class="py-3 px-4">{{ record.date }}</td>
-                <td class="py-3 px-4">{{ record.timeIn }}</td>
-                <td class="py-3 px-4">{{ record.timeOut }}</td>
-                <td class="py-3 px-4">{{ record.hours }}</td>
-                <td class="py-3 px-4">
-                  <span :class="[
-                    'px-2 py-1 rounded-full text-xs font-semibold',
-                    record.status === 'Present' ? 'bg-green-100 text-green-800' :
-                    record.status === 'Late' ? 'bg-amber-100 text-amber-800' :
-                    'bg-red-100 text-red-800'
-                  ]">
-                    {{ record.status }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Monthly Summary -->
-      <div v-if="activeTab === 'monthly'">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Attendance Summary</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div class="bg-gradient-to-r from-green-50 to-emerald-100 rounded-lg p-6">
+    <Card class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg border-0 mb-8 text-white">
+      <CardContent class="p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h3 class="text-xl font-semibold mb-2">Today's Attendance</h3>
             <div class="flex items-center">
-              <div class="p-3 bg-green-100 rounded-lg mr-4">
-                <i class="fas fa-check-circle text-green-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Days Present</p>
-                <p class="text-2xl font-bold text-gray-800">21</p>
-              </div>
+              <div class="w-3 h-3 bg-green-400 rounded-full mr-3 animate-pulse"></div>
+              <span class="text-lg">Currently Clocked In</span>
             </div>
+            <p class="mt-2 opacity-90 text-sm md:text-base">Duration: 6 hours 30 minutes</p>
           </div>
-          <div class="bg-gradient-to-r from-amber-50 to-yellow-100 rounded-lg p-6">
-            <div class="flex items-center">
-              <div class="p-3 bg-amber-100 rounded-lg mr-4">
-                <i class="fas fa-clock text-amber-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Late Arrivals</p>
-                <p class="text-2xl font-bold text-gray-800">2</p>
-              </div>
-            </div>
+          <div class="text-left md:text-center bg-white/10 md:bg-transparent p-4 md:p-0 rounded-lg">
+            <div class="text-3xl md:text-4xl font-bold mb-1">8:30 AM</div>
+            <p class="opacity-90 text-sm">Time In</p>
           </div>
-          <div class="bg-gradient-to-r from-blue-50 to-cyan-100 rounded-lg p-6">
-            <div class="flex items-center">
-              <div class="p-3 bg-blue-100 rounded-lg mr-4">
-                <i class="fas fa-business-time text-blue-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Overtime Hours</p>
-                <p class="text-2xl font-bold text-gray-800">15.5</p>
-              </div>
-            </div>
-          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Tabs v-model="activeTab" class="w-full">
+      <div class="mb-6 md:mb-8 border-b border-gray-200">
+        <div class="overflow-x-auto pb-1 -mb-1 w-full">
+          <TabsList class="bg-transparent h-auto p-0 flex w-max min-w-full md:w-full space-x-2 md:space-x-8 justify-start">
+            <TabsTrigger 
+              v-for="tab in tabs" 
+              :key="tab.id" 
+              :value="tab.id"
+              class="py-3 px-3 md:px-1 rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors shadow-none whitespace-nowrap"
+            >
+              <i :class="tab.icon + ' mr-2'"></i>
+              {{ tab.label }}
+            </TabsTrigger>
+          </TabsList>
         </div>
       </div>
 
-      <!-- Overtime Records -->
-      <div v-if="activeTab === 'overtime'">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Overtime Records</h3>
-        <div class="space-y-4">
-          <div v-for="ot in overtimeRecords" :key="ot.date" class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
-            <div class="flex flex-col md:flex-row md:items-center justify-between">
-              <div>
-                <p class="font-medium text-gray-800">{{ ot.date }}</p>
-                <p class="text-sm text-gray-600">{{ ot.time }} • {{ ot.duration }} hours</p>
-                <p class="text-sm text-gray-600 mt-1">{{ ot.reason }}</p>
-              </div>
-              <div class="mt-2 md:mt-0">
-                <span :class="[
-                  'px-3 py-1 rounded-full text-sm font-semibold',
-                  ot.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                  ot.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
-                  'bg-red-100 text-red-800'
-                ]">
-                  {{ ot.status }}
-                </span>
+      <Card class="shadow-lg border-0">
+        <CardContent class="p-4 md:p-6">
+          
+          <TabsContent value="daily" class="mt-0">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Time Record</h3>
+            <div class="rounded-md border border-gray-100 overflow-hidden">
+              <div class="overflow-x-auto">
+                <Table>
+                  <TableHeader class="bg-gray-50">
+                    <TableRow>
+                      <TableHead class="text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">Date</TableHead>
+                      <TableHead class="text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">Time In</TableHead>
+                      <TableHead class="text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">Time Out</TableHead>
+                      <TableHead class="text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">Hours</TableHead>
+                      <TableHead class="text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow v-for="record in dailyRecords" :key="record.date">
+                      <TableCell class="font-medium whitespace-nowrap">{{ record.date }}</TableCell>
+                      <TableCell class="whitespace-nowrap">{{ record.timeIn }}</TableCell>
+                      <TableCell class="whitespace-nowrap">{{ record.timeOut }}</TableCell>
+                      <TableCell>{{ record.hours }}</TableCell>
+                      <TableCell>
+                        <Badge :class="[
+                          'rounded-full px-2 py-1 font-semibold shadow-none',
+                          record.status === 'Present' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                          record.status === 'Late' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                          'bg-red-100 text-red-800 hover:bg-red-100'
+                        ]">
+                          {{ record.status }}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          </TabsContent>
+
+          <TabsContent value="monthly" class="mt-0">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Monthly Attendance Summary</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+              <div class="bg-gradient-to-r from-green-50 to-emerald-100 rounded-lg p-6">
+                <div class="flex items-center">
+                  <div class="p-3 bg-green-100 rounded-lg mr-4 flex-shrink-0">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-600">Days Present</p>
+                    <p class="text-2xl font-bold text-gray-800">21</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gradient-to-r from-amber-50 to-yellow-100 rounded-lg p-6">
+                <div class="flex items-center">
+                  <div class="p-3 bg-amber-100 rounded-lg mr-4 flex-shrink-0">
+                    <i class="fas fa-clock text-amber-600 text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-600">Late Arrivals</p>
+                    <p class="text-2xl font-bold text-gray-800">2</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-gradient-to-r from-blue-50 to-cyan-100 rounded-lg p-6">
+                <div class="flex items-center">
+                  <div class="p-3 bg-blue-100 rounded-lg mr-4 flex-shrink-0">
+                    <i class="fas fa-business-time text-blue-600 text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-600">Overtime Hours</p>
+                    <p class="text-2xl font-bold text-gray-800">15.5</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overtime" class="mt-0">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Overtime Records</h3>
+            <div class="space-y-4">
+              <div v-for="ot in overtimeRecords" :key="ot.date" class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <p class="font-medium text-gray-800">{{ ot.date }}</p>
+                    <p class="text-sm text-gray-600">{{ ot.time }} • {{ ot.duration }} hours</p>
+                    <p class="text-sm text-gray-600 mt-1 italic">"{{ ot.reason }}"</p>
+                  </div>
+                  <div class="self-start md:self-center">
+                    <Badge :class="[
+                      'rounded-full px-3 py-1 text-sm font-semibold shadow-none',
+                      ot.status === 'Approved' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                      ot.status === 'Pending' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                      'bg-red-100 text-red-800 hover:bg-red-100'
+                    ]">
+                      {{ ot.status }}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+        </CardContent>
+      </Card>
+    </Tabs>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 const activeTab = ref('daily')
 
@@ -193,7 +198,18 @@ const overtimeRecords = [
 
 <style scoped>
 .attendance-employee {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
+}
+/* Hide scrollbar for cleaner look in tabs if desired, though functional scrolling is priority */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 20px;
 }
 </style>

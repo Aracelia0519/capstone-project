@@ -1,1738 +1,1177 @@
 <template>
-  <div class="ecommerce-container">
-    <!-- Header with Navigation -->
-    <header class="ecommerce-header">
-      <div class="header-content">
-        <div class="brand-section">
-          <div class="logo">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-              <line x1="12" y1="22.08" x2="12" y2="12"></line>
-            </svg>
-            <h1>{{ distributorName }}</h1>
+  <div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
+        <div class="flex flex-col">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-600 rounded-lg text-white">
+              <Package2 class="w-6 h-6" />
+            </div>
+            <h1 class="text-xl font-bold tracking-tight text-slate-800">{{ distributorName }}</h1>
           </div>
-          <p class="tagline">Available Products Catalog</p>
+          <p class="text-sm text-slate-500 mt-0.5 ml-11">Available Products Catalog</p>
         </div>
         
-        <div class="header-actions">
-          <div class="search-container">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input 
+        <div class="flex items-center gap-6">
+          <div class="relative hidden md:block w-80">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
               type="text" 
               v-model="searchQuery"
               placeholder="Search products..." 
-              class="search-input"
-            >
+              class="pl-10 bg-slate-50 border-slate-200 focus-visible:ring-blue-500"
+            />
           </div>
           
-          <div class="catalog-stats">
-            <div class="stat-item">
-              <span class="stat-label">Total Products</span>
-              <span class="stat-value">{{ totalProducts }}</span>
+          <div class="hidden lg:flex items-center gap-6 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Products</span>
+              <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
             </div>
-            <div class="stat-item">
-              <span class="stat-label">Categories</span>
-              <span class="stat-value">{{ uniqueCategories }}</span>
+            <Separator orientation="vertical" class="h-8 bg-slate-200" />
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Categories</span>
+              <span class="text-lg font-bold text-slate-800">{{ uniqueCategories }}</span>
             </div>
           </div>
         </div>
       </div>
     </header>
 
-    <main class="main-content">
-      <!-- Sidebar Filters -->
-      <aside class="sidebar">
-        <div class="sidebar-card">
-          <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="4" y1="21" x2="4" y2="14"></line>
-              <line x1="4" y1="10" x2="4" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12" y2="3"></line>
-              <line x1="20" y1="21" x2="20" y2="16"></line>
-              <line x1="20" y1="12" x2="20" y2="3"></line>
-              <line x1="1" y1="14" x2="7" y2="14"></line>
-              <line x1="9" y1="8" x2="15" y2="8"></line>
-              <line x1="17" y1="16" x2="23" y2="16"></line>
-            </svg>
-            Filters
-          </h3>
-          
-          <div class="filter-group">
-            <h4>Category</h4>
-            <div class="filter-options">
-              <label v-for="category in categories" :key="category.value" class="filter-checkbox">
-                <input 
-                  type="checkbox" 
-                  :value="category.value"
-                  v-model="selectedCategories"
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <aside class="hidden lg:block lg:col-span-3 space-y-6">
+        <Card class="border-slate-200 shadow-sm">
+          <CardHeader class="pb-3 border-b border-slate-100">
+            <CardTitle class="flex items-center gap-2 text-base font-semibold">
+              <Filter class="w-4 h-4" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-6 pt-6">
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Category</h4>
+              <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <div v-for="category in categories" :key="category.value" class="flex items-center justify-between group">
+                  <div class="flex items-center space-x-2">
+                    <Checkbox 
+                      :id="category.value" 
+                      :value="category.value"
+                      :checked="selectedCategories.includes(category.value)"
+                      @update:checked="(checked) => handleCategoryCheck(checked, category.value)"
+                    />
+                    <label 
+                      :for="category.value" 
+                      class="text-sm text-slate-600 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                    >
+                      <span class="w-2 h-2 rounded-full" :class="getCategoryDotClass(category.value)"></span>
+                      {{ category.label }}
+                    </label>
+                  </div>
+                  <span class="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{{ category.count }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Product Type</h4>
+              <Select v-model="selectedType">
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem v-for="type in availableTypes" :key="type" :value="type">
+                    {{ type }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Size</h4>
+              <div class="flex flex-wrap gap-2">
+                <Badge 
+                  v-for="size in allSizes" 
+                  :key="size"
+                  variant="outline"
+                  class="cursor-pointer transition-all hover:border-blue-400 hover:text-blue-600"
+                  :class="{ 'bg-blue-50 border-blue-200 text-blue-700': selectedSizes.includes(size) }"
+                  @click="toggleSize(size)"
                 >
-                <span class="checkbox-custom"></span>
-                <span class="filter-label">
-                  <span class="category-dot" :class="category.class"></span>
-                  {{ category.label }}
-                </span>
-                <span class="filter-count">{{ category.count }}</span>
-              </label>
+                  {{ size }}
+                </Badge>
+              </div>
             </div>
-          </div>
-          
-          <div class="filter-group">
-            <h4>Product Type</h4>
-            <select v-model="selectedType" class="filter-select">
-              <option value="">All Types</option>
-              <option v-for="type in availableTypes" :key="type" :value="type">
-                {{ type }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="filter-group">
-            <h4>Size</h4>
-            <div class="filter-chips">
-              <button 
-                v-for="size in allSizes" 
-                :key="size"
-                @click="toggleSize(size)"
-                :class="['size-chip', { active: selectedSizes.includes(size) }]"
-              >
-                {{ size }}
-              </button>
+
+            <div v-if="hasColorCategorySelected" class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Color</h4>
+              <div class="grid grid-cols-5 gap-2">
+                <button 
+                  v-for="color in colorOptions" 
+                  :key="color.value"
+                  class="w-8 h-8 rounded-full border border-slate-200 shadow-sm transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                  :class="{ 'ring-2 ring-offset-1 ring-slate-400': selectedColor === color.value }"
+                  :style="{ backgroundColor: color.value }"
+                  :title="color.name"
+                  @click="selectedColor = selectedColor === color.value ? '' : color.value"
+                ></button>
+              </div>
             </div>
-          </div>
-          
-          <div class="filter-group" v-if="selectedCategories.includes('Paint Products') || selectedCategories.includes('Spray Paints')">
-            <h4>Color</h4>
-            <div class="color-filters">
-              <div 
-                v-for="color in colorOptions" 
-                :key="color.value"
-                class="color-option"
-                :class="{ active: selectedColor === color.value }"
-                @click="selectedColor = selectedColor === color.value ? '' : color.value"
-                :style="{ backgroundColor: color.value }"
-                :title="color.name"
-              ></div>
-            </div>
-          </div>
-          
-          <button @click="clearFilters" class="clear-filters">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-            Clear All Filters
-          </button>
-        </div>
+
+            <Button 
+              variant="outline" 
+              class="w-full mt-4 text-slate-500 hover:text-slate-700"
+              @click="clearFilters"
+            >
+              <X class="w-4 h-4 mr-2" />
+              Clear All Filters
+            </Button>
+          </CardContent>
+        </Card>
         
-        <!-- Quick Add Product Card -->
-        <div class="sidebar-card add-product-card">
-          <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Product Management
-          </h3>
-          <button @click="showAddModal = true" class="add-product-btn">
-            Add New Product
-          </button>
-          <button @click="exportCatalog" class="export-btn">
-            Export Catalog
-          </button>
-        </div>
+        <Card class="bg-blue-600 text-white border-none shadow-md overflow-hidden relative">
+          <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+          <CardHeader class="pb-2">
+            <CardTitle class="flex items-center gap-2 text-white">
+              <Settings class="w-4 h-4" />
+              Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-3">
+            <Button 
+              variant="secondary" 
+              class="w-full bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-sm border-none"
+              @click="openAddModal"
+            >
+              Add New Product
+            </Button>
+            <Button 
+              variant="ghost" 
+              class="w-full text-blue-100 hover:text-white hover:bg-blue-500"
+              @click="exportCatalog"
+            >
+              Export Catalog
+            </Button>
+          </CardContent>
+        </Card>
       </aside>
 
-      <!-- Main Product Grid -->
-      <div class="product-grid-section">
-        <div class="grid-header">
-          <h2>Available Products <span class="product-count">({{ filteredProducts.length }})</span></h2>
-          <div class="sort-options">
-            <span>Sort by:</span>
-            <select v-model="sortOption" class="sort-select">
-              <option value="name">Name (A-Z)</option>
-              <option value="price_low">Price: Low to High</option>
-              <option value="price_high">Price: High to Low</option>
-              <option value="newest">Newest First</option>
-            </select>
+      <div class="col-span-1 lg:col-span-9 space-y-6">
+        <div class="lg:hidden flex gap-4 mb-4">
+          <div class="relative flex-1">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              type="text" 
+              v-model="searchQuery"
+              placeholder="Search products..." 
+              class="pl-10"
+            />
+          </div>
+          <Button variant="outline" @click="showMobileFilters = true">
+            <Filter class="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            Available Products 
+            <Badge variant="secondary" class="ml-1">{{ filteredProducts.length }}</Badge>
+          </h2>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-500 whitespace-nowrap">Sort by:</span>
+            <Select v-model="sortOption">
+              <SelectTrigger class="w-[180px]">
+                <SelectValue placeholder="Sort order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+                <SelectItem value="price_low">Price: Low to High</SelectItem>
+                <SelectItem value="price_high">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
-        <div class="product-grid">
+        <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div 
             v-for="product in sortedProducts" 
             :key="product.id"
-            class="product-card"
+            class="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden"
           >
-            <div class="product-image">
-              <img v-if="product.image_url" 
-                   :src="getFullImageUrl(product.image_url)" 
-                   :alt="product.name"
-                   @error="handleImageError"
-                   class="product-img">
-              <div v-else class="image-placeholder" :style="{ backgroundColor: product.color_code || '#f0f0f0' }">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
+            <div class="relative aspect-[4/3] overflow-hidden bg-slate-100">
+              <img 
+                v-if="product.image_url" 
+                :src="getFullImageUrl(product.image_url)" 
+                :alt="product.name"
+                @error="handleImageError"
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              >
+              <div 
+                v-else 
+                class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105"
+                :style="{ backgroundColor: product.color_code ? `${product.color_code}20` : '#f1f5f9' }"
+              >
+                <div 
+                  class="w-16 h-16 rounded-lg flex items-center justify-center"
+                  :style="{ backgroundColor: product.color_code || '#cbd5e1' }"
+                >
+                  <Package class="w-8 h-8 text-white/80" />
+                </div>
               </div>
-              <span class="category-badge" :class="getCategoryClass(product.category)">
-                {{ getCategoryShortName(product.category) }}
-              </span>
-              <button 
+              
+              <div class="absolute top-3 left-3 flex flex-col gap-2">
+                <Badge :class="getCategoryBadgeClass(product.category)" class="shadow-sm border-none">
+                  {{ getCategoryShortName(product.category) }}
+                </Badge>
+              </div>
+
+              <div 
                 v-if="product.color_code" 
-                class="color-preview"
+                class="absolute bottom-3 right-3 w-6 h-6 rounded-full border-2 border-white shadow-sm"
                 :style="{ backgroundColor: product.color_code }"
                 :title="product.color_code"
-              ></button>
+              ></div>
             </div>
             
-            <div class="product-info">
-              <div class="product-header">
-                <h3 class="product-name">{{ product.name }}</h3>
-                <span class="product-price">₱{{ formatPrice(product.price) }}</span>
+            <div class="p-4 flex-1 flex flex-col">
+              <div class="flex justify-between items-start mb-1">
+                <h3 class="font-bold text-slate-800 line-clamp-1 text-base group-hover:text-blue-600 transition-colors">{{ product.name }}</h3>
+                <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">₱{{ formatPrice(product.price) }}</span>
               </div>
               
-              <div class="product-meta">
-                <span class="product-type">{{ product.type }}</span>
-                <span class="product-size">{{ product.size }}</span>
-                <span v-if="product.sku_code" class="product-sku">SKU: {{ product.sku_code }}</span>
+              <div class="flex items-center gap-2 mb-3 text-xs text-slate-500">
+                <span class="bg-slate-100 px-2 py-0.5 rounded">{{ product.type }}</span>
+                <span>•</span>
+                <span>{{ product.size }}</span>
               </div>
               
-              <p v-if="product.description" class="product-description">
+              <p v-if="product.description" class="text-sm text-slate-600 line-clamp-2 mb-4 h-10">
                 {{ truncateDescription(product.description) }}
               </p>
               
-              <div class="product-specs">
-                <div class="spec-item">
-                  <span class="spec-label">Reference Stock:</span>
-                  <span class="spec-value">Min: {{ product.min_stock_level || 'N/A' }} | Max: {{ product.max_stock_level || 'N/A' }}</span>
+              <div class="grid grid-cols-1 gap-y-1.5 bg-slate-50 p-3 rounded-lg text-xs mb-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-500">Ref Stock:</span>
+                  <span class="font-medium text-slate-700">{{ product.min_stock_level }} - {{ product.max_stock_level }}</span>
                 </div>
-                <div v-if="product.cost" class="spec-item">
-                  <span class="spec-label">Cost Price:</span>
-                  <span class="spec-value">₱{{ formatPrice(product.cost) }}</span>
+                <div v-if="product.cost" class="flex justify-between items-center">
+                  <span class="text-slate-500">Cost:</span>
+                  <span class="font-medium text-slate-700">₱{{ formatPrice(product.cost) }}</span>
                 </div>
-                <div v-if="product.category" class="spec-item">
-                  <span class="spec-label">Packaging:</span>
-                  <span class="spec-value">{{ getDefaultPackaging(product.category) }}</span>
+                <div v-if="product.sku_code" class="flex justify-between items-center">
+                  <span class="text-slate-500">SKU:</span>
+                  <span class="font-medium text-slate-700 font-mono">{{ product.sku_code }}</span>
                 </div>
               </div>
               
-              <div class="product-actions">
-                <button @click="editProduct(product)" class="edit-btn">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
+              <div class="mt-auto flex gap-2 pt-2 border-t border-slate-100">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600"
+                  @click="editProduct(product)"
+                >
+                  <Pencil class="w-3.5 h-3.5 mr-2" />
                   Edit
-                </button>
+                </Button>
                 
-                <button @click="deleteProduct(product.id)" class="delete-btn">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  class="flex-1 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                  @click="deleteProduct(product.id)"
+                >
+                  <Trash2 class="w-3.5 h-3.5 mr-2" />
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
         
-        <div v-if="filteredProducts.length === 0" class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          <h3>No products found</h3>
-          <p>Try adjusting your filters or add a new product</p>
+        <div v-else class="flex flex-col items-center justify-center py-20 px-4 text-center bg-white rounded-xl border border-dashed border-slate-300">
+          <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <SearchX class="w-10 h-10 text-slate-400" />
+          </div>
+          <h3 class="text-xl font-bold text-slate-800 mb-2">No products found</h3>
+          <p class="text-slate-500 max-w-sm mb-6">We couldn't find any products matching your filters. Try adjusting your search or filters.</p>
+          <Button @click="clearFilters">Clear All Filters</Button>
         </div>
       </div>
     </main>
 
-    <!-- Add/Edit Product Modal with Wizard -->
-    <div v-if="showAddModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
+    <Dialog :open="showAddModal" @update:open="closeModal">
+      <DialogContent class="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogHeader class="p-6 pb-2">
+          <DialogTitle class="flex items-center gap-2 text-xl">
+            <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
+              <PackagePlus v-if="!isEditing" class="w-5 h-5" />
+              <Pencil v-else class="w-5 h-5" />
+            </div>
             {{ isEditing ? 'Edit Product' : 'Add New Product' }}
-          </h3>
-          <button @click="closeModal" class="close-modal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
         
-        <!-- Wizard Progress -->
-        <div class="wizard-progress">
-          <div 
-            v-for="(step, index) in wizardSteps" 
-            :key="index"
-            :class="['wizard-step', 
-                     { 'active': currentStep === index + 1, 
-                       'completed': currentStep > index + 1 }]"
-          >
-            <div class="wizard-step-circle">
-              <span v-if="currentStep <= index + 1">{{ index + 1 }}</span>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100">
+          <div class="relative flex justify-between">
+            <div class="absolute top-1/2 left-0 w-full h-0.5 bg-slate-200 -z-0 -translate-y-1/2 rounded"></div>
+            <div 
+              class="absolute top-1/2 left-0 h-0.5 bg-blue-600 -z-0 -translate-y-1/2 rounded transition-all duration-300"
+              :style="{ width: `${((currentStep - 1) / (wizardSteps.length - 1)) * 100}%` }"
+            ></div>
+
+            <div 
+              v-for="(step, index) in wizardSteps" 
+              :key="index"
+              class="relative z-10 flex flex-col items-center gap-2 group cursor-default"
+              @click="currentStep > index + 1 ? currentStep = index + 1 : null"
+            >
+              <div 
+                class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2"
+                :class="[
+                  currentStep === index + 1 ? 'bg-blue-600 border-blue-600 text-white scale-110' : 
+                  currentStep > index + 1 ? 'bg-blue-600 border-blue-600 text-white' : 
+                  'bg-white border-slate-300 text-slate-400'
+                ]"
+              >
+                <Check v-if="currentStep > index + 1" class="w-4 h-4" />
+                <span v-else>{{ index + 1 }}</span>
+              </div>
+              <span 
+                class="text-[10px] font-medium uppercase tracking-wider absolute -bottom-6 w-32 text-center transition-colors duration-300"
+                :class="currentStep >= index + 1 ? 'text-blue-700' : 'text-slate-400'"
+              >
+                {{ step.label }}
+              </span>
             </div>
-            <span class="wizard-step-label">{{ step.label }}</span>
           </div>
+          <div class="h-4"></div> 
         </div>
-        
-        <!-- Step Indicator for Mobile -->
-        <div class="wizard-step-indicator">
-          Step {{ currentStep }} of {{ wizardSteps.length }}: {{ wizardSteps[currentStep - 1].label }}
-        </div>
-        
-        <form @submit.prevent="isEditing ? updateProduct() : addProduct()" class="add-product-form" enctype="multipart/form-data">
-          <div class="wizard-form-content">
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <form @submit.prevent="handleSubmit" id="productForm">
             
-            <!-- Step 1: Product Basics -->
-            <div v-if="currentStep === 1" class="wizard-form-step">
-              <div class="wizard-form-row">
-                <div class="wizard-form-group">
-                  <label for="category">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                    </svg>
-                    Category <span class="required">*</span>
-                  </label>
-                  <select id="category" v-model="newProduct.category" required @change="onCategoryChange" class="form-select">
-                    <option value="">Select Category</option>
-                    <optgroup label="🎨 PAINT PRODUCTS">
-                      <option value="Interior Paints">🏠 Interior Paints</option>
-                      <option value="Exterior Paints">🌦️ Exterior Paints</option>
-                      <option value="Industrial & Protective Paints">🏭 Industrial & Protective Paints</option>
-                      <option value="Specialty Paints">🎭 Specialty Paints</option>
-                      <option value="Spray Paints">🎯 Spray Paints</option>
-                    </optgroup>
-                    <optgroup label="🧪 COATINGS & CHEMICALS">
-                      <option value="Primers & Sealers">🧴 Primers & Sealers</option>
-                    </optgroup>
-                    <optgroup label="🛢️ SOLVENTS & THINNERS">
-                      <option value="Solvents & Thinners">🛢️ Solvents & Thinners</option>
-                    </optgroup>
-                    <optgroup label="🧰 PAINTING TOOLS & ACCESSORIES">
-                      <option value="Application Tools">🎨 Application Tools</option>
-                      <option value="Surface Preparation">🧱 Surface Preparation</option>
-                      <option value="Safety Equipment">🦺 Safety Equipment</option>
-                    </optgroup>
-                    <optgroup label="📦 PACKAGING & CONTAINERS">
-                      <option value="Packaging & Containers">📦 Packaging & Containers</option>
-                    </optgroup>
-                  </select>
-                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.category }">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Please select a category
-                  </div>
+            <div v-if="currentStep === 1" class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="category" class="text-slate-700">Category <span class="text-red-500">*</span></Label>
+                  <Select v-model="newProduct.category" @update:modelValue="onCategoryChange">
+                    <SelectTrigger id="category" :class="{'border-red-300': !newProduct.category && showValidation}">
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent class="max-h-[300px]">
+                      <SelectGroup v-for="(group, label) in groupedCategories" :key="label">
+                        <SelectLabel>{{ label }}</SelectLabel>
+                        <SelectItem v-for="cat in group" :key="cat.value" :value="cat.value">
+                          {{ cat.label }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div class="wizard-form-group">
-                  <label for="type">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                      <polyline points="2 17 12 22 22 17"></polyline>
-                      <polyline points="2 12 12 17 22 12"></polyline>
-                    </svg>
-                    Type <span class="required">*</span>
-                  </label>
-                  <select id="type" v-model="newProduct.type" required :disabled="!newProduct.category" class="form-select">
-                    <option value="">Select Type</option>
-                    <option v-for="type in filteredTypes" :key="type" :value="type">{{ type }}</option>
-                  </select>
-                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.type }">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Please select a type
-                  </div>
+                <div class="space-y-2">
+                  <Label for="type" class="text-slate-700">Type <span class="text-red-500">*</span></Label>
+                  <Select v-model="newProduct.type" :disabled="!newProduct.category">
+                    <SelectTrigger id="type" :class="{'border-red-300': !newProduct.type && showValidation}">
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent class="max-h-[300px]">
+                      <SelectItem v-for="type in filteredTypes" :key="type" :value="type">
+                        {{ type }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div class="wizard-form-group wizard-form-full">
-                <label for="name">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                  </svg>
-                  Product Name <span class="required">*</span>
-                </label>
-                <input type="text" id="name" v-model="newProduct.name" placeholder="Enter product name" required class="form-input">
-                <div class="wizard-step-validation" :class="{ 'hidden': newProduct.name && newProduct.name.trim() }">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                  Please enter a product name
+              <div class="space-y-2">
+                <Label for="name" class="text-slate-700">Product Name <span class="text-red-500">*</span></Label>
+                <Input 
+                  id="name" 
+                  v-model="newProduct.name" 
+                  placeholder="e.g. Premium Interior Latex" 
+                  :class="{'border-red-300': !newProduct.name && showValidation}"
+                />
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="sku" class="text-slate-700">SKU Code</Label>
+                  <Input id="sku" v-model="newProduct.sku_code" placeholder="Optional" />
+                </div>
+
+                <div class="space-y-2">
+                  <Label for="size" class="text-slate-700">Size <span class="text-red-500">*</span></Label>
+                  <Select v-model="newProduct.size">
+                    <SelectTrigger id="size" :class="{'border-red-300': !newProduct.size && showValidation}">
+                      <SelectValue placeholder="Select Size" />
+                    </SelectTrigger>
+                    <SelectContent class="max-h-[300px]">
+                      <SelectGroup v-if="sizeOptions.length">
+                         <SelectItem v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</SelectItem>
+                      </SelectGroup>
+                      <div v-else class="p-2 text-sm text-slate-500">Select category first</div>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div class="wizard-form-row">
-                <div class="wizard-form-group">
-                  <label for="sku">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <path d="M9 9h6v6H9z"></path>
-                    </svg>
-                    SKU Code
-                  </label>
-                  <input type="text" id="sku" v-model="newProduct.sku_code" placeholder="Enter SKU (optional)" class="form-input">
-                </div>
-
-                <div class="wizard-form-group">
-                  <label for="size">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="9" y1="9" x2="15" y2="15"></line>
-                      <line x1="15" y1="9" x2="9" y2="15"></line>
-                    </svg>
-                    Size <span class="required">*</span>
-                  </label>
-                  <select id="size" v-model="newProduct.size" required class="form-select">
-                    <option value="">Select Size</option>
-                    <optgroup v-if="newProduct.category.includes('Paint')" label="Paint Sizes">
-                      <option v-for="size in paintSizes" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                    <optgroup v-if="newProduct.category.includes('Spray')" label="Spray Sizes">
-                      <option v-for="size in spraySizes" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                    <optgroup v-if="newProduct.category.includes('Solvents')" label="Solvent Sizes">
-                      <option v-for="size in solventSizes" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                    <optgroup v-if="newProduct.category.includes('Tools') || newProduct.category.includes('Safety')" label="Tool Sizes">
-                      <option v-for="size in toolSizes" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                    <optgroup v-if="newProduct.category.includes('Packaging')" label="Packaging Sizes">
-                      <option v-for="size in packagingSizes" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                    <optgroup v-if="newProduct.category.includes('Sandpaper')" label="Sandpaper Grits">
-                      <option v-for="size in sandpaperGrits" :key="size" :value="size">{{ size }}</option>
-                    </optgroup>
-                  </select>
-                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.size }">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Please select a size
-                  </div>
-                </div>
-              </div>
-
-              <div class="wizard-form-group" v-if="showColorField">
-                <label for="color_code">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  Color (Hex)
-                </label>
-                <div class="color-input-group">
-                  <input type="text" id="color_code" v-model="newProduct.color_code" placeholder="#FFFFFF" maxlength="20" class="form-input">
-                  <div class="color-preview-display" :style="{ backgroundColor: newProduct.color_code || 'transparent' }"></div>
+              <div v-if="showColorField" class="space-y-2">
+                <Label for="color_code" class="text-slate-700">Color (Hex)</Label>
+                <div class="flex gap-3">
+                  <Input 
+                    id="color_code" 
+                    v-model="newProduct.color_code" 
+                    placeholder="#FFFFFF" 
+                    class="font-mono"
+                  />
+                  <div 
+                    class="w-10 h-10 rounded border border-slate-200 shadow-sm shrink-0"
+                    :style="{ backgroundColor: newProduct.color_code || 'transparent' }"
+                  ></div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 2: Pricing & Inventory -->
-            <div v-else-if="currentStep === 2" class="wizard-form-step">
-              <div class="wizard-form-row">
-                <div class="wizard-form-group">
-                  <label for="price">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <line x1="12" y1="1" x2="12" y2="23"></line>
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                    Selling Price (₱) <span class="required">*</span>
-                  </label>
-                  <input type="number" id="price" v-model="newProduct.price" placeholder="0.00" min="0" step="0.01" required class="form-input">
-                  <div class="wizard-step-validation" :class="{ 'hidden': newProduct.price && parseFloat(newProduct.price) > 0 }">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    Please enter a valid price
-                  </div>
+            <div v-else-if="currentStep === 2" class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="price" class="text-slate-700">Selling Price (₱) <span class="text-red-500">*</span></Label>
+                  <Input 
+                    id="price" 
+                    type="number" 
+                    v-model="newProduct.price" 
+                    placeholder="0.00" 
+                    min="0" 
+                    step="0.01"
+                    :class="{'border-red-300': !newProduct.price && showValidation}"
+                  />
                 </div>
-
-                <div class="wizard-form-group">
-                  <label for="cost">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <line x1="12" y1="1" x2="12" y2="23"></line>
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                    Cost Price (₱)
-                  </label>
-                  <input type="number" id="cost" v-model="newProduct.cost" placeholder="0.00" min="0" step="0.01" class="form-input">
+                <div class="space-y-2">
+                  <Label for="cost" class="text-slate-700">Cost Price (₱)</Label>
+                  <Input 
+                    id="cost" 
+                    type="number" 
+                    v-model="newProduct.cost" 
+                    placeholder="0.00" 
+                    min="0" 
+                    step="0.01"
+                  />
                 </div>
               </div>
 
-              <div class="wizard-form-row">
-                <div class="wizard-form-group">
-                  <label for="min_stock_level">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <path d="M6 9l6 6 6-6"></path>
-                    </svg>
-                    Min Reference Stock
-                  </label>
-                  <input type="number" id="min_stock_level" v-model="newProduct.min_stock_level" placeholder="10" min="0" class="form-input">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="min_stock" class="text-slate-700">Min Stock Level</Label>
+                  <Input id="min_stock" type="number" v-model="newProduct.min_stock_level" />
                 </div>
-
-                <div class="wizard-form-group">
-                  <label for="max_stock_level">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                      <path d="M18 15l-6-6-6 6"></path>
-                    </svg>
-                    Max Reference Stock
-                  </label>
-                  <input type="number" id="max_stock_level" v-model="newProduct.max_stock_level" placeholder="100" min="0" class="form-input">
+                <div class="space-y-2">
+                  <Label for="max_stock" class="text-slate-700">Max Stock Level</Label>
+                  <Input id="max_stock" type="number" v-model="newProduct.max_stock_level" />
                 </div>
               </div>
 
-              <div class="wizard-form-group wizard-form-full">
-                <label for="description">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                  Description
-                </label>
-                <textarea id="description" v-model="newProduct.description" rows="3" placeholder="Enter product description..." class="form-textarea"></textarea>
+              <div class="space-y-2">
+                <Label for="description" class="text-slate-700">Description</Label>
+                <Textarea 
+                  id="description" 
+                  v-model="newProduct.description" 
+                  placeholder="Describe the product details..." 
+                  class="resize-none h-32" 
+                />
               </div>
             </div>
 
-            <!-- Step 3: Image Upload -->
-            <div v-else-if="currentStep === 3" class="wizard-form-step">
-              <div class="wizard-form-group wizard-form-full">
-                <label>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                  Product Image
-                </label>
-                <div class="image-upload">
-                  <input type="file" id="image" ref="fileInput" @change="handleImageUpload" accept="image/*" class="file-input">
-                  <div @click="triggerFileInput"
-                    @dragover.prevent @drop.prevent="handleFileDrop"
-                    class="file-upload-area cursor-pointer flex flex-col items-center justify-center px-6 pt-8 pb-8 border-2 border-dashed rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]"
-                    :class="imagePreview || newProduct.image_url ? 'border-green-300 bg-green-50' : 'border-gray-300'">
-                    <svg class="h-12 w-12 mb-4" :class="imagePreview || newProduct.image_url ? 'text-green-500' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                    <div class="text-center">
-                      <p class="text-sm font-medium text-gray-700">
-                        <span class="text-blue-600 hover:text-blue-500">Click to upload image</span>
-                        <span class="text-gray-500 ml-1">or drag and drop</span>
-                      </p>
-                      <p class="text-xs text-gray-500 mt-1">PNG, JPG, JPEG up to 2MB</p>
-                      <p v-if="imagePreview || newProduct.image_url" class="text-sm text-green-600 font-medium mt-2">
-                        ✓ Image selected
-                      </p>
-                    </div>
-                  </div>
+            <div v-else-if="currentStep === 3" class="space-y-6">
+              <div class="space-y-2">
+                <Label class="text-slate-700">Product Image</Label>
+                <div 
+                  @click="triggerFileInput"
+                  @dragover.prevent 
+                  @drop.prevent="handleFileDrop"
+                  class="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 group"
+                  :class="imagePreview ? 'border-green-300 bg-green-50/50' : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50/50'"
+                >
+                  <input type="file" ref="fileInput" class="hidden" @change="handleImageUpload" accept="image/*" />
                   
-                  <div v-if="imagePreview || newProduct.image_url" class="image-preview mt-4">
-                    <img :src="imagePreview || getFullImageUrl(newProduct.image_url)" alt="Preview">
-                    <button type="button" @click="removeImage" class="remove-image">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
+                  <div v-if="imagePreview || newProduct.image_url" class="relative w-full max-w-[200px] aspect-square mb-4 group-hover:scale-105 transition-transform">
+                    <img 
+                      :src="imagePreview || getFullImageUrl(newProduct.image_url)" 
+                      class="w-full h-full object-cover rounded-lg shadow-md" 
+                      alt="Preview"
+                    />
+                    <Button 
+                      type="button"
+                      variant="destructive" 
+                      size="icon" 
+                      class="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-sm"
+                      @click.stop="removeImage"
+                    >
+                      <X class="w-3 h-3" />
+                    </Button>
                   </div>
-                </div>
-              </div>
-              
-              <div class="wizard-form-group wizard-form-full">
-                <p class="text-sm text-gray-600">
-                  <strong>Note:</strong> Image is optional. If no image is provided, a colored placeholder will be shown based on the product color or a default gray background.
-                </p>
-              </div>
-            </div>
 
-            <!-- Step 4: Review & Submit -->
-            <div v-else-if="currentStep === 4" class="wizard-form-step">
-              <div class="wizard-summary">
-                <h4 class="text-lg font-semibold mb-4 text-gray-800">Product Summary</h4>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Product Name:</div>
-                  <div class="wizard-summary-value">{{ newProduct.name || 'Not provided' }}</div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Category:</div>
-                  <div class="wizard-summary-value">{{ newProduct.category || 'Not provided' }}</div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Type:</div>
-                  <div class="wizard-summary-value">{{ newProduct.type || 'Not provided' }}</div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Size:</div>
-                  <div class="wizard-summary-value">{{ newProduct.size || 'Not provided' }}</div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">SKU Code:</div>
-                  <div class="wizard-summary-value">{{ newProduct.sku_code || 'Not provided' }}</div>
-                </div>
-                
-                <div v-if="newProduct.color_code" class="wizard-summary-item">
-                  <div class="wizard-summary-label">Color:</div>
-                  <div class="wizard-summary-value">
-                    <div class="flex items-center gap-2">
-                      <div class="w--4 h-4 rounded-full border" :style="{ backgroundColor: newProduct.color_code }"></div>
-                      {{ newProduct.color_code }}
+                  <div v-else class="flex flex-col items-center">
+                    <div class="p-4 bg-slate-100 rounded-full mb-3 group-hover:bg-blue-100 transition-colors">
+                      <UploadCloud class="w-8 h-8 text-slate-400 group-hover:text-blue-600" />
                     </div>
+                    <p class="text-sm font-semibold text-slate-700 mb-1">Click to upload or drag and drop</p>
+                    <p class="text-xs text-slate-500">PNG, JPG up to 2MB</p>
                   </div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Selling Price:</div>
-                  <div class="wizard-summary-value font-semibold">₱{{ formatPrice(newProduct.price) || '0.00' }}</div>
-                </div>
-                
-                <div v-if="newProduct.cost" class="wizard-summary-item">
-                  <div class="wizard-summary-label">Cost Price:</div>
-                  <div class="wizard-summary-value">₱{{ formatPrice(newProduct.cost) }}</div>
-                </div>
-                
-                <div class="wizard-summary-item">
-                  <div class="wizard-summary-label">Reference Stock:</div>
-                  <div class="wizard-summary-value">
-                    Min: {{ newProduct.min_stock_level || '10' }} | Max: {{ newProduct.max_stock_level || '100' }}
-                  </div>
-                </div>
-                
-                <div v-if="newProduct.description" class="wizard-summary-item">
-                  <div class="wizard-summary-label">Description:</div>
-                  <div class="wizard-summary-value">{{ newProduct.description }}</div>
-                </div>
-                
-                <div v-if="imagePreview || newProduct.image_url" class="wizard-summary-image">
-                  <p class="text-sm font-medium text-gray-700 mb-2">Product Image:</p>
-                  <img :src="imagePreview || getFullImageUrl(newProduct.image_url)" alt="Product Image Preview">
                 </div>
               </div>
               
-              <div class="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h5 class="font-semibold text-blue-800 mb-2">Ready to {{ isEditing ? 'update' : 'add' }} this product?</h5>
-                <p class="text-sm text-blue-700">
-                  Review all the information above. If everything looks correct, click the "{{ isEditing ? 'Update Product' : 'Add Product' }}" button below.
-                  To make changes, use the Previous button or click on any step in the progress bar.
+              <div class="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
+                <Info class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <p class="text-sm text-blue-700 leading-relaxed">
+                  Images help your dealers identify products quickly. If you don't upload one, we'll generate a placeholder based on the product's color or category.
                 </p>
               </div>
             </div>
-          </div>
 
-          <!-- Wizard Navigation -->
-          <div class="wizard-form-actions">
-            <button 
-              type="button" 
-              @click="prevStep" 
-              class="wizard-btn-prev"
-              :disabled="currentStep === 1"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-              Previous
-            </button>
+            <div v-else-if="currentStep === 4" class="space-y-6">
+              <div class="bg-slate-50 rounded-lg p-5 border border-slate-100 space-y-4">
+                <h4 class="font-semibold text-slate-800 flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <ClipboardCheck class="w-4 h-4 text-slate-500" />
+                  Product Summary
+                </h4>
+                
+                <div class="grid grid-cols-2 gap-y-4 text-sm">
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Name</span> <span class="font-medium text-slate-800">{{ newProduct.name }}</span></div>
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Category</span> <span class="font-medium text-slate-800">{{ newProduct.category }}</span></div>
+                   
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Type</span> <span class="font-medium text-slate-800">{{ newProduct.type }}</span></div>
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Size</span> <span class="font-medium text-slate-800">{{ newProduct.size }}</span></div>
+                   
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Selling Price</span> <span class="font-bold text-green-600">₱{{ formatPrice(newProduct.price) }}</span></div>
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Stock Limits</span> <span class="font-medium text-slate-800">{{ newProduct.min_stock_level }} / {{ newProduct.max_stock_level }}</span></div>
+
+                   <div v-if="newProduct.color_code" class="col-span-2">
+                     <span class="text-slate-500 block text-xs uppercase tracking-wide mb-1">Color</span> 
+                     <div class="flex items-center gap-2">
+                       <div class="w-4 h-4 rounded-full border border-slate-300" :style="{ backgroundColor: newProduct.color_code }"></div>
+                       <span class="font-mono text-slate-700">{{ newProduct.color_code }}</span>
+                     </div>
+                   </div>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-lg bg-blue-50 border border-blue-100">
+                <p class="text-sm text-blue-800 text-center">
+                  Almost done! Please verify the information above before clicking 
+                  <strong>{{ isEditing ? 'Update Product' : 'Add Product' }}</strong>.
+                </p>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        <div class="p-6 pt-2 bg-white border-t border-slate-100 flex justify-between items-center mt-auto">
+          <Button 
+            type="button" 
+            variant="ghost" 
+            @click="prevStep" 
+            :disabled="currentStep === 1"
+            class="text-slate-500 hover:text-slate-800"
+          >
+            <ChevronLeft class="w-4 h-4 mr-1" /> Back
+          </Button>
+
+          <Button 
+            v-if="currentStep < 4" 
+            type="button" 
+            @click="nextStep"
+            class="bg-slate-900 hover:bg-slate-800 text-white"
+          >
+            Next Step <ChevronRight class="w-4 h-4 ml-1" />
+          </Button>
+
+          <Button 
+            v-else 
+            @click="handleSubmit"
+            :disabled="isSubmitting"
+            class="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
+          >
+            <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
+            {{ isEditing ? 'Update Product' : 'Add Product' }}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showMobileFilters" @update:open="showMobileFilters = $event">
+      <DialogContent class="h-full max-h-screen w-full sm:max-w-md overflow-y-auto rounded-none">
+        <DialogHeader>
+          <DialogTitle>Filters</DialogTitle>
+        </DialogHeader>
+        <div class="space-y-6 py-4">
+             <div class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Category</h4>
+              <div class="space-y-2">
+                <div v-for="category in categories" :key="category.value" class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <Checkbox 
+                      :id="`m-${category.value}`" 
+                      :value="category.value"
+                      :checked="selectedCategories.includes(category.value)"
+                      @update:checked="(checked) => handleCategoryCheck(checked, category.value)"
+                    />
+                    <label :for="`m-${category.value}`" class="text-sm text-slate-600">{{ category.label }}</label>
+                  </div>
+                </div>
+              </div>
+            </div>
             
-            <button 
-              v-if="currentStep < wizardSteps.length"
-              type="button" 
-              @click="nextStep" 
-              class="wizard-btn-next"
-              :disabled="!validateCurrentStep"
-            >
-              Next
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </button>
-            
-            <button 
-              v-else
-              type="submit" 
-              class="wizard-btn-submit"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon">
-                <path d="M19 21H5a2 2 0 0 1-2 2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-              {{ isEditing ? 'Update Product' : 'Add Product' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-slate-700">Size</h4>
+              <div class="flex flex-wrap gap-2">
+                <Badge 
+                  v-for="size in allSizes" 
+                  :key="size"
+                  variant="outline"
+                  class="cursor-pointer"
+                  :class="{ 'bg-blue-50 border-blue-200 text-blue-700': selectedSizes.includes(size) }"
+                  @click="toggleSize(size)"
+                >
+                  {{ size }}
+                </Badge>
+              </div>
+            </div>
+
+            <Button class="w-full" @click="showMobileFilters = false">View Results</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
-<script>
-import api from '@/utils/axios'
-import Toastify from 'toastify-js'
-import "toastify-js/src/toastify.css"
+<script setup>
+import { ref, computed, onMounted, reactive } from 'vue';
+import { toast } from 'vue-sonner';
+import { 
+  Package2, Search, Filter, Settings, Package, Pencil, Trash2, 
+  SearchX, PackagePlus, Check, ChevronLeft, ChevronRight, 
+  Loader2, UploadCloud, X, Info, ClipboardCheck 
+} from 'lucide-vue-next';
+import api from '@/utils/axios'; // Make sure this path exists in your project
 
-export default {
-  name: 'DistributorProductsCatalog',
-  data() {
-    return {
-      searchQuery: '',
-      selectedCategories: [],
-      selectedType: '',
-      selectedSizes: [],
-      selectedColor: '',
-      sortOption: 'newest',
-      showAddModal: false,
-      isEditing: false,
-      editingId: null,
-      imagePreview: '',
-      uploadedImage: null,
-      distributorName: 'CaviteGo Distributor',
-      
-      // Wizard state
-      currentStep: 1,
-      wizardSteps: [
-        { label: 'Product Basics', completed: false },
-        { label: 'Pricing & Inventory', completed: false },
-        { label: 'Image Upload', completed: false },
-        { label: 'Review & Submit', completed: false }
-      ],
-      
-      newProduct: {
-        category: '',
-        type: '',
-        name: '',
-        sku_code: '',
-        size: '',
-        color_code: '',
-        price: '',
-        cost: '',
-        min_stock_level: 10,
-        max_stock_level: 100,
-        description: '',
-        image_url: ''
-      },
-      
-      products: [],
-      
-      // Comprehensive Product Types based on your data
-      productTypes: {
-        'Interior Paints': [
-          'Latex / Acrylic', 'Water-based', 'Low-VOC', 'Anti-mold', 'Washable interior paint'
-        ],
-        'Exterior Paints': [
-          'Weather-resistant', 'Waterproof', 'UV-resistant', 'Elastomeric'
-        ],
-        'Industrial & Protective Paints': [
-          'Epoxy (Part A & Part B)', 'Enamel', 'Anti-rust', 'Heat-resistant', 'Chemical-resistant coating'
-        ],
-        'Specialty Paints': [
-          'Chalk paint', 'Textured paint', 'Metallic paint', 'Fire-retardant', 'Anti-graffiti'
-        ],
-        'Spray Paints': [
-          'General spray paint', 'Decorative spray paint', 'Industrial spray paint', 'Protective spray coating'
-        ],
-        'Primers & Sealers': [
-          'Wall primer', 'Metal primer', 'Wood primer', 'Concrete sealer', 'Varnish',
-          'Lacquer', 'Clear coat', 'Waterproofing solution', 'Paint additives'
-        ],
-        'Solvents & Thinners': [
-          'Paint thinner', 'Mineral spirits', 'Turpentine', 'Degreasers', 'Cleaning solvents'
-        ],
-        'Application Tools': [
-          'Paint Brushes', 'Paint Rollers', 'Roller Covers', 'Spray Guns',
-          'Paint trays', 'Mixing sticks'
-        ],
-        'Surface Preparation': [
-          'Sandpaper', 'Scrapers', 'Putty knives', 'Wire brushes'
-        ],
-        'Safety Equipment': [
-          'Gloves', 'Face masks', 'Respirators', 'Safety goggles', 'Coveralls'
-        ],
-        'Packaging & Containers': [
-          'Paint cans', 'Plastic buckets', 'Steel drums', 'Spray cans', 'Mixing containers'
-        ]
-      },
-      
-      // Size options by category
-      paintSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters'],
-      spraySizes: ['200 ml', '300 ml', '400 ml'],
-      solventSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '20 Liters'],
-      toolSizes: ['1 inch', '1.5 inch', '2 inch', '2.5 inch', '3 inch', '4 inch', 'Small', 'Medium', 'Large', '4"', '6"', '7"', '9"', '12"'],
-      packagingSizes: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters', '200 Liters'],
-      sandpaperGrits: ['80 grit', '120 grit', '180 grit', '220 grit', '320 grit', '400 grit'],
-      
-      categories: [
-        { value: 'Interior Paints', label: 'Interior Paints', class: 'cat-interior', count: 0 },
-        { value: 'Exterior Paints', label: 'Exterior Paints', class: 'cat-exterior', count: 0 },
-        { value: 'Industrial & Protective Paints', label: 'Industrial Paints', class: 'cat-industrial', count: 0 },
-        { value: 'Specialty Paints', label: 'Specialty Paints', class: 'cat-specialty', count: 0 },
-        { value: 'Spray Paints', label: 'Spray Paints', class: 'cat-spray', count: 0 },
-        { value: 'Primers & Sealers', label: 'Primers & Sealers', class: 'cat-primers', count: 0 },
-        { value: 'Solvents & Thinners', label: 'Solvents', class: 'cat-solvents', count: 0 },
-        { value: 'Application Tools', label: 'Application Tools', class: 'cat-tools', count: 0 },
-        { value: 'Surface Preparation', label: 'Surface Prep', class: 'cat-prep', count: 0 },
-        { value: 'Safety Equipment', label: 'Safety Equipment', class: 'cat-safety', count: 0 },
-        { value: 'Packaging & Containers', label: 'Packaging', class: 'cat-packaging', count: 0 }
-      ],
-      
-      // Packaging options
-      packagingOptions: {
-        'Interior Paints': 'Plastic pail / Metal can',
-        'Exterior Paints': 'Plastic pail / Metal can',
-        'Industrial & Protective Paints': 'Metal can / Steel pail',
-        'Spray Paints': 'Aerosol can',
-        'Solvents & Thinners': 'Plastic bottle / Metal container / Jerry can',
-        'Packaging & Containers': 'Various containers'
-      },
-      
-      colorOptions: [
-        { name: 'White', value: '#FFFFFF' },
-        { name: 'Beige', value: '#F5F5DC' },
-        { name: 'Light Blue', value: '#B0C4DE' },
-        { name: 'Gray', value: '#708090' },
-        { name: 'Red', value: '#8B0000' },
-        { name: 'Blue', value: '#0000FF' },
-        { name: 'Green', value: '#008000' },
-        { name: 'Yellow', value: '#FFFF00' },
-        { name: 'Black', value: '#000000' },
-        { name: 'Brown', value: '#8B4513' }
-      ]
-    };
-  },
-  computed: {
-    availableTypes() {
-      if (!Array.isArray(this.products)) {
-        return [];
-      }
-      const types = new Set();
-      this.products.forEach(product => {
-        if (product && product.type) {
-          types.add(product.type);
-        }
-      });
-      return Array.from(types);
-    },
-    
-    allSizes() {
-      const all = [...this.paintSizes, ...this.spraySizes, ...this.solventSizes, ...this.toolSizes, ...this.packagingSizes, ...this.sandpaperGrits];
-      return [...new Set(all)].sort();
-    },
-    
-    filteredProducts() {
-      if (!Array.isArray(this.products)) {
-        return [];
-      }
-      
-      let filtered = this.products;
-      
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
-        filtered = filtered.filter(product => {
-          if (!product) return false;
-          return (
-            (product.name && product.name.toLowerCase().includes(query)) ||
-            (product.type && product.type.toLowerCase().includes(query)) ||
-            (product.description && product.description.toLowerCase().includes(query)) ||
-            (product.sku_code && product.sku_code.toLowerCase().includes(query))
-          );
-        });
-      }
-      
-      if (this.selectedCategories.length > 0) {
-        filtered = filtered.filter(product => 
-          product && product.category && this.selectedCategories.includes(product.category)
-        );
-      }
-      
-      if (this.selectedType) {
-        filtered = filtered.filter(product => 
-          product && product.type === this.selectedType
-        );
-      }
-      
-      if (this.selectedSizes.length > 0) {
-        filtered = filtered.filter(product => 
-          product && product.size && this.selectedSizes.includes(product.size)
-        );
-      }
-      
-      if (this.selectedColor && (this.selectedCategories.includes('Interior Paints') || 
-                                 this.selectedCategories.includes('Exterior Paints') ||
-                                 this.selectedCategories.includes('Specialty Paints'))) {
-        filtered = filtered.filter(product => 
-          product && product.color_code && product.color_code.toLowerCase() === this.selectedColor.toLowerCase()
-        );
-      }
-      
-      return filtered;
-    },
-    
-    sortedProducts() {
-      if (!Array.isArray(this.filteredProducts)) {
-        return [];
-      }
-      
-      const products = [...this.filteredProducts];
-      
-      switch (this.sortOption) {
-        case 'name':
-          return products.sort((a, b) => {
-            if (!a.name || !b.name) return 0;
-            return a.name.localeCompare(b.name);
-          });
-        case 'price_low':
-          return products.sort((a, b) => (a.price || 0) - (b.price || 0));
-        case 'price_high':
-          return products.sort((a, b) => (b.price || 0) - (a.price || 0));
-        case 'newest':
-          return products.sort((a, b) => (b.id || 0) - (a.id || 0));
-        default:
-          return products;
-      }
-    },
-    
-    totalProducts() {
-      return Array.isArray(this.products) ? this.products.length : 0;
-    },
-    
-    uniqueCategories() {
-      if (!Array.isArray(this.products)) {
-        return 0;
-      }
-      const categories = new Set(this.products.map(p => p && p.category).filter(Boolean));
-      return categories.size;
-    },
-    
-    filteredTypes() {
-      if (!this.newProduct.category) return [];
-      return this.productTypes[this.newProduct.category] || [];
-    },
-    
-    showColorField() {
-      const paintCategories = ['Interior Paints', 'Exterior Paints', 'Specialty Paints', 'Spray Paints'];
-      return paintCategories.includes(this.newProduct.category);
-    },
-    
-    // Wizard validation
-    validateCurrentStep() {
-      switch (this.currentStep) {
-        case 1:
-          return this.newProduct.category && 
-                 this.newProduct.type && 
-                 this.newProduct.name && 
-                 this.newProduct.name.trim() && 
-                 this.newProduct.size;
-        case 2:
-          return this.newProduct.price && 
-                 parseFloat(this.newProduct.price) > 0;
-        case 3:
-          // Image is optional, so always valid
-          return true;
-        case 4:
-          // All previous validations passed
-          return true;
-        default:
-          return false;
-      }
+// Shadcn Components
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
+// State
+const distributorName = ref('CaviteGo Distributor');
+const searchQuery = ref('');
+const selectedCategories = ref([]);
+const selectedType = ref('all');
+const selectedSizes = ref([]);
+const selectedColor = ref('');
+const sortOption = ref('newest');
+const products = ref([]);
+
+const showAddModal = ref(false);
+const showMobileFilters = ref(false);
+const isEditing = ref(false);
+const editingId = ref(null);
+const isSubmitting = ref(false);
+const currentStep = ref(1);
+const showValidation = ref(false);
+
+const imagePreview = ref('');
+const uploadedImage = ref(null);
+const fileInput = ref(null);
+
+// Wizard Steps
+const wizardSteps = [
+  { label: 'Product Basics' },
+  { label: 'Pricing & Inventory' },
+  { label: 'Image Upload' },
+  { label: 'Review & Submit' }
+];
+
+// Form Data
+const newProduct = reactive({
+  category: '',
+  type: '',
+  name: '',
+  sku_code: '',
+  size: '',
+  color_code: '',
+  price: '',
+  cost: '',
+  min_stock_level: 10,
+  max_stock_level: 100,
+  description: '',
+  image_url: ''
+});
+
+// Data Constants
+const categories = ref([
+  { value: 'Interior Paints', label: 'Interior Paints', count: 0 },
+  { value: 'Exterior Paints', label: 'Exterior Paints', count: 0 },
+  { value: 'Industrial & Protective Paints', label: 'Industrial Paints', count: 0 },
+  { value: 'Specialty Paints', label: 'Specialty Paints', count: 0 },
+  { value: 'Spray Paints', label: 'Spray Paints', count: 0 },
+  { value: 'Primers & Sealers', label: 'Primers & Sealers', count: 0 },
+  { value: 'Solvents & Thinners', label: 'Solvents', count: 0 },
+  { value: 'Application Tools', label: 'Application Tools', count: 0 },
+  { value: 'Surface Preparation', label: 'Surface Prep', count: 0 },
+  { value: 'Safety Equipment', label: 'Safety Equipment', count: 0 },
+  { value: 'Packaging & Containers', label: 'Packaging', count: 0 }
+]);
+
+const groupedCategories = {
+  '🎨 PAINT PRODUCTS': [
+    { value: 'Interior Paints', label: '🏠 Interior Paints' },
+    { value: 'Exterior Paints', label: '🌦️ Exterior Paints' },
+    { value: 'Industrial & Protective Paints', label: '🏭 Industrial & Protective Paints' },
+    { value: 'Specialty Paints', label: '🎭 Specialty Paints' },
+    { value: 'Spray Paints', label: '🎯 Spray Paints' }
+  ],
+  '🧪 COATINGS & CHEMICALS': [
+    { value: 'Primers & Sealers', label: '🧴 Primers & Sealers' }
+  ],
+  '🛢️ SOLVENTS & THINNERS': [
+    { value: 'Solvents & Thinners', label: '🛢️ Solvents & Thinners' }
+  ],
+  '🧰 TOOLS & ACCESSORIES': [
+    { value: 'Application Tools', label: '🎨 Application Tools' },
+    { value: 'Surface Preparation', label: '🧱 Surface Preparation' },
+    { value: 'Safety Equipment', label: '🦺 Safety Equipment' }
+  ],
+  '📦 PACKAGING': [
+    { value: 'Packaging & Containers', label: '📦 Packaging & Containers' }
+  ]
+};
+
+const productTypes = {
+  'Interior Paints': ['Latex / Acrylic', 'Water-based', 'Low-VOC', 'Anti-mold', 'Washable interior paint'],
+  'Exterior Paints': ['Weather-resistant', 'Waterproof', 'UV-resistant', 'Elastomeric'],
+  'Industrial & Protective Paints': ['Epoxy (Part A & Part B)', 'Enamel', 'Anti-rust', 'Heat-resistant', 'Chemical-resistant coating'],
+  'Specialty Paints': ['Chalk paint', 'Textured paint', 'Metallic paint', 'Fire-retardant', 'Anti-graffiti'],
+  'Spray Paints': ['General spray paint', 'Decorative spray paint', 'Industrial spray paint', 'Protective spray coating'],
+  'Primers & Sealers': ['Wall primer', 'Metal primer', 'Wood primer', 'Concrete sealer', 'Varnish', 'Lacquer', 'Clear coat', 'Waterproofing solution'],
+  'Solvents & Thinners': ['Paint thinner', 'Mineral spirits', 'Turpentine', 'Degreasers', 'Cleaning solvents'],
+  'Application Tools': ['Paint Brushes', 'Paint Rollers', 'Roller Covers', 'Spray Guns', 'Paint trays', 'Mixing sticks'],
+  'Surface Preparation': ['Sandpaper', 'Scrapers', 'Putty knives', 'Wire brushes'],
+  'Safety Equipment': ['Gloves', 'Face masks', 'Respirators', 'Safety goggles', 'Coveralls'],
+  'Packaging & Containers': ['Paint cans', 'Plastic buckets', 'Steel drums', 'Spray cans', 'Mixing containers']
+};
+
+const sizesByCat = {
+  paint: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters'],
+  spray: ['200 ml', '300 ml', '400 ml'],
+  solvent: ['250 ml', '500 ml', '1 Liter', '4 Liters', '20 Liters'],
+  tool: ['1 inch', '1.5 inch', '2 inch', '2.5 inch', '3 inch', '4 inch', 'Small', 'Medium', 'Large', '4"', '6"', '7"', '9"', '12"'],
+  packaging: ['250 ml', '500 ml', '1 Liter', '4 Liters', '10 Liters', '16 Liters', '20 Liters', '200 Liters'],
+  sandpaper: ['80 grit', '120 grit', '180 grit', '220 grit', '320 grit', '400 grit']
+};
+
+const colorOptions = [
+  { name: 'White', value: '#FFFFFF' },
+  { name: 'Beige', value: '#F5F5DC' },
+  { name: 'Light Blue', value: '#B0C4DE' },
+  { name: 'Gray', value: '#708090' },
+  { name: 'Red', value: '#8B0000' },
+  { name: 'Blue', value: '#0000FF' },
+  { name: 'Green', value: '#008000' },
+  { name: 'Yellow', value: '#FFFF00' },
+  { name: 'Black', value: '#000000' },
+  { name: 'Brown', value: '#8B4513' }
+];
+
+// Computed
+const totalProducts = computed(() => products.value.length);
+const uniqueCategories = computed(() => new Set(products.value.map(p => p.category)).size);
+
+const availableTypes = computed(() => {
+  const types = new Set();
+  products.value.forEach(p => { if (p.type) types.add(p.type); });
+  return Array.from(types).sort();
+});
+
+const allSizes = computed(() => {
+  const all = Object.values(sizesByCat).flat();
+  return [...new Set(all)].sort();
+});
+
+const filteredProducts = computed(() => {
+  let res = products.value;
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    res = res.filter(p => 
+      p.name?.toLowerCase().includes(q) || 
+      p.type?.toLowerCase().includes(q) || 
+      p.sku_code?.toLowerCase().includes(q)
+    );
+  }
+
+  if (selectedCategories.value.length) {
+    res = res.filter(p => selectedCategories.value.includes(p.category));
+  }
+
+  if (selectedType.value && selectedType.value !== 'all') {
+    res = res.filter(p => p.type === selectedType.value);
+  }
+
+  if (selectedSizes.value.length) {
+    res = res.filter(p => selectedSizes.value.includes(p.size));
+  }
+
+  if (selectedColor.value) {
+    res = res.filter(p => p.color_code?.toLowerCase() === selectedColor.value.toLowerCase());
+  }
+
+  return res;
+});
+
+const sortedProducts = computed(() => {
+  const res = [...filteredProducts.value];
+  if (sortOption.value === 'name') return res.sort((a,b) => a.name.localeCompare(b.name));
+  if (sortOption.value === 'price_low') return res.sort((a,b) => (a.price || 0) - (b.price || 0));
+  if (sortOption.value === 'price_high') return res.sort((a,b) => (b.price || 0) - (a.price || 0));
+  // newest (by ID desc)
+  return res.sort((a,b) => (b.id || 0) - (a.id || 0));
+});
+
+const filteredTypes = computed(() => {
+  return productTypes[newProduct.category] || [];
+});
+
+const sizeOptions = computed(() => {
+  const c = newProduct.category;
+  if (!c) return [];
+  if (c.includes('Paint')) return sizesByCat.paint;
+  if (c.includes('Spray')) return sizesByCat.spray;
+  if (c.includes('Solvent')) return sizesByCat.solvent;
+  if (c.includes('Tools') || c.includes('Safety') || c.includes('Preparation')) return sizesByCat.tool; 
+  if (c.includes('Packaging')) return sizesByCat.packaging;
+  if (c.includes('Surface')) return sizesByCat.sandpaper;
+  return sizesByCat.paint; // Fallback
+});
+
+const showColorField = computed(() => {
+  const paints = ['Interior Paints', 'Exterior Paints', 'Specialty Paints', 'Spray Paints'];
+  return paints.includes(newProduct.category);
+});
+
+const hasColorCategorySelected = computed(() => {
+  if (selectedCategories.value.length === 0) return false;
+  return selectedCategories.value.some(c => ['Interior Paints', 'Exterior Paints', 'Specialty Paints', 'Spray Paints'].includes(c));
+});
+
+// Logic
+const loadProducts = async () => {
+  try {
+    const response = await api.get('/distributor/products');
+    if (response.data && response.data.success) {
+      products.value = Array.isArray(response.data.data) ? response.data.data : [];
+    } else {
+      products.value = [];
     }
-  },
-  methods: {
-    // Wizard navigation
-    nextStep() {
-      if (this.currentStep < this.wizardSteps.length && this.validateCurrentStep) {
-        this.wizardSteps[this.currentStep - 1].completed = true;
-        this.currentStep++;
-      }
-    },
-    
-    prevStep() {
-      if (this.currentStep > 1) {
-        this.currentStep--;
-      }
-    },
-    
-    // Clean: No console messages
-    getFullImageUrl(imageUrl) {
-      if (!imageUrl) return '';
-      return imageUrl;
-    },
-    
-    handleImageError(event) {
-      const img = event.target;
-      img.style.display = 'none';
-      
-      const placeholder = img.parentElement.querySelector('.image-placeholder');
-      if (placeholder) {
-        placeholder.style.display = 'flex';
-      }
-    },
-    
-    getCategoryClass(category) {
-      if (!category) return '';
-      const classes = {
-        'Interior Paints': 'cat-paint',
-        'Exterior Paints': 'cat-exterior',
-        'Industrial & Protective Paints': 'cat-industrial',
-        'Specialty Paints': 'cat-specialty',
-        'Spray Paints': 'cat-spray',
-        'Primers & Sealers': 'cat-primers',
-        'Solvents & Thinners': 'cat-solvents',
-        'Application Tools': 'cat-tools',
-        'Surface Preparation': 'cat-prep',
-        'Safety Equipment': 'cat-safety',
-        'Packaging & Containers': 'cat-packaging'
-      };
-      return classes[category] || 'cat-paint';
-    },
-    
-    getCategoryShortName(category) {
-      if (!category) return '';
-      const shortNames = {
-        'Interior Paints': 'Interior',
-        'Exterior Paints': 'Exterior',
-        'Industrial & Protective Paints': 'Industrial',
-        'Specialty Paints': 'Specialty',
-        'Spray Paints': 'Spray',
-        'Primers & Sealers': 'Primer',
-        'Solvents & Thinners': 'Solvent',
-        'Application Tools': 'Tool',
-        'Surface Preparation': 'Prep',
-        'Safety Equipment': 'Safety',
-        'Packaging & Containers': 'Packaging'
-      };
-      return shortNames[category] || category.split(' ')[0];
-    },
-    
-    getDefaultPackaging(category) {
-      return this.packagingOptions[category] || 'Standard packaging';
-    },
-    
-    showSuccessToast(message) {
-      Toastify({
-        text: message,
-        duration: 3000,
-        gravity: "top",
-        position: "right",
-        style: {
-          background: "linear-gradient(to right, #10b981, #059669)",
-          color: "#ffffff",
-          borderRadius: "8px",
-          padding: "12px 16px",
-          fontSize: "14px",
-          fontWeight: "500",
-          boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
-        }
-      }).showToast();
-    },
-    
-    showErrorToast(message) {
-      Toastify({
-        text: message,
-        duration: 5000,
-        gravity: "top",
-        position: "right",
-        style: {
-          background: "linear-gradient(to right, #ef4444, #dc2626)",
-          color: "#ffffff",
-          borderRadius: "8px",
-          padding: "12px 16px",
-          fontSize: "14px",
-          fontWeight: "500",
-          boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
-        }
-      }).showToast();
-    },
-    
-    showWarningToast(message) {
-      Toastify({
-        text: message,
-        duration: 4000,
-        gravity: "top",
-        position: "right",
-        style: {
-          background: "linear-gradient(to right, #f59e0b, #d97706)",
-          color: "#ffffff",
-          borderRadius: "8px",
-          padding: "12px 16px",
-          fontSize: "14px",
-          fontWeight: "500",
-          boxShadow: "0 4px 12px rgba(245, 158, 11, 0.2)"
-        }
-      }).showToast();
-    },
-    
-    async loadProducts() {
-      try {
-        const response = await api.get('/distributor/products');
-        
-        if (response.data && response.data.success) {
-          this.products = Array.isArray(response.data.data) ? response.data.data : [];
-        } else {
-          this.products = [];
-        }
-        this.updateCategoryCounts();
-      } catch (error) {
-        this.loadSampleData();
-      }
-    },
-    
-    loadSampleData() {
-      this.products = [
-        {
-          id: 1,
-          name: 'Premium Latex Paint - White',
-          category: 'Interior Paints',
-          type: 'Latex / Acrylic',
-          sku_code: 'PLP-WH-001',
-          size: '4 Liters',
-          color_code: '#FFFFFF',
-          price: 1250.00,
-          cost: 850.00,
-          min_stock_level: 10,
-          max_stock_level: 100,
-          description: 'High-quality interior latex paint, perfect for walls and ceilings.',
-          image_url: ''
-        },
-        {
-          id: 2,
-          name: 'Weather-Resistant Exterior Paint',
-          category: 'Exterior Paints',
-          type: 'Weather-resistant',
-          sku_code: 'WREP-BL-001',
-          size: '20 Liters',
-          color_code: '#0000FF',
-          price: 3200.00,
-          cost: 2200.00,
-          min_stock_level: 5,
-          max_stock_level: 50,
-          description: 'Professional-grade waterproof coating for roofs and walls.',
-          image_url: ''
-        },
-        {
-          id: 3,
-          name: 'Professional Paint Brush Set',
-          category: 'Application Tools',
-          type: 'Paint Brushes',
-          sku_code: 'PBS-001',
-          size: 'Set of 5',
-          color_code: null,
-          price: 450.00,
-          cost: 250.00,
-          min_stock_level: 20,
-          max_stock_level: 200,
-          description: 'Set of 5 professional paint brushes for various surfaces.',
-          image_url: ''
-        },
-        {
-          id: 4,
-          name: 'Paint Thinner',
-          category: 'Solvents & Thinners',
-          type: 'Paint thinner',
-          sku_code: 'PT-001',
-          size: '1 Liter',
-          color_code: null,
-          price: 150.00,
-          cost: 80.00,
-          min_stock_level: 30,
-          max_stock_level: 300,
-          description: 'High-quality paint thinner for cleaning brushes and thinning paint.',
-          image_url: ''
-        },
-        {
-          id: 5,
-          name: 'Safety Goggles',
-          category: 'Safety Equipment',
-          type: 'Safety goggles',
-          sku_code: 'SG-001',
-          size: 'Standard',
-          color_code: null,
-          price: 120.00,
-          cost: 60.00,
-          min_stock_level: 25,
-          max_stock_level: 250,
-          description: 'Protective safety goggles for painting and construction work.',
-          image_url: ''
-        }
-      ];
-      this.updateCategoryCounts();
-    },
-    
-    toggleSize(size) {
-      const index = this.selectedSizes.indexOf(size);
-      if (index > -1) {
-        this.selectedSizes.splice(index, 1);
-      } else {
-        this.selectedSizes.push(size);
-      }
-    },
-    
-    async addProduct() {
-      if (!this.validateProduct()) return;
-      
-      try {
-        const formData = new FormData();
-        
-        formData.append('category', this.newProduct.category);
-        formData.append('type', this.newProduct.type);
-        formData.append('name', this.newProduct.name);
-        if (this.newProduct.sku_code) {
-          formData.append('sku_code', this.newProduct.sku_code);
-        }
-        formData.append('size', this.newProduct.size);
-        if (this.newProduct.color_code) {
-          formData.append('color_code', this.newProduct.color_code);
-        }
-        formData.append('price', parseFloat(this.newProduct.price));
-        if (this.newProduct.cost) {
-          formData.append('cost', parseFloat(this.newProduct.cost));
-        }
-        if (this.newProduct.min_stock_level) {
-          formData.append('min_stock_level', parseInt(this.newProduct.min_stock_level));
-        }
-        if (this.newProduct.max_stock_level) {
-          formData.append('max_stock_level', parseInt(this.newProduct.max_stock_level));
-        }
-        if (this.newProduct.description) {
-          formData.append('description', this.newProduct.description);
-        }
-        
-        if (this.uploadedImage) {
-          formData.append('image', this.uploadedImage);
-        }
-        
-        const response = await api.post('/distributor/products', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        
-        if (response.data && response.data.success) {
-          this.products.unshift(response.data.data);
-          this.updateCategoryCounts();
-          this.showSuccessToast('Product added successfully!');
-          this.closeModal();
-        } else {
-          this.showErrorToast('Failed to add product. Please try again.');
-        }
-      } catch (error) {
-        let errorMessage = 'Error adding product. Please try again.';
-        if (error.response?.data?.errors) {
-          const errors = Object.values(error.response.data.errors).flat();
-          errorMessage = errors.join(', ');
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-        
-        this.showErrorToast(errorMessage);
-      }
-    },
-    
-    editProduct(product) {
-      this.isEditing = true;
-      this.editingId = product.id;
-      this.newProduct = { 
-        category: product.category || '',
-        type: product.type || '',
-        name: product.name || '',
-        sku_code: product.sku_code || '',
-        size: product.size || '',
-        color_code: product.color_code || '',
-        price: product.price ? product.price.toString() : '',
-        cost: product.cost ? product.cost.toString() : '',
-        min_stock_level: product.min_stock_level ? product.min_stock_level.toString() : '10',
-        max_stock_level: product.max_stock_level ? product.max_stock_level.toString() : '100',
-        description: product.description || '',
-        image_url: product.image_url || ''
-      };
-      this.imagePreview = product.image_url;
-      this.uploadedImage = null;
-      this.currentStep = 1;
-      this.wizardSteps.forEach(step => step.completed = false);
-      this.showAddModal = true;
-    },
-    
-    async updateProduct() {
-      if (!this.validateProduct()) return;
-      
-      try {
-        const formData = new FormData();
-        
-        formData.append('category', this.newProduct.category);
-        formData.append('type', this.newProduct.type);
-        formData.append('name', this.newProduct.name);
-        if (this.newProduct.sku_code) {
-          formData.append('sku_code', this.newProduct.sku_code);
-        }
-        formData.append('size', this.newProduct.size);
-        if (this.newProduct.color_code) {
-          formData.append('color_code', this.newProduct.color_code);
-        }
-        formData.append('price', parseFloat(this.newProduct.price));
-        if (this.newProduct.cost) {
-          formData.append('cost', parseFloat(this.newProduct.cost));
-        }
-        if (this.newProduct.min_stock_level) {
-          formData.append('min_stock_level', parseInt(this.newProduct.min_stock_level));
-        }
-        if (this.newProduct.max_stock_level) {
-          formData.append('max_stock_level', parseInt(this.newProduct.max_stock_level));
-        }
-        if (this.newProduct.description) {
-          formData.append('description', this.newProduct.description);
-        }
-        
-        if (this.uploadedImage) {
-          formData.append('image', this.uploadedImage);
-        }
-        
-        const response = await api.put(`/distributor/products/${this.editingId}`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        
-        if (response.data && response.data.success) {
-          const index = this.products.findIndex(p => p.id === this.editingId);
-          if (index !== -1) {
-            this.products[index] = response.data.data;
-            this.updateCategoryCounts();
-            this.showSuccessToast('Product updated successfully!');
-            this.closeModal();
-          }
-        } else {
-          this.showErrorToast('Failed to update product. Please try again.');
-        }
-      } catch (error) {
-        let errorMessage = 'Error updating product. Please try again.';
-        if (error.response?.data?.errors) {
-          const errors = Object.values(error.response.data.errors).flat();
-          errorMessage = errors.join(', ');
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-        
-        this.showErrorToast(errorMessage);
-      }
-    },
-    
-    async deleteProduct(productId) {
-      if (!confirm('Are you sure you want to delete this product?')) return;
-      
-      try {
-        const response = await api.delete(`/distributor/products/${productId}`);
-        
-        if (response.data && response.data.success) {
-          this.products = this.products.filter(product => product.id !== productId);
-          this.updateCategoryCounts();
-          this.showSuccessToast('Product deleted successfully!');
-        } else {
-          this.showErrorToast('Failed to delete product. Please try again.');
-        }
-      } catch (error) {
-        this.showErrorToast('Error deleting product. Please try again.');
-      }
-    },
-    
-    clearFilters() {
-      this.selectedCategories = [];
-      this.selectedType = '';
-      this.selectedSizes = [];
-      this.selectedColor = '';
-      this.searchQuery = '';
-    },
-    
-    closeModal() {
-      this.showAddModal = false;
-      this.isEditing = false;
-      this.editingId = null;
-      this.currentStep = 1;
-      this.wizardSteps.forEach(step => step.completed = false);
-      this.resetForm();
-    },
-    
-    onCategoryChange() {
-      this.newProduct.type = '';
-      this.newProduct.size = '';
-    },
-    
-    triggerFileInput() {
-      this.$refs.fileInput.click();
-    },
-    
-    handleImageUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.processImageFile(file);
-      }
-    },
-    
-    handleFileDrop(event) {
-      event.preventDefault();
-      const file = event.dataTransfer.files[0];
-      if (file) {
-        this.processImageFile(file);
-      }
-    },
-    
-    processImageFile(file) {
-      if (!file.type.startsWith('image/')) {
-        this.showErrorToast('Please select an image file (JPG, PNG, etc.).');
-        return;
-      }
-      
-      if (file.size > 2 * 1024 * 1024) {
-        this.showErrorToast('Image size should be less than 2MB. Please compress or choose a smaller image.');
-        return;
-      }
-      
-      this.uploadedImage = file;
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.imagePreview = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    },
-    
-    removeImage() {
-      this.imagePreview = '';
-      this.uploadedImage = null;
-      this.newProduct.image_url = '';
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = '';
-      }
-    },
-    
-    resetForm() {
-      this.newProduct = {
-        category: '',
-        type: '',
-        name: '',
-        sku_code: '',
-        size: '',
-        color_code: '',
-        price: '',
-        cost: '',
-        min_stock_level: 10,
-        max_stock_level: 100,
-        description: '',
-        image_url: ''
-      };
-      this.imagePreview = '';
-      this.uploadedImage = null;
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = '';
-      }
-    },
-    
-    validateProduct() {
-      if (!this.newProduct.category) {
-        this.showWarningToast('Please select a category.');
-        return false;
-      }
-      if (!this.newProduct.type) {
-        this.showWarningToast('Please select a type.');
-        return false;
-      }
-      if (!this.newProduct.name || !this.newProduct.name.trim()) {
-        this.showWarningToast('Please enter a product name.');
-        return false;
-      }
-      if (!this.newProduct.size) {
-        this.showWarningToast('Please select a size.');
-        return false;
-      }
-      if (!this.newProduct.price || parseFloat(this.newProduct.price) <= 0) {
-        this.showWarningToast('Please enter a valid price.');
-        return false;
-      }
-      if (this.newProduct.color_code && !this.newProduct.color_code.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
-        this.showWarningToast('Please enter a valid hex color code (e.g., #FFFFFF or #FFF).');
-        return false;
-      }
-      return true;
-    },
-    
-    updateCategoryCounts() {
-      if (!Array.isArray(this.products)) {
-        this.products = [];
-      }
-      
-      this.categories = this.categories.map(category => {
-        const count = this.products.filter(p => p && p.category === category.value).length;
-        return { ...category, count };
-      });
-    },
-    
-    formatPrice(price) {
-      if (!price) return '0.00';
-      return parseFloat(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    },
-    
-    truncateDescription(desc, length = 60) {
-      if (!desc) return '';
-      return desc.length > length ? desc.substring(0, length) + '...' : desc;
-    },
-    
-    exportCatalog() {
-      if (!Array.isArray(this.products) || this.products.length === 0) {
-        this.showWarningToast('No products to export.');
-        return;
-      }
-      
-      const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Cost Price', 'Min Ref Stock', 'Max Ref Stock', 'Description'];
-      const csvContent = [
-        headers.join(','),
-        ...this.products.map(product => [
-          `"${product.name || ''}"`,
-          `"${product.category || ''}"`,
-          `"${product.type || ''}"`,
-          `"${product.sku_code || ''}"`,
-          `"${product.size || ''}"`,
-          `"${product.color_code || ''}"`,
-          product.price || '0',
-          product.cost || '0',
-          product.min_stock_level || '0',
-          product.max_stock_level || '0',
-          `"${product.description || ''}"`
-        ].join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `product-catalog-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      this.showSuccessToast('Catalog exported successfully!');
-    }
-  },
-  mounted() {
-    this.loadProducts();
+    updateCategoryCounts();
+  } catch (error) {
+    // Fallback to sample data for demo purposes or error state
+    loadSampleData();
   }
 };
+
+const loadSampleData = () => {
+  products.value = [
+    { id: 1, name: 'Premium Latex Paint - White', category: 'Interior Paints', type: 'Latex / Acrylic', sku_code: 'PLP-WH-001', size: '4 Liters', color_code: '#FFFFFF', price: 1250.00, cost: 850.00, min_stock_level: 10, max_stock_level: 100, description: 'High-quality interior latex paint, perfect for walls and ceilings.' },
+    { id: 2, name: 'Weather-Resistant Exterior', category: 'Exterior Paints', type: 'Weather-resistant', sku_code: 'WREP-BL-001', size: '20 Liters', color_code: '#0000FF', price: 3200.00, cost: 2200.00, min_stock_level: 5, max_stock_level: 50, description: 'Professional-grade waterproof coating for roofs and walls.' },
+    { id: 3, name: 'Professional Paint Brush Set', category: 'Application Tools', type: 'Paint Brushes', sku_code: 'PBS-001', size: 'Set of 5', price: 450.00, cost: 250.00, min_stock_level: 20, max_stock_level: 200, description: 'Set of 5 professional paint brushes.' },
+    { id: 4, name: 'Paint Thinner', category: 'Solvents & Thinners', type: 'Paint thinner', sku_code: 'PT-001', size: '1 Liter', price: 150.00, cost: 80.00, min_stock_level: 30, max_stock_level: 300, description: 'High-quality paint thinner.' }
+  ];
+  updateCategoryCounts();
+};
+
+const updateCategoryCounts = () => {
+  categories.value.forEach(c => {
+    c.count = products.value.filter(p => p.category === c.value).length;
+  });
+};
+
+const handleCategoryCheck = (checked, value) => {
+  if (checked) {
+    selectedCategories.value.push(value);
+  } else {
+    selectedCategories.value = selectedCategories.value.filter(c => c !== value);
+  }
+};
+
+const toggleSize = (size) => {
+  if (selectedSizes.value.includes(size)) {
+    selectedSizes.value = selectedSizes.value.filter(s => s !== size);
+  } else {
+    selectedSizes.value.push(size);
+  }
+};
+
+const clearFilters = () => {
+  selectedCategories.value = [];
+  selectedType.value = 'all';
+  selectedSizes.value = [];
+  selectedColor.value = '';
+  searchQuery.value = '';
+};
+
+// Wizard / Modal Logic
+const openAddModal = () => {
+  resetForm();
+  isEditing.value = false;
+  showAddModal.value = true;
+};
+
+const closeModal = (val) => {
+  if (val === false) {
+    showAddModal.value = false;
+    resetForm();
+  }
+};
+
+const resetForm = () => {
+  Object.assign(newProduct, {
+    category: '', type: '', name: '', sku_code: '', size: '', 
+    color_code: '', price: '', cost: '', min_stock_level: 10, 
+    max_stock_level: 100, description: '', image_url: ''
+  });
+  imagePreview.value = '';
+  uploadedImage.value = null;
+  currentStep.value = 1;
+  showValidation.value = false;
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+const onCategoryChange = () => {
+  newProduct.type = '';
+  newProduct.size = '';
+};
+
+const validateStep = () => {
+  showValidation.value = true;
+  if (currentStep.value === 1) {
+    if (!newProduct.category || !newProduct.type || !newProduct.name || !newProduct.size) return false;
+  }
+  if (currentStep.value === 2) {
+    if (!newProduct.price || parseFloat(newProduct.price) <= 0) return false;
+  }
+  // Step 3 (Image) is optional
+  showValidation.value = false;
+  return true;
+};
+
+const nextStep = () => {
+  if (validateStep()) {
+    currentStep.value++;
+  } else {
+    toast.error('Please fill in all required fields');
+  }
+};
+
+const prevStep = () => {
+  if (currentStep.value > 1) currentStep.value--;
+};
+
+// Image Handling
+const triggerFileInput = () => fileInput.value?.click();
+
+const handleImageUpload = (e) => {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+};
+
+const handleFileDrop = (e) => {
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+};
+
+const processFile = (file) => {
+  if (!file.type.startsWith('image/')) return toast.error('Must be an image file');
+  if (file.size > 2 * 1024 * 1024) return toast.error('Image max size is 2MB');
+  
+  uploadedImage.value = file;
+  const reader = new FileReader();
+  reader.onload = (e) => imagePreview.value = e.target.result;
+  reader.readAsDataURL(file);
+};
+
+const removeImage = () => {
+  imagePreview.value = '';
+  uploadedImage.value = null;
+  newProduct.image_url = '';
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+// CRUD Operations
+const handleSubmit = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+  
+  try {
+    const formData = new FormData();
+    Object.keys(newProduct).forEach(key => {
+      if (newProduct[key] !== null && newProduct[key] !== undefined) {
+         formData.append(key, newProduct[key]);
+      }
+    });
+
+    if (uploadedImage.value) {
+      formData.append('image', uploadedImage.value);
+    }
+    
+    if (isEditing.value) {
+      const response = await api.put(`/distributor/products/${editingId.value}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data && response.data.success) {
+        const index = products.value.findIndex(p => p.id === editingId.value);
+        if (index !== -1) {
+          products.value[index] = response.data.data;
+          toast.success('Product updated successfully');
+        }
+      } else {
+         throw new Error('Failed to update');
+      }
+    } else {
+      const response = await api.post('/distributor/products', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data && response.data.success) {
+        products.value.unshift(response.data.data);
+        toast.success('Product added successfully');
+      } else {
+         throw new Error('Failed to add');
+      }
+    }
+    updateCategoryCounts();
+    closeModal(false);
+  } catch (error) {
+    let msg = 'Something went wrong';
+    if(error.response?.data?.message) msg = error.response.data.message;
+    toast.error(msg);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const editProduct = (product) => {
+  Object.assign(newProduct, product);
+  isEditing.value = true;
+  editingId.value = product.id;
+  imagePreview.value = product.image_url || '';
+  currentStep.value = 1;
+  showAddModal.value = true;
+};
+
+const deleteProduct = async (id) => {
+  if (!confirm('Are you sure you want to delete this product?')) return;
+  
+  try {
+    const response = await api.delete(`/distributor/products/${id}`);
+    if (response.data && response.data.success) {
+      products.value = products.value.filter(p => p.id !== id);
+      updateCategoryCounts();
+      toast.success('Product deleted');
+    } else {
+      toast.error('Failed to delete product');
+    }
+  } catch (e) {
+    toast.error('Error deleting product');
+  }
+};
+
+// Helpers
+const getFullImageUrl = (url) => url; 
+const handleImageError = (e) => e.target.style.display = 'none';
+
+const formatPrice = (p) => {
+  if (!p) return '0.00';
+  return parseFloat(p).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+const truncateDescription = (d) => {
+  if (!d) return '';
+  return d.length > 60 ? d.substring(0, 60) + '...' : d;
+};
+
+const getCategoryDotClass = (cat) => {
+  const map = {
+    'Interior Paints': 'bg-blue-500', 'Exterior Paints': 'bg-green-500', 
+    'Industrial & Protective Paints': 'bg-orange-500', 'Spray Paints': 'bg-red-500'
+  };
+  return map[cat] || 'bg-slate-400';
+};
+
+const getCategoryBadgeClass = (cat) => {
+  const map = {
+    'Interior Paints': 'bg-blue-100 text-blue-700 hover:bg-blue-200',
+    'Exterior Paints': 'bg-green-100 text-green-700 hover:bg-green-200',
+    'Industrial & Protective Paints': 'bg-orange-100 text-orange-700 hover:bg-orange-200',
+    'Spray Paints': 'bg-red-100 text-red-700 hover:bg-red-200'
+  };
+  return map[cat] || 'bg-slate-100 text-slate-700 hover:bg-slate-200';
+};
+
+const getCategoryShortName = (cat) => {
+  const map = {
+    'Industrial & Protective Paints': 'Industrial',
+    'Packaging & Containers': 'Packaging',
+    'Solvents & Thinners': 'Solvents'
+  };
+  return map[cat] || cat?.split(' ')[0] || cat;
+};
+
+const exportCatalog = () => {
+  if (!products.value.length) return toast.warning('No products to export');
+  
+  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Cost Price', 'Description'];
+  const csv = [
+    headers.join(','),
+    ...products.value.map(p => 
+      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.cost || ''}","${p.description || ''}"`
+    )
+  ].join('\n');
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `catalog-${Date.now()}.csv`;
+  link.click();
+  toast.success('Catalog exported');
+};
+
+onMounted(() => {
+  loadProducts();
+});
 </script>
 
 <style scoped>
-  @import "../distributor/styles/ProductAvailable.css";
-  
-  /* Additional styles for catalog */
-  .catalog-stats {
-    display: flex;
-    gap: 2rem;
-    background: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  }
-  
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .stat-label {
-    font-size: 0.85rem;
-    color: #718096;
-    margin-bottom: 0.25rem;
-  }
-  
-  .stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #2d3748;
-  }
-  
-  .product-sku {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-    background: #f7fafc;
-    border-radius: 4px;
-    color: #718096;
-  }
-  
-  .product-specs {
-    margin: 1rem 0;
-    padding: 0.75rem;
-    background: #f8fafc;
-    border-radius: 6px;
-  }
-  
-  .spec-item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
-  }
-  
-  .spec-item:last-child {
-    margin-bottom: 0;
-  }
-  
-  .spec-label {
-    color: #4a5568;
-    font-weight: 500;
-  }
-  
-  .spec-value {
-    color: #2d3748;
-  }
-  
-  .product-actions {
-    display: flex;
-    gap: 0.75rem;
-  }
-  
-  .edit-btn, .delete-btn {
-    flex: 1;
-    padding: 0.75rem;
-    border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-  
-  .edit-btn {
-    background: #667eea;
-    color: white;
-  }
-  
-  .edit-btn:hover {
-    background: #5a67d8;
-  }
-  
-  .delete-btn {
-    background: #fed7d7;
-    color: #c53030;
-  }
-  
-  .delete-btn:hover {
-    background: #feb2b2;
-  }
-  
-  .export-btn {
-    width: 100%;
-    padding: 0.875rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    backdrop-filter: blur(10px);
-    margin-top: 0.75rem;
-  }
-  
-  .export-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
-  .form-row {
-    display: flex;
-    gap: 1rem;
-  }
-  
-  .form-row .form-group {
-    flex: 1;
-  }
-  
-  /* File upload area styling */
-  .file-upload-area {
-    border: 2px dashed #e2e8f0;
-    background: #f8fafc;
-    cursor: pointer;
-    transition: all 0.3s ease;
-  }
-  
-  .file-upload-area:hover {
-    border-color: #667eea;
-    background: #edf2f7;
-  }
-  
-  /* Product image styling */
-  .product-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  /* New category badge colors */
-  .cat-interior { background: #4299e1; }
-  .cat-exterior { background: #48bb78; }
-  .cat-industrial { background: #ed8936; }
-  .cat-specialty { background: #9f7aea; }
-  .cat-spray { background: #f56565; }
-  .cat-primers { background: #38b2ac; }
-  .cat-solvents { background: #ecc94b; }
-  .cat-tools { background: #667eea; }
-  .cat-prep { background: #ed64a6; }
-  .cat-safety { background: #4fd1c7; }
-  .cat-packaging { background: #a0aec0; }
-  
-  @media (max-width: 768px) {
-    .catalog-stats {
-      flex-direction: column;
-      gap: 1rem;
-      padding: 1rem;
-    }
-    
-    .form-row {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .product-actions {
-      flex-direction: column;
-    }
-  }
+/* Custom Scrollbar for filter lists */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; 
+}
 </style>

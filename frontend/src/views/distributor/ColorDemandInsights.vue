@@ -1,6 +1,5 @@
 <template>
   <div class="p-4 md:p-6">
-    <!-- Page Header with Mode Toggle -->
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -9,53 +8,53 @@
         </div>
         <div class="flex items-center space-x-3">
           <div class="flex items-center bg-gray-100 rounded-lg p-1">
-            <button 
+            <Button 
+              variant="ghost"
               @click="setMode('rule-based')" 
-              :class="activeMode === 'rule-based' ? 'bg-white shadow-sm' : 'text-gray-600'"
-              class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center"
+              :class="activeMode === 'rule-based' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'"
+              class="h-9 px-4 rounded-md text-sm font-medium transition-all duration-200 flex items-center"
             >
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
               </svg>
               Rule-Based
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="ghost"
               @click="setMode('ml-enhanced')" 
-              :class="activeMode === 'ml-enhanced' ? 'bg-white shadow-sm' : 'text-gray-600'"
-              class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center"
+              :class="activeMode === 'ml-enhanced' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'"
+              class="h-9 px-4 rounded-md text-sm font-medium transition-all duration-200 flex items-center"
             >
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
               </svg>
               ML-Enhanced
-            </button>
+            </Button>
           </div>
-          <button @click="refreshInsights" class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+          <Button variant="ghost" size="icon" @click="refreshInsights" class="text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
       
-      <!-- Mode Indicator -->
       <div class="mt-4 flex items-center">
-        <span :class="modeBadgeClass" class="px-3 py-1 rounded-full text-sm font-medium inline-flex items-center">
+        <Badge :class="modeBadgeClass" class="px-3 py-1 rounded-full text-sm font-medium inline-flex items-center border-0">
           <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path v-if="activeMode === 'rule-based'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
           {{ activeMode === 'rule-based' ? 'Using Rule-Based Analysis' : 'Using Machine Learning Predictions' }}
-        </span>
+        </Badge>
         <span class="text-sm text-gray-500 ml-3">
           {{ activeMode === 'rule-based' ? 'Based on historical data and rules' : 'Enhanced with predictive analytics' }}
         </span>
       </div>
     </div>
 
-    <!-- ML Explanation Banner -->
-    <div v-if="activeMode === 'ml-enhanced'" class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-      <div class="flex items-start">
+    <Card v-if="activeMode === 'ml-enhanced'" class="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+      <CardContent class="p-4 flex items-start">
         <div class="p-2 bg-purple-100 rounded-lg mr-3">
           <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -67,335 +66,351 @@
             {{ mlExplanation }}
           </p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- Main Insights Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <!-- Most Requested Colors -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-5">
-          <h2 class="text-lg font-semibold text-gray-800">Most Requested Colors</h2>
-          <div class="p-2 bg-blue-50 rounded-lg">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
-            </svg>
-          </div>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="color in mostRequestedColors" :key="color.id" class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-            <div class="flex-shrink-0">
-              <div class="w-10 h-10 rounded-lg border border-gray-300" :style="{ backgroundColor: color.hex }"></div>
-            </div>
-            <div class="ml-4 flex-1">
-              <div class="flex justify-between items-center">
-                <h3 class="font-medium text-gray-900">{{ color.name }}</h3>
-                <span class="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                  {{ color.percentage }}%
-                </span>
-              </div>
-              <div class="mt-1 flex items-center">
-                <div class="flex-1 bg-gray-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" :style="{ width: color.percentage + '%' }"></div>
-                </div>
-                <span class="text-sm text-gray-500 ml-3">{{ color.requests }} requests</span>
-              </div>
-              <p class="text-sm text-gray-600 mt-2">
-                <span class="font-medium">Trend:</span> {{ color.trend }}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mt-5 pt-5 border-t border-gray-200">
-          <h4 class="text-sm font-medium text-gray-700 mb-2">Key Insights</h4>
-          <ul class="text-sm text-gray-600 space-y-1">
-            <li v-for="insight in colorInsights" :key="insight" class="flex items-start">
-              <svg class="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              {{ insight }}
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Trending Colors -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-5">
-          <h2 class="text-lg font-semibold text-gray-800">Trending Colors</h2>
-          <div class="flex items-center space-x-2">
-            <button 
-              @click="setTrendPeriod('weekly')" 
-              :class="trendPeriod === 'weekly' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'"
-              class="px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-            >
-              Weekly
-            </button>
-            <button 
-              @click="setTrendPeriod('monthly')" 
-              :class="trendPeriod === 'monthly' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'"
-              class="px-3 py-1 rounded-lg text-sm font-medium transition-colors"
-            >
-              Monthly
-            </button>
-          </div>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="trend in trendingColors" :key="trend.id" class="p-3 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
-            <div class="flex items-center mb-3">
-              <div class="w-12 h-12 rounded-lg border-2 border-white shadow-sm" :style="{ backgroundColor: trend.hex }"></div>
-              <div class="ml-4">
-                <h3 class="font-semibold text-gray-900">{{ trend.name }}</h3>
-                <div class="flex items-center mt-1">
-                  <span class="text-sm px-2 py-0.5 rounded-full" :class="trend.change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-                    <svg v-if="trend.change >= 0" class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                    </svg>
-                    <svg v-else class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                    </svg>
-                    {{ Math.abs(trend.change) }}% {{ trend.change >= 0 ? 'increase' : 'decrease' }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div class="bg-white p-2 rounded border border-gray-200">
-                <p class="text-gray-600">Current Rank</p>
-                <p class="font-semibold text-lg text-gray-900">#{{ trend.rank }}</p>
-              </div>
-              <div class="bg-white p-2 rounded border border-gray-200">
-                <p class="text-gray-600">Previous Rank</p>
-                <p class="font-semibold text-lg text-gray-900">#{{ trend.previousRank }}</p>
-              </div>
-            </div>
-            
-            <div class="mt-3 pt-3 border-t border-gray-200">
-              <p class="text-sm text-gray-600">
-                <span class="font-medium">Demand Factor:</span> {{ trend.demandFactor }}
-              </p>
-              <p class="text-xs text-gray-500 mt-1">{{ trend.description }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mt-5 pt-5 border-t border-gray-200">
-          <div class="flex items-center justify-between">
-            <h4 class="text-sm font-medium text-gray-700">Seasonal Trends</h4>
-            <span class="text-xs text-gray-500">{{ trendPeriod === 'weekly' ? 'Last 7 days' : 'Last 30 days' }}</span>
-          </div>
-          <div class="mt-2 flex items-center space-x-2">
-            <span v-for="season in seasonalTrends" :key="season" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-              {{ season }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Recommended Restocks -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-        <div class="flex items-center justify-between mb-5">
-          <h2 class="text-lg font-semibold text-gray-800">Recommended Restocks</h2>
-          <div class="p-2 bg-green-50 rounded-lg">
-            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </div>
-        </div>
-        
-        <div class="space-y-4">
-          <div v-for="recommendation in restockRecommendations" :key="recommendation.id" 
-               class="p-3 rounded-lg border" :class="getRecommendationClass(recommendation.priority)">
-            <div class="flex items-start">
-              <div class="flex-shrink-0">
-                <div class="w-8 h-8 rounded-md" :style="{ backgroundColor: recommendation.hex }"></div>
-              </div>
-              <div class="ml-3 flex-1">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <h3 class="font-medium text-gray-900">{{ recommendation.productName }}</h3>
-                    <p class="text-sm text-gray-600">{{ recommendation.brand }}</p>
-                  </div>
-                  <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getPriorityClass(recommendation.priority)">
-                    {{ recommendation.priority }}
-                  </span>
-                </div>
-                
-                <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p class="text-gray-600">Current Stock</p>
-                    <p class="font-semibold text-gray-900">{{ recommendation.currentStock }} units</p>
-                  </div>
-                  <div>
-                    <p class="text-gray-600">Recommended</p>
-                    <p class="font-semibold text-gray-900">{{ recommendation.recommendedOrder }} units</p>
-                  </div>
-                </div>
-                
-                <div class="mt-3">
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-600">Stock Level</span>
-                    <span class="font-medium" :class="getStockLevelClass(recommendation.stockLevel)">
-                      {{ recommendation.stockLevel }}
-                    </span>
-                  </div>
-                  <div class="mt-1 bg-gray-200 rounded-full h-2">
-                    <div class="h-2 rounded-full" :style="{ width: recommendation.stockPercentage + '%' }" 
-                         :class="getStockBarClass(recommendation.stockPercentage)"></div>
-                  </div>
-                </div>
-                
-                <div class="mt-3 flex items-center justify-between">
-                  <div class="text-sm">
-                    <p class="text-gray-600">Lead Time</p>
-                    <p class="font-medium text-gray-900">{{ recommendation.leadTime }} days</p>
-                  </div>
-                  <button @click="orderNow(recommendation)" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
-                    Order Now
-                  </button>
-                </div>
-                
-                <div v-if="activeMode === 'ml-enhanced'" class="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-                  <p class="text-xs text-blue-700">
-                    <span class="font-medium">ML Prediction:</span> {{ recommendation.mlPrediction }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mt-5 pt-5 border-t border-gray-200">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="text-sm font-medium text-gray-700">Restock Summary</h4>
-            <span class="text-sm font-medium text-gray-900">₱{{ formatCurrency(totalRestockValue) }}</span>
-          </div>
-          <p class="text-sm text-gray-600">Total estimated value for all recommended restocks</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Additional Insights Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-4">Advanced Analytics</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="p-4 bg-gradient-to-br from-blue-50 to-white rounded-lg border border-blue-100">
-          <div class="flex items-center mb-3">
-            <div class="p-2 bg-blue-100 rounded-lg mr-3">
+      <Card class="bg-white border-gray-200 shadow-sm">
+        <CardContent class="p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-semibold text-gray-800">Most Requested Colors</h2>
+            <div class="p-2 bg-blue-50 rounded-lg">
               <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
               </svg>
             </div>
-            <div>
-              <p class="text-sm text-gray-600">Peak Demand Day</p>
-              <p class="font-semibold text-gray-900">{{ analytics.peakDemandDay }}</p>
+          </div>
+          
+          <div class="space-y-4">
+            <div v-for="color in mostRequestedColors" :key="color.id" class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div class="flex-shrink-0">
+                <div class="w-10 h-10 rounded-lg border border-gray-300" :style="{ backgroundColor: color.hex }"></div>
+              </div>
+              <div class="ml-4 flex-1">
+                <div class="flex justify-between items-center">
+                  <h3 class="font-medium text-gray-900">{{ color.name }}</h3>
+                  <Badge variant="secondary" class="text-sm font-medium bg-blue-100 text-blue-800 rounded-full hover:bg-blue-100">
+                    {{ color.percentage }}%
+                  </Badge>
+                </div>
+                <div class="mt-1 flex items-center">
+                  <Progress :model-value="color.percentage" class="h-2 flex-1 bg-gray-200" indicator-class="bg-blue-600" />
+                  <span class="text-sm text-gray-500 ml-3">{{ color.requests }} requests</span>
+                </div>
+                <p class="text-sm text-gray-600 mt-2">
+                  <span class="font-medium">Trend:</span> {{ color.trend }}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="p-4 bg-gradient-to-br from-green-50 to-white rounded-lg border border-green-100">
-          <div class="flex items-center mb-3">
-            <div class="p-2 bg-green-100 rounded-lg mr-3">
+          
+          <div class="mt-5 pt-5 border-t border-gray-200">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Key Insights</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+              <li v-for="insight in colorInsights" :key="insight" class="flex items-start">
+                <svg class="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {{ insight }}
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card class="bg-white border-gray-200 shadow-sm">
+        <CardContent class="p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-semibold text-gray-800">Trending Colors</h2>
+            <div class="flex items-center space-x-2">
+              <Button 
+                variant="ghost"
+                @click="setTrendPeriod('weekly')" 
+                :class="trendPeriod === 'weekly' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700' : 'text-gray-600'"
+                class="h-8 px-3 rounded-lg text-sm font-medium"
+              >
+                Weekly
+              </Button>
+              <Button 
+                variant="ghost"
+                @click="setTrendPeriod('monthly')" 
+                :class="trendPeriod === 'monthly' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700' : 'text-gray-600'"
+                class="h-8 px-3 rounded-lg text-sm font-medium"
+              >
+                Monthly
+              </Button>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div v-for="trend in trendingColors" :key="trend.id" class="p-3 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200">
+              <div class="flex items-center mb-3">
+                <div class="w-12 h-12 rounded-lg border-2 border-white shadow-sm" :style="{ backgroundColor: trend.hex }"></div>
+                <div class="ml-4">
+                  <h3 class="font-semibold text-gray-900">{{ trend.name }}</h3>
+                  <div class="flex items-center mt-1">
+                    <Badge variant="outline" class="border-0 text-sm px-2 py-0.5 rounded-full" :class="trend.change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                      <svg v-if="trend.change >= 0" class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                      </svg>
+                      <svg v-else class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                      </svg>
+                      {{ Math.abs(trend.change) }}% {{ trend.change >= 0 ? 'increase' : 'decrease' }}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="bg-white p-2 rounded border border-gray-200">
+                  <p class="text-gray-600">Current Rank</p>
+                  <p class="font-semibold text-lg text-gray-900">#{{ trend.rank }}</p>
+                </div>
+                <div class="bg-white p-2 rounded border border-gray-200">
+                  <p class="text-gray-600">Previous Rank</p>
+                  <p class="font-semibold text-lg text-gray-900">#{{ trend.previousRank }}</p>
+                </div>
+              </div>
+              
+              <div class="mt-3 pt-3 border-t border-gray-200">
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Demand Factor:</span> {{ trend.demandFactor }}
+                </p>
+                <p class="text-xs text-gray-500 mt-1">{{ trend.description }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-5 pt-5 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-medium text-gray-700">Seasonal Trends</h4>
+              <span class="text-xs text-gray-500">{{ trendPeriod === 'weekly' ? 'Last 7 days' : 'Last 30 days' }}</span>
+            </div>
+            <div class="mt-2 flex items-center space-x-2">
+              <span v-for="season in seasonalTrends" :key="season" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                {{ season }}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card class="bg-white border-gray-200 shadow-sm">
+        <CardContent class="p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-semibold text-gray-800">Recommended Restocks</h2>
+            <div class="p-2 bg-green-50 rounded-lg">
               <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <div>
-              <p class="text-sm text-gray-600">Growth Rate</p>
-              <p class="font-semibold text-gray-900">{{ analytics.growthRate }}%</p>
-            </div>
           </div>
-        </div>
-        
-        <div class="p-4 bg-gradient-to-br from-yellow-50 to-white rounded-lg border border-yellow-100">
-          <div class="flex items-center mb-3">
-            <div class="p-2 bg-yellow-100 rounded-lg mr-3">
-              <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Avg. Reorder Time</p>
-              <p class="font-semibold text-gray-900">{{ analytics.avgReorderTime }} days</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="p-4 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-100">
-          <div class="flex items-center mb-3">
-            <div class="p-2 bg-purple-100 rounded-lg mr-3">
-              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Accuracy Score</p>
-              <p class="font-semibold text-gray-900">{{ analytics.accuracyScore }}%</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- ML Model Info (when in ML mode) -->
-      <div v-if="activeMode === 'ml-enhanced'" class="mt-6 p-4 bg-gray-50 rounded-lg">
-        <div class="flex items-start">
-          <div class="p-2 bg-gray-200 rounded-lg mr-3">
-            <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h4 class="font-medium text-gray-800 mb-2">Machine Learning Model Information</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p class="text-gray-600">Model Type</p>
-                <p class="font-medium text-gray-900">Random Forest Regression</p>
+          
+          <div class="space-y-4">
+            <div v-for="recommendation in restockRecommendations" :key="recommendation.id" 
+                 class="p-3 rounded-lg border" :class="getRecommendationClass(recommendation.priority)">
+              <div class="flex items-start">
+                <div class="flex-shrink-0">
+                  <div class="w-8 h-8 rounded-md" :style="{ backgroundColor: recommendation.hex }"></div>
+                </div>
+                <div class="ml-3 flex-1">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h3 class="font-medium text-gray-900">{{ recommendation.productName }}</h3>
+                      <p class="text-sm text-gray-600">{{ recommendation.brand }}</p>
+                    </div>
+                    <Badge :class="getPriorityClass(recommendation.priority)" class="px-2 py-1 text-xs font-medium rounded-full hover:opacity-90 border-0">
+                      {{ recommendation.priority }}
+                    </Badge>
+                  </div>
+                  
+                  <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p class="text-gray-600">Current Stock</p>
+                      <p class="font-semibold text-gray-900">{{ recommendation.currentStock }} units</p>
+                    </div>
+                    <div>
+                      <p class="text-gray-600">Recommended</p>
+                      <p class="font-semibold text-gray-900">{{ recommendation.recommendedOrder }} units</p>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-3">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-600">Stock Level</span>
+                      <span class="font-medium" :class="getStockLevelClass(recommendation.stockLevel)">
+                        {{ recommendation.stockLevel }}
+                      </span>
+                    </div>
+                    <div class="mt-1">
+                      <Progress 
+                        :model-value="recommendation.stockPercentage" 
+                        class="h-2 bg-gray-200" 
+                        :indicator-class="getStockBarClass(recommendation.stockPercentage)"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div class="mt-3 flex items-center justify-between">
+                    <div class="text-sm">
+                      <p class="text-gray-600">Lead Time</p>
+                      <p class="font-medium text-gray-900">{{ recommendation.leadTime }} days</p>
+                    </div>
+                    <Button size="sm" @click="orderNow(recommendation)" class="bg-blue-600 text-white hover:bg-blue-700">
+                      Order Now
+                    </Button>
+                  </div>
+                  
+                  <div v-if="activeMode === 'ml-enhanced'" class="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                    <p class="text-xs text-blue-700">
+                      <span class="font-medium">ML Prediction:</span> {{ recommendation.mlPrediction }}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p class="text-gray-600">Training Data</p>
-                <p class="font-medium text-gray-900">6 months of sales data</p>
-              </div>
-              <div>
-                <p class="text-gray-600">Features Used</p>
-                <p class="font-medium text-gray-900">Seasonality, trends, inventory</p>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
+          
+          <div class="mt-5 pt-5 border-t border-gray-200">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-medium text-gray-700">Restock Summary</h4>
+              <span class="text-sm font-medium text-gray-900">₱{{ formatCurrency(totalRestockValue) }}</span>
+            </div>
+            <p class="text-sm text-gray-600">Total estimated value for all recommended restocks</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Action Buttons -->
+    <Card class="bg-white border-gray-200 shadow-sm mb-6">
+      <CardContent class="p-5">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Advanced Analytics</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card class="bg-gradient-to-br from-blue-50 to-white border-blue-100">
+            <CardContent class="p-4 flex items-center">
+              <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Peak Demand Day</p>
+                <p class="font-semibold text-gray-900">{{ analytics.peakDemandDay }}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card class="bg-gradient-to-br from-green-50 to-white border-green-100">
+            <CardContent class="p-4 flex items-center">
+              <div class="p-2 bg-green-100 rounded-lg mr-3">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Growth Rate</p>
+                <p class="font-semibold text-gray-900">{{ analytics.growthRate }}%</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card class="bg-gradient-to-br from-yellow-50 to-white border-yellow-100">
+            <CardContent class="p-4 flex items-center">
+              <div class="p-2 bg-yellow-100 rounded-lg mr-3">
+                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Avg. Reorder Time</p>
+                <p class="font-semibold text-gray-900">{{ analytics.avgReorderTime }} days</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card class="bg-gradient-to-br from-purple-50 to-white border-purple-100">
+            <CardContent class="p-4 flex items-center">
+              <div class="p-2 bg-purple-100 rounded-lg mr-3">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Accuracy Score</p>
+                <p class="font-semibold text-gray-900">{{ analytics.accuracyScore }}%</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <Card v-if="activeMode === 'ml-enhanced'" class="mt-6 bg-gray-50 border-0">
+          <CardContent class="p-4 flex items-start">
+            <div class="p-2 bg-gray-200 rounded-lg mr-3">
+              <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-medium text-gray-800 mb-2">Machine Learning Model Information</h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p class="text-gray-600">Model Type</p>
+                  <p class="font-medium text-gray-900">Random Forest Regression</p>
+                </div>
+                <div>
+                  <p class="text-gray-600">Training Data</p>
+                  <p class="font-medium text-gray-900">6 months of sales data</p>
+                </div>
+                <div>
+                  <p class="text-gray-600">Features Used</p>
+                  <p class="font-medium text-gray-900">Seasonality, trends, inventory</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </CardContent>
+    </Card>
+
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div class="text-sm text-gray-600">
         Last updated: {{ lastUpdated }}
       </div>
       <div class="flex space-x-3">
-        <button @click="exportInsights" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center">
+        <Button variant="outline" @click="exportInsights" class="border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           Export Report
-        </button>
-        <button @click="generateReport" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+        </Button>
+        <Button @click="generateReport" class="bg-blue-600 text-white hover:bg-blue-700 flex items-center">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           Generate Detailed Report
-        </button>
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+
 export default {
   name: 'ColorDemandInsights',
+  components: {
+    Button,
+    Card,
+    CardContent,
+    Badge,
+    Progress
+  },
   data() {
     return {
       activeMode: 'rule-based',
@@ -688,27 +703,6 @@ export default {
 </script>
 
 <style scoped>
-/* Enhanced scrollbar */
-.overflow-x-auto {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Custom animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-
 /* Gradient border effect */
 .gradient-border {
   position: relative;
@@ -728,34 +722,10 @@ export default {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments for Grid */
 @media (max-width: 768px) {
   .grid-cols-1 {
     grid-template-columns: 1fr;
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-  
-  .grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .grid-cols-4 {
-    grid-template-columns: 1fr;
-  }
-  
-  .flex-col {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .space-x-3 > * + * {
-    margin-left: 0;
-    margin-top: 0.75rem;
   }
 }
 
@@ -777,55 +747,5 @@ export default {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
-}
-
-/* Print optimizations */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  
-  .bg-gradient-to-r,
-  .bg-gradient-to-br {
-    background: white !important;
-    border: 1px solid #e5e7eb !important;
-  }
-  
-  button {
-    display: none !important;
-  }
-}
-
-/* Smooth transitions */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
-}
-
-/* Card hover effects */
-.bg-white {
-  transition: all 0.2s ease-in-out;
-}
-
-.bg-white:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-/* Loading skeleton animation */
-@keyframes shimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
-.shimmer {
-  background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
-  background-size: 800px 104px;
-  animation: shimmer 1.5s infinite linear;
 }
 </style>

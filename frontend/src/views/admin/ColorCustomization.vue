@@ -1,137 +1,151 @@
 <template>
   <div class="p-6">
-    <!-- Header -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-800">Color Customizations</h1>
         <p class="text-gray-600 mt-2">View and manage color mixes from Unity Virtual Paint System</p>
       </div>
       <div class="flex gap-3">
-        <button 
+        <Button 
+          variant="outline"
           @click="refreshData"
-          class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+          class="border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           Refresh
-        </button>
-        <button 
+        </Button>
+        <Button 
           @click="openUnitySimulator"
-          class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-2"
+          class="bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 shadow-lg hover:shadow-xl border-0 flex items-center gap-2 h-auto py-3"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
           </svg>
           Launch Unity Mixer
-        </button>
+        </Button>
       </div>
     </div>
 
-    <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center">
-            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Total Mixes</p>
-            <p class="text-2xl font-bold text-gray-800">{{ colorMixes.length }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Active Service Providers</p>
-            <p class="text-2xl font-bold text-gray-800">{{ uniqueServiceProviders }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-5.197a6 6 0 00-9 5.197" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">Total Clients</p>
-            <p class="text-2xl font-bold text-gray-800">{{ uniqueClients }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
-            <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-sm text-gray-500">This Month</p>
-            <p class="text-2xl font-bold text-gray-800">{{ mixesThisMonth }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters and Search -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search by client name, service provider, or color code..."
-              class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-            >
-            <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      <Card class="bg-white shadow-sm border border-gray-100">
+        <CardContent class="p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
               </svg>
             </div>
+            <div>
+              <p class="text-sm text-gray-500">Total Mixes</p>
+              <p class="text-2xl font-bold text-gray-800">{{ colorMixes.length }}</p>
+            </div>
           </div>
-        </div>
-        <div class="flex gap-2">
-          <select 
-            v-model="filterServiceProvider"
-            class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">All Service Providers</option>
-            <option v-for="provider in serviceProviders" :key="provider" :value="provider">{{ provider }}</option>
-          </select>
-          <select 
-            v-model="filterTimeRange"
-            class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+      
+      <Card class="bg-white shadow-sm border border-gray-100">
+        <CardContent class="p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Active Service Providers</p>
+              <p class="text-2xl font-bold text-gray-800">{{ uniqueServiceProviders }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card class="bg-white shadow-sm border border-gray-100">
+        <CardContent class="p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-5.197a6 6 0 00-9 5.197" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Total Clients</p>
+              <p class="text-2xl font-bold text-gray-800">{{ uniqueClients }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card class="bg-white shadow-sm border border-gray-100">
+        <CardContent class="p-6">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
+              <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">This Month</p>
+              <p class="text-2xl font-bold text-gray-800">{{ mixesThisMonth }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Color Mixes Grid/Table -->
+    <Card class="bg-white shadow-sm border border-gray-100 mb-6">
+      <CardContent class="p-4">
+        <div class="flex flex-col md:flex-row gap-4">
+          <div class="flex-1">
+            <div class="relative">
+              <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <Input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Search by client name, service provider, or color code..."
+                class="pl-12 pr-4 border-gray-300 focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <Select v-model="filterServiceProvider">
+              <SelectTrigger class="w-[200px] border-gray-300">
+                <SelectValue placeholder="All Service Providers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_providers">All Service Providers</SelectItem>
+                <SelectItem v-for="provider in serviceProviders" :key="provider" :value="provider">{{ provider }}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select v-model="filterTimeRange">
+              <SelectTrigger class="w-[180px] border-gray-300">
+                <SelectValue placeholder="All Time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <div 
+      <Card 
         v-for="mix in filteredMixes" 
         :key="mix.id"
-        class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+        class="bg-white shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
       >
-        <div class="p-6">
-          <!-- Header with Color Preview -->
+        <CardContent class="p-6">
           <div class="flex items-start justify-between mb-6">
             <div class="flex items-center gap-4">
               <div 
@@ -145,27 +159,26 @@
                 <h3 class="font-bold text-gray-800 text-lg">{{ mix.colorName }}</h3>
                 <p class="text-sm text-gray-500 mt-1">Created by {{ mix.serviceProvider }}</p>
                 <div class="flex items-center gap-3 mt-2">
-                  <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                  <Badge variant="secondary" class="bg-gray-100 text-gray-800 hover:bg-gray-200">
                     {{ mix.colorHex }}
-                  </span>
-                  <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                  </Badge>
+                  <Badge variant="secondary" class="bg-blue-100 text-blue-800 hover:bg-blue-200">
                     RGB: {{ mix.rgb.r }}, {{ mix.rgb.g }}, {{ mix.rgb.b }}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             </div>
             <div class="text-right">
-              <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              <Badge class="bg-green-100 text-green-800 hover:bg-green-100 shadow-none border-0">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 Saved
-              </span>
+              </Badge>
               <p class="text-xs text-gray-500 mt-2">{{ formatDate(mix.createdAt) }}</p>
             </div>
           </div>
 
-          <!-- Client and Service Provider Info -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div class="bg-gray-50 p-4 rounded-lg">
               <div class="flex items-center gap-3 mb-2">
@@ -198,7 +211,6 @@
             </div>
           </div>
 
-          <!-- Color Details -->
           <div class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg mb-4">
             <h4 class="font-medium text-gray-700 mb-3 flex items-center gap-2">
               <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,76 +242,73 @@
             </div>
           </div>
 
-          <!-- Actions -->
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button 
+            <Button 
+              variant="ghost" 
               @click="viewColorDetails(mix)"
-              class="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+              class="text-blue-600 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
               View Details
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="ghost" 
               @click="exportColor(mix)"
-              class="px-4 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors flex items-center gap-2"
+              class="text-green-600 hover:bg-green-50 hover:text-green-700 flex items-center gap-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
               Export to Paint
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="ghost" 
               @click="deleteColorMix(mix)"
-              class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
+              class="text-red-600 hover:bg-red-50 hover:text-red-700 flex items-center gap-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
               Delete
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="filteredMixes.length === 0" class="py-16 text-center bg-white rounded-xl shadow-sm border border-gray-100">
-      <div class="flex justify-center mb-4">
-        <svg class="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-        </svg>
-      </div>
-      <h3 class="text-xl font-semibold text-gray-700 mb-2">No color customizations found</h3>
-      <p class="text-gray-500 mb-6">Start using the Unity Virtual Paint Mixer to create your first color customization.</p>
-      <button 
-        @click="openUnitySimulator"
-        class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl inline-flex items-center gap-2"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Create First Color Mix
-      </button>
-    </div>
-
-    <!-- Unity Simulator Modal -->
-    <div v-if="showUnityModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex justify-between items-center">
-            <h2 class="text-2xl font-bold text-gray-800">Unity Virtual Paint Mixer</h2>
-            <button @click="showUnityModal = false" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+    <Card v-if="filteredMixes.length === 0" class="py-16 text-center bg-white shadow-sm border border-gray-100">
+      <CardContent>
+        <div class="flex justify-center mb-4">
+          <svg class="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+          </svg>
         </div>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">No color customizations found</h3>
+        <p class="text-gray-500 mb-6">Start using the Unity Virtual Paint Mixer to create your first color customization.</p>
+        <Button 
+          @click="openUnitySimulator"
+          class="bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 shadow-lg hover:shadow-xl inline-flex items-center gap-2 h-auto py-3"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Create First Color Mix
+        </Button>
+      </CardContent>
+    </Card>
+
+    <Dialog :open="showUnityModal" @update:open="showUnityModal = $event">
+      <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-2xl font-bold text-gray-800 flex justify-between items-center">
+            Unity Virtual Paint Mixer
+          </DialogTitle>
+        </DialogHeader>
         
-        <div class="p-6">
+        <div class="py-4">
           <div class="aspect-video bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg flex items-center justify-center mb-6">
             <div class="text-center">
               <div class="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -344,15 +353,16 @@
           
           <div class="border-t border-gray-200 pt-6">
             <div class="flex justify-end gap-4">
-              <button
+              <Button
+                variant="outline"
                 @click="showUnityModal = false"
-                class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                class="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Close Preview
-              </button>
-              <button
+              </Button>
+              <Button
                 @click="simulateColorSave"
-                class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-300 shadow-lg"
+                class="bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 shadow-lg border-0"
               >
                 <span class="flex items-center gap-2">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -360,22 +370,28 @@
                   </svg>
                   Simulate Color Save
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 // State
 const colorMixes = ref([])
 const searchQuery = ref('')
-const filterServiceProvider = ref('')
+const filterServiceProvider = ref('') // Initially empty for 'All'
 const filterTimeRange = ref('all')
 const showUnityModal = ref(false)
 
@@ -388,7 +404,10 @@ const filteredMixes = computed(() => {
       mix.colorHex.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       mix.colorName.toLowerCase().includes(searchQuery.value.toLowerCase())
     
-    const matchesProvider = !filterServiceProvider.value || mix.serviceProvider === filterServiceProvider.value
+    // Check against specific value or empty/all_providers
+    const matchesProvider = !filterServiceProvider.value || 
+                          filterServiceProvider.value === 'all_providers' || 
+                          mix.serviceProvider === filterServiceProvider.value
     
     const matchesTime = filterTimeRange.value === 'all' || 
       isWithinTimeRange(mix.createdAt, filterTimeRange.value)
@@ -603,32 +622,6 @@ onMounted(() => {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
-}
-
-/* Modal animations */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-content-enter-active,
-.modal-content-leave-active {
-  transition: all 0.3s ease;
-}
-
-.modal-content-enter-from {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
-.modal-content-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
 }
 
 /* Color card hover effects */

@@ -1,284 +1,275 @@
 <template>
   <div class="color-history-container bg-gradient-to-br from-slate-900 via-gray-900 to-gray-950 min-h-screen p-4 md:p-8">
-    <!-- Header Section -->
     <div class="mb-8">
       <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-400 bg-clip-text text-transparent mb-2">
         My Saved Colors
       </h1>
       <p class="text-gray-400">View and manage your saved color blends</p>
       
-      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-        <div class="stat-card bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Total Colors</p>
-              <p class="text-2xl font-bold text-white">{{ stats.totalColors }}</p>
+        <Card class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 rounded-xl">
+          <CardContent class="p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-sm">Total Colors</p>
+                <p class="text-2xl font-bold text-white">{{ stats.totalColors }}</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-              <svg class="w-6 h-6 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="stat-card bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Favorites</p>
-              <p class="text-2xl font-bold text-white">{{ stats.totalFavorites }}</p>
+        <Card class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 rounded-xl">
+          <CardContent class="p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-sm">Favorites</p>
+                <p class="text-2xl font-bold text-white">{{ stats.totalFavorites }}</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+              </div>
             </div>
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 flex items-center justify-center">
-              <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="stat-card bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Color Families</p>
-              <p class="text-2xl font-bold text-white">{{ stats.colorFamilies }}</p>
+        <Card class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 rounded-xl">
+          <CardContent class="p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-sm">Color Families</p>
+                <p class="text-2xl font-bold text-white">{{ stats.colorFamilies }}</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11.5v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 21v-4a2 2 0 012-2h4a2 2 0 012 2v4" />
+                </svg>
+              </div>
             </div>
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500/20 to-green-500/20 flex items-center justify-center">
-              <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11.5v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 21v-4a2 2 0 012-2h4a2 2 0 012 2v4" />
-              </svg>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="stat-card bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-slate-700/50 rounded-xl p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-gray-400 text-sm">Last Saved</p>
-              <p class="text-sm font-bold text-white">{{ stats.lastSaved || 'No colors yet' }}</p>
+        <Card class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/50 rounded-xl">
+          <CardContent class="p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-400 text-sm">Last Saved</p>
+                <p class="text-sm font-bold text-white">{{ stats.lastSaved || 'No colors yet' }}</p>
+              </div>
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500/20 to-teal-500/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
             </div>
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500/20 to-teal-500/20 flex items-center justify-center">
-              <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Filters and Search -->
     <div class="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
       <div class="flex flex-wrap gap-3">
-        <button 
+        <Button 
           v-for="filter in filters" 
           :key="filter.id"
           @click="setActiveFilter(filter.id)"
+          variant="outline"
           :class="[
-            'filter-btn px-4 py-2 rounded-lg transition-all duration-300 border',
+            'transition-all duration-300 h-10',
             activeFilter === filter.id 
-              ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border-indigo-500/50' 
-              : 'bg-slate-800/30 text-gray-400 border-slate-700/50 hover:border-slate-600'
+              ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border-indigo-500/50 hover:bg-indigo-500/30 hover:text-indigo-200' 
+              : 'bg-slate-800/30 text-gray-400 border-slate-700/50 hover:bg-slate-700/50 hover:text-gray-300'
           ]"
         >
-          <span class="flex items-center gap-2">
-            <component :is="filter.icon" class="w-4 h-4" />
-            {{ filter.label }}
-          </span>
-        </button>
+          <component :is="filter.icon" class="w-4 h-4 mr-2" />
+          {{ filter.label }}
+        </Button>
         
-        <!-- Color Family Filter -->
-        <div class="relative">
-          <select 
-            v-model="selectedFamily"
-            @change="applyFamilyFilter"
-            class="px-4 py-2 rounded-lg bg-slate-800/30 text-gray-400 border border-slate-700/50 hover:border-slate-600 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent appearance-none cursor-pointer pr-10"
-          >
-            <option value="">All Families</option>
-            <option v-for="family in colorFamilies" :key="family" :value="family">
+        <Select v-model="selectedFamily" @update:modelValue="applyFamilyFilter">
+          <SelectTrigger class="w-[180px] bg-slate-800/30 text-gray-400 border-slate-700/50 hover:border-slate-600 focus:ring-indigo-500/50 h-10">
+            <SelectValue placeholder="All Families" />
+          </SelectTrigger>
+          <SelectContent class="bg-slate-900 border-slate-700 text-gray-300">
+             <SelectItem value="all_families">All Families</SelectItem>
+            <SelectItem v-for="family in colorFamilies" :key="family" :value="family">
               {{ family }}
-            </option>
-          </select>
-          <svg class="absolute right-3 top-3 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       
       <div class="flex items-center gap-3">
-        <!-- Refresh Button -->
-        <button 
+        <Button
           @click="fetchSavedColors"
           :disabled="loading"
-          class="p-2.5 rounded-lg bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-700/50 transition-all duration-300"
+          variant="outline"
+          class="h-10 w-10 p-0 bg-slate-800/30 border-slate-700/50 hover:border-slate-600 hover:bg-slate-700/50"
           title="Refresh colors"
         >
           <svg :class="['w-5 h-5', loading ? 'text-indigo-400 animate-spin' : 'text-gray-400']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-        </button>
+        </Button>
         
-        <!-- Search Input -->
-        <div class="relative">
-          <input 
-            v-model="searchQuery"
-            type="text" 
-            placeholder="Search colors by name, hex, or family..."
-            class="w-full md:w-64 pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg text-gray-300 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all"
-            @input="handleSearchInput"
-          >
-          <svg class="absolute left-3 top-3 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="relative w-full md:w-64">
+          <svg class="absolute left-3 top-3 w-4 h-4 text-gray-500 z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
+          <Input 
+            v-model="searchQuery"
+            type="text" 
+            placeholder="Search colors..."
+            class="pl-10 bg-slate-800/50 border-slate-700/50 text-gray-300 placeholder-gray-500 focus-visible:ring-indigo-500/50 h-10"
+            @input="handleSearchInput"
+          />
         </div>
       </div>
     </div>
 
-    <!-- Color History Grid -->
     <div v-if="filteredColors.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div 
+      <Card 
         v-for="color in filteredColors" 
         :key="color.id"
-        class="color-card group bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/30 rounded-2xl p-5 transition-all duration-500 hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-900/20 hover:scale-[1.02] backdrop-blur-sm"
+        class="group bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-slate-700/30 rounded-2xl transition-all duration-500 hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-900/20 hover:scale-[1.02] backdrop-blur-sm overflow-hidden"
       >
-        <!-- Color Preview Section -->
-        <div class="mb-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-3">
-              <h3 class="text-lg font-semibold text-white truncate max-w-[150px]">{{ color.name }}</h3>
-              <span class="px-2 py-1 text-xs rounded-full bg-slate-700/50 text-gray-300 border border-slate-600">
-                {{ color.color_family }}
-              </span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button @click="copyToClipboard(color.hex_code)" class="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 transition-colors group/copy" title="Copy hex code">
-                <svg class="w-4 h-4 text-gray-400 group-hover/copy:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-              <button @click="toggleFavorite(color.id)" class="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 transition-colors" :title="color.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
-                <svg 
-                  :class="['w-4 h-4', color.is_favorite ? 'text-amber-400 fill-amber-400' : 'text-gray-400']" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </button>
-              <button @click="deleteColor(color.id)" class="p-1.5 rounded-lg bg-slate-700/50 hover:bg-red-500/20 hover:border-red-500/30 transition-colors" title="Delete color">
-                <svg class="w-4 h-4 text-gray-400 hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          
-          <!-- Color Swatch -->
-          <div class="relative h-32 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg">
-            <div 
-              :style="{ backgroundColor: color.hex_code }" 
-              class="w-full h-full transition-all duration-700 group-hover:scale-110"
-            ></div>
-            <!-- Color Overlay Info -->
-            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-              <div class="absolute bottom-3 left-3 right-3">
-                <p class="text-xs text-gray-300">Temperature: {{ color.temperature }}</p>
-                <p class="text-xs text-gray-300 mt-1">Accessibility: {{ color.accessibility }}</p>
+        <CardContent class="p-5">
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <h3 class="text-lg font-semibold text-white truncate max-w-[150px]">{{ color.name }}</h3>
+                <span class="px-2 py-1 text-xs rounded-full bg-slate-700/50 text-gray-300 border border-slate-600">
+                  {{ color.color_family }}
+                </span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Color Information -->
-        <div class="space-y-3">
-          <!-- Color Values -->
-          <div class="grid grid-cols-2 gap-3">
-            <div class="bg-slate-800/30 rounded-lg p-3">
-              <p class="text-xs text-gray-400 mb-1">HEX</p>
               <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded" :style="{ backgroundColor: color.hex_code }"></div>
-                <p class="text-sm font-mono text-gray-300">{{ color.hex_code }}</p>
+                <Button variant="ghost" size="icon" @click="copyToClipboard(color.hex_code)" class="h-8 w-8 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 text-gray-400 hover:text-cyan-400 group/copy">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </Button>
+                <Button variant="ghost" size="icon" @click="toggleFavorite(color.id)" class="h-8 w-8 rounded-lg bg-slate-700/50 hover:bg-slate-600/50" :title="color.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
+                  <svg 
+                    :class="['w-4 h-4', color.is_favorite ? 'text-amber-400 fill-amber-400' : 'text-gray-400']" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </Button>
+                <Button variant="ghost" size="icon" @click="deleteColor(color.id)" class="h-8 w-8 rounded-lg bg-slate-700/50 hover:bg-red-500/20 hover:text-red-400 text-gray-400 transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </Button>
               </div>
-            </div>
-            <div class="bg-slate-800/30 rounded-lg p-3">
-              <p class="text-xs text-gray-400 mb-1">RGB</p>
-              <p class="text-sm font-mono text-gray-300">{{ color.rgb_values }}</p>
-            </div>
-          </div>
-
-          <!-- Color Properties -->
-          <div class="grid grid-cols-3 gap-2">
-            <div class="text-center">
-              <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
-                <span class="text-xs font-bold text-white">{{ color.hue }}°</span>
-              </div>
-              <p class="text-xs text-gray-400">Hue</p>
-            </div>
-            <div class="text-center">
-              <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
-                <span class="text-xs font-bold text-white">{{ color.saturation }}%</span>
-              </div>
-              <p class="text-xs text-gray-400">Sat</p>
-            </div>
-            <div class="text-center">
-              <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
-                <span class="text-xs font-bold text-white">{{ color.lightness }}%</span>
-              </div>
-              <p class="text-xs text-gray-400">Light</p>
-            </div>
-          </div>
-
-          <!-- Usage Details -->
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-sm text-gray-400">Saved</span>
-              </div>
-              <span class="text-sm text-gray-300">{{ formatDate(color.created_at) }}</span>
             </div>
             
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <span class="text-sm text-gray-400">Stability</span>
+            <div class="relative h-32 rounded-xl overflow-hidden border border-slate-700/50 shadow-lg">
+              <div 
+                :style="{ backgroundColor: color.hex_code }" 
+                class="w-full h-full transition-all duration-700 group-hover:scale-110"
+              ></div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div class="absolute bottom-3 left-3 right-3">
+                  <p class="text-xs text-gray-300">Temperature: {{ color.temperature }}</p>
+                  <p class="text-xs text-gray-300 mt-1">Accessibility: {{ color.accessibility }}</p>
+                </div>
               </div>
-              <span class="text-sm text-gray-300">{{ color.stability }}</span>
             </div>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="flex gap-2 pt-3">
-            <button 
-              @click="reuseColor(color)"
-              class="flex-1 py-2 px-4 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 rounded-lg border border-indigo-500/30 hover:border-indigo-400/50 hover:bg-indigo-500/30 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Reuse
-            </button>
-            <button 
-              @click="viewDetails(color)"
-              class="flex-1 py-2 px-4 bg-slate-700/50 text-gray-300 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-600/50 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              Details
-            </button>
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-800/30 rounded-lg p-3">
+                <p class="text-xs text-gray-400 mb-1">HEX</p>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded" :style="{ backgroundColor: color.hex_code }"></div>
+                  <p class="text-sm font-mono text-gray-300">{{ color.hex_code }}</p>
+                </div>
+              </div>
+              <div class="bg-slate-800/30 rounded-lg p-3">
+                <p class="text-xs text-gray-400 mb-1">RGB</p>
+                <p class="text-sm font-mono text-gray-300">{{ color.rgb_values }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div class="text-center">
+                <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
+                  <span class="text-xs font-bold text-white">{{ color.hue }}°</span>
+                </div>
+                <p class="text-xs text-gray-400">Hue</p>
+              </div>
+              <div class="text-center">
+                <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
+                  <span class="text-xs font-bold text-white">{{ color.saturation }}%</span>
+                </div>
+                <p class="text-xs text-gray-400">Sat</p>
+              </div>
+              <div class="text-center">
+                <div class="w-8 h-8 rounded-full mx-auto mb-1 flex items-center justify-center bg-slate-800/50">
+                  <span class="text-xs font-bold text-white">{{ color.lightness }}%</span>
+                </div>
+                <p class="text-xs text-gray-400">Light</p>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-sm text-gray-400">Saved</span>
+                </div>
+                <span class="text-sm text-gray-300">{{ formatDate(color.created_at) }}</span>
+              </div>
+              
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span class="text-sm text-gray-400">Stability</span>
+                </div>
+                <span class="text-sm text-gray-300">{{ color.stability }}</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-3">
+              <Button 
+                @click="reuseColor(color)"
+                class="flex-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400/50 hover:bg-indigo-500/30"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reuse
+              </Button>
+              <Button 
+                @click="viewDetails(color)"
+                variant="outline"
+                class="flex-1 bg-slate-700/50 text-gray-300 border-slate-600 hover:border-slate-500 hover:bg-slate-600/50"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Details
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Empty State -->
     <div v-else-if="!loading" class="text-center py-20">
       <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center">
         <svg class="w-12 h-12 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,95 +278,98 @@
       </div>
       <h3 class="text-2xl font-bold text-gray-400 mb-3">No Saved Colors Yet</h3>
       <p class="text-gray-500 mb-6">Start by creating and saving color blends in the Color Mixing Lab.</p>
-      <button 
+      <Button 
         @click="goToColorMixer"
-        class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 font-medium inline-flex items-center gap-2"
+        class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 px-6 py-6 h-auto"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
         </svg>
         Go to Color Mixer
-      </button>
+      </Button>
     </div>
 
-    <!-- Loading State -->
     <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div v-for="i in 6" :key="i" class="color-card bg-gradient-to-br from-slate-800/40 to-slate-900/40 border border-slate-700/30 rounded-2xl p-5">
-        <div class="animate-pulse">
-          <div class="h-6 bg-slate-700/50 rounded mb-4"></div>
-          <div class="h-32 bg-slate-700/50 rounded-xl mb-4"></div>
-          <div class="space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div class="h-16 bg-slate-700/50 rounded-lg"></div>
-              <div class="h-16 bg-slate-700/50 rounded-lg"></div>
-            </div>
-            <div class="space-y-2">
-              <div class="h-4 bg-slate-700/50 rounded"></div>
-              <div class="h-4 bg-slate-700/50 rounded"></div>
+      <Card v-for="i in 6" :key="i" class="bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-slate-700/30 rounded-2xl">
+        <CardContent class="p-5">
+          <div class="space-y-4">
+            <Skeleton class="h-6 w-1/2 bg-slate-700/50" />
+            <Skeleton class="h-32 w-full rounded-xl bg-slate-700/50" />
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <Skeleton class="h-16 rounded-lg bg-slate-700/50" />
+                <Skeleton class="h-16 rounded-lg bg-slate-700/50" />
+              </div>
+              <div class="space-y-2">
+                <Skeleton class="h-4 w-full bg-slate-700/50" />
+                <Skeleton class="h-4 w-3/4 bg-slate-700/50" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Pagination -->
-    <div v-if="pagination.total > pagination.per_page" class="mt-8 flex items-center justify-center gap-2">
-      <button 
-        @click="changePage(pagination.current_page - 1)"
-        :disabled="pagination.current_page === 1"
-        class="px-4 py-2 rounded-lg bg-slate-800/30 border border-slate-700/50 text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed hover:border-slate-600 hover:text-gray-300 transition-all"
+    <div v-if="pagination.total > pagination.per_page" class="mt-8">
+      <Pagination 
+        :total="pagination.total" 
+        :sibling-count="1" 
+        show-edges 
+        :default-page="1" 
+        :page="pagination.current_page"
+        @update:page="changePage"
       >
-        Previous
-      </button>
-      
-      <div class="flex items-center gap-1">
-        <button 
-          v-for="page in visiblePages" 
-          :key="page"
-          @click="changePage(page)"
-          :class="[
-            'w-10 h-10 rounded-lg flex items-center justify-center transition-all',
-            page === pagination.current_page
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-              : 'bg-slate-800/30 border border-slate-700/50 text-gray-400 hover:border-slate-600 hover:text-gray-300'
-          ]"
-        >
-          {{ page }}
-        </button>
-      </div>
-      
-      <button 
-        @click="changePage(pagination.current_page + 1)"
-        :disabled="pagination.current_page === pagination.last_page"
-        class="px-4 py-2 rounded-lg bg-slate-800/30 border border-slate-700/50 text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed hover:border-slate-600 hover:text-gray-300 transition-all"
-      >
-        Next
-      </button>
+        <PaginationContent class="gap-2">
+          <PaginationItem>
+            <PaginationPrevious 
+              @click="changePage(pagination.current_page - 1)" 
+              class="bg-slate-800/30 border-slate-700/50 text-gray-400 hover:bg-slate-700/50 hover:text-gray-300 cursor-pointer"
+              :disabled="pagination.current_page === 1"
+            />
+          </PaginationItem>
+
+          <template v-for="page in visiblePages" :key="page">
+            <PaginationItem v-if="page === '...'">
+               <PaginationEllipsis class="text-gray-500" />
+            </PaginationItem>
+            <PaginationItem v-else>
+               <Button
+                variant="outline"
+                @click="changePage(page)"
+                :class="[
+                  'w-10 h-10 p-0',
+                  page === pagination.current_page
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 hover:from-indigo-600 hover:to-purple-700'
+                    : 'bg-slate-800/30 border-slate-700/50 text-gray-400 hover:border-slate-600 hover:bg-slate-700/50 hover:text-gray-300'
+                ]"
+              >
+                {{ page }}
+              </Button>
+            </PaginationItem>
+          </template>
+
+          <PaginationItem>
+            <PaginationNext 
+              @click="changePage(pagination.current_page + 1)" 
+              class="bg-slate-800/30 border-slate-700/50 text-gray-400 hover:bg-slate-700/50 hover:text-gray-300 cursor-pointer"
+              :disabled="pagination.current_page === pagination.last_page"
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
 
-    <!-- Color Details Modal -->
-    <transition name="modal-fade">
-      <div v-if="showDetailsModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div class="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-          <!-- Animated background effect -->
-          <div class="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-violet-500/10 rounded-3xl blur-2xl animate-pulse"></div>
-          
-          <div class="relative bg-gradient-to-br from-slate-900 to-gray-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
-            <!-- Modal header -->
+    <Dialog v-model:open="showDetailsModal">
+      <DialogContent class="!max-w-[95vw] !w-[95vw] md:!w-full !max-h-[95vh] overflow-y-auto p-0 border-0 bg-transparent shadow-none">
+        <div class="relative w-full">
+           <div class="absolute -inset-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-violet-500/10 rounded-3xl blur-2xl animate-pulse"></div>
+           
+           <div class="relative bg-gradient-to-br from-slate-900 to-gray-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
             <div class="relative p-6 border-b border-slate-700/50">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-2xl font-bold text-white">Color Details</h3>
-                <button 
-                  @click="closeDetailsModal"
-                  class="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
-                >
-                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
               
-              <!-- Main color info -->
               <div class="flex items-center gap-4">
                 <div 
                   class="w-20 h-20 rounded-xl border-4 border-slate-700/50 shadow-lg"
@@ -384,10 +378,10 @@
                 <div>
                   <h4 class="text-xl font-bold text-white">{{ selectedColor?.name }}</h4>
                   <div class="flex items-center gap-3 mt-2">
-                    <span class="px-3 py-1 rounded-full bg-slate-800/50 text-gray-300 border border-slate-700">
+                    <span class="px-3 py-1 text-sm rounded-full bg-slate-800/50 text-gray-300 border border-slate-700">
                       {{ selectedColor?.color_family }}
                     </span>
-                    <span class="px-3 py-1 rounded-full bg-slate-800/50 text-gray-300 border border-slate-700 flex items-center gap-1">
+                    <span class="px-3 py-1 text-sm rounded-full bg-slate-800/50 text-gray-300 border border-slate-700 flex items-center gap-1">
                       <svg v-if="selectedColor?.is_favorite" class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
@@ -398,65 +392,46 @@
               </div>
             </div>
 
-            <!-- Modal body -->
             <div class="p-6">
-              <!-- Color Codes Section -->
               <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <!-- HEX Code -->
                 <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                   <p class="text-sm text-gray-400 mb-2">HEX Color Code</p>
                   <div class="flex items-center justify-between">
                     <p class="text-lg font-mono text-white font-bold">{{ selectedColor?.hex_code }}</p>
-                    <button 
-                      @click="copyToClipboard(selectedColor?.hex_code)"
-                      class="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 transition-colors"
-                      title="Copy HEX"
-                    >
-                      <svg class="w-4 h-4 text-gray-400 hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <Button variant="ghost" size="icon" @click="copyToClipboard(selectedColor?.hex_code)" class="h-8 w-8 text-gray-400 hover:text-cyan-400 hover:bg-slate-700/50">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
-                <!-- RGB Values -->
                 <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                   <p class="text-sm text-gray-400 mb-2">RGB Values</p>
                   <div class="flex items-center justify-between">
                     <p class="text-lg font-mono text-white font-bold">{{ selectedColor?.rgb_values }}</p>
-                    <button 
-                      @click="copyToClipboard(selectedColor?.rgb_values)"
-                      class="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 transition-colors"
-                      title="Copy RGB"
-                    >
-                      <svg class="w-4 h-4 text-gray-400 hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <Button variant="ghost" size="icon" @click="copyToClipboard(selectedColor?.rgb_values)" class="h-8 w-8 text-gray-400 hover:text-cyan-400 hover:bg-slate-700/50">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
-                <!-- HSL Values -->
                 <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                   <p class="text-sm text-gray-400 mb-2">HSL Values</p>
                   <div class="flex items-center justify-between">
                     <p class="text-lg font-mono text-white font-bold">{{ selectedColor?.hsl_values }}</p>
-                    <button 
-                      @click="copyToClipboard(selectedColor?.hsl_values)"
-                      class="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 transition-colors"
-                      title="Copy HSL"
-                    >
-                      <svg class="w-4 h-4 text-gray-400 hover:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <Button variant="ghost" size="icon" @click="copyToClipboard(selectedColor?.hsl_values)" class="h-8 w-8 text-gray-400 hover:text-cyan-400 hover:bg-slate-700/50">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
 
-              <!-- Color Properties Grid -->
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <!-- Hue -->
                 <div class="bg-slate-800/30 rounded-xl p-4 text-center border border-slate-700/50">
                   <div class="w-16 h-16 rounded-full mx-auto mb-2 flex items-center justify-center" 
                        :style="{ background: 'conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)' }">
@@ -467,7 +442,6 @@
                   <p class="text-sm text-gray-400">Hue Angle</p>
                 </div>
                 
-                <!-- Saturation -->
                 <div class="bg-slate-800/30 rounded-xl p-4 text-center border border-slate-700/50">
                   <div class="w-16 h-16 rounded-full mx-auto mb-2 flex items-center justify-center" 
                        :style="{ background: `conic-gradient(from 0deg, ${selectedColor?.hex_code || '#000000'}00, ${selectedColor?.hex_code || '#000000'}ff)` }">
@@ -478,7 +452,6 @@
                   <p class="text-sm text-gray-400">Saturation</p>
                 </div>
                 
-                <!-- Lightness -->
                 <div class="bg-slate-800/30 rounded-xl p-4 text-center border border-slate-700/50">
                   <div class="w-16 h-16 rounded-full mx-auto mb-2 flex items-center justify-center" 
                        :style="{ background: 'linear-gradient(to bottom, #ffffff, #000000)' }">
@@ -489,7 +462,6 @@
                   <p class="text-sm text-gray-400">Lightness</p>
                 </div>
                 
-                <!-- Contrast Ratio -->
                 <div class="bg-slate-800/30 rounded-xl p-4 text-center border border-slate-700/50">
                   <div class="w-16 h-16 rounded-full mx-auto mb-2 flex items-center justify-center" 
                        :style="{ background: `linear-gradient(135deg, ${selectedColor?.hex_code || '#000000'}, #ffffff)` }">
@@ -501,11 +473,8 @@
                 </div>
               </div>
 
-              <!-- Advanced Properties -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- Left Column -->
                 <div class="space-y-4">
-                  <!-- Color Characteristics -->
                   <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                     <h5 class="text-lg font-semibold text-white mb-3">Color Characteristics</h5>
                     <div class="space-y-3">
@@ -532,7 +501,6 @@
                     </div>
                   </div>
                   
-                  <!-- Luminance -->
                   <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                     <h5 class="text-lg font-semibold text-white mb-3">Luminance</h5>
                     <div class="space-y-2">
@@ -551,14 +519,10 @@
                       </p>
                     </div>
                   </div>
-                  
-                  
                 </div>
                 
-                <!-- Right Column -->
                 <div class="space-y-4">
-                  <!-- Source Colors -->
-                   <div v-if="selectedColor?.source_colors && selectedColor.source_colors.length > 0" 
+                  <div v-if="selectedColor?.source_colors && selectedColor.source_colors.length > 0" 
                        class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                     <h5 class="text-lg font-semibold text-white mb-3">Source Colors</h5>
                     <div class="space-y-3">
@@ -587,8 +551,6 @@
                     </div>
                   </div>
                   
-                  
-                  <!-- Metadata -->
                   <div class="bg-slate-800/30 rounded-xl p-4 border border-slate-700/50">
                     <h5 class="text-lg font-semibold text-white mb-3">Metadata</h5>
                     <div class="space-y-2">
@@ -610,89 +572,91 @@
               </div>
             </div>
 
-            <!-- Modal footer -->
             <div class="p-6 border-t border-slate-700/50 bg-slate-900/50">
               <div class="flex flex-col sm:flex-row gap-3">
-                <button 
+                <Button 
                   @click="reuseColor(selectedColor)"
-                  class="flex-1 py-3 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2"
+                  class="flex-1 py-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Reuse This Color
-                </button>
-                <button 
+                </Button>
+                <Button 
                   @click="closeDetailsModal"
-                  class="flex-1 py-3 px-6 bg-slate-800/50 text-gray-300 rounded-xl font-semibold border border-slate-700 hover:bg-slate-700/50 hover:text-white transition-all duration-300"
+                  variant="outline"
+                  class="flex-1 py-6 bg-slate-800/50 text-gray-300 rounded-xl font-semibold border-slate-700 hover:bg-slate-700/50 hover:text-white transition-all duration-300"
                 >
                   Close
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+           </div>
         </div>
-      </div>
-    </transition>
+      </DialogContent>
+    </Dialog>
 
-    <!-- Toast Notification -->
-    <div v-if="toast.show" class="fixed bottom-4 right-4 z-50 animate-slide-up">
-      <div :class="[
-        'border rounded-xl p-4 shadow-2xl max-w-sm',
-        toast.type === 'success' 
-          ? 'bg-gradient-to-r from-emerald-900/80 to-green-900/80 border-emerald-700/50'
-          : toast.type === 'error'
-          ? 'bg-gradient-to-r from-red-900/80 to-rose-900/80 border-red-700/50'
-          : 'bg-gradient-to-r from-slate-800 to-slate-900 border-slate-700'
-      ]">
-        <div class="flex items-center gap-3">
-          <div :class="[
-            'w-10 h-10 rounded-full flex items-center justify-center',
-            toast.type === 'success'
-              ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20'
-              : toast.type === 'error'
-              ? 'bg-gradient-to-r from-red-500/20 to-rose-500/20'
-              : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20'
-          ]">
-            <svg class="w-5 h-5" :class="[
-              toast.type === 'success' ? 'text-emerald-400' :
-              toast.type === 'error' ? 'text-red-400' :
-              'text-cyan-400'
-            ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path v-if="toast.type === 'success'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <path v-else-if="toast.type === 'error'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.882 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div>
-            <p class="text-white font-medium">{{ toast.message }}</p>
-            <p class="text-gray-300 text-sm">{{ toast.detail }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script>
 import api from '@/utils/axios'
+// Shadcn Components
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Toaster } from '@/components/ui/sonner'
+import { toast } from 'vue-sonner'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 
 export default {
   name: 'ColorHistory',
+  components: {
+    Card, CardContent, CardHeader, CardTitle,
+    Button,
+    Input,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Skeleton,
+    Toaster,
+    Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious,
+    // Icon Components preserved as inline SVGs in template or passed here if needed, 
+    // but the template logic mostly handles them inline for exact fidelity.
+    AllColorsIcon: {
+      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+      </svg>`
+    },
+    RecentIcon: {
+      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>`
+    },
+    FavoriteIcon: {
+      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>`
+    }
+  },
   data() {
     return {
       loading: false,
       searchQuery: '',
       activeFilter: 'all',
-      selectedFamily: '',
+      selectedFamily: 'all_families', // Changed default to match a string value for Select
       showDetailsModal: false,
       selectedColor: null,
-      toast: {
-        show: false,
-        message: '',
-        detail: '',
-        type: 'info'
-      },
       stats: {
         totalColors: 0,
         totalFavorites: 0,
@@ -745,8 +709,8 @@ export default {
           break
       }
       
-      // Apply family filter
-      if (this.selectedFamily) {
+      // Apply family filter - ignore "all_families" value
+      if (this.selectedFamily && this.selectedFamily !== 'all_families') {
         filtered = filtered.filter(color => color.color_family === this.selectedFamily)
       }
       
@@ -784,7 +748,7 @@ export default {
           page: this.pagination.current_page,
           per_page: this.pagination.per_page,
           search: this.searchQuery || undefined,
-          family: this.selectedFamily || undefined,
+          family: (this.selectedFamily && this.selectedFamily !== 'all_families') ? this.selectedFamily : undefined,
           favorites_only: this.activeFilter === 'favorites' ? true : undefined
         }
         
@@ -819,7 +783,6 @@ export default {
         
         if (response.data.success) {
           const stats = response.data.data.stats
-          const distribution = response.data.data.family_distribution
           
           this.stats = {
             totalColors: stats.total_colors || 0,
@@ -1013,13 +976,13 @@ export default {
         palettes: palettes
       }
       this.showDetailsModal = true
-      document.body.style.overflow = 'hidden'
+      // UPDATED: Removed manual overflow handling as Dialog handles it
     },
     
     closeDetailsModal() {
       this.showDetailsModal = false
       this.selectedColor = null
-      document.body.style.overflow = 'auto'
+      // UPDATED: Removed manual overflow handling
     },
     
     reuseColor(color) {
@@ -1094,39 +1057,19 @@ export default {
       return 'text-gray-400'
     },
     
-    getPaletteColors(palette) {
-      if (!palette) return []
-      if (Array.isArray(palette)) return palette
-      if (typeof palette === 'string') {
-        try {
-          const parsed = JSON.parse(palette)
-          return Array.isArray(parsed) ? parsed : []
-        } catch {
-          return palette.split(',').map(c => c.trim())
-        }
-      }
-      return []
-    },
-    
-    hasPalettes(palettes) {
-      if (!palettes) return false
-      const mono = this.getPaletteColors(palettes.monochromatic)
-      const analog = this.getPaletteColors(palettes.analogous)
-      const comp = this.getPaletteColors(palettes.complementary)
-      return mono.length > 0 || analog.length > 0 || comp.length > 0
-    },
-    
     showToast(message, detail, type = 'info') {
-      this.toast = {
-        show: true,
-        message,
-        detail,
-        type
+      const options = {
+        description: detail,
       }
       
-      setTimeout(() => {
-        this.toast.show = false
-      }, 3000)
+      // Map colors similar to the original design
+      if (type === 'success') {
+         toast.success(message, { ...options, class: 'bg-emerald-900 border-emerald-700 text-white' })
+      } else if (type === 'error') {
+         toast.error(message, { ...options, class: 'bg-red-900 border-red-700 text-white' })
+      } else {
+         toast.info(message, { ...options, class: 'bg-slate-800 border-slate-700 text-white' })
+      }
     }
   },
   mounted() {
@@ -1141,138 +1084,13 @@ export default {
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout)
     }
-    // Ensure body scroll is restored
-    document.body.style.overflow = 'auto'
   },
-  watch: {
-    showDetailsModal(newVal) {
-      if (newVal) {
-        document.body.style.overflow = 'hidden'
-      } else {
-        document.body.style.overflow = 'auto'
-      }
-    }
-  },
-  components: {
-    AllColorsIcon: {
-      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-      </svg>`
-    },
-    RecentIcon: {
-      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>`
-    },
-    FavoriteIcon: {
-      template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-      </svg>`
-    }
-  }
+  // UPDATED: Removed watch on showDetailsModal to prevent fighting with Dialog component over overflow style
 }
 </script>
 
 <style scoped>
-.color-history-container {
-  min-height: 100vh;
-}
-
-.stat-card {
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-}
-
-.color-card {
-  backdrop-filter: blur(10px);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.color-card:hover {
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-}
-
-.filter-btn {
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.filter-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* Modal Animations */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active .modal-content,
-.modal-fade-leave-active .modal-content {
-  transition: transform 0.3s ease;
-}
-
-.modal-fade-enter-from .modal-content {
-  transform: scale(0.95);
-}
-
-.modal-fade-leave-to .modal-content {
-  transform: scale(1.05);
-}
-
-/* Animations */
-@keyframes slide-up {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Custom scrollbar */
+/* Ensure custom scrollbar matches the original */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -1289,39 +1107,5 @@ export default {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to bottom, #6366f1, #8b5cf6);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .color-history-container {
-    padding: 1rem;
-  }
-  
-  .stat-card {
-    padding: 0.75rem;
-  }
-  
-  .color-card {
-    padding: 1rem;
-  }
-  
-  .filter-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .color-history-container {
-    padding: 0.75rem;
-  }
-  
-  h1 {
-    font-size: 1.75rem;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 </style>

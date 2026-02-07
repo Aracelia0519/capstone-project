@@ -1,130 +1,129 @@
 <template>
   <div class="p-4 md:p-6">
-    <!-- Page Header -->
     <div class="mb-6 md:mb-8">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Distributor Dashboard</h1>
       <p class="text-gray-600 mt-2">Overview of your paint distribution operations</p>
     </div>
 
-    <!-- Stats Cards Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-      <!-- Total Paint Products Card -->
-      <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-3">
-          <div class="p-2 bg-blue-50 rounded-lg">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
+      
+      <Card class="bg-white hover:shadow-md transition-shadow border-gray-100">
+        <CardContent class="p-4 md:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="p-2 bg-blue-50 rounded-lg">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+              </svg>
+            </div>
+            <Badge variant="secondary" class="text-green-600 bg-green-50 hover:bg-green-100 px-2 py-1 rounded-full text-sm">
+              +2.5%
+            </Badge>
           </div>
-          <span class="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-            +2.5%
-          </span>
-        </div>
-        <h3 class="text-sm font-medium text-gray-500 mb-1">Total Paint Products</h3>
-        <div class="flex items-baseline">
-          <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ totalProducts }}</span>
-          <span class="text-gray-500 ml-2">products</span>
-        </div>
-      </div>
+          <h3 class="text-sm font-medium text-gray-500 mb-1">Total Paint Products</h3>
+          <div class="flex items-baseline">
+            <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ totalProducts }}</span>
+            <span class="text-gray-500 ml-2">products</span>
+          </div>
+        </CardContent>
+      </Card>
 
-      <!-- Current Inventory Card -->
-      <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-3">
-          <div class="p-2 bg-green-50 rounded-lg">
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-            </svg>
+      <Card class="bg-white hover:shadow-md transition-shadow border-gray-100">
+        <CardContent class="p-4 md:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="p-2 bg-green-50 rounded-lg">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+              </svg>
+            </div>
           </div>
-        </div>
-        <h3 class="text-sm font-medium text-gray-500 mb-1">Current Inventory Level</h3>
-        <div class="flex items-baseline">
-          <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ formatNumber(inventoryLevel) }}</span>
-          <span class="text-gray-500 ml-2">units</span>
-        </div>
-        <div class="mt-3">
-          <div class="w-full bg-gray-200 rounded-full h-2">
-            <div class="bg-green-500 h-2 rounded-full" :style="{ width: `${inventoryPercentage}%` }"></div>
+          <h3 class="text-sm font-medium text-gray-500 mb-1">Current Inventory Level</h3>
+          <div class="flex items-baseline">
+            <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ formatNumber(inventoryLevel) }}</span>
+            <span class="text-gray-500 ml-2">units</span>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Capacity: {{ inventoryPercentage }}%</p>
-        </div>
-      </div>
+          <div class="mt-3">
+            <Progress :model-value="inventoryPercentage" class="h-2 bg-gray-200" indicator-class="bg-green-500" />
+            <p class="text-xs text-gray-500 mt-1">Capacity: {{ inventoryPercentage }}%</p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <!-- Low Stock Alerts Card -->
-      <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-3">
-          <div class="p-2 bg-red-50 rounded-lg">
-            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.286 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-            </svg>
+      <Card class="bg-white hover:shadow-md transition-shadow border-gray-100">
+        <CardContent class="p-4 md:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="p-2 bg-red-50 rounded-lg">
+              <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.286 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              </svg>
+            </div>
           </div>
-        </div>
-        <h3 class="text-sm font-medium text-gray-500 mb-1">Low Stock Alerts</h3>
-        <div class="flex items-baseline">
-          <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ lowStockAlerts }}</span>
-          <span class="text-gray-500 ml-2">items</span>
-        </div>
-        <p class="text-sm text-red-600 mt-2" v-if="lowStockAlerts > 0">
-          {{ getLowStockMessage() }}
-        </p>
-        <p class="text-sm text-green-600 mt-2" v-else>
-          All items are sufficiently stocked
-        </p>
-      </div>
+          <h3 class="text-sm font-medium text-gray-500 mb-1">Low Stock Alerts</h3>
+          <div class="flex items-baseline">
+            <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ lowStockAlerts }}</span>
+            <span class="text-gray-500 ml-2">items</span>
+          </div>
+          <p class="text-sm text-red-600 mt-2" v-if="lowStockAlerts > 0">
+            {{ getLowStockMessage() }}
+          </p>
+          <p class="text-sm text-green-600 mt-2" v-else>
+            All items are sufficiently stocked
+          </p>
+        </CardContent>
+      </Card>
 
-      <!-- Total Orders Card -->
-      <div class="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-3">
-          <div class="p-2 bg-purple-50 rounded-lg">
-            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-            </svg>
+      <Card class="bg-white hover:shadow-md transition-shadow border-gray-100">
+        <CardContent class="p-4 md:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="p-2 bg-purple-50 rounded-lg">
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+              </svg>
+            </div>
+            <Badge variant="secondary" class="text-purple-600 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded-full text-sm">
+              +{{ recentOrders }}
+            </Badge>
           </div>
-          <span class="text-sm font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-            +{{ recentOrders }}
-          </span>
-        </div>
-        <h3 class="text-sm font-medium text-gray-500 mb-1">Total Orders / Requests</h3>
-        <div class="flex items-baseline">
-          <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ formatNumber(totalOrders) }}</span>
-          <span class="text-gray-500 ml-2">orders</span>
-        </div>
-        <p class="text-sm text-gray-600 mt-2">{{ recentOrders }} new this week</p>
-      </div>
+          <h3 class="text-sm font-medium text-gray-500 mb-1">Total Orders / Requests</h3>
+          <div class="flex items-baseline">
+            <span class="text-2xl md:text-3xl font-bold text-gray-800">{{ formatNumber(totalOrders) }}</span>
+            <span class="text-gray-500 ml-2">orders</span>
+          </div>
+          <p class="text-sm text-gray-600 mt-2">{{ recentOrders }} new this week</p>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Recent Transactions Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <Card class="bg-white shadow-sm border border-gray-100 overflow-hidden">
       <div class="px-4 md:px-6 py-4 border-b border-gray-200">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between">
           <h2 class="text-lg md:text-xl font-semibold text-gray-800">Recent Transactions</h2>
-          <button @click="viewAllTransactions" class="mt-2 sm:mt-0 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center">
+          <Button variant="ghost" @click="viewAllTransactions" class="mt-2 sm:mt-0 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium flex items-center p-0 h-auto">
             View All
             <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
-          </button>
+          </Button>
         </div>
         <p class="text-gray-600 text-sm mt-1">Last 5 transactions from your distributors</p>
       </div>
 
-      <!-- Transactions Table -->
       <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Order ID</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Service Provider</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700 hidden sm:table-cell">Date</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Amount</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Status</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="transaction in recentTransactions" :key="transaction.id" class="hover:bg-gray-50">
-              <td class="py-3 px-4 md:px-6">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Order ID</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Service Provider</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700 hidden sm:table-cell">Date</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Amount</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-medium text-gray-700">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-gray-200">
+            <TableRow v-for="transaction in recentTransactions" :key="transaction.id" class="hover:bg-gray-50">
+              <TableCell class="py-3 px-4 md:px-6">
                 <span class="font-medium text-gray-900">#{{ transaction.id }}</span>
-              </td>
-              <td class="py-3 px-4 md:px-6">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,55 +135,79 @@
                     <p class="text-sm text-gray-500">{{ transaction.items }} items</p>
                   </div>
                 </div>
-              </td>
-              <td class="py-3 px-4 md:px-6 text-gray-600 hidden sm:table-cell">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6 text-gray-600 hidden sm:table-cell">
                 {{ formatDate(transaction.date) }}
-              </td>
-              <td class="py-3 px-4 md:px-6">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
                 <span class="font-medium text-gray-900">₱{{ formatNumber(transaction.amount) }}</span>
-              </td>
-              <td class="py-3 px-4 md:px-6">
-                <span :class="getStatusClasses(transaction.status)" class="px-3 py-1 rounded-full text-xs font-medium">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
+                <Badge :class="getStatusClasses(transaction.status)" class="px-3 py-1 rounded-full text-xs font-medium hover:opacity-90 border-0">
                   {{ transaction.status }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </Badge>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
-      <!-- Empty State -->
       <div v-if="recentTransactions.length === 0" class="text-center py-8">
         <svg class="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
         <p class="text-gray-500">No recent transactions found</p>
       </div>
-    </div>
+    </Card>
 
-    <!-- Quick Actions (Mobile Only) -->
     <div class="mt-6 sm:hidden">
       <div class="grid grid-cols-2 gap-3">
-        <button @click="refreshData" class="bg-white border border-gray-300 rounded-lg p-3 flex items-center justify-center hover:bg-gray-50">
+        <Button variant="outline" @click="refreshData" class="w-full bg-white border-gray-300 p-3 h-auto hover:bg-gray-50">
           <svg class="w-5 h-5 text-gray-700 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
-          Refresh
-        </button>
-        <button @click="viewInventory" class="bg-blue-600 text-white rounded-lg p-3 flex items-center justify-center hover:bg-blue-700">
+          <span class="text-gray-700">Refresh</span>
+        </Button>
+        <Button @click="viewInventory" class="w-full bg-blue-600 text-white p-3 h-auto hover:bg-blue-700">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
           </svg>
           View Inventory
-        </button>
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
 export default {
   name: 'DistributorDashboard',
+  components: {
+    Card,
+    CardContent,
+    Button,
+    Badge,
+    Progress,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+  },
   data() {
     return {
       totalProducts: 156,
@@ -289,33 +312,7 @@ export default {
 </script>
 
 <style scoped>
-/* Custom scrollbar for better mobile experience */
-@media (max-width: 640px) {
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar {
-    height: 4px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 2px;
-  }
-}
-
-/* Smooth hover transitions */
-.bg-white {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Responsive text sizing */
+/* Responsive text sizing from original */
 @media (max-width: 640px) {
   :deep(h1) {
     font-size: 1.5rem;
@@ -333,19 +330,5 @@ export default {
 /* Card hover effects */
 .hover\\:shadow-md:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* Loading skeleton animation (if needed later) */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

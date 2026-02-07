@@ -1,1278 +1,363 @@
 <template>
-  <div class="dashboard-container">
-    <!-- Dashboard Header -->
-    <div class="dashboard-header">
-      <div class="header-main">
-        <h1><i class="fas fa-tachometer-alt"></i> System Dashboard</h1>
-        <div class="mobile-date" v-if="isMobile">
-          <i class="far fa-calendar-alt"></i> {{ shortDate }}
-        </div>
-      </div>
-      <div class="header-actions">
-        <button class="refresh-btn" @click="refreshData">
-          <i class="fas fa-sync-alt"></i> 
-          <span class="btn-text">Refresh</span>
-        </button>
-        <div class="date-display" v-if="!isMobile">
-          <i class="far fa-calendar-alt"></i> {{ currentDate }}
-        </div>
-      </div>
-    </div>
+  <div class="relative min-h-screen w-full overflow-hidden bg-white p-4 md:p-8 font-sans">
+    
+    <div class="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-blue-500/5 blur-[80px]"></div>
+    <div class="pointer-events-none absolute -bottom-32 -left-32 h-[500px] w-[500px] rounded-full bg-purple-500/5 blur-[80px]"></div>
 
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-      <!-- Total Users Card -->
-      <div class="stat-card" style="border-left: 4px solid #4A90E2;">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #4A90E2, #357ABD);">
-          <i class="fas fa-users"></i>
-        </div>
-        <div class="stat-content">
-          <h3>Total Users</h3>
-          <div class="stat-value">{{ stats.totalUsers }}</div>
-          <div class="stat-breakdown">
-            <span class="role-badge admin">Admins: {{ stats.usersByRole.admin }}</span>
-            <span class="role-badge distributor">Distributors: {{ stats.usersByRole.distributor }}</span>
-            <span class="role-badge service-provider">Service: {{ stats.usersByRole.serviceProvider }}</span>
-            <span class="role-badge client">Clients: {{ stats.usersByRole.client }}</span>
+    <div class="relative z-10 mx-auto w-full max-w-[1400px] space-y-8">
+      
+      <header class="flex flex-col gap-4 rounded-xl bg-white p-5 border shadow-sm md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+          <div class="flex items-center gap-3">
+            <i class="fas fa-tachometer-alt text-2xl text-[#4A90E2]"></i>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-800">System Dashboard</h1>
+          </div>
+          <div v-if="isMobile" class="flex items-center gap-2 rounded-lg border bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
+            <i class="far fa-calendar-alt text-[#4A90E2]"></i> {{ shortDate }}
           </div>
         </div>
-      </div>
 
-      <!-- Distributors Card -->
-      <div class="stat-card" style="border-left: 4px solid #51C16B;">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #51C16B, #3DA857);">
-          <i class="fas fa-truck"></i>
-        </div>
-        <div class="stat-content">
-          <h3>Active Distributors</h3>
-          <div class="stat-value">{{ stats.totalDistributors }}</div>
-          <div class="stat-subtext">
-            <span class="trend positive">
-              <i class="fas fa-arrow-up"></i> 12% this month
-            </span>
-          </div>
-          <div class="mini-chart">
-            <div class="chart-bar" style="width: 70%; background-color: #51C16B;"></div>
-            <div class="chart-bar" style="width: 85%; background-color: #51C16B;"></div>
-            <div class="chart-bar" style="width: 60%; background-color: #51C16B;"></div>
+        <div class="flex flex-wrap items-center gap-3">
+          <Button 
+            @click="refreshData" 
+            class="bg-gradient-to-r from-[#4A90E2] to-[#357ABD] text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+          >
+            <i class="fas fa-sync-alt mr-2"></i>
+            <span class="hidden sm:inline">Refresh</span>
+          </Button>
+          
+          <div v-if="!isMobile" class="flex items-center gap-2 rounded-md border bg-white px-5 py-2.5 text-sm font-medium text-slate-600 shadow-sm">
+            <i class="far fa-calendar-alt text-[#4A90E2]"></i> {{ currentDate }}
           </div>
         </div>
-      </div>
+      </header>
 
-      <!-- Service Providers Card -->
-      <div class="stat-card" style="border-left: 4px solid #FF6B6B;">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #FF6B6B, #E05555);">
-          <i class="fas fa-tools"></i>
-        </div>
-        <div class="stat-content">
-          <h3>Service Providers</h3>
-          <div class="stat-value">{{ stats.totalServiceProviders }}</div>
-          <div class="stat-subtext">
-            <span class="status active">{{ stats.activeServiceProviders }} Active</span>
+      <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        
+        <Card class="border-l-4 border-l-[#4A90E2] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
+          <div class="p-6 flex gap-5">
+            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4A90E2] to-[#357ABD] text-white shadow-md">
+              <i class="fas fa-users text-2xl"></i>
+            </div>
+            <div class="w-full space-y-2">
+              <h3 class="text-sm font-semibold text-slate-500">Total Users</h3>
+              <div class="text-4xl font-bold text-slate-800">{{ stats.totalUsers }}</div>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <Badge variant="secondary" class="bg-blue-50 text-blue-700 hover:bg-blue-100">Admins: {{ stats.usersByRole.admin }}</Badge>
+                <Badge variant="secondary" class="bg-green-50 text-green-700 hover:bg-green-100">Dist: {{ stats.usersByRole.distributor }}</Badge>
+                <Badge variant="secondary" class="bg-orange-50 text-orange-700 hover:bg-orange-100">Service: {{ stats.usersByRole.serviceProvider }}</Badge>
+                <Badge variant="secondary" class="bg-purple-50 text-purple-700 hover:bg-purple-100">Clients: {{ stats.usersByRole.client }}</Badge>
+              </div>
+            </div>
           </div>
-          <div class="progress-container">
-            <div class="progress-bar" :style="{ width: stats.serviceProviderActivity + '%' }"></div>
-            <span>Activity: {{ stats.serviceProviderActivity }}%</span>
+        </Card>
+
+        <Card class="border-l-4 border-l-[#51C16B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
+          <div class="p-6 flex gap-5">
+            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#51C16B] to-[#3DA857] text-white shadow-md">
+              <i class="fas fa-truck text-2xl"></i>
+            </div>
+            <div class="w-full space-y-1">
+              <h3 class="text-sm font-semibold text-slate-500">Active Distributors</h3>
+              <div class="text-4xl font-bold text-slate-800">{{ stats.totalDistributors }}</div>
+              <div class="text-sm font-medium text-[#51C16B] flex items-center gap-1">
+                <i class="fas fa-arrow-up text-xs"></i> 12% this month
+              </div>
+              <div class="flex items-end gap-1 h-5 mt-3">
+                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[70%]"></div>
+                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[85%]"></div>
+                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[60%]"></div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </Card>
 
-      <!-- Color Customizations Card -->
-      <div class="stat-card" style="border-left: 4px solid #9B59B6;">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #9B59B6, #8E44AD);">
-          <i class="fas fa-palette"></i>
-        </div>
-        <div class="stat-content">
-          <h3>Color Mixes</h3>
-          <div class="stat-value">{{ stats.totalColorCustomizations }}</div>
-          <div class="stat-subtext">From Unity System</div>
-          <div class="color-preview">
-            <div 
-              v-for="color in recentColors" 
-              :key="color.id"
-              class="color-dot"
-              :style="{ backgroundColor: color.hex }"
-              :title="color.name"
-            ></div>
-            <div class="color-count">+{{ recentColors.length }} more</div>
+        <Card class="border-l-4 border-l-[#FF6B6B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
+          <div class="p-6 flex gap-5">
+            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF6B6B] to-[#E05555] text-white shadow-md">
+              <i class="fas fa-tools text-2xl"></i>
+            </div>
+            <div class="w-full space-y-1">
+              <h3 class="text-sm font-semibold text-slate-500">Service Providers</h3>
+              <div class="text-4xl font-bold text-slate-800">{{ stats.totalServiceProviders }}</div>
+              <p class="text-sm text-slate-500"><span class="font-bold text-[#FF6B6B]">{{ stats.activeServiceProviders }} Active</span></p>
+              <div class="space-y-1 pt-2">
+                <Progress :model-value="stats.serviceProviderActivity" class="h-2 bg-slate-100" indicator-class="bg-[#FF6B6B]" />
+                <div class="flex justify-end text-xs text-slate-400">Activity: {{ stats.serviceProviderActivity }}%</div>
+              </div>
+            </div>
           </div>
+        </Card>
+
+        <Card class="border-l-4 border-l-[#9B59B6] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
+          <div class="p-6 flex gap-5">
+            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#9B59B6] to-[#8E44AD] text-white shadow-md">
+              <i class="fas fa-palette text-2xl"></i>
+            </div>
+            <div class="w-full space-y-1">
+              <h3 class="text-sm font-semibold text-slate-500">Color Mixes</h3>
+              <div class="text-4xl font-bold text-slate-800">{{ stats.totalColorCustomizations }}</div>
+              <p class="text-sm text-slate-400">From Unity System</p>
+              
+              <div class="flex items-center -space-x-2 pt-3">
+                <TooltipProvider v-for="color in recentColors" :key="color.id">
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <div 
+                        class="h-7 w-7 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110 hover:z-10 cursor-help"
+                        :style="{ backgroundColor: color.hex }"
+                      ></div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{{ color.name }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span class="pl-4 text-sm text-slate-500 font-medium">+{{ recentColors.length }} more</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card class="overflow-hidden border shadow-sm bg-white">
+        <div class="flex flex-wrap items-center justify-between p-6 gap-4">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-history text-[#4A90E2] text-xl"></i>
+            <h2 class="text-xl font-bold text-slate-800">Recent Activity</h2>
+          </div>
+          <Button variant="outline" class="border-[#4A90E2] text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white transition-colors" @click="viewAllActivity">
+            View All <i class="fas fa-arrow-right ml-2"></i>
+          </Button>
         </div>
-      </div>
-    </div>
+        
+        <div class="overflow-x-auto">
+          <Table>
+            <TableHeader class="bg-slate-50">
+              <TableRow>
+                <TableHead class="w-[250px]">User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="activity in recentActivities" :key="activity.id" class="hover:bg-slate-50/50">
+                <TableCell>
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4A90E2] to-[#357ABD] text-white">
+                      <i :class="activity.userIcon"></i>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="font-semibold text-slate-800">{{ activity.userName }}</span>
+                      <span class="text-xs text-slate-500">{{ activity.userRole }}</span>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge :class="getActionBadgeClass(activity.actionType)" variant="secondary" class="font-medium rounded-full px-3 py-1">
+                    <i :class="activity.actionIcon" class="mr-1.5 text-xs"></i> {{ activity.action }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div class="flex items-center gap-2">
+                    <span class="truncate max-w-[200px] text-slate-600">{{ activity.details }}</span>
+                    <div v-if="activity.color" class="h-5 w-5 shrink-0 rounded border border-white shadow-sm" :style="{ backgroundColor: activity.color }"></div>
+                  </div>
+                </TableCell>
+                <TableCell class="text-slate-500 whitespace-nowrap">
+                  <i class="far fa-clock mr-1"></i> {{ activity.time }}
+                </TableCell>
+                <TableCell>
+                  <Badge :variant="activity.status === 'completed' ? 'default' : activity.status === 'pending' ? 'secondary' : 'destructive'" 
+                         :class="getStatusBadgeClass(activity.status)">
+                    {{ activity.status }}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
 
-    <!-- Recent Activity Section -->
-    <div class="recent-activity-section">
-      <div class="section-header">
-        <h2><i class="fas fa-history"></i> Recent Activity</h2>
-        <button class="view-all-btn" @click="viewAllActivity">
-          View All <i class="fas fa-arrow-right"></i>
-        </button>
-      </div>
-
-      <div class="activity-table">
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Action</th>
-              <th>Details</th>
-              <th>Time</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="activity in recentActivities" :key="activity.id">
-              <td class="user-cell">
-                <div class="user-avatar">
-                  <i :class="activity.userIcon"></i>
-                </div>
-                <div class="user-info">
-                  <strong>{{ activity.userName }}</strong>
-                  <small>{{ activity.userRole }}</small>
-                </div>
-              </td>
-              <td>
-                <span class="action-badge" :class="activity.actionType">
-                  <i :class="activity.actionIcon"></i> {{ activity.action }}
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 pb-8">
+        <Card v-for="(stat, index) in quickStats" :key="index" class="hover:-translate-y-1 hover:shadow-md transition-all duration-300 bg-white border">
+          <div class="p-5 flex items-center gap-4">
+            <div :class="`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-xl text-white text-xl shadow-sm ${stat.gradient}`">
+              <i :class="stat.icon"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-slate-700">{{ stat.title }}</h4>
+              <p :class="`text-lg font-bold ${stat.textColor}`">{{ stat.value }}</p>
+              <div v-if="stat.isHealth" class="flex items-center gap-2 mt-1">
+                 <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-[#51C16B]"></span>
                 </span>
-              </td>
-              <td class="details-cell">
-                <span class="details-text">{{ activity.details }}</span>
-                <span v-if="activity.color" class="color-indicator" :style="{ backgroundColor: activity.color }"></span>
-              </td>
-              <td>
-                <div class="time-display">
-                  <i class="far fa-clock"></i> {{ activity.time }}
-                </div>
-              </td>
-              <td>
-                <span class="status-badge" :class="activity.status">
-                  {{ activity.status }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Quick Stats Row -->
-    <div class="quick-stats-row">
-      <div class="quick-stat">
-        <div class="quick-stat-icon" style="background: linear-gradient(135deg, #FF8E53, #FF6B6B);">
-          <i class="fas fa-chart-line"></i>
-        </div>
-        <div>
-          <h4>Daily Color Mixes</h4>
-          <p>{{ stats.dailyColorMixes }} today</p>
-        </div>
-      </div>
-      <div class="quick-stat">
-        <div class="quick-stat-icon" style="background: linear-gradient(135deg, #4A90E2, #357ABD);">
-          <i class="fas fa-box-open"></i>
-        </div>
-        <div>
-          <h4>Low Stock Items</h4>
-          <p>{{ stats.lowStockItems }} products</p>
-        </div>
-      </div>
-      <div class="quick-stat">
-        <div class="quick-stat-icon" style="background: linear-gradient(135deg, #51C16B, #3DA857);">
-          <i class="fas fa-bell"></i>
-        </div>
-        <div>
-          <h4>Pending Requests</h4>
-          <p>{{ stats.pendingRequests }} awaiting action</p>
-        </div>
-      </div>
-      <div class="quick-stat">
-        <div class="quick-stat-icon" style="background: linear-gradient(135deg, #9B59B6, #8E44AD);">
-          <i class="fas fa-cog"></i>
-        </div>
-        <div>
-          <h4>System Health</h4>
-          <div class="health-status">
-            <div class="health-indicator good"></div>
-            <span>All Systems Operational</span>
+                <span class="text-xs text-slate-500">All Systems Operational</span>
+              </div>
+              <p v-else class="text-xs text-slate-400">{{ stat.subtext }}</p>
+            </div>
           </div>
-        </div>
+        </Card>
       </div>
-    </div>
 
-    <!-- Paint Splash Background Effects -->
-    <div class="paint-splash-1"></div>
-    <div class="paint-splash-2"></div>
+    </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Dashboard',
-  data() {
-    return {
-      currentDate: new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      shortDate: new Date().toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      isMobile: false,
-      stats: {
-        totalUsers: 142,
-        usersByRole: {
-          admin: 3,
-          distributor: 12,
-          serviceProvider: 28,
-          client: 99
-        },
-        totalDistributors: 12,
-        totalServiceProviders: 28,
-        activeServiceProviders: 22,
-        serviceProviderActivity: 78,
-        totalColorCustomizations: 347,
-        dailyColorMixes: 24,
-        lowStockItems: 8,
-        pendingRequests: 15
-      },
-      recentColors: [
-        { id: 1, name: 'Ocean Blue', hex: '#4A90E2' },
-        { id: 2, name: 'Sunset Orange', hex: '#FF6B6B' },
-        { id: 3, name: 'Meadow Green', hex: '#51C16B' },
-        { id: 4, name: 'Lavender', hex: '#9B59B6' },
-        { id: 5, name: 'Sunshine Yellow', hex: '#F1C40F' }
-      ],
-      recentActivities: [
-        {
-          id: 1,
-          userName: 'Maria Santos',
-          userRole: 'Service Provider',
-          userIcon: 'fas fa-user-tie',
-          action: 'Color Mix',
-          actionIcon: 'fas fa-palette',
-          actionType: 'color-mix',
-          details: 'Created "Ocean Breeze" color palette',
-          color: '#4A90E2',
-          time: '2 minutes ago',
-          status: 'completed'
-        },
-        {
-          id: 2,
-          userName: 'Juan Dela Cruz',
-          userRole: 'Distributor',
-          userIcon: 'fas fa-truck',
-          action: 'Inventory Update',
-          actionIcon: 'fas fa-boxes',
-          actionType: 'inventory',
-          details: 'Added 50 units of Premium White',
-          time: '15 minutes ago',
-          status: 'completed'
-        },
-        {
-          id: 3,
-          userName: 'System Admin',
-          userRole: 'Administrator',
-          userIcon: 'fas fa-user-shield',
-          action: 'User Added',
-          actionIcon: 'fas fa-user-plus',
-          actionType: 'user',
-          details: 'Added new service provider',
-          time: '1 hour ago',
-          status: 'completed'
-        },
-        {
-          id: 4,
-          userName: 'Anna Reyes',
-          userRole: 'Client',
-          userIcon: 'fas fa-user',
-          action: 'Color Request',
-          actionIcon: 'fas fa-paint-brush',
-          actionType: 'request',
-          details: 'Requested custom color consultation',
-          time: '2 hours ago',
-          status: 'pending'
-        },
-        {
-          id: 5,
-          userName: 'Carlos Lim',
-          userRole: 'Service Provider',
-          userIcon: 'fas fa-user-tie',
-          action: 'Job Completed',
-          actionIcon: 'fas fa-check-circle',
-          actionType: 'service',
-          details: 'Completed paint job for Client #234',
-          time: '3 hours ago',
-          status: 'completed'
-        }
-      ]
-    }
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Reactive State
+const isMobile = ref(false);
+const currentDate = ref(new Date().toLocaleDateString('en-US', { 
+  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+}));
+const shortDate = ref(new Date().toLocaleDateString('en-US', { 
+  month: 'short', day: 'numeric', year: 'numeric'
+}));
+
+const stats = ref({
+  totalUsers: 142,
+  usersByRole: { admin: 3, distributor: 12, serviceProvider: 28, client: 99 },
+  totalDistributors: 12,
+  totalServiceProviders: 28,
+  activeServiceProviders: 22,
+  serviceProviderActivity: 78,
+  totalColorCustomizations: 347,
+  dailyColorMixes: 24,
+  lowStockItems: 8,
+  pendingRequests: 15
+});
+
+const recentColors = ref([
+  { id: 1, name: 'Ocean Blue', hex: '#4A90E2' },
+  { id: 2, name: 'Sunset Orange', hex: '#FF6B6B' },
+  { id: 3, name: 'Meadow Green', hex: '#51C16B' },
+  { id: 4, name: 'Lavender', hex: '#9B59B6' },
+  { id: 5, name: 'Sunshine Yellow', hex: '#F1C40F' }
+]);
+
+const recentActivities = ref([
+  { id: 1, userName: 'Maria Santos', userRole: 'Service Provider', userIcon: 'fas fa-user-tie', action: 'Color Mix', actionIcon: 'fas fa-palette', actionType: 'color-mix', details: 'Created "Ocean Breeze" color palette', color: '#4A90E2', time: '2 minutes ago', status: 'completed' },
+  { id: 2, userName: 'Juan Dela Cruz', userRole: 'Distributor', userIcon: 'fas fa-truck', action: 'Inventory Update', actionIcon: 'fas fa-boxes', actionType: 'inventory', details: 'Added 50 units of Premium White', time: '15 minutes ago', status: 'completed' },
+  { id: 3, userName: 'System Admin', userRole: 'Administrator', userIcon: 'fas fa-user-shield', action: 'User Added', actionIcon: 'fas fa-user-plus', actionType: 'user', details: 'Added new service provider', time: '1 hour ago', status: 'completed' },
+  { id: 4, userName: 'Anna Reyes', userRole: 'Client', userIcon: 'fas fa-user', action: 'Color Request', actionIcon: 'fas fa-paint-brush', actionType: 'request', details: 'Requested custom color consultation', time: '2 hours ago', status: 'pending' },
+  { id: 5, userName: 'Carlos Lim', userRole: 'Service Provider', userIcon: 'fas fa-user-tie', action: 'Job Completed', actionIcon: 'fas fa-check-circle', actionType: 'service', details: 'Completed paint job for Client #234', time: '3 hours ago', status: 'completed' }
+]);
+
+// Computed Quick Stats configuration to keep template clean
+const quickStats = computed(() => [
+  { 
+    title: 'Daily Color Mixes', 
+    value: stats.value.dailyColorMixes, 
+    subtext: 'today',
+    icon: 'fas fa-chart-line', 
+    gradient: 'bg-gradient-to-br from-[#FF8E53] to-[#FF6B6B]',
+    textColor: 'text-[#4A90E2]'
   },
-  methods: {
-    refreshData() {
-      // Simulate data refresh
-      this.stats.totalColorCustomizations += 1;
-      this.stats.dailyColorMixes += 1;
-      
-      // Add a new activity
-      const newActivity = {
-        id: this.recentActivities.length + 1,
-        userName: 'System',
-        userRole: 'Auto',
-        userIcon: 'fas fa-robot',
-        action: 'System Update',
-        actionIcon: 'fas fa-sync-alt',
-        actionType: 'system',
-        details: 'Dashboard data refreshed',
-        time: 'Just now',
-        status: 'completed'
-      };
-      
-      this.recentActivities.unshift(newActivity);
-      
-      // Show success message
-      this.$toast.success('Dashboard data refreshed successfully!');
-    },
-    viewAllActivity() {
-      alert('Redirecting to full activity log...');
-      // In real app: this.$router.push('/admin/audit');
-    },
-    initializeAnimations() {
-      // Add subtle animations to stats cards on hover
-      const cards = document.querySelectorAll('.stat-card');
-      cards.forEach(card => {
-        card.addEventListener('mouseenter', () => {
-          card.style.transform = 'translateY(-5px)';
-          card.style.boxShadow = '0 12px 24px rgba(0,0,0,0.15)';
-        });
-        card.addEventListener('mouseleave', () => {
-          card.style.transform = 'translateY(0)';
-          card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-        });
-      });
-    },
-    checkMobile() {
-      this.isMobile = window.innerWidth <= 768;
-    }
+  { 
+    title: 'Low Stock Items', 
+    value: stats.value.lowStockItems, 
+    subtext: 'products',
+    icon: 'fas fa-box-open', 
+    gradient: 'bg-gradient-to-br from-[#4A90E2] to-[#357ABD]',
+    textColor: 'text-[#4A90E2]'
   },
-  mounted() {
-    // Initialize animations
-    this.initializeAnimations();
-    
-    // Check mobile on mount
-    this.checkMobile();
-    
-    // Add resize listener
-    window.addEventListener('resize', this.checkMobile);
+  { 
+    title: 'Pending Requests', 
+    value: stats.value.pendingRequests, 
+    subtext: 'awaiting action',
+    icon: 'fas fa-bell', 
+    gradient: 'bg-gradient-to-br from-[#51C16B] to-[#3DA857]',
+    textColor: 'text-[#4A90E2]'
   },
-  beforeDestroy() {
-    // Remove resize listener
-    window.removeEventListener('resize', this.checkMobile);
+  { 
+    title: 'System Health', 
+    value: '', 
+    isHealth: true,
+    icon: 'fas fa-cog', 
+    gradient: 'bg-gradient-to-br from-[#9B59B6] to-[#8E44AD]',
+    textColor: 'text-[#4A90E2]'
   }
-}
+]);
+
+// Methods
+const refreshData = () => {
+  stats.value.totalColorCustomizations += 1;
+  stats.value.dailyColorMixes += 1;
+  
+  const newActivity = {
+    id: Date.now(),
+    userName: 'System',
+    userRole: 'Auto',
+    userIcon: 'fas fa-robot',
+    action: 'System Update',
+    actionIcon: 'fas fa-sync-alt',
+    actionType: 'system',
+    details: 'Dashboard data refreshed',
+    time: 'Just now',
+    status: 'completed'
+  };
+  
+  recentActivities.value.unshift(newActivity);
+  // Toast would go here (requires shadcn toast component setup)
+  console.log('Dashboard data refreshed successfully!');
+};
+
+const viewAllActivity = () => {
+  alert('Redirecting to full activity log...');
+};
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768;
+};
+
+// Helper methods for styling
+const getActionBadgeClass = (type) => {
+  const map = {
+    'color-mix': 'bg-purple-50 text-purple-700 hover:bg-purple-100',
+    'inventory': 'bg-green-50 text-green-700 hover:bg-green-100',
+    'user': 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+    'request': 'bg-orange-50 text-orange-700 hover:bg-orange-100',
+    'service': 'bg-green-50 text-green-700 hover:bg-green-100',
+    'system': 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+  };
+  return map[type] || 'bg-slate-100';
+};
+
+const getStatusBadgeClass = (status) => {
+  if (status === 'completed') return 'bg-[#E8F5E9] text-[#51C16B] hover:bg-green-100 border-none';
+  if (status === 'pending') return 'bg-[#FFF3E0] text-[#FF8E53] hover:bg-orange-100 border-none';
+  return 'bg-[#FFEBEE] text-[#F44336] hover:bg-red-100 border-none';
+};
+
+// Lifecycle
+onMounted(() => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', checkMobile);
+});
 </script>
 
 <style scoped>
-.dashboard-container {
-  padding: 30px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  min-height: 100vh;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Remove scroll bar from the container */
-.dashboard-container::-webkit-scrollbar {
+/* Only necessary style not handled by Tailwind */
+.relative::-webkit-scrollbar {
   display: none;
 }
-
-.dashboard-container {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Dashboard Header - IMPROVED */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  background: white;
-  padding: 20px 25px;
-  border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  flex-wrap: wrap;
-  gap: 15px;
-  transition: all 0.3s ease;
-}
-
-.header-main {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex: 1;
-  min-width: 0;
-}
-
-.dashboard-header h1 {
-  font-size: 1.8rem;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin: 0;
-  flex-wrap: wrap;
-}
-
-.dashboard-header h1 i {
-  color: #4A90E2;
-  font-size: 1.8rem;
-  flex-shrink: 0;
-}
-
-.mobile-date {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  color: #777;
-  font-size: 0.9rem;
-  padding: 6px 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.mobile-date i {
-  color: #4A90E2;
-}
-
-.header-actions {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.refresh-btn {
-  background: linear-gradient(45deg, #4A90E2, #357ABD);
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-height: 48px;
-}
-
-.refresh-btn .btn-text {
-  transition: opacity 0.3s ease;
-}
-
-.refresh-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(74, 144, 226, 0.3);
-}
-
-.refresh-btn:active {
-  transform: translateY(0);
-}
-
-.date-display {
-  background: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #555;
-  white-space: nowrap;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
-}
-
-.date-display i {
-  color: #4A90E2;
-  font-size: 1rem;
-}
-
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 25px;
-  margin-bottom: 40px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 15px;
-  padding: 25px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  display: flex;
-  gap: 20px;
-  transition: all 0.3s ease;
-  border-left: 4px solid;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.stat-card:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-}
-
-.stat-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.8rem;
-  flex-shrink: 0;
-}
-
-.stat-content {
-  flex: 1;
-  min-width: 0; /* Prevents flex item from overflowing */
-}
-
-.stat-content h3 {
-  color: #555;
-  font-size: 1rem;
-  margin-bottom: 10px;
-  font-weight: 600;
-  word-wrap: break-word;
-}
-
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 10px;
-  line-height: 1;
-}
-
-.stat-breakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.role-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.role-badge.admin {
-  background: #E3F2FD;
-  color: #1976D2;
-}
-
-.role-badge.distributor {
-  background: #E8F5E9;
-  color: #388E3C;
-}
-
-.role-badge.service-provider {
-  background: #FFF3E0;
-  color: #F57C00;
-}
-
-.role-badge.client {
-  background: #F3E5F5;
-  color: #7B1FA2;
-}
-
-.stat-subtext {
-  color: #777;
-  font-size: 0.9rem;
-  margin: 8px 0;
-  word-wrap: break-word;
-}
-
-.trend.positive {
-  color: #51C16B;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.trend i {
-  font-size: 0.8rem;
-}
-
-.mini-chart {
-  display: flex;
-  gap: 4px;
-  height: 20px;
-  align-items: flex-end;
-  margin-top: 15px;
-}
-
-.chart-bar {
-  height: 100%;
-  border-radius: 2px;
-  flex: 1;
-  opacity: 0.7;
-}
-
-.progress-container {
-  background: #f0f0f0;
-  border-radius: 10px;
-  height: 8px;
-  margin: 15px 0;
-  position: relative;
-}
-
-.progress-bar {
-  background: #FF6B6B;
-  height: 100%;
-  border-radius: 10px;
-  transition: width 0.5s ease;
-}
-
-.progress-container span {
-  position: absolute;
-  right: 0;
-  top: -20px;
-  font-size: 0.8rem;
-  color: #777;
-}
-
-.color-preview {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 15px;
-  flex-wrap: wrap;
-}
-
-.color-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-}
-
-.color-dot:hover {
-  transform: scale(1.2);
-}
-
-.color-count {
-  color: #777;
-  font-size: 0.9rem;
-  margin-left: 5px;
-}
-
-/* Recent Activity */
-.recent-activity-section {
-  background: white;
-  border-radius: 15px;
-  padding: 30px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.section-header h2 {
-  font-size: 1.5rem;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-}
-
-.section-header h2 i {
-  color: #4A90E2;
-}
-
-.view-all-btn {
-  background: transparent;
-  color: #4A90E2;
-  border: 2px solid #4A90E2;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  min-height: 48px;
-}
-
-.view-all-btn:hover {
-  background: #4A90E2;
-  color: white;
-}
-
-.activity-table {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  width: 100%;
-}
-
-.activity-table table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 600px; /* Minimum width before scrolling */
-}
-
-.activity-table th {
-  text-align: left;
-  padding: 15px;
-  background: #f8f9fa;
-  color: #555;
-  font-weight: 600;
-  border-bottom: 2px solid #e0e0e0;
-  white-space: nowrap;
-}
-
-.activity-table td {
-  padding: 15px;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
-}
-
-.user-cell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 150px;
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4A90E2, #357ABD);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0; /* Allows text truncation */
-}
-
-.user-info strong {
-  font-size: 0.95rem;
-  color: #2c3e50;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-info small {
-  color: #777;
-  font-size: 0.8rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.action-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.action-badge.color-mix {
-  background: #F3E5F5;
-  color: #9B59B6;
-}
-
-.action-badge.inventory {
-  background: #E8F5E9;
-  color: #51C16B;
-}
-
-.action-badge.user {
-  background: #E3F2FD;
-  color: #4A90E2;
-}
-
-.action-badge.request {
-  background: #FFF3E0;
-  color: #FF8E53;
-}
-
-.action-badge.service {
-  background: #E8F5E9;
-  color: #51C16B;
-}
-
-.action-badge.system {
-  background: #f0f0f0;
-  color: #777;
-}
-
-.details-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 200px;
-}
-
-.details-text {
-  flex: 1;
-  word-wrap: break-word;
-  min-width: 0;
-}
-
-.color-indicator {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  flex-shrink: 0;
-}
-
-.time-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #777;
-  white-space: nowrap;
-}
-
-.time-display i {
-  font-size: 0.9rem;
-}
-
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.status-badge.completed {
-  background: #E8F5E9;
-  color: #51C16B;
-}
-
-.status-badge.pending {
-  background: #FFF3E0;
-  color: #FF8E53;
-}
-
-.status-badge.failed {
-  background: #FFEBEE;
-  color: #F44336;
-}
-
-/* Quick Stats Row */
-.quick-stats-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
-}
-
-.quick-stat {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: all 0.3s ease;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.quick-stat:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.12);
-}
-
-.quick-stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.quick-stat h4 {
-  color: #2c3e50;
-  margin-bottom: 5px;
-  font-size: 1rem;
-  word-wrap: break-word;
-}
-
-.quick-stat p {
-  color: #4A90E2;
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.health-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.health-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.health-indicator.good {
-  background: #51C16B;
-  box-shadow: 0 0 10px #51C16B;
-}
-
-/* Paint Splash Effects */
-.paint-splash-1 {
-  position: absolute;
-  top: -100px;
-  right: -100px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(74, 144, 226, 0.05) 0%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-.paint-splash-2 {
-  position: absolute;
-  bottom: -150px;
-  left: -150px;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(155, 89, 182, 0.05) 0%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stat-card, .recent-activity-section, .quick-stat {
-  animation: fadeIn 0.6s ease-out forwards;
-}
-
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
-
-/* Responsive Design - IMPROVED */
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 992px) {
-  .quick-stats-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-container {
-    padding: 20px 15px;
-  }
-  
-  .dashboard-header {
-    padding: 15px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
-    margin-bottom: 20px;
-  }
-  
-  .header-main {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .mobile-date {
-    display: flex;
-  }
-  
-  .dashboard-header h1 {
-    font-size: 1.6rem;
-    gap: 10px;
-  }
-  
-  .dashboard-header h1 i {
-    font-size: 1.5rem;
-  }
-  
-  .header-actions {
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-  }
-  
-  .refresh-btn {
-    flex: 1;
-    min-height: 52px;
-    padding: 12px 15px;
-    justify-content: center;
-  }
-  
-  .date-display {
-    display: none;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  
-  .stat-card {
-    padding: 20px;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-  
-  .stat-icon {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-  }
-  
-  .stat-value {
-    font-size: 2.2rem;
-  }
-  
-  .stat-breakdown {
-    justify-content: center;
-  }
-  
-  .recent-activity-section {
-    padding: 20px 15px;
-    margin-bottom: 20px;
-  }
-  
-  .section-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
-  }
-  
-  .section-header h2 {
-    font-size: 1.3rem;
-  }
-  
-  .view-all-btn {
-    width: 100%;
-    justify-content: center;
-    min-height: 52px;
-  }
-  
-  .activity-table {
-    margin: 0 -15px;
-    width: calc(100% + 30px);
-  }
-  
-  .activity-table table {
-    min-width: 700px;
-  }
-  
-  .quick-stats-row {
-    grid-template-columns: 1fr;
-    margin-top: 20px;
-  }
-  
-  .quick-stat {
-    flex-direction: column;
-    text-align: center;
-    gap: 15px;
-  }
-  
-  .paint-splash-1,
-  .paint-splash-2 {
-    display: none;
-  }
-}
-
-@media (max-width: 576px) {
-  .dashboard-header h1 {
-    font-size: 1.4rem;
-  }
-  
-  .refresh-btn .btn-text {
-    display: none;
-  }
-  
-  .refresh-btn {
-    max-width: 52px;
-    min-width: 52px;
-    padding: 12px;
-  }
-  
-  .mobile-date {
-    font-size: 0.85rem;
-    padding: 6px 10px;
-  }
-  
-  .stat-value {
-    font-size: 2rem;
-  }
-  
-  .role-badge {
-    padding: 5px 10px;
-    font-size: 0.75rem;
-  }
-  
-  .action-badge, .status-badge {
-    padding: 5px 10px;
-    font-size: 0.8rem;
-  }
-  
-  .activity-table th,
-  .activity-table td {
-    padding: 10px;
-  }
-  
-  .user-cell {
-    flex-direction: column;
-    text-align: center;
-    gap: 8px;
-  }
-  
-  .user-avatar {
-    width: 35px;
-    height: 35px;
-  }
-  
-  .details-cell {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-}
-
-@media (max-width: 375px) {
-  .dashboard-container {
-    padding: 15px 10px;
-  }
-  
-  .dashboard-header {
-    padding: 12px;
-  }
-  
-  .dashboard-header h1 {
-    font-size: 1.3rem;
-  }
-  
-  .mobile-date {
-    font-size: 0.8rem;
-    padding: 5px 8px;
-  }
-  
-  .stat-card {
-    padding: 15px;
-  }
-  
-  .stat-value {
-    font-size: 1.8rem;
-  }
-}
-
-/* Touch device optimizations */
-@media (hover: none) and (pointer: coarse) {
-  .stat-card:hover,
-  .quick-stat:hover,
-  .refresh-btn:hover,
-  .view-all-btn:hover {
-    transform: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  
-  .color-dot:hover {
-    transform: none;
-  }
-  
-  /* Increase tap targets for mobile */
-  .refresh-btn,
-  .view-all-btn,
-  .action-badge,
-  .status-badge {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .role-badge {
-    padding: 8px 12px;
-  }
-  
-  /* Add active state feedback */
-  .refresh-btn:active,
-  .view-all-btn:active {
-    transform: scale(0.98);
-  }
+.relative {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>

@@ -1,126 +1,132 @@
 <template>
   <div class="inventory-overview p-6">
-    <!-- Page Header -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-800 mb-2">Inventory Overview</h1>
       <p class="text-gray-600">Monitor paint stock levels across all distributors</p>
       
-      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Total Distributors</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ distributors.length }}</h3>
+        <Card class="bg-white shadow-md border-l-4 border-l-blue-500">
+          <CardContent class="p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Total Distributors</p>
+                <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ distributors.length }}</h3>
+              </div>
+              <div class="p-3 bg-blue-50 rounded-lg">
+                <i class="fas fa-warehouse text-blue-500 text-xl"></i>
+              </div>
             </div>
-            <div class="p-3 bg-blue-50 rounded-lg">
-              <i class="fas fa-warehouse text-blue-500 text-xl"></i>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Products in Stock</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ totalProducts }}</h3>
+        <Card class="bg-white shadow-md border-l-4 border-l-green-500">
+          <CardContent class="p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Products in Stock</p>
+                <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ totalProducts }}</h3>
+              </div>
+              <div class="p-3 bg-green-50 rounded-lg">
+                <i class="fas fa-palette text-green-500 text-xl"></i>
+              </div>
             </div>
-            <div class="p-3 bg-green-50 rounded-lg">
-              <i class="fas fa-palette text-green-500 text-xl"></i>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-red-500">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Low Stock Items</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ lowStockCount }}</h3>
+        <Card class="bg-white shadow-md border-l-4 border-l-red-500">
+          <CardContent class="p-5">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Low Stock Items</p>
+                <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ lowStockCount }}</h3>
+              </div>
+              <div class="p-3 bg-red-50 rounded-lg">
+                <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+              </div>
             </div>
-            <div class="p-3 bg-red-50 rounded-lg">
-              <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Filters and Search -->
-    <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex flex-col md:flex-row gap-4">
-          <div class="relative">
-            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Search distributor or product..."
-              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
-            >
+    <Card class="bg-white shadow-sm mb-6">
+      <CardContent class="p-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="relative w-full md:w-64">
+              <i class="fas fa-search absolute left-3 top-3 text-gray-400 z-10"></i>
+              <Input 
+                v-model="searchQuery"
+                type="text" 
+                placeholder="Search distributor or product..."
+                class="pl-10 pr-4 border-gray-300 focus-visible:ring-blue-500"
+              />
+            </div>
+            
+            <Select v-model="selectedStatus">
+              <SelectTrigger class="w-full md:w-[200px] border-gray-300 focus:ring-blue-500">
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stock Levels</SelectItem>
+                <SelectItem value="low">Low Stock Only</SelectItem>
+                <SelectItem value="normal">Normal Stock</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
-          <select 
-            v-model="selectedStatus"
-            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Stock Levels</option>
-            <option value="low">Low Stock Only</option>
-            <option value="normal">Normal Stock</option>
-          </select>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <i class="fas fa-info-circle"></i>
+            <span>Read-only view for administrators</span>
+          </div>
         </div>
-        
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <i class="fas fa-info-circle"></i>
-          <span>Read-only view for administrators</span>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- Inventory Table -->
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <Card class="bg-white shadow overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-user-tie"></i>
                   <span>Distributor</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-paint-roller"></i>
                   <span>Paint Product</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-boxes"></i>
                   <span>Available Quantity</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-chart-line"></i>
                   <span>Stock Level</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-exclamation-circle"></i>
                   <span>Status</span>
                 </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr 
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="bg-white divide-y divide-gray-200">
+            <TableRow 
               v-for="item in filteredInventory" 
               :key="item.id"
               class="hover:bg-gray-50 transition-colors duration-150"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-warehouse text-blue-600"></i>
@@ -130,8 +136,8 @@
                     <div class="text-sm text-gray-500">{{ item.distributorCode }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div 
                     class="w-8 h-8 rounded-md mr-3 border" 
@@ -142,32 +148,34 @@
                     <div class="text-sm text-gray-500">{{ item.category }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-lg font-semibold">{{ item.quantity }}</div>
                 <div class="text-sm text-gray-500">units</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="w-32 bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    class="h-2.5 rounded-full"
-                    :class="{
-                      'bg-red-500': item.percentage <= 25,
-                      'bg-yellow-500': item.percentage > 25 && item.percentage <= 50,
-                      'bg-green-500': item.percentage > 50
-                    }"
-                    :style="{ width: `${item.percentage}%` }"
-                  ></div>
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
+                <div class="w-32">
+                  <div class="h-2.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        class="h-full transition-all duration-300"
+                        :class="{
+                          'bg-red-500': item.percentage <= 25,
+                          'bg-yellow-500': item.percentage > 25 && item.percentage <= 50,
+                          'bg-green-500': item.percentage > 50
+                        }"
+                        :style="{ width: `${item.percentage}%` }"
+                      ></div>
+                   </div>
+                  <div class="text-sm text-gray-500 mt-1">{{ item.percentage }}% of max</div>
                 </div>
-                <div class="text-sm text-gray-500 mt-1">{{ item.percentage }}% of max</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
+                <Badge 
+                  class="px-3 py-1 text-xs font-semibold rounded-full border-0 shadow-none"
                   :class="{
-                    'bg-red-100 text-red-800': item.status === 'Low Stock',
-                    'bg-green-100 text-green-800': item.status === 'In Stock',
-                    'bg-yellow-100 text-yellow-800': item.status === 'Warning'
+                    'bg-red-100 text-red-800 hover:bg-red-100': item.status === 'Low Stock',
+                    'bg-green-100 text-green-800 hover:bg-green-100': item.status === 'In Stock',
+                    'bg-yellow-100 text-yellow-800 hover:bg-yellow-100': item.status === 'Warning'
                   }"
                 >
                   <i 
@@ -179,14 +187,13 @@
                     }"
                   ></i>
                   {{ item.status }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                </Badge>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
       
-      <!-- Empty State -->
       <div v-if="filteredInventory.length === 0" class="text-center py-12">
         <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
           <i class="fas fa-box-open text-gray-400 text-3xl"></i>
@@ -195,7 +202,6 @@
         <p class="text-gray-500 max-w-sm mx-auto">Try adjusting your search or filter to find what you're looking for.</p>
       </div>
       
-      <!-- Table Footer -->
       <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between">
           <div class="text-sm text-gray-500 mb-2 md:mb-0">
@@ -203,26 +209,26 @@
             <span class="font-medium">{{ inventory.length }}</span> items
           </div>
           <div class="flex items-center gap-4">
-            <button 
+            <Button 
+              variant="outline"
               @click="exportToCSV"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
             >
               <i class="fas fa-download mr-2"></i>
               Export CSV
-            </button>
-            <button 
+            </Button>
+            <Button 
               @click="refreshData"
-              class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700"
+              class="bg-blue-600 text-white hover:bg-blue-700"
             >
               <i class="fas fa-sync-alt mr-2"></i>
               Refresh Data
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <!-- Information Card -->
     <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
       <div class="flex items-start">
         <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
@@ -241,6 +247,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 // Inventory data
 const inventory = ref([

@@ -1,834 +1,687 @@
 <template>
-  <div class="distributors-container">
-    <!-- Header Section -->
-    <div class="header-section">
-      <div class="header-content">
-        <div class="header-left">
-          <div class="header-icon">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          </div>
+  <div class="min-h-screen font-sans">
+    <header class="sticky top-0 z-40 backdrop-blur-lg border-b border-gray-800 shadow-xl">
+      <div class="px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 class="page-title">Distributors</h1>
-            <p class="page-subtitle">Supply awareness & inventory management</p>
-          </div>
-        </div>
-        
-        <div class="header-actions">
-          <!-- Search Bar -->
-          <div class="search-container">
-            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Search distributors or paints..."
-              class="search-input"
-            >
-          </div>
-          
-          <!-- Filter Button -->
-          <button @click="toggleFilter" class="filter-btn">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            <span>Filter</span>
-            <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-          </button>
-          
-          <!-- View Toggle -->
-          <div class="view-toggle">
-            <button 
-              @click="viewMode = 'grid'"
-              :class="['view-btn', { 'active': viewMode === 'grid' }]"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-            <button 
-              @click="viewMode = 'list'"
-              :class="['view-btn', { 'active': viewMode === 'list' }]"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Filter Panel -->
-      <div v-if="showFilter" class="filter-panel">
-        <div class="filter-grid">
-          <div class="filter-group">
-            <label class="filter-label">Sort by</label>
-            <select v-model="sortBy" class="filter-select">
-              <option value="name">Name A-Z</option>
-              <option value="rating">Highest Rating</option>
-              <option value="distance">Nearest First</option>
-              <option value="inventory">Most Inventory</option>
-            </select>
-          </div>
-          
-          <div class="filter-group">
-            <label class="filter-label">Paint Type</label>
-            <select v-model="paintTypeFilter" class="filter-select">
-              <option value="all">All Types</option>
-              <option value="latex">Latex Paint</option>
-              <option value="oil">Oil-based</option>
-              <option value="spray">Spray Paint</option>
-              <option value="specialty">Specialty</option>
-            </select>
-          </div>
-          
-          <div class="filter-group">
-            <label class="filter-label">Availability</label>
-            <select v-model="availabilityFilter" class="filter-select">
-              <option value="all">All</option>
-              <option value="in-stock">In Stock</option>
-              <option value="low-stock">Low Stock</option>
-            </select>
-          </div>
-          
-          <div class="filter-group">
-            <label class="filter-label">Rating</label>
-            <select v-model="ratingFilter" class="filter-select">
-              <option value="all">All Ratings</option>
-              <option value="4+">4+ Stars</option>
-              <option value="3+">3+ Stars</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="filter-actions">
-          <button @click="clearFilters" class="clear-filters-btn">
-            Clear Filters
-          </button>
-          <button @click="applyFilters" class="apply-filters-btn">
-            Apply Filters
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats Overview -->
-    <div class="stats-overview">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon bg-blue-500/10">
-            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ totalDistributors }}</div>
-            <div class="stat-label">Total Distributors</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-green-500/10">
-            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ totalProducts }}</div>
-            <div class="stat-label">Available Products</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-purple-500/10">
-            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ inStockProducts }}</div>
-            <div class="stat-label">In Stock Items</div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon bg-amber-500/10">
-            <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ avgDeliveryTime }}</div>
-            <div class="stat-label">Avg Delivery Time</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Empty State -->
-      <div v-if="filteredDistributors.length === 0" class="empty-state">
-        <div class="empty-icon">
-          <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 class="empty-title">No distributors found</h3>
-        <p class="empty-description">
-          {{ searchQuery ? 'Try adjusting your search or filters' : 'No distributors available in your area' }}
-        </p>
-      </div>
-
-      <!-- Grid View -->
-      <div v-if="viewMode === 'grid' && filteredDistributors.length > 0" class="distributor-grid">
-        <div 
-          v-for="distributor in paginatedDistributors"
-          :key="distributor.id"
-          class="distributor-card"
-        >
-          <!-- Card Header -->
-          <div class="card-header">
-            <div class="distributor-avatar">
-              {{ distributor.name.charAt(0).toUpperCase() }}
-            </div>
-            <div class="distributor-info">
-              <h3 class="distributor-name">{{ distributor.name }}</h3>
-              <div class="distributor-meta">
-                <span class="distributor-type">{{ distributor.type }}</span>
-                <div class="rating">
-                  <div class="stars">
-                    <span v-for="star in 5" :key="star">
-                      <svg 
-                        class="w-4 h-4"
-                        :class="star <= Math.floor(distributor.rating) ? 'text-yellow-400 fill-current' : 'text-gray-600'"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                    </span>
-                  </div>
-                  <span class="rating-text">{{ distributor.rating.toFixed(1) }}</span>
-                  <span class="review-count">({{ distributor.reviews }})</span>
-                </div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+              <div class="p-2 bg-gradient-to-br from-rose-600 to-pink-600 rounded-xl shadow-xl">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
-            </div>
-            <div class="status-badge" :class="distributor.status">
-              {{ distributor.status === 'online' ? 'Online' : 'Closed' }}
-            </div>
-          </div>
-
-          <!-- Available Paints -->
-          <div class="paints-section">
-            <h4 class="section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              Performance Reports
+            </h1>
+            <p class="text-gray-400 mt-2 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
-              Available Paints
-            </h4>
-            <div class="paints-grid">
-              <div 
-                v-for="paint in distributor.paints.slice(0, 4)"
-                :key="paint.name"
-                class="paint-item"
-                :style="{ '--paint-color': paint.color }"
+              Personal performance analytics & insights
+            </p>
+          </div>
+          
+          <div class="flex gap-3">
+            <Button 
+              @click="generateReport"
+              class="h-12 px-4 sm:px-6 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-xl text-white font-medium border-0 shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 transition-all duration-300"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span class="hidden sm:inline">Export Report</span>
+              <span class="sm:hidden">Export</span>
+            </Button>
+            <Button 
+              @click="refreshData"
+              variant="outline"
+              class="h-12 px-4 sm:px-6 bg-gray-800 hover:bg-gray-700 border-gray-700 rounded-xl text-white font-medium transition-all duration-300"
+            >
+              <svg 
+                class="w-5 h-5 mr-2" 
+                :class="{'animate-spin': refreshing}"
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                <div class="paint-color" :style="{ backgroundColor: paint.color }"></div>
-                <div class="paint-details">
-                  <span class="paint-name">{{ paint.name }}</span>
-                  <span class="paint-type">{{ paint.type }}</span>
-                </div>
-                <div class="paint-status" :class="paint.stock">
-                  {{ paint.stock === 'in-stock' ? 'In Stock' : 'Low Stock' }}
-                </div>
-              </div>
-            </div>
-            <div v-if="distributor.paints.length > 4" class="more-paints">
-              +{{ distributor.paints.length - 4 }} more paints available
-            </div>
-          </div>
-
-          <!-- Contact Details -->
-          <div class="contact-section">
-            <h4 class="section-title">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Contact Details
-            </h4>
-            <div class="contact-grid">
-              <div class="contact-item">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span>{{ distributor.contact.phone }}</span>
-              </div>
-              <div class="contact-item">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>{{ distributor.contact.email }}</span>
-              </div>
-              <div class="contact-item">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{{ distributor.contact.address }}</span>
-              </div>
-            </div>
+              <span class="hidden sm:inline">Refresh</span>
+            </Button>
           </div>
-
-          <!-- Action Buttons -->
-          <div class="action-buttons">
-            <button @click="contactDistributor(distributor)" class="action-btn-primary">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              Contact Now
-            </button>
-            <button @click="viewDetails(distributor)" class="action-btn-secondary">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              View Details
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- List View -->
-      <div v-if="viewMode === 'list' && filteredDistributors.length > 0" class="distributor-list">
-        <div class="list-header">
-          <div class="list-column">Distributor</div>
-          <div class="list-column">Available Paints</div>
-          <div class="list-column">Contact</div>
-          <div class="list-column">Status</div>
-          <div class="list-column">Actions</div>
         </div>
         
-        <div 
-          v-for="distributor in paginatedDistributors"
-          :key="distributor.id"
-          class="list-item"
-        >
-          <div class="list-cell distributor-cell">
-            <div class="distributor-avatar-sm">
-              {{ distributor.name.charAt(0).toUpperCase() }}
-            </div>
-            <div>
-              <div class="distributor-name">{{ distributor.name }}</div>
-              <div class="distributor-type-sm">{{ distributor.type }}</div>
-              <div class="rating-sm">
-                <span class="stars-sm">
-                  <span v-for="star in 5" :key="star">
-                    <svg 
-                      class="w-3 h-3"
-                      :class="star <= Math.floor(distributor.rating) ? 'text-yellow-400 fill-current' : 'text-gray-600'"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                    </svg>
-                  </span>
-                </span>
-                <span class="rating-text-sm">{{ distributor.rating.toFixed(1) }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="list-cell paints-cell">
-            <div class="paints-list">
-              <div class="paint-count">
-                {{ distributor.paints.length }} paints available
-              </div>
-              <div class="paint-samples">
-                <div 
-                  v-for="paint in distributor.paints.slice(0, 3)"
-                  :key="paint.name"
-                  class="paint-sample"
-                  :style="{ backgroundColor: paint.color }"
-                  :title="paint.name"
-                ></div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="list-cell contact-cell">
-            <div class="contact-info-sm">
-              <div class="contact-item-sm">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                {{ distributor.contact.phone }}
-              </div>
-              <div class="contact-item-sm">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {{ distributor.contact.email }}
-              </div>
-            </div>
-          </div>
-          
-          <div class="list-cell status-cell">
-            <div class="status-badge-sm" :class="distributor.status">
-              {{ distributor.status === 'online' ? 'Online' : 'Closed' }}
-            </div>
-            <div class="delivery-time">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {{ distributor.deliveryTime }} hours
-            </div>
-          </div>
-          
-          <div class="list-cell actions-cell">
-            <button @click="contactDistributor(distributor)" class="list-action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-            </button>
-            <button @click="viewDetails(distributor)" class="list-action-btn">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div v-if="filteredDistributors.length > 0" class="pagination">
-        <div class="pagination-info">
-          Showing {{ startIndex + 1 }}-{{ endIndex }} of {{ filteredDistributors.length }} distributors
-        </div>
-        <div class="pagination-controls">
-          <button 
-            @click="prevPage" 
-            :disabled="currentPage === 1"
-            class="pagination-btn"
-          >
+        <div class="mt-6 flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2 text-gray-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-          </button>
-          
-          <div class="page-numbers">
-            <button 
-              v-for="page in visiblePages"
-              :key="page"
-              @click="goToPage(page)"
-              :class="['page-btn', { 'active': page === currentPage }]"
+            <span class="text-sm">Reporting Period:</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button 
+              v-for="period in timePeriods" 
+              :key="period.value"
+              @click="selectedPeriod = period.value"
+              variant="ghost"
+              :class="[
+                'rounded-xl text-sm font-medium transition-all duration-300',
+                selectedPeriod === period.value 
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/25' 
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
+              ]"
             >
-              {{ page }}
-            </button>
+              {{ period.label }}
+            </Button>
           </div>
-          
-          <button 
-            @click="nextPage" 
-            :disabled="currentPage === totalPages"
-            class="pagination-btn"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
-    </div>
+    </header>
 
-    <!-- Notification -->
-    <div v-if="showNotification" class="notification">
-      <div class="notification-content">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>{{ notificationMessage }}</span>
+    <main class="px-4 sm:px-6 lg:px-8 py-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 p-5 shadow-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-gray-400 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Jobs Completed
+              </div>
+              <div class="text-3xl font-bold text-white mt-2">{{ overviewStats.completedJobs }}</div>
+              <div class="text-green-400 text-sm mt-1 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+                +{{ overviewStats.jobGrowth }}% from last period
+              </div>
+            </div>
+            <div class="p-3 bg-gray-800/50 rounded-xl">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-400 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 p-5 shadow-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-gray-400 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Avg. Completion Time
+              </div>
+              <div class="text-3xl font-bold text-white mt-2">{{ overviewStats.avgTime }}</div>
+              <div class="text-yellow-400 text-sm mt-1 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                </svg>
+                {{ overviewStats.timeImprovement }}% faster
+              </div>
+            </div>
+            <div class="p-3 bg-gray-800/50 rounded-xl">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-amber-400 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 p-5 shadow-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-gray-400 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Client Satisfaction
+              </div>
+              <div class="text-3xl font-bold text-white mt-2">{{ overviewStats.satisfaction }}%</div>
+              <div class="text-blue-400 text-sm mt-1 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a1 1 0 10-1.415-1.414 3 3 0 01-4.242 0 1 1 0 00-1.415 1.414 5 5 0 007.072 0z" clip-rule="evenodd" />
+                </svg>
+                {{ overviewStats.satisfactionChange }} positive reviews
+              </div>
+            </div>
+            <div class="p-3 bg-gray-800/50 rounded-xl">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 p-5 shadow-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-gray-400 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                </svg>
+                Revenue Generated
+              </div>
+              <div class="text-3xl font-bold text-white mt-2">${{ overviewStats.revenue.toLocaleString() }}</div>
+              <div class="text-purple-400 text-sm mt-1 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{ overviewStats.revenueGrowth }}% growth
+              </div>
+            </div>
+            <div class="p-3 bg-gray-800/50 rounded-xl">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
-    </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 shadow-xl overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-gray-700">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-r from-green-500 to-emerald-400 rounded-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-white">Jobs Completed</h2>
+                  <p class="text-gray-400 text-sm">Recent service jobs with completion details</p>
+                </div>
+              </div>
+              <Badge variant="secondary" class="bg-green-900/30 text-green-400 border border-green-800 px-3 py-1">
+                {{ completedJobs.length }} Total
+              </Badge>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto flex-1">
+            <Table>
+              <TableHeader class="bg-gray-800/50">
+                <TableRow class="hover:bg-transparent border-gray-700">
+                  <TableHead class="text-gray-400 font-medium text-sm">Client</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Service Type</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Date</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody class="divide-y divide-gray-800">
+                <TableRow 
+                  v-for="job in completedJobs" 
+                  :key="job.id"
+                  class="hover:bg-gray-800/30 transition-colors border-gray-800"
+                >
+                  <TableCell class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-xs font-bold text-white">
+                        {{ job.client.charAt(0) }}
+                      </div>
+                      <div>
+                        <div class="text-white font-medium">{{ job.client }}</div>
+                        <div class="text-gray-400 text-sm">{{ job.location }}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <div class="text-white">{{ job.serviceType }}</div>
+                    <div class="text-gray-400 text-sm">{{ job.area }} sq ft</div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <div class="text-white">{{ job.date }}</div>
+                    <div class="text-gray-400 text-sm">{{ job.duration }}</div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <Badge 
+                      :class="{
+                        'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/40': job.status === 'Completed',
+                        'bg-blue-900/30 text-blue-400 border-blue-800 hover:bg-blue-900/40': job.status === 'In Review',
+                        'bg-yellow-900/30 text-yellow-400 border-yellow-800 hover:bg-yellow-900/40': job.status === 'Scheduled'
+                      }"
+                      variant="outline"
+                      class="px-3 py-1 text-sm font-medium border"
+                    >
+                      {{ job.status }}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div class="p-4 border-t border-gray-700 bg-gray-800/30 mt-auto">
+            <div class="flex items-center justify-between">
+              <div class="text-gray-400 text-sm">
+                Showing {{ Math.min(completedJobs.length, 5) }} of {{ completedJobs.length }} jobs
+              </div>
+              <Button 
+                variant="link"
+                @click="viewAllJobs"
+                class="text-blue-400 hover:text-blue-300 text-sm font-medium p-0 h-auto flex items-center gap-2 transition-colors"
+              >
+                View All
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 shadow-xl overflow-hidden flex flex-col">
+          <div class="p-6 border-b border-gray-700">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-r from-purple-500 to-pink-400 rounded-lg">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-white">Most Used Colors</h2>
+                  <p class="text-gray-400 text-sm">Popular color preferences across projects</p>
+                </div>
+              </div>
+              <Badge variant="secondary" class="bg-purple-900/30 text-purple-400 border border-purple-800 px-3 py-1">
+                {{ colors.length }} Colors
+              </Badge>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto flex-1">
+            <Table>
+              <TableHeader class="bg-gray-800/50">
+                <TableRow class="hover:bg-transparent border-gray-700">
+                  <TableHead class="text-gray-400 font-medium text-sm">Color</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Name</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Usage Count</TableHead>
+                  <TableHead class="text-gray-400 font-medium text-sm">Trend</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody class="divide-y divide-gray-800">
+                <TableRow 
+                  v-for="color in colors" 
+                  :key="color.id"
+                  class="hover:bg-gray-800/30 transition-colors border-gray-800"
+                >
+                  <TableCell class="p-4">
+                    <div 
+                      class="w-10 h-10 rounded-lg border-2 border-gray-700 shadow-lg"
+                      :style="{ backgroundColor: color.hex }"
+                    ></div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <div class="text-white font-medium">{{ color.name }}</div>
+                    <div class="text-gray-400 text-sm">{{ color.brand }}</div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <div class="flex items-center gap-3">
+                      <div class="text-white text-lg font-bold">{{ color.usage }}</div>
+                      <div class="text-gray-400 text-sm">projects</div>
+                    </div>
+                    <div class="w-32 bg-gray-700 rounded-full h-2 mt-2 overflow-hidden">
+                      <div 
+                        class="h-full rounded-full transition-all duration-1000"
+                        :style="{ 
+                          width: `${(color.usage / maxColorUsage) * 100}%`,
+                          backgroundColor: color.hex
+                        }"
+                      ></div>
+                    </div>
+                  </TableCell>
+                  <TableCell class="p-4">
+                    <div class="flex items-center gap-2" :class="color.trend > 0 ? 'text-green-400' : 'text-red-400'">
+                      <svg v-if="color.trend > 0" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                      <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span class="font-medium">{{ Math.abs(color.trend) }}%</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div class="p-4 border-t border-gray-700 bg-gray-800/30 mt-auto">
+            <div class="text-gray-400 text-sm">
+              Based on {{ totalColorUsage }} color applications across all projects
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card class="mt-8 bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border-gray-700 shadow-xl overflow-hidden">
+        <div class="p-6 border-b border-gray-700">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-gradient-to-r from-cyan-500 to-blue-400 rounded-lg">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-white">Monthly Activity Summary</h2>
+                <p class="text-gray-400 text-sm">Performance metrics over the last 6 months</p>
+              </div>
+            </div>
+            <Badge variant="secondary" class="bg-blue-900/30 text-blue-400 border border-blue-800 px-3 py-1">
+              Last 6 Months
+            </Badge>
+          </div>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <Table>
+            <TableHeader class="bg-gray-800/50">
+              <TableRow class="hover:bg-transparent border-gray-700">
+                <TableHead class="text-gray-400 font-medium text-sm">Month</TableHead>
+                <TableHead class="text-gray-400 font-medium text-sm">Jobs</TableHead>
+                <TableHead class="text-gray-400 font-medium text-sm">Revenue</TableHead>
+                <TableHead class="text-gray-400 font-medium text-sm">Avg. Time</TableHead>
+                <TableHead class="text-gray-400 font-medium text-sm">Satisfaction</TableHead>
+                <TableHead class="text-gray-400 font-medium text-sm">Performance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody class="divide-y divide-gray-800">
+              <TableRow 
+                v-for="month in monthlyActivity" 
+                :key="month.month"
+                class="hover:bg-gray-800/30 transition-colors border-gray-800"
+              >
+                <TableCell class="p-4">
+                  <div class="text-white font-medium">{{ month.month }}</div>
+                  <div class="text-gray-400 text-sm">{{ month.year }}</div>
+                </TableCell>
+                <TableCell class="p-4">
+                  <div class="text-white font-bold">{{ month.jobs }}</div>
+                  <div class="text-gray-400 text-sm">{{ month.jobsChange }} jobs</div>
+                </TableCell>
+                <TableCell class="p-4">
+                  <div class="text-white font-bold">${{ month.revenue.toLocaleString() }}</div>
+                  <div :class="month.revenueChange >= 0 ? 'text-green-400' : 'text-red-400'" class="text-sm">
+                    {{ month.revenueChange >= 0 ? '+' : '' }}{{ month.revenueChange }}%
+                  </div>
+                </TableCell>
+                <TableCell class="p-4">
+                  <div class="text-white font-bold">{{ month.avgTime }}</div>
+                  <div :class="month.timeChange <= 0 ? 'text-green-400' : 'text-red-400'" class="text-sm">
+                    {{ month.timeChange <= 0 ? 'Faster' : 'Slower' }}
+                  </div>
+                </TableCell>
+                <TableCell class="p-4">
+                  <div class="text-white font-bold">{{ month.satisfaction }}%</div>
+                  <div class="w-24 bg-gray-700 rounded-full h-2 mt-2 overflow-hidden">
+                    <div 
+                      class="h-full rounded-full"
+                      :style="{ 
+                        width: `${month.satisfaction}%`,
+                        background: `linear-gradient(90deg, ${month.satisfaction >= 80 ? '#10b981' : month.satisfaction >= 60 ? '#f59e0b' : '#ef4444'}, ${month.satisfaction >= 80 ? '#34d399' : month.satisfaction >= 60 ? '#fbbf24' : '#f87171'})`
+                      }"
+                    ></div>
+                  </div>
+                </TableCell>
+                <TableCell class="p-4">
+                  <Badge 
+                    :class="{
+                      'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/40': month.performance === 'Excellent',
+                      'bg-blue-900/30 text-blue-400 border-blue-800 hover:bg-blue-900/40': month.performance === 'Good',
+                      'bg-yellow-900/30 text-yellow-400 border-yellow-800 hover:bg-yellow-900/40': month.performance === 'Average',
+                      'bg-red-900/30 text-red-400 border-red-800 hover:bg-red-900/40': month.performance === 'Needs Improvement'
+                    }"
+                    variant="outline"
+                    class="px-3 py-1 font-medium border"
+                  >
+                    {{ month.performance }}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </main>
+
+    <transition
+      enter-active-class="transform ease-out duration-300 transition"
+      enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      enter-to-class="translate-y-0 opacity-100 sm:translate-x-0"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="toast.show" class="fixed bottom-4 right-4 z-50">
+        <div 
+          class="rounded-lg shadow-lg p-4 flex items-center gap-3 text-white border"
+          :class="{
+            'bg-green-600 border-green-500': toast.type === 'success',
+            'bg-blue-600 border-blue-500': toast.type === 'info',
+            'bg-red-600 border-red-500': toast.type === 'error'
+          }"
+        >
+          <span class="font-bold">{{ toast.title }}</span>
+          <span class="text-sm opacity-90">{{ toast.message }}</span>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script>
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
 export default {
-  name: 'Distributors',
+  name: 'ReportsPage',
+  components: {
+    Button,
+    Card,
+    Badge,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+  },
   data() {
     return {
-      searchQuery: '',
-      showFilter: false,
-      viewMode: 'grid',
-      sortBy: 'name',
-      paintTypeFilter: 'all',
-      availabilityFilter: 'all',
-      ratingFilter: 'all',
-      currentPage: 1,
-      itemsPerPage: 8,
-      showNotification: false,
-      notificationMessage: '',
-      
-      // Sample data
-      distributors: [
-        {
-          id: 1,
-          name: 'Premium Paints Inc.',
-          type: 'Wholesale Distributor',
-          rating: 4.8,
-          reviews: 234,
-          status: 'online',
-          deliveryTime: 24,
-          paints: [
-            { name: 'Ocean Blue', type: 'Latex', color: '#3B82F6', stock: 'in-stock' },
-            { name: 'Forest Green', type: 'Oil-based', color: '#10B981', stock: 'in-stock' },
-            { name: 'Sunset Orange', type: 'Latex', color: '#F59E0B', stock: 'low-stock' },
-            { name: 'Royal Purple', type: 'Spray', color: '#8B5CF6', stock: 'in-stock' },
-            { name: 'Crimson Red', type: 'Latex', color: '#EF4444', stock: 'in-stock' },
-            { name: 'Sky Blue', type: 'Specialty', color: '#0EA5E9', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 123-4567',
-            email: 'contact@premiumpaints.com',
-            address: '123 Paint St, Color City'
-          }
-        },
-        {
-          id: 2,
-          name: 'Color Masters Supply',
-          type: 'Retail Supplier',
-          rating: 4.5,
-          reviews: 189,
-          status: 'online',
-          deliveryTime: 36,
-          paints: [
-            { name: 'Emerald Green', type: 'Latex', color: '#10B981', stock: 'in-stock' },
-            { name: 'Golden Yellow', type: 'Oil-based', color: '#FBBF24', stock: 'low-stock' },
-            { name: 'Midnight Blue', type: 'Latex', color: '#1E40AF', stock: 'in-stock' },
-            { name: 'Rose Pink', type: 'Spray', color: '#F472B6', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 987-6543',
-            email: 'sales@colormasters.com',
-            address: '456 Supply Ave, Paint Town'
-          }
-        },
-        {
-          id: 3,
-          name: 'Industrial Coatings Ltd.',
-          type: 'Industrial Supplier',
-          rating: 4.9,
-          reviews: 312,
-          status: 'online',
-          deliveryTime: 48,
-          paints: [
-            { name: 'Slate Gray', type: 'Industrial', color: '#64748B', stock: 'in-stock' },
-            { name: 'Charcoal Black', type: 'Industrial', color: '#1F2937', stock: 'in-stock' },
-            { name: 'Pure White', type: 'Industrial', color: '#F8FAFC', stock: 'low-stock' },
-            { name: 'Safety Yellow', type: 'Industrial', color: '#FDE047', stock: 'in-stock' },
-            { name: 'Warning Red', type: 'Industrial', color: '#DC2626', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 456-7890',
-            email: 'industrial@coatings.com',
-            address: '789 Industry Blvd, Factory District'
-          }
-        },
-        {
-          id: 4,
-          name: 'Eco-Friendly Paints',
-          type: 'Specialty Distributor',
-          rating: 4.7,
-          reviews: 156,
-          status: 'closed',
-          deliveryTime: 72,
-          paints: [
-            { name: 'Eco Green', type: 'Eco-friendly', color: '#34D399', stock: 'in-stock' },
-            { name: 'Natural Brown', type: 'Eco-friendly', color: '#92400E', stock: 'in-stock' },
-            { name: 'Organic White', type: 'Eco-friendly', color: '#F9FAFB', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 234-5678',
-            email: 'eco@ecopaints.com',
-            address: '321 Green St, Eco Village'
-          }
-        },
-        {
-          id: 5,
-          name: 'Metropolitan Paint Supply',
-          type: 'Urban Distributor',
-          rating: 4.3,
-          reviews: 98,
-          status: 'online',
-          deliveryTime: 12,
-          paints: [
-            { name: 'City Gray', type: 'Latex', color: '#6B7280', stock: 'low-stock' },
-            { name: 'Metro Blue', type: 'Latex', color: '#3B82F6', stock: 'in-stock' },
-            { name: 'Urban Red', type: 'Spray', color: '#EF4444', stock: 'in-stock' },
-            { name: 'Street Yellow', type: 'Latex', color: '#F59E0B', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 876-5432',
-            email: 'metro@paintsupply.com',
-            address: '987 Urban Ave, Downtown'
-          }
-        },
-        {
-          id: 6,
-          name: 'Artisan Paint Co.',
-          type: 'Art Supplies',
-          rating: 4.6,
-          reviews: 210,
-          status: 'online',
-          deliveryTime: 60,
-          paints: [
-            { name: 'Artist Blue', type: 'Acrylic', color: '#2563EB', stock: 'in-stock' },
-            { name: 'Canvas White', type: 'Acrylic', color: '#FFFFFF', stock: 'in-stock' },
-            { name: 'Brush Red', type: 'Acrylic', color: '#DC2626', stock: 'low-stock' },
-            { name: 'Palette Yellow', type: 'Acrylic', color: '#FBBF24', stock: 'in-stock' },
-            { name: 'Easel Green', type: 'Acrylic', color: '#059669', stock: 'in-stock' },
-          ],
-          contact: {
-            phone: '(555) 345-6789',
-            email: 'art@artisanpaint.com',
-            address: '654 Art St, Creative District'
-          }
-        },
-        {
-          id: 7,
-          name: 'Quick Dry Paints',
-          type: 'Fast Delivery',
-          rating: 4.2,
-          reviews: 143,
-          status: 'online',
-          deliveryTime: 6,
-          paints: [
-            { name: 'Quick White', type: 'Fast-dry', color: '#F8FAFC', stock: 'in-stock' },
-            { name: 'Rapid Gray', type: 'Fast-dry', color: '#4B5563', stock: 'in-stock' },
-            { name: 'Speedy Black', type: 'Fast-dry', color: '#111827', stock: 'low-stock' },
-          ],
-          contact: {
-            phone: '(555) 567-8901',
-            email: 'quick@quickdry.com',
-            address: '321 Speedway, Express Zone'
-          }
-        },
-        {
-          id: 8,
-          name: 'Heritage Paints',
-          type: 'Traditional Supplier',
-          rating: 4.8,
-          reviews: 267,
-          status: 'closed',
-          deliveryTime: 96,
-          paints: [
-            { name: 'Heritage Red', type: 'Traditional', color: '#B91C1C', stock: 'in-stock' },
-            { name: 'Classic Blue', type: 'Traditional', color: '#1D4ED8', stock: 'in-stock' },
-            { name: 'Victorian Green', type: 'Traditional', color: '#047857', stock: 'in-stock' },
-            { name: 'Edwardian Yellow', type: 'Traditional', color: '#F59E0B', stock: 'low-stock' },
-          ],
-          contact: {
-            phone: '(555) 678-9012',
-            email: 'heritage@traditional.com',
-            address: '789 History Ln, Old Town'
-          }
-        },
+      selectedPeriod: 'month',
+      refreshing: false,
+      toast: {
+        show: false,
+        title: '',
+        message: '',
+        type: 'info'
+      },
+      timePeriods: [
+        { label: 'This Week', value: 'week' },
+        { label: 'This Month', value: 'month' },
+        { label: 'Last Quarter', value: 'quarter' },
+        { label: 'This Year', value: 'year' },
+        { label: 'All Time', value: 'all' }
+      ],
+      overviewStats: {
+        completedJobs: 42,
+        jobGrowth: 15,
+        avgTime: '2.5h',
+        timeImprovement: 12,
+        satisfaction: 94,
+        satisfactionChange: 8,
+        revenue: 28500,
+        revenueGrowth: 22
+      },
+      completedJobs: [
+        { id: 1, client: 'John Smith', location: 'Manila', serviceType: 'Wall Painting', area: 1200, date: '2024-01-15', duration: '2 days', status: 'Completed' },
+        { id: 2, client: 'Maria Garcia', location: 'Makati', serviceType: 'Ceiling Repair', area: 850, date: '2024-01-14', duration: '1 day', status: 'Completed' },
+        { id: 3, client: 'Robert Chen', location: 'Taguig', serviceType: 'Full House', area: 3200, date: '2024-01-12', duration: '5 days', status: 'In Review' },
+        { id: 4, client: 'Lisa Wong', location: 'Pasig', serviceType: 'Kitchen Cabinet', area: 450, date: '2024-01-10', duration: '1 day', status: 'Completed' },
+        { id: 5, client: 'David Park', location: 'Quezon City', serviceType: 'Exterior Walls', area: 1800, date: '2024-01-08', duration: '3 days', status: 'Scheduled' }
+      ],
+      colors: [
+        { id: 1, name: 'Arctic White', brand: 'Sherwin-Williams', hex: '#f8fafc', usage: 18, trend: 25 },
+        { id: 2, name: 'Midnight Blue', brand: 'Benjamin Moore', hex: '#1e3a8a', usage: 15, trend: 12 },
+        { id: 3, name: 'Emerald Green', brand: 'Behr', hex: '#047857', usage: 12, trend: -5 },
+        { id: 4, name: 'Charcoal Gray', brand: 'Sherwin-Williams', hex: '#374151', usage: 10, trend: 18 },
+        { id: 5, name: 'Terracotta', brand: 'Valspar', hex: '#92400e', usage: 8, trend: 32 }
+      ],
+      monthlyActivity: [
+        { month: 'January', year: '2024', jobs: 8, jobsChange: '+2', revenue: 5200, revenueChange: 15, avgTime: '2.5h', timeChange: -0.5, satisfaction: 94, performance: 'Excellent' },
+        { month: 'December', year: '2023', jobs: 7, jobsChange: '+1', revenue: 4800, revenueChange: 8, avgTime: '2.8h', timeChange: 0.2, satisfaction: 92, performance: 'Good' },
+        { month: 'November', year: '2023', jobs: 6, jobsChange: '-1', revenue: 4200, revenueChange: -5, avgTime: '3.1h', timeChange: 0.3, satisfaction: 88, performance: 'Average' },
+        { month: 'October', year: '2023', jobs: 7, jobsChange: '+2', revenue: 5100, revenueChange: 12, avgTime: '2.9h', timeChange: -0.2, satisfaction: 90, performance: 'Good' },
+        { month: 'September', year: '2023', jobs: 5, jobsChange: '-2', revenue: 3200, revenueChange: -8, avgTime: '3.3h', timeChange: 0.4, satisfaction: 85, performance: 'Average' },
+        { month: 'August', year: '2023', jobs: 7, jobsChange: '+3', revenue: 4600, revenueChange: 18, avgTime: '2.7h', timeChange: -0.6, satisfaction: 93, performance: 'Excellent' }
       ]
     }
   },
   computed: {
-    totalDistributors() {
-      return this.distributors.length
+    maxColorUsage() {
+      return Math.max(...this.colors.map(c => c.usage))
     },
-    
-    totalProducts() {
-      return this.distributors.reduce((total, dist) => total + dist.paints.length, 0)
-    },
-    
-    inStockProducts() {
-      return this.distributors.reduce((total, dist) => {
-        return total + dist.paints.filter(p => p.stock === 'in-stock').length
-      }, 0)
-    },
-    
-    avgDeliveryTime() {
-      const total = this.distributors.reduce((sum, dist) => sum + dist.deliveryTime, 0)
-      return Math.round(total / this.distributors.length)
-    },
-    
-    activeFilterCount() {
-      let count = 0
-      if (this.sortBy !== 'name') count++
-      if (this.paintTypeFilter !== 'all') count++
-      if (this.availabilityFilter !== 'all') count++
-      if (this.ratingFilter !== 'all') count++
-      return count
-    },
-    
-    filteredDistributors() {
-      let filtered = [...this.distributors]
-      
-      // Apply search filter
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase()
-        filtered = filtered.filter(dist => 
-          dist.name.toLowerCase().includes(query) ||
-          dist.type.toLowerCase().includes(query) ||
-          dist.paints.some(p => p.name.toLowerCase().includes(query)) ||
-          dist.contact.email.toLowerCase().includes(query)
-        )
-      }
-      
-      // Apply paint type filter
-      if (this.paintTypeFilter !== 'all') {
-        filtered = filtered.filter(dist => 
-          dist.paints.some(p => p.type.toLowerCase().includes(this.paintTypeFilter))
-        )
-      }
-      
-      // Apply availability filter
-      if (this.availabilityFilter === 'in-stock') {
-        filtered = filtered.filter(dist => 
-          dist.paints.some(p => p.stock === 'in-stock')
-        )
-      } else if (this.availabilityFilter === 'low-stock') {
-        filtered = filtered.filter(dist => 
-          dist.paints.some(p => p.stock === 'low-stock')
-        )
-      }
-      
-      // Apply rating filter
-      if (this.ratingFilter !== 'all') {
-        const minRating = parseFloat(this.ratingFilter)
-        filtered = filtered.filter(dist => dist.rating >= minRating)
-      }
-      
-      // Apply sorting
-      switch (this.sortBy) {
-        case 'rating':
-          filtered.sort((a, b) => b.rating - a.rating)
-          break
-        case 'distance':
-          filtered.sort((a, b) => a.deliveryTime - b.deliveryTime)
-          break
-        case 'inventory':
-          filtered.sort((a, b) => b.paints.length - a.paints.length)
-          break
-        default: // name
-          filtered.sort((a, b) => a.name.localeCompare(b.name))
-      }
-      
-      return filtered
-    },
-    
-    totalPages() {
-      return Math.ceil(this.filteredDistributors.length / this.itemsPerPage)
-    },
-    
-    paginatedDistributors() {
-      const start = (this.currentPage - 1) * this.itemsPerPage
-      const end = start + this.itemsPerPage
-      return this.filteredDistributors.slice(start, end)
-    },
-    
-    startIndex() {
-      return (this.currentPage - 1) * this.itemsPerPage
-    },
-    
-    endIndex() {
-      return Math.min(this.startIndex + this.itemsPerPage, this.filteredDistributors.length)
-    },
-    
-    visiblePages() {
-      const pages = []
-      const maxVisible = 5
-      let start = Math.max(1, this.currentPage - Math.floor(maxVisible / 2))
-      let end = Math.min(this.totalPages, start + maxVisible - 1)
-      
-      if (end - start + 1 < maxVisible) {
-        start = Math.max(1, end - maxVisible + 1)
-      }
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-      
-      return pages
-    }
-  },
-  watch: {
-    searchQuery() {
-      this.currentPage = 1
-    },
-    paintTypeFilter() {
-      this.currentPage = 1
-    },
-    availabilityFilter() {
-      this.currentPage = 1
+    totalColorUsage() {
+      return this.colors.reduce((sum, color) => sum + color.usage, 0)
     }
   },
   methods: {
-    toggleFilter() {
-      this.showFilter = !this.showFilter
-    },
-    
-    applyFilters() {
-      this.showFilter = false
-    },
-    
-    clearFilters() {
-      this.sortBy = 'name'
-      this.paintTypeFilter = 'all'
-      this.availabilityFilter = 'all'
-      this.ratingFilter = 'all'
-      this.searchQuery = ''
-      this.showFilter = false
-    },
-    
-    contactDistributor(distributor) {
-      this.showNotificationMessage(`Contacting ${distributor.name}...`)
-    },
-    
-    viewDetails(distributor) {
-      this.showNotificationMessage(`Viewing details for ${distributor.name}`)
-    },
-    
-    showNotificationMessage(message) {
-      this.notificationMessage = message
-      this.showNotification = true
+    // Custom notification helper to mimic $notify
+    showToast({ title, message, type }) {
+      this.toast = { show: true, title, message, type }
       setTimeout(() => {
-        this.showNotification = false
+        this.toast.show = false
       }, 3000)
     },
-    
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--
-        this.scrollToTop()
+
+    generateReport() {
+      // Simulate report generation
+      const button = event?.currentTarget // fixed currentTarget
+      if (button) {
+        // In Vue, standard DOM manipulation of buttons is less common, 
+        // usually we use a state like isGenerating. 
+        // But keeping original logic flow:
+        this.showToast({
+          title: 'Report Generated',
+          message: 'Performance report has been exported successfully',
+          type: 'success'
+        })
       }
     },
     
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++
-        this.scrollToTop()
-      }
+    refreshData() {
+      this.refreshing = true
+      
+      // Simulate API call
+      setTimeout(() => {
+        this.refreshing = false
+        
+        // Update some data to show refresh
+        this.overviewStats.completedJobs = Math.floor(Math.random() * 10) + 40
+        this.overviewStats.satisfaction = Math.floor(Math.random() * 6) + 90
+        
+        // Show refresh notification
+        this.showToast({
+          title: 'Data Refreshed',
+          message: 'Report data has been updated',
+          type: 'info'
+        })
+      }, 1500)
     },
     
-    goToPage(page) {
-      this.currentPage = page
-      this.scrollToTop()
-    },
-    
-    scrollToTop() {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+    viewAllJobs() {
+      // Navigate to jobs page or show modal
+      this.showToast({
+        title: 'View All Jobs',
+        message: 'Redirecting to jobs page...',
+        type: 'info'
+      })
     }
+  },
+  mounted() {
+    // Animate table rows on load
+    setTimeout(() => {
+      const rows = document.querySelectorAll('tbody tr')
+      rows.forEach((row, index) => {
+        row.style.opacity = '0'
+        row.style.transform = 'translateX(20px)'
+        setTimeout(() => {
+          row.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+          row.style.opacity = '1'
+          row.style.transform = 'translateX(0)'
+        }, index * 100)
+      })
+    }, 300)
   }
 }
 </script>
 
-<style scoped src="../serviceProvider/style/Distributors.css"></style>
+<style scoped>
+/* Custom animations inherited from original file */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #2563eb, #7c3aed);
+}
+
+/* Print styles for reports */
+@media print {
+  div {
+    background: white !important;
+    color: black !important;
+  }
+  
+  header, button {
+    display: none !important;
+  }
+  
+  table {
+    border: 1px solid #ddd !important;
+  }
+  
+  th, td {
+    color: black !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+}
+</style>

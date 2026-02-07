@@ -101,7 +101,6 @@ import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
-import ECommerceProductDetail from '@/views/ClientE-Commerce/ECommerceProductDetail.vue'
 import ECommerceServices from '@/views/ClientE-Commerce/ECommerceServices.vue'
 import ECommerceCart from '@/views/ClientE-Commerce/ECommerceCart.vue'
 import ECommerceCheckout from '@/views/ClientE-Commerce/ECommerceCheckout.vue'
@@ -601,11 +600,6 @@ const routes = [
         path: 'EccommerceShop',
         name: 'EccommerceShop',
         component: ECommerceShop
-      },
-      {
-        path: 'EccommerceProductDetails',
-        name: 'EccommerceProductDetails',
-        component: ECommerceProductDetail
       },
       {
         path: 'EccommerceServices',

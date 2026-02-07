@@ -1,6 +1,5 @@
 <template>
   <div class="p-4 md:p-6">
-    <!-- Page Header with Actions -->
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -8,129 +7,149 @@
           <p class="text-gray-600 mt-2">Manage your paint products and stock levels</p>
         </div>
         <div class="flex flex-wrap gap-3">
-          <button @click="exportInventory" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center text-sm md:text-base">
+          <Button variant="outline" @click="exportInventory" class="border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center text-sm md:text-base h-10">
             <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
             Export
-          </button>
-          <button @click="openAddProductModal" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-sm md:text-base">
+          </Button>
+          <Button @click="openAddProductModal" class="bg-blue-600 text-white hover:bg-blue-700 flex items-center text-sm md:text-base h-10">
             <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
             Add Product
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
-    <!-- Stats Summary -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-blue-700">Total Products</p>
-            <p class="text-2xl font-bold text-blue-900 mt-1">{{ inventoryStats.totalProducts }}</p>
+      <Card class="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+        <CardContent class="p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-blue-700">Total Products</p>
+              <p class="text-2xl font-bold text-blue-900 mt-1">{{ inventoryStats.totalProducts }}</p>
+            </div>
+            <div class="p-2 bg-blue-200 rounded-lg">
+              <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+              </svg>
+            </div>
           </div>
-          <div class="p-2 bg-blue-200 rounded-lg">
-            <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-green-700">In Stock Items</p>
-            <p class="text-2xl font-bold text-green-900 mt-1">{{ inventoryStats.inStockItems }}</p>
+      <Card class="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+        <CardContent class="p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-green-700">In Stock Items</p>
+              <p class="text-2xl font-bold text-green-900 mt-1">{{ inventoryStats.inStockItems }}</p>
+            </div>
+            <div class="p-2 bg-green-200 rounded-lg">
+              <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
           </div>
-          <div class="p-2 bg-green-200 rounded-lg">
-            <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-yellow-700">Low Stock Items</p>
-            <p class="text-2xl font-bold text-yellow-900 mt-1">{{ inventoryStats.lowStockItems }}</p>
+      <Card class="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200">
+        <CardContent class="p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-yellow-700">Low Stock Items</p>
+              <p class="text-2xl font-bold text-yellow-900 mt-1">{{ inventoryStats.lowStockItems }}</p>
+            </div>
+            <div class="p-2 bg-yellow-200 rounded-lg">
+              <svg class="w-6 h-6 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.286 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              </svg>
+            </div>
           </div>
-          <div class="p-2 bg-yellow-200 rounded-lg">
-            <svg class="w-6 h-6 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.286 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div class="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-red-700">Out of Stock</p>
-            <p class="text-2xl font-bold text-red-900 mt-1">{{ inventoryStats.outOfStockItems }}</p>
+      <Card class="bg-gradient-to-r from-red-50 to-red-100 border-red-200">
+        <CardContent class="p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-red-700">Out of Stock</p>
+              <p class="text-2xl font-bold text-red-900 mt-1">{{ inventoryStats.outOfStockItems }}</p>
+            </div>
+            <div class="p-2 bg-red-200 rounded-lg">
+              <svg class="w-6 h-6 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+            </div>
           </div>
-          <div class="p-2 bg-red-200 rounded-lg">
-            <svg class="w-6 h-6 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-            </svg>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Search and Filter Bar -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-      <div class="flex flex-col md:flex-row gap-4">
-        <div class="flex-1">
-          <div class="relative">
-            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Search paint products by name, brand, or color..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
+    <Card class="mb-6 shadow-sm border border-gray-200">
+      <CardContent class="p-4">
+        <div class="flex flex-col md:flex-row gap-4">
+          <div class="flex-1">
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+              <Input 
+                v-model="searchQuery"
+                type="text" 
+                placeholder="Search paint products by name, brand, or color..."
+                class="pl-10 w-full focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <Select v-model="selectedBrand">
+              <SelectTrigger class="w-[180px] border-gray-300 focus:ring-blue-500">
+                <SelectValue placeholder="All Brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Brands" class="cursor-pointer">All Brands</SelectItem>
+                <SelectItem v-for="brand in uniqueBrands" :key="brand" :value="brand">
+                  {{ brand }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select v-model="stockFilter">
+              <SelectTrigger class="w-[180px] border-gray-300 focus:ring-blue-500">
+                <SelectValue placeholder="All Stock" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stock</SelectItem>
+                <SelectItem value="in-stock">In Stock</SelectItem>
+                <SelectItem value="low-stock">Low Stock</SelectItem>
+                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <div class="flex gap-3">
-          <select v-model="selectedBrand" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">All Brands</option>
-            <option v-for="brand in uniqueBrands" :key="brand" :value="brand">{{ brand }}</option>
-          </select>
-          <select v-model="stockFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="all">All Stock</option>
-            <option value="in-stock">In Stock</option>
-            <option value="low-stock">Low Stock</option>
-            <option value="out-of-stock">Out of Stock</option>
-          </select>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- Inventory Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <Card class="shadow-sm border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Product</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700 hidden md:table-cell">Brand</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Color Base</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Quantity</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700 hidden lg:table-cell">Price</th>
-              <th class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="product in filteredProducts" :key="product.id" class="hover:bg-gray-50">
-              <td class="py-3 px-4 md:px-6">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Product</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700 hidden md:table-cell">Brand</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Color Base</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Quantity</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700 hidden lg:table-cell">Price</TableHead>
+              <TableHead class="text-left py-3 px-4 md:px-6 text-sm font-semibold text-gray-700">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="divide-y divide-gray-200">
+            <TableRow v-for="product in filteredProducts" :key="product.id" class="hover:bg-gray-50">
+              <TableCell class="py-3 px-4 md:px-6">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 w-10 h-10 rounded-md mr-3" :style="{ backgroundColor: product.colorHex }"></div>
                   <div>
@@ -138,19 +157,19 @@
                     <p class="text-sm text-gray-500 md:hidden">{{ product.brand }}</p>
                   </div>
                 </div>
-              </td>
-              <td class="py-3 px-4 md:px-6 text-gray-600 hidden md:table-cell">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6 text-gray-600 hidden md:table-cell">
+                <Badge variant="secondary" class="font-medium bg-gray-100 text-gray-800 hover:bg-gray-200">
                   {{ product.brand }}
-                </span>
-              </td>
-              <td class="py-3 px-4 md:px-6">
+                </Badge>
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
                 <div class="flex items-center">
                   <div class="w-6 h-6 rounded-full border border-gray-300 mr-2" :style="{ backgroundColor: product.colorHex }"></div>
                   <span class="text-gray-700">{{ product.colorBase }}</span>
                 </div>
-              </td>
-              <td class="py-3 px-4 md:px-6">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
                 <div class="flex items-center">
                   <span :class="getStockStatusClass(product.quantity)" class="font-medium">
                     {{ product.quantity }}
@@ -162,161 +181,203 @@
                     </svg>
                   </span>
                 </div>
-              </td>
-              <td class="py-3 px-4 md:px-6 text-gray-700 hidden lg:table-cell">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6 text-gray-700 hidden lg:table-cell">
                 ₱{{ formatPrice(product.price) }}
-              </td>
-              <td class="py-3 px-4 md:px-6">
+              </TableCell>
+              <TableCell class="py-3 px-4 md:px-6">
                 <div class="flex items-center space-x-2">
-                  <button @click="openAddStockModal(product)" class="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded" title="Add Stock">
+                  <Button variant="ghost" size="icon" @click="openAddStockModal(product)" class="w-8 h-8 text-green-600 hover:text-green-800 hover:bg-green-50" title="Add Stock">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                     </svg>
-                  </button>
-                  <button @click="openUpdateQuantityModal(product)" class="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded" title="Update Quantity">
+                  </Button>
+                  <Button variant="ghost" size="icon" @click="openUpdateQuantityModal(product)" class="w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50" title="Update Quantity">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
-                  </button>
-                  <button @click="toggleAvailability(product)" :class="getAvailabilityButtonClass(product)" class="p-1.5 rounded" :title="product.quantity > 0 ? 'Mark as Unavailable' : 'Mark as Available'">
+                  </Button>
+                  <Button variant="ghost" size="icon" @click="toggleAvailability(product)" :class="getAvailabilityButtonClass(product)" class="w-8 h-8" :title="product.quantity > 0 ? 'Mark as Unavailable' : 'Mark as Available'">
                     <svg v-if="product.quantity > 0" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                     </svg>
                     <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
 
-      <!-- Empty State -->
       <div v-if="filteredProducts.length === 0" class="text-center py-12">
         <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
         </svg>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No products found</h3>
         <p class="text-gray-500 mb-4">Try adjusting your search or filter</p>
-        <button @click="resetFilters" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <Button @click="resetFilters" class="bg-blue-600 text-white hover:bg-blue-700">
           Reset Filters
-        </button>
+        </Button>
       </div>
 
-      <!-- Pagination -->
       <div v-if="filteredProducts.length > 0" class="px-4 md:px-6 py-4 border-t border-gray-200">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-gray-700 mb-4 sm:mb-0">
             Showing <span class="font-medium">{{ filteredProducts.length }}</span> of <span class="font-medium">{{ products.length }}</span> products
           </p>
           <div class="flex items-center space-x-2">
-            <button @click="previousPage" :disabled="currentPage === 1" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button variant="outline" @click="previousPage" :disabled="currentPage === 1" class="h-8 px-3 text-sm">
               Previous
-            </button>
+            </Button>
             <span class="text-sm text-gray-700">
               Page {{ currentPage }}
             </span>
-            <button @click="nextPage" :disabled="currentPage * itemsPerPage >= filteredProducts.length" class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <Button variant="outline" @click="nextPage" :disabled="currentPage * itemsPerPage >= filteredProducts.length" class="h-8 px-3 text-sm">
               Next
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <!-- Add Product Modal -->
-    <div v-if="showAddProductModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-lg max-w-md w-full">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Add New Paint Product</h3>
-        </div>
-        <div class="px-6 py-4">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-              <input v-model="newProduct.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    <Dialog :open="showAddProductModal" @update:open="showAddProductModal = $event">
+      <DialogContent class="sm:max-w-md bg-white">
+        <DialogHeader>
+          <DialogTitle>Add New Paint Product</DialogTitle>
+        </DialogHeader>
+        <div class="py-4 space-y-4">
+          <div class="space-y-2">
+            <Label class="text-sm font-medium text-gray-700">Product Name</Label>
+            <Input v-model="newProduct.name" type="text" class="focus-visible:ring-blue-500" />
+          </div>
+          <div class="space-y-2">
+            <Label class="text-sm font-medium text-gray-700">Brand</Label>
+            <Select v-model="newProduct.brand">
+              <SelectTrigger class="w-full border-gray-300 focus:ring-blue-500">
+                <SelectValue placeholder="Select Brand" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="brand in uniqueBrands" :key="brand" :value="brand">{{ brand }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label class="text-sm font-medium text-gray-700">Color Base</Label>
+              <Input v-model="newProduct.colorBase" type="text" class="focus-visible:ring-blue-500" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-              <select v-model="newProduct.brand" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="">Select Brand</option>
-                <option v-for="brand in uniqueBrands" :key="brand" :value="brand">{{ brand }}</option>
-              </select>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Color Base</label>
-                <input v-model="newProduct.colorBase" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Color Hex</label>
-                <div class="flex items-center">
-                  <input v-model="newProduct.colorHex" type="color" class="w-8 h-8 border-0 rounded cursor-pointer">
-                  <input v-model="newProduct.colorHex" type="text" class="ml-2 flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
+            <div class="space-y-2">
+              <Label class="text-sm font-medium text-gray-700">Color Hex</Label>
+              <div class="flex items-center space-x-2">
+                <input v-model="newProduct.colorHex" type="color" class="w-10 h-10 p-0 border border-gray-300 rounded cursor-pointer">
+                <Input v-model="newProduct.colorHex" type="text" class="flex-1 focus-visible:ring-blue-500" />
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Initial Quantity</label>
-                <input v-model.number="newProduct.quantity" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Price per Unit</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
-                  <input v-model.number="newProduct.price" type="number" min="0" step="0.01" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label class="text-sm font-medium text-gray-700">Initial Quantity</Label>
+              <Input v-model.number="newProduct.quantity" type="number" min="0" class="focus-visible:ring-blue-500" />
+            </div>
+            <div class="space-y-2">
+              <Label class="text-sm font-medium text-gray-700">Price per Unit</Label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
+                <Input v-model.number="newProduct.price" type="number" min="0" step="0.01" class="pl-8 focus-visible:ring-blue-500" />
               </div>
             </div>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-          <button @click="closeAddProductModal" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button @click="addNewProduct" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Add Product
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" @click="closeAddProductModal">Cancel</Button>
+          <Button @click="addNewProduct" class="bg-blue-600 hover:bg-blue-700 text-white">Add Product</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
-    <!-- Add Stock Modal -->
-    <div v-if="showAddStockModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl shadow-lg max-w-sm w-full">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Add Stock to {{ selectedProduct?.name }}</h3>
-        </div>
-        <div class="px-6 py-4">
+    <Dialog :open="showAddStockModal" @update:open="showAddStockModal = $event">
+      <DialogContent class="sm:max-w-sm bg-white">
+        <DialogHeader>
+          <DialogTitle>Add Stock to {{ selectedProduct?.name }}</DialogTitle>
+        </DialogHeader>
+        <div class="py-4">
           <p class="text-gray-600 mb-4">Current stock: {{ selectedProduct?.quantity }} units</p>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity to Add</label>
-            <input v-model.number="stockToAdd" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter quantity">
+          <div class="space-y-2">
+            <Label class="text-sm font-medium text-gray-700">Quantity to Add</Label>
+            <Input v-model.number="stockToAdd" type="number" min="1" placeholder="Enter quantity" class="focus-visible:ring-blue-500" />
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-          <button @click="closeAddStockModal" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button @click="confirmAddStock" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-            Add Stock
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button variant="outline" @click="closeAddStockModal">Cancel</Button>
+          <Button @click="confirmAddStock" class="bg-green-600 hover:bg-green-700 text-white">Add Stock</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script>
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
 export default {
   name: 'PaintInventory',
+  components: {
+    Card,
+    CardContent,
+    Button,
+    Input,
+    Badge,
+    Label,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
+  },
   data() {
     return {
       searchQuery: '',
-      selectedBrand: '',
+      selectedBrand: 'All Brands', // Initial value adjusted for Select component
       stockFilter: 'all',
       currentPage: 1,
       itemsPerPage: 10,
@@ -435,8 +496,8 @@ export default {
           product.brand.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
           product.colorBase.toLowerCase().includes(this.searchQuery.toLowerCase())
         
-        // Brand filter
-        const matchesBrand = !this.selectedBrand || product.brand === this.selectedBrand
+        // Brand filter - Logic updated to handle "All Brands" string value from Select
+        const matchesBrand = this.selectedBrand === 'All Brands' || product.brand === this.selectedBrand
         
         // Stock filter
         let matchesStock = true
@@ -578,7 +639,7 @@ export default {
     },
     resetFilters() {
       this.searchQuery = ''
-      this.selectedBrand = ''
+      this.selectedBrand = 'All Brands' // Reset to matching Select value
       this.stockFilter = 'all'
     },
     previousPage() {
@@ -596,32 +657,6 @@ export default {
 </script>
 
 <style scoped>
-/* Enhanced scrollbar for mobile */
-@media (max-width: 768px) {
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar {
-    height: 6px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 3px;
-  }
-  
-  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-}
-
 /* Gradient text effects for stats */
 .bg-gradient-to-r {
   background-size: 200% 200%;
@@ -637,22 +672,6 @@ export default {
   }
   100% {
     background-position: 0% 50%;
-  }
-}
-
-/* Modal animations */
-.fixed {
-  animation: modalFadeIn 0.3s ease-out;
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -672,24 +691,6 @@ export default {
   border-radius: 0.375rem;
 }
 
-/* Hover effects for buttons */
-button:not(:disabled) {
-  transition: all 0.2s ease;
-}
-
-button:not(:disabled):hover {
-  transform: translateY(-1px);
-}
-
-/* Table row highlight animation */
-tr {
-  transition: background-color 0.2s ease;
-}
-
-tr:hover {
-  background-color: #f9fafb;
-}
-
 /* Responsive typography */
 @media (max-width: 640px) {
   :deep(h1) {
@@ -702,43 +703,6 @@ tr:hover {
   
   :deep(.text-lg) {
     font-size: 1rem;
-  }
-}
-
-/* Loading skeleton animation */
-@keyframes shimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
-.shimmer {
-  background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
-  background-size: 800px 104px;
-  animation: shimmer 1.5s infinite linear;
-}
-
-/* Custom focus styles */
-:focus {
-  outline: none;
-}
-
-:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Print styles */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  
-  .bg-white {
-    background: white !important;
   }
 }
 </style>

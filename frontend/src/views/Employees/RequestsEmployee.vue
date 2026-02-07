@@ -1,18 +1,18 @@
 <template>
-  <div class="requests-employee">
-    <!-- Header -->
+  <div class="requests-employee p-4 md:p-6">
     <div class="mb-8">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Requests Center</h1>
       <p class="text-gray-500 mt-1">Submit and track your requests</p>
     </div>
 
-    <!-- Request Type Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <button v-for="type in requestTypes" 
-              :key="type.id"
-              @click="showRequestForm(type.id)"
-              class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-gray-200 hover:border-indigo-300">
-        <div class="flex items-center">
+      <Card 
+        v-for="type in requestTypes" 
+        :key="type.id"
+        class="cursor-pointer hover:shadow-xl transition-shadow border-gray-200 hover:border-indigo-300"
+        @click="showRequestForm(type.id)"
+      >
+        <CardContent class="p-6 flex items-center">
           <div :class="['p-3 rounded-lg mr-4', type.colorClass]">
             <i :class="[type.icon, type.iconColor, 'text-xl']"></i>
           </div>
@@ -20,110 +20,116 @@
             <h3 class="font-semibold text-gray-800">{{ type.label }}</h3>
             <p class="text-sm text-gray-500 mt-1">{{ type.description }}</p>
           </div>
-        </div>
-      </button>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Active Requests -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
-      <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-semibold text-gray-800">Active Requests</h3>
-        <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-          {{ activeRequests.length }} requests
-        </span>
-      </div>
-
-      <div class="space-y-4">
-        <div v-for="request in activeRequests" 
-             :key="request.id"
-             class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
-          <div class="flex flex-col md:flex-row md:items-center justify-between">
-            <div class="flex items-center">
-              <div :class="['p-2 rounded-lg mr-4', getRequestType(request.type).colorClass]">
-                <i :class="[getRequestType(request.type).icon, getRequestType(request.type).iconColor]"></i>
-              </div>
-              <div>
-                <p class="font-medium text-gray-800">{{ request.title }}</p>
-                <p class="text-sm text-gray-600">{{ request.date }}</p>
-              </div>
-            </div>
-            <div class="mt-3 md:mt-0 flex items-center space-x-4">
-              <span :class="[
-                'px-3 py-1 rounded-full text-sm font-semibold',
-                request.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                request.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
-                'bg-red-100 text-red-800'
-              ]">
-                {{ request.status }}
-              </span>
-              <button class="p-2 text-gray-500 hover:text-indigo-600 transition-colors">
-                <i class="fas fa-ellipsis-v"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mt-3 text-sm text-gray-600">
-            {{ request.description }}
-          </div>
+    <Card class="bg-white rounded-xl shadow-lg border-0 mb-8">
+      <CardContent class="p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-800">Active Requests</h3>
+          <span class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
+            {{ activeRequests.length }} requests
+          </span>
         </div>
-      </div>
-    </div>
 
-    <!-- Request History -->
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <h3 class="text-lg font-semibold text-gray-800 mb-6">Request History</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="bg-gray-50">
-              <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-              <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Request Type</th>
-              <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</th>
-              <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="item in requestHistory" :key="item.id">
-              <td class="py-3 px-4">{{ item.date }}</td>
-              <td class="py-3 px-4">
-                <div class="flex items-center">
-                  <div :class="['p-1 rounded mr-2', getRequestType(item.type).colorClass]">
-                    <i :class="[getRequestType(item.type).icon, getRequestType(item.type).iconColor, 'text-xs']"></i>
-                  </div>
-                  <span>{{ item.typeLabel }}</span>
+        <div class="space-y-4">
+          <div v-for="request in activeRequests" 
+               :key="request.id"
+               class="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
+            <div class="flex flex-col md:flex-row md:items-center justify-between">
+              <div class="flex items-center">
+                <div :class="['p-2 rounded-lg mr-4', getRequestType(request.type).colorClass]">
+                  <i :class="[getRequestType(request.type).icon, getRequestType(request.type).iconColor]"></i>
                 </div>
-              </td>
-              <td class="py-3 px-4">{{ item.details }}</td>
-              <td class="py-3 px-4">
-                <span :class="[
-                  'px-2 py-1 rounded-full text-xs font-semibold',
-                  item.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                  item.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
-                  'bg-red-100 text-red-800'
+                <div>
+                  <p class="font-medium text-gray-800">{{ request.title }}</p>
+                  <p class="text-sm text-gray-600">{{ request.date }}</p>
+                </div>
+              </div>
+              <div class="mt-3 md:mt-0 flex items-center space-x-4">
+                <Badge :class="[
+                  'rounded-full px-3 py-1 text-sm font-semibold shadow-none border-0',
+                  request.status === 'Approved' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                  request.status === 'Pending' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                  'bg-red-100 text-red-800 hover:bg-red-100'
                 ]">
-                  {{ item.status }}
-                </span>
-              </td>
-              <td class="py-3 px-4">
-                <div class="flex space-x-2">
-                  <button class="p-1 text-gray-500 hover:text-indigo-600 transition-colors">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button v-if="item.status === 'Pending'" class="p-1 text-gray-500 hover:text-red-600 transition-colors">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                  {{ request.status }}
+                </Badge>
+                <Button variant="ghost" size="icon" class="text-gray-500 hover:text-indigo-600">
+                  <i class="fas fa-ellipsis-v"></i>
+                </Button>
+              </div>
+            </div>
+            <div class="mt-3 text-sm text-gray-600">
+              {{ request.description }}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card class="bg-white rounded-xl shadow-lg border-0">
+      <CardContent class="p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-6">Request History</h3>
+        <div class="overflow-x-auto">
+          <Table>
+            <TableHeader class="bg-gray-50">
+              <TableRow class="hover:bg-gray-50">
+                <TableHead class="text-gray-500 font-semibold uppercase tracking-wider">Date</TableHead>
+                <TableHead class="text-gray-500 font-semibold uppercase tracking-wider">Request Type</TableHead>
+                <TableHead class="text-gray-500 font-semibold uppercase tracking-wider">Details</TableHead>
+                <TableHead class="text-gray-500 font-semibold uppercase tracking-wider">Status</TableHead>
+                <TableHead class="text-gray-500 font-semibold uppercase tracking-wider">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="item in requestHistory" :key="item.id">
+                <TableCell class="py-3 px-4">{{ item.date }}</TableCell>
+                <TableCell class="py-3 px-4">
+                  <div class="flex items-center">
+                    <div :class="['p-1 rounded mr-2', getRequestType(item.type).colorClass]">
+                      <i :class="[getRequestType(item.type).icon, getRequestType(item.type).iconColor, 'text-xs']"></i>
+                    </div>
+                    <span>{{ item.typeLabel }}</span>
+                  </div>
+                </TableCell>
+                <TableCell class="py-3 px-4">{{ item.details }}</TableCell>
+                <TableCell class="py-3 px-4">
+                  <Badge :class="[
+                    'rounded-full px-2 py-1 text-xs font-semibold shadow-none border-0',
+                    item.status === 'Approved' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                    item.status === 'Pending' ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' :
+                    'bg-red-100 text-red-800 hover:bg-red-100'
+                  ]">
+                    {{ item.status }}
+                  </Badge>
+                </TableCell>
+                <TableCell class="py-3 px-4">
+                  <div class="flex space-x-2">
+                    <Button variant="ghost" size="icon" class="h-6 w-6 text-gray-500 hover:text-indigo-600">
+                      <i class="fas fa-eye"></i>
+                    </Button>
+                    <Button v-if="item.status === 'Pending'" variant="ghost" size="icon" class="h-6 w-6 text-gray-500 hover:text-red-600">
+                      <i class="fas fa-times"></i>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 const requestTypes = [
   { id: 'attendance', label: 'Attendance Correction', icon: 'fas fa-clock', description: 'Fix time records', colorClass: 'bg-blue-50', iconColor: 'text-blue-600' },
@@ -158,7 +164,7 @@ const getRequestType = (typeId) => {
 
 <style scoped>
 .requests-employee {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 </style>

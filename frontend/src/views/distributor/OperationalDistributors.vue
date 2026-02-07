@@ -1,7 +1,10 @@
 <template>
   <div class="p-4 md:p-6 operational-distributors">
     <!-- Loading Overlay -->
-    <div v-if="loading" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+    <div
+      v-if="loading"
+      class="fixed inset-0 bg-transparent z-50 flex items-center justify-center"
+    >
       <div class="text-center">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <p class="text-gray-600">Loading operational distributors...</p>
@@ -1390,7 +1393,7 @@ export default {
 
 <style scoped>
 .operational-distributors {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: #ffffff;
   min-height: 100vh;
 }
 

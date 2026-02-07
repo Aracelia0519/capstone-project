@@ -1,195 +1,123 @@
 <template>
-  <div class="service-provider-layout">
-    <!-- Mobile Toggle Button -->
-    <button class="mobile-toggle-btn" @click="toggleSidebarMobile" v-if="isMobile">
-      <i :class="sidebarMobileVisible ? 'fas fa-times' : 'fas fa-palette'"></i>
-    </button>
+  <SidebarProvider>
+    <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-purple-500/30 overflow-hidden">
+      <sideBarServiceProvider @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
 
-    <!-- Sidebar with Mobile Overlay -->
-    <div class="sidebar-overlay" 
-         v-if="isMobile && sidebarMobileVisible" 
-         @click="sidebarMobileVisible = false">
+      <SidebarInset class="main-content-area bg-slate-900 border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+        
+        <transition name="fade">
+          <div 
+            v-if="isLoggingOut" 
+            class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center"
+          >
+            <div class="w-full max-w-md p-8 text-center">
+              <div class="relative mb-8">
+                <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 flex items-center justify-center mb-4">
+                  <LogOut class="w-12 h-12 text-purple-400" />
+                </div>
+                <div class="absolute -inset-4 bg-purple-500/10 rounded-full animate-pulse" />
+              </div>
+              
+              <h3 class="text-2xl font-bold text-white mb-2">Logging Out</h3>
+              <p class="text-slate-400 mb-8">Securely terminating your session...</p>
+              
+              <div class="space-y-4">
+                <Progress 
+                  :model-value="logoutProgress" 
+                  class="h-2 bg-slate-800"
+                />
+                <p class="text-sm text-slate-400">{{ logoutProgress }}%</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <header class="flex h-16 shrink-0 items-center gap-2 px-4 md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50">
+          <SidebarTrigger class="-ml-1 text-purple-500 hover:bg-slate-800" />
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Service Provider Portal</span>
+        </header>
+
+        <main class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1">
+          <router-view v-slot="{ Component }">
+            <transition name="page-slide" mode="out-in">
+              <component 
+                :is="Component" 
+                v-if="userData" 
+                :user="userData" 
+                :dashboard-data="dashboardData" 
+              />
+            </transition>
+          </router-view>
+        </main>
+
+        <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-900 to-purple-900/10 opacity-50 pointer-events-none" />
+      </SidebarInset>
     </div>
-
-    <SideBarServiceProvider 
-      :class="{ 'mobile-visible': sidebarMobileVisible }" 
-      @toggle="handleSidebarToggle"
-      @collapsed="handleSidebarCollapsed" />
-
-    <!-- Main Content - Dynamically adjusts based on sidebar collapse state -->
-    <div 
-      class="service-provider-content"
-      :class="{ 'sidebar-collapsed': sidebarCollapsed && !isMobile }"
-      :style="sidebarCollapsed && !isMobile ? 'margin-left: 80px' : 'margin-left: 280px'"
-    >
-      <router-view />
-    </div>
-  </div>
+  </SidebarProvider>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import SideBarServiceProvider from './sideBarServiceProvider.vue'
+import { ref, onMounted } from 'vue'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { Progress } from '@/components/ui/progress'
+import sideBarServiceProvider from './sideBarServiceProvider.vue'
 import axios from '@/utils/axios'
-
+import { LogOut } from 'lucide-vue-next'
 
 const userData = ref(null)
 const dashboardData = ref(null)
-const isLoading = ref(false)
+const isLoggingOut = ref(false)
+const logoutProgress = ref(0)
+let progressInterval = null
 
-// Fetch user data and dashboard data
+const handleLogoutStart = () => {
+  isLoggingOut.value = true
+  logoutProgress.value = 0
+  progressInterval = setInterval(() => {
+    if (logoutProgress.value < 90) {
+      logoutProgress.value += 10
+    }
+  }, 300)
+}
+
+const handleLogoutFinish = () => {
+  logoutProgress.value = 100
+  setTimeout(() => {
+    if (progressInterval) clearInterval(progressInterval)
+    isLoggingOut.value = false
+    logoutProgress.value = 0
+  }, 500)
+}
+
 const fetchData = async () => {
-  isLoading.value = true
   try {
-    // Get user profile
     const userResponse = await axios.get('/auth/me')
     userData.value = userResponse.data.user
     
-    // Get dashboard data based on role
     const roleEndpoints = {
-      admin: '/dashboard/admin',
-      distributor: '/dashboard/distributor',
       service_provider: '/dashboard/service-provider',
-      client: '/dashboard/client'
+      admin: '/dashboard/admin'
     }
     
     if (roleEndpoints[userData.value.role]) {
-      const dashboardResponse = await axios.get(roleEndpoints[userData.value.role])
-      dashboardData.value = dashboardResponse.data.data
+      const res = await axios.get(roleEndpoints[userData.value.role])
+      dashboardData.value = res.data.data
     }
-    
   } catch (error) {
     console.error('Failed to fetch data:', error)
-  } finally {
-    isLoading.value = false
   }
 }
 
 onMounted(() => {
   fetchData()
 })
-
-const sidebarMobileVisible = ref(false)
-const isMobile = ref(false)
-const sidebarCollapsed = ref(false)
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-
-const toggleSidebarMobile = () => {
-  sidebarMobileVisible.value = !sidebarMobileVisible.value
-}
-
-const handleSidebarToggle = () => {
-  if (isMobile.value) {
-    sidebarMobileVisible.value = !sidebarMobileVisible.value
-  }
-}
-
-const handleSidebarCollapsed = (isCollapsed) => {
-  sidebarCollapsed.value = isCollapsed
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkMobile)
-})
 </script>
 
 <style scoped>
-.service-provider-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-  background: #0f172a; /* Dark background to match sidebar */
-}
+.fade-enter-active, .fade-leave-active { transition: all 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.service-provider-content {
-  flex: 1;
-  min-height: 100vh;
-  overflow-y: auto;
-  margin-left: 280px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: #0f172a; /* Match the dark theme */
-  width: calc(100% - 280px);
-}
-
-/* When sidebar is collapsed on desktop */
-.service-provider-content.sidebar-collapsed {
-  margin-left: 80px;
-  width: calc(100% - 80px);
-}
-
-/* Mobile: no left margin since sidebar overlays */
-@media (max-width: 768px) {
-  .service-provider-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-}
-
-/* Mobile Toggle Button */
-.mobile-toggle-btn {
-  display: none;
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 1100;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 1.3rem;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mobile-toggle-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-/* Sidebar Overlay for Mobile */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(3px);
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .mobile-toggle-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-/* Smooth transition for the main content when sidebar collapses/expands */
-.service-provider-content {
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.page-slide-enter-active, .page-slide-leave-active { transition: all 0.4s ease; }
+.page-slide-enter-from { opacity: 0; transform: translateX(20px); filter: blur(4px); }
+.page-slide-leave-to { opacity: 0; transform: translateX(-20px); filter: blur(4px); }
 </style>

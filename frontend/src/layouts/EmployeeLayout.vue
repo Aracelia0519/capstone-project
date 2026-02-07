@@ -1,146 +1,106 @@
 <template>
-  <div class="employee-layout">
-    <!-- Mobile Toggle Button -->
-    <button class="mobile-toggle-btn" @click="toggleSidebarMobile" v-if="isMobile">
-      <i :class="sidebarMobileVisible ? 'fas fa-times' : 'fas fa-bars'"></i>
-    </button>
+  <SidebarProvider>
+    <div class="flex min-h-screen w-full bg-slate-50 font-sans text-slate-900 selection:bg-indigo-500/30 overflow-hidden">
+      <SideBarEmployee @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" @toggle="toggleSidebarMobile" />
 
-    <!-- Sidebar with Mobile Overlay -->
-    <div class="sidebar-overlay" 
-         v-if="isMobile && sidebarMobileVisible" 
-         @click="sidebarMobileVisible = false">
+      <SidebarInset class="main-content-area bg-white border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+        <transition name="fade">
+          <div 
+            v-if="isLoggingOut" 
+            class="fixed inset-0 z-[100] bg-indigo-950/95 backdrop-blur-sm flex flex-col items-center justify-center"
+          >
+            <div class="w-full max-w-md p-8 text-center">
+              <div class="relative mb-8">
+                <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 flex items-center justify-center mb-4">
+                  <LogOut class="w-12 h-12 text-indigo-400" />
+                </div>
+                <div class="absolute -inset-4 bg-indigo-500/10 rounded-full animate-pulse" />
+              </div>
+              
+              <h3 class="text-2xl font-bold text-white mb-2">Signing Out</h3>
+              <p class="text-indigo-200 mb-8">Please wait while we end your employee session...</p>
+              
+              <div class="space-y-4">
+                <Progress 
+                  :model-value="logoutProgress" 
+                  class="h-2 bg-indigo-900"
+                />
+                <p class="text-sm text-indigo-300">{{ logoutProgress }}%</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <header class="flex h-16 shrink-0 items-center gap-2 px-4 md:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+          <SidebarTrigger class="-ml-1 text-indigo-600 hover:bg-slate-100" />
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Employee Portal</span>
+        </header>
+
+        <main class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1">
+          <router-view v-slot="{ Component }">
+            <transition name="page-fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </main>
+
+        <div class="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-30 pointer-events-none" />
+      </SidebarInset>
     </div>
-
-    <sideBarEmployee :class="{ 'mobile-visible': sidebarMobileVisible }" 
-                     @toggle="handleSidebarToggle" />
-
-    <main class="employee-content">
-      <div class="content-wrapper">
-        <router-view />
-      </div>
-    </main>
-  </div>
+  </SidebarProvider>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import sideBarEmployee from '../layouts/SideBarEmployee.vue'
+import { ref } from 'vue'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { Progress } from '@/components/ui/progress'
+import SideBarEmployee from './SideBarEmployee.vue'
+import { LogOut } from 'lucide-vue-next'
 
-const sidebarMobileVisible = ref(false)
-const isMobile = ref(false)
+const isLoggingOut = ref(false)
+const logoutProgress = ref(0)
+let progressInterval = null
 
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
+const handleLogoutStart = () => {
+  isLoggingOut.value = true
+  logoutProgress.value = 0
+  
+  // Simulate progress animation
+  progressInterval = setInterval(() => {
+    if (logoutProgress.value < 90) {
+      logoutProgress.value += 10
+    }
+  }, 300)
 }
 
+const handleLogoutFinish = () => {
+  logoutProgress.value = 100
+  setTimeout(() => {
+    if (progressInterval) clearInterval(progressInterval)
+    isLoggingOut.value = false
+    logoutProgress.value = 0
+  }, 500)
+}
+
+const sidebarMobileVisible = ref(false)
 const toggleSidebarMobile = () => {
   sidebarMobileVisible.value = !sidebarMobileVisible.value
 }
-
-const handleSidebarToggle = () => {
-  if (isMobile.value) {
-    sidebarMobileVisible.value = !sidebarMobileVisible.value
-  }
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkMobile)
-})
 </script>
 
 <style scoped>
-.employee-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-}
+.fade-enter-active, .fade-leave-active { transition: all 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.employee-content {
-  flex: 1;
-  min-height: 100vh;
-  overflow-y: auto;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  margin-left: 280px;
-  transition: margin-left 0.3s ease;
-  position: relative;
+.page-fade-enter-active, .page-fade-leave-active { 
+  transition: opacity 0.3s ease, transform 0.3s ease; 
 }
-
-.content-wrapper {
-  min-height: 100vh;
-  padding: 24px;
-  background: transparent;
+.page-fade-enter-from { 
+  opacity: 0; 
+  transform: translateY(8px); 
 }
-
-/* When sidebar is collapsed */
-.sidebar.collapsed ~ .employee-content {
-  margin-left: 80px;
-}
-
-/* Mobile: no left margin since sidebar overlays */
-@media (max-width: 768px) {
-  .employee-content {
-    margin-left: 0;
-    padding: 16px;
-  }
-  
-  .content-wrapper {
-    padding: 16px;
-  }
-}
-
-/* Mobile Toggle Button */
-.mobile-toggle-btn {
-  display: none;
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 1100;
-  background: linear-gradient(45deg, #4f46e5, #7c3aed);
-  color: white;
-  border: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
-  transition: all 0.3s ease;
-}
-
-.mobile-toggle-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.5);
-}
-
-/* Sidebar Overlay for Mobile */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(3px);
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .mobile-toggle-btn {
-    display: block;
-  }
+.page-fade-leave-to { 
+  opacity: 0; 
+  transform: translateY(-8px); 
 }
 </style>

@@ -1,9 +1,12 @@
 <template>
   <div class="p-4 md:p-6 finance-managers">
     <!-- Loading Overlay -->
-    <div v-if="loading" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+    <div
+      v-if="loading"
+      class="fixed inset-0 bg-transparent z-50 flex items-center justify-center"
+    >
       <div class="text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
         <p class="text-gray-600">Loading finance managers...</p>
       </div>
     </div>
@@ -1790,7 +1793,7 @@ export default {
 
 <style scoped>
 .finance-managers {
-  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  background: #ffffff;
   min-height: 100vh;
 }
 

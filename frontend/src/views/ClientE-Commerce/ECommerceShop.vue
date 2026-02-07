@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <!-- Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
       <div class="container mx-auto px-4 py-6">
         <h1 class="text-3xl font-bold text-gray-900">Paint Shop</h1>
@@ -8,128 +7,143 @@
       </div>
     </div>
 
-    <!-- Search & Filters -->
     <div class="bg-white border-b border-gray-200">
       <div class="container mx-auto px-4 py-4">
         <div class="flex flex-col lg:flex-row gap-4">
-          <!-- Search -->
           <div class="flex-1">
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
               </div>
-              <input
+              <Input
                 type="text"
                 v-model="searchQuery"
                 placeholder="Search paints..."
-                class="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              >
+                class="pl-10 pr-4 py-3 h-12 w-full"
+              />
             </div>
           </div>
 
-          <!-- Filter Buttons -->
           <div class="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
-            <button
+            <Button
               v-for="filter in quickFilters"
               :key="filter.id"
               @click="toggleFilter(filter.id)"
+              :variant="activeFilters.includes(filter.id) ? 'default' : 'secondary'"
               :class="[
-                'px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center space-x-2',
+                'whitespace-nowrap flex items-center space-x-2',
                 activeFilters.includes(filter.id)
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                  ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               ]"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="filter.icon"></path>
               </svg>
               <span>{{ filter.label }}</span>
-            </button>
+            </Button>
           </div>
         </div>
 
-        <!-- Advanced Filters -->
         <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <!-- Brand Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-            <select v-model="selectedBrand" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">All Brands</option>
-              <option v-for="brand in brands" :key="brand">{{ brand }}</option>
-            </select>
+            <Label class="block text-sm font-medium text-gray-700 mb-1">Brand</Label>
+            <Select v-model="selectedBrand">
+              <SelectTrigger>
+                <SelectValue placeholder="All Brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_brands_reset">All Brands</SelectItem>
+                <SelectItem v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <!-- Type Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select v-model="selectedType" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">All Types</option>
-              <option v-for="type in types" :key="type">{{ type }}</option>
-            </select>
+            <Label class="block text-sm font-medium text-gray-700 mb-1">Type</Label>
+            <Select v-model="selectedType">
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_types_reset">All Types</SelectItem>
+                <SelectItem v-for="type in types" :key="type" :value="type">{{ type }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <!-- Finish Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Finish</label>
-            <select v-model="selectedFinish" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">All Finishes</option>
-              <option v-for="finish in finishes" :key="finish">{{ finish }}</option>
-            </select>
+            <Label class="block text-sm font-medium text-gray-700 mb-1">Finish</Label>
+            <Select v-model="selectedFinish">
+              <SelectTrigger>
+                <SelectValue placeholder="All Finishes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_finishes_reset">All Finishes</SelectItem>
+                <SelectItem v-for="finish in finishes" :key="finish" :value="finish">{{ finish }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <!-- Price Filter -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Price Range</label>
-            <select v-model="selectedPrice" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">All Prices</option>
-              <option v-for="price in priceRanges" :key="price">{{ price }}</option>
-            </select>
+            <Label class="block text-sm font-medium text-gray-700 mb-1">Price Range</Label>
+            <Select v-model="selectedPrice">
+              <SelectTrigger>
+                <SelectValue placeholder="All Prices" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_prices_reset">All Prices</SelectItem>
+                <SelectItem v-for="price in priceRanges" :key="price" :value="price">{{ price }}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Products Grid -->
     <div class="container mx-auto px-4 py-8">
-      <!-- Results Info -->
       <div class="flex justify-between items-center mb-6">
         <p class="text-gray-600">{{ filteredProducts.length }} products found</p>
         <div class="flex items-center space-x-4">
           <span class="text-gray-600">Sort by:</span>
-          <select v-model="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg">
-            <option value="name">Name</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
+          <div class="w-[180px]">
+            <Select v-model="sortBy">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      <!-- Products -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <div
+        <Card
           v-for="product in filteredProducts"
           :key="product.id"
           class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden group"
         >
-          <!-- Product Image -->
           <div class="h-48 bg-gradient-to-br from-blue-50 to-purple-50 relative overflow-hidden">
             <div class="absolute top-3 left-3">
-              <span :class="[
-                'px-2 py-1 rounded-full text-xs font-semibold',
-                product.stock > 10 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              <Badge :class="[
+                'border-0',
+                product.stock > 10 ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
               ]">
                 {{ product.stock > 10 ? 'In Stock' : 'Low Stock' }}
-              </span>
+              </Badge>
             </div>
             <div class="h-full flex items-center justify-center">
               <div class="w-32 h-32 rounded-full" :style="{ backgroundColor: product.color }"></div>
             </div>
           </div>
 
-          <!-- Product Info -->
-          <div class="p-4">
+          <CardContent class="p-4 pb-2">
             <div class="flex justify-between items-start">
               <div>
                 <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{{ product.name }}</h3>
@@ -142,7 +156,6 @@
               </button>
             </div>
 
-            <!-- Price & Rating -->
             <div class="mt-3 flex justify-between items-center">
               <div>
                 <span class="text-xl font-bold text-gray-900">₱{{ product.price.toLocaleString() }}</span>
@@ -155,33 +168,30 @@
                 <span class="ml-1 text-sm text-gray-600">{{ product.rating }}</span>
               </div>
             </div>
+          </CardContent>
 
-            <!-- Stock & Add to Cart -->
-            <div class="mt-4 pt-4 border-t border-gray-100">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-500">{{ product.stock }} in stock</span>
-                <button
-                  @click="addToCart(product)"
-                  :disabled="product.stock === 0"
-                  :class="[
-                    'px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2',
-                    product.stock === 0
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  ]"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                  <span>{{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}</span>
-                </button>
-              </div>
+          <CardFooter class="mt-4 pt-4 border-t border-gray-100 p-4">
+            <div class="flex justify-between items-center w-full">
+              <span class="text-sm text-gray-500">{{ product.stock }} in stock</span>
+              <Button
+                @click="addToCart(product)"
+                :disabled="product.stock === 0"
+                :class="[
+                  product.stock === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-100'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                ]"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                <span>{{ product.stock === 0 ? 'Out of Stock' : 'Add to Cart' }}</span>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardFooter>
+        </Card>
       </div>
 
-      <!-- Empty State -->
       <div v-if="filteredProducts.length === 0" class="text-center py-16">
         <div class="w-24 h-24 mx-auto mb-4 text-gray-300">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -190,19 +200,32 @@
         </div>
         <h3 class="text-xl font-semibold text-gray-700 mb-2">No products found</h3>
         <p class="text-gray-500">Try adjusting your filters or search terms</p>
-        <button
+        <Button
           @click="clearFilters"
-          class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          class="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
         >
           Clear All Filters
-        </button>
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+// shadcn components
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 // Mock Data
 const products = ref([
@@ -237,6 +260,15 @@ const selectedFinish = ref('')
 const selectedPrice = ref('')
 const sortBy = ref('name')
 
+// Watchers for Select resets (shadcn select doesn't natively support clearing unless value is null, but our logic used empty string)
+// We add "reset" values in the template options to handle this, or handle empty string mapping.
+watch([selectedBrand, selectedType, selectedFinish, selectedPrice], ([newBrand, newType, newFinish, newPrice]) => {
+    if (newBrand === 'all_brands_reset') selectedBrand.value = ''
+    if (newType === 'all_types_reset') selectedType.value = ''
+    if (newFinish === 'all_finishes_reset') selectedFinish.value = ''
+    if (newPrice === 'all_prices_reset') selectedPrice.value = ''
+})
+
 // Computed
 const filteredProducts = computed(() => {
   let filtered = [...products.value]
@@ -264,16 +296,16 @@ const filteredProducts = computed(() => {
   }
 
   // Advanced filters
-  if (selectedBrand.value) {
+  if (selectedBrand.value && selectedBrand.value !== 'all_brands_reset') {
     filtered = filtered.filter(p => p.brand === selectedBrand.value)
   }
-  if (selectedType.value) {
+  if (selectedType.value && selectedType.value !== 'all_types_reset') {
     filtered = filtered.filter(p => p.type === selectedType.value)
   }
-  if (selectedFinish.value) {
+  if (selectedFinish.value && selectedFinish.value !== 'all_finishes_reset') {
     filtered = filtered.filter(p => p.finish === selectedFinish.value)
   }
-  if (selectedPrice.value) {
+  if (selectedPrice.value && selectedPrice.value !== 'all_prices_reset') {
     if (selectedPrice.value === 'Under ₱1,000') {
       filtered = filtered.filter(p => p.price < 1000)
     } else if (selectedPrice.value === '₱1,000 - ₱2,000') {
@@ -324,24 +356,3 @@ const addToCart = (product) => {
   }
 }
 </script>
-
-<style scoped>
-/* Custom scrollbar for filters */
-.flex.overflow-x-auto::-webkit-scrollbar {
-  height: 4px;
-}
-
-.flex.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 2px;
-}
-
-.flex.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 2px;
-}
-
-.flex.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-</style>

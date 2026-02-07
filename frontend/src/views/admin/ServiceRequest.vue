@@ -1,6 +1,5 @@
 <template>
   <div class="service-requests p-6">
-    <!-- Page Header -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <div>
@@ -8,20 +7,19 @@
           <p class="text-gray-600">Monitor and track service provider activities and job status</p>
         </div>
         <div class="mt-4 md:mt-0">
-          <button 
+          <Button 
             @click="refreshData"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            class="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <i class="fas fa-sync-alt mr-2"></i>
             Refresh Data
-          </button>
+          </Button>
         </div>
       </div>
 
-      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-blue-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Total Requests</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ serviceRequests.length }}</h3>
@@ -29,11 +27,11 @@
             <div class="p-3 bg-blue-50 rounded-lg">
               <i class="fas fa-tasks text-blue-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-yellow-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-yellow-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Pending</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ statusCounts.pending }}</h3>
@@ -41,11 +39,11 @@
             <div class="p-3 bg-yellow-50 rounded-lg">
               <i class="fas fa-clock text-yellow-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-green-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">In Progress</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ statusCounts.inProgress }}</h3>
@@ -53,11 +51,11 @@
             <div class="p-3 bg-green-50 rounded-lg">
               <i class="fas fa-spinner text-green-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-purple-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-purple-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Completed</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ statusCounts.completed }}</h3>
@@ -65,110 +63,116 @@
             <div class="p-3 bg-purple-50 rounded-lg">
               <i class="fas fa-check-circle text-purple-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Filters and Search -->
-    <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex flex-col md:flex-row gap-4 flex-1">
-          <div class="relative flex-1 md:max-w-md">
-            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Search service provider, client, or color..."
-              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-            >
-          </div>
-          
-          <div class="flex flex-wrap gap-3">
-            <select 
-              v-model="selectedStatus"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
+    <Card class="shadow-sm mb-6">
+      <CardContent class="p-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col md:flex-row gap-4 flex-1">
+            <div class="relative flex-1 md:max-w-md">
+              <i class="fas fa-search absolute left-3 top-3 text-gray-400 z-10"></i>
+              <Input 
+                v-model="searchQuery"
+                type="text" 
+                placeholder="Search service provider, client, or color..."
+                class="pl-10 pr-4 w-full border-gray-300 focus-visible:ring-blue-500"
+              />
+            </div>
             
-            <select 
-              v-model="selectedProvider"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="all">All Service Providers</option>
-              <option v-for="provider in uniqueProviders" :value="provider">{{ provider }}</option>
-            </select>
+            <div class="flex flex-wrap gap-3">
+              <Select v-model="selectedStatus">
+                <SelectTrigger class="w-[180px] border-gray-300">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select v-model="selectedProvider">
+                <SelectTrigger class="w-[220px] border-gray-300">
+                  <SelectValue placeholder="All Service Providers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Service Providers</SelectItem>
+                  <SelectItem v-for="provider in uniqueProviders" :key="provider" :value="provider">
+                    {{ provider }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- Service Requests Table -->
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <Card class="shadow overflow-hidden bg-white">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-id-badge"></i>
                   <span>Request ID</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-user-hard-hat"></i>
                   <span>Service Provider</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-user"></i>
                   <span>Client</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-palette"></i>
                   <span>Selected Color</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-flag"></i>
                   <span>Status</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-calendar"></i>
                   <span>Date</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-cogs"></i>
                   <span>Actions</span>
                 </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr 
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="bg-white divide-y divide-gray-200">
+            <TableRow 
               v-for="request in filteredRequests" 
               :key="request.id"
               class="hover:bg-gray-50 transition-colors duration-150"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-mono font-medium text-gray-900">SR-{{ request.id.toString().padStart(3, '0') }}</div>
                 <div class="text-xs text-gray-500">Job Request</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-user-hard-hat text-blue-600"></i>
@@ -178,8 +182,8 @@
                     <div class="text-xs text-gray-500">{{ request.providerContact }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-user-tie text-green-600"></i>
@@ -189,8 +193,8 @@
                     <div class="text-xs text-gray-500">{{ request.clientLocation }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div 
                     class="w-8 h-8 rounded-md mr-3 border border-gray-300 shadow-sm" 
@@ -202,58 +206,63 @@
                     <div class="text-xs text-gray-500">{{ request.colorHex }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-col">
-                  <span 
-                    class="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full w-fit mb-1"
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
+                <div class="flex flex-col items-start">
+                  <Badge 
+                    class="px-3 py-1 text-xs font-semibold rounded-full border-0 shadow-none mb-1"
                     :class="getStatusClasses(request.status)"
                   >
                     <i :class="getStatusIcon(request.status)" class="mr-1"></i>
                     {{ formatStatus(request.status) }}
-                  </span>
+                  </Badge>
                   <div class="text-xs text-gray-500 mt-1">
                     <i class="fas fa-clock mr-1"></i>
                     {{ request.duration }}
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ request.date }}</div>
                 <div class="text-xs text-gray-500">{{ request.time }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div class="flex items-center space-x-3">
-                  <button 
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <div class="flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
                     @click="viewDetails(request)"
-                    class="text-blue-600 hover:text-blue-900"
+                    class="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
                     title="View Details"
                   >
                     <i class="fas fa-eye"></i>
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     v-if="request.status === 'pending' || request.status === 'in-progress'"
+                    variant="ghost" 
+                    size="icon"
                     @click="updateStatus(request)"
-                    class="text-green-600 hover:text-green-900"
+                    class="text-green-600 hover:text-green-900 hover:bg-green-50"
                     title="Update Status"
                   >
                     <i class="fas fa-edit"></i>
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
                     @click="sendReminder(request)"
-                    class="text-yellow-600 hover:text-yellow-900"
+                    class="text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50"
                     title="Send Reminder"
                   >
                     <i class="fas fa-bell"></i>
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
       
-      <!-- Empty State -->
       <div v-if="filteredRequests.length === 0" class="text-center py-16">
         <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
           <i class="fas fa-clipboard-list text-gray-400 text-3xl"></i>
@@ -262,7 +271,6 @@
         <p class="text-gray-500 max-w-sm mx-auto">Try adjusting your search or filter criteria.</p>
       </div>
       
-      <!-- Table Footer -->
       <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between">
           <div class="text-sm text-gray-500 mb-2 md:mb-0">
@@ -270,13 +278,14 @@
             <span class="font-medium">{{ serviceRequests.length }}</span> service requests
           </div>
           <div class="flex items-center gap-4">
-            <button 
+            <Button 
+              variant="outline"
               @click="exportToCSV"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
             >
               <i class="fas fa-download mr-2"></i>
               Export CSV
-            </button>
+            </Button>
             <div class="text-xs text-gray-500">
               <i class="fas fa-info-circle mr-1"></i>
               Admin view only
@@ -284,38 +293,45 @@
           </div>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <!-- Status Legend -->
-    <div class="mt-6 bg-white rounded-xl shadow p-4">
-      <h3 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
-        <i class="fas fa-info-circle mr-2 text-blue-500"></i>
-        Status Legend
-      </h3>
-      <div class="flex flex-wrap gap-4">
-        <div class="flex items-center">
-          <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-          <span class="text-sm text-gray-600">Pending - Awaiting assignment</span>
+    <Card class="mt-6 shadow">
+      <CardContent class="p-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+          <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+          Status Legend
+        </h3>
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+            <span class="text-sm text-gray-600">Pending - Awaiting assignment</span>
+          </div>
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+            <span class="text-sm text-gray-600">In Progress - Work ongoing</span>
+          </div>
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+            <span class="text-sm text-gray-600">Completed - Job finished</span>
+          </div>
+          <div class="flex items-center">
+            <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+            <span class="text-sm text-gray-600">Cancelled - Request cancelled</span>
+          </div>
         </div>
-        <div class="flex items-center">
-          <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-          <span class="text-sm text-gray-600">In Progress - Work ongoing</span>
-        </div>
-        <div class="flex items-center">
-          <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-          <span class="text-sm text-gray-600">Completed - Job finished</span>
-        </div>
-        <div class="flex items-center">
-          <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-          <span class="text-sm text-gray-600">Cancelled - Request cancelled</span>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 // Service requests data
 const serviceRequests = ref([
@@ -484,10 +500,10 @@ const filteredRequests = computed(() => {
 // Helper functions
 const getStatusClasses = (status) => {
   const classes = {
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'in-progress': 'bg-blue-100 text-blue-800',
-    'completed': 'bg-green-100 text-green-800',
-    'cancelled': 'bg-red-100 text-red-800'
+    'pending': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+    'in-progress': 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+    'completed': 'bg-green-100 text-green-800 hover:bg-green-100',
+    'cancelled': 'bg-red-100 text-red-800 hover:bg-red-100'
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
 }
@@ -566,14 +582,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Custom styles */
-.w-8 {
-  width: 2rem;
-}
-.h-8 {
-  height: 2rem;
-}
-
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .text-3xl {
@@ -582,10 +590,6 @@ onMounted(() => {
   
   .flex-wrap {
     flex-wrap: wrap;
-  }
-  
-  .space-x-3 > * + * {
-    margin-left: 0.5rem;
   }
 }
 </style>

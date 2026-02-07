@@ -1,6 +1,5 @@
 <template>
   <div class="reports p-6">
-    <!-- Page Header -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <div>
@@ -9,33 +8,33 @@
         </div>
         <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
           <div class="relative">
-            <input 
+            <Input 
               type="month" 
               v-model="selectedMonth"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
+              class="w-auto border-gray-300 focus-visible:ring-blue-500"
+            />
           </div>
-          <button 
+          <Button 
             @click="generateReport"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            class="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <i class="fas fa-chart-line mr-2"></i>
             Generate Report
-          </button>
-          <button 
+          </Button>
+          <Button 
+            variant="outline"
             @click="exportAllReports"
-            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
           >
             <i class="fas fa-download mr-2"></i>
             Export All
-          </button>
+          </Button>
         </div>
       </div>
 
-      <!-- Summary Stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-purple-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-purple-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Total Colors Used</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.totalColors }}</h3>
@@ -43,11 +42,11 @@
             <div class="p-3 bg-purple-50 rounded-lg">
               <i class="fas fa-palette text-purple-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-green-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Active Distributors</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.activeDistributors }}</h3>
@@ -55,11 +54,11 @@
             <div class="p-3 bg-green-50 rounded-lg">
               <i class="fas fa-warehouse text-green-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-blue-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Monthly Requests</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.monthlyRequests }}</h3>
@@ -67,11 +66,11 @@
             <div class="p-3 bg-blue-50 rounded-lg">
               <i class="fas fa-tasks text-blue-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-yellow-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-yellow-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Avg. Completion</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.avgCompletion }}%</h3>
@@ -79,15 +78,13 @@
             <div class="p-3 bg-yellow-50 rounded-lg">
               <i class="fas fa-chart-pie text-yellow-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Three Main Report Sections -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <!-- Section 1: Most Used Colors -->
-      <div class="bg-white rounded-xl shadow overflow-hidden">
+      <Card class="shadow overflow-hidden bg-white">
         <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
@@ -100,7 +97,7 @@
           </div>
           <p class="text-sm text-gray-500 mt-1">Popular color selections for decision support</p>
         </div>
-        <div class="p-6">
+        <CardContent class="p-6">
           <div class="space-y-4">
             <div 
               v-for="color in topColors" 
@@ -124,7 +121,6 @@
             </div>
           </div>
           
-          <!-- Simple Bar Chart (Optional) -->
           <div class="mt-6 pt-6 border-t border-gray-100">
             <div class="text-sm font-medium text-gray-700 mb-3 flex items-center">
               <i class="fas fa-chart-simple mr-2 text-gray-500"></i>
@@ -152,11 +148,10 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Section 2: Top Distributors -->
-      <div class="bg-white rounded-xl shadow overflow-hidden">
+      <Card class="shadow overflow-hidden bg-white">
         <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
@@ -169,7 +164,7 @@
           </div>
           <p class="text-sm text-gray-500 mt-1">Highest performing paint distributors</p>
         </div>
-        <div class="p-6">
+        <CardContent class="p-6">
           <div class="space-y-4">
             <div 
               v-for="distributor in topDistributors" 
@@ -192,7 +187,6 @@
             </div>
           </div>
           
-          <!-- Performance Indicators -->
           <div class="mt-6 pt-6 border-t border-gray-100">
             <div class="text-sm font-medium text-gray-700 mb-3 flex items-center">
               <i class="fas fa-trend-up mr-2 text-gray-500"></i>
@@ -209,11 +203,10 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Section 3: Monthly Activity Summary -->
-      <div class="bg-white rounded-xl shadow overflow-hidden">
+      <Card class="shadow overflow-hidden bg-white">
         <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
@@ -226,7 +219,7 @@
           </div>
           <p class="text-sm text-gray-500 mt-1">Service request summary and trends</p>
         </div>
-        <div class="p-6">
+        <CardContent class="p-6">
           <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="bg-blue-50 p-4 rounded-lg">
               <div class="flex items-center mb-2">
@@ -268,7 +261,6 @@
             </div>
           </div>
           
-          <!-- Trend Indicator -->
           <div class="mt-6 pt-6 border-t border-gray-100">
             <div class="flex items-center justify-between mb-2">
               <div class="text-sm font-medium text-gray-700">Monthly Trend</div>
@@ -281,12 +273,11 @@
               Compared to previous month
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Detailed Report Tables -->
-    <div class="bg-white rounded-xl shadow overflow-hidden mb-8">
+    <Card class="shadow overflow-hidden mb-8 bg-white">
       <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
         <div class="flex items-center">
           <i class="fas fa-table text-gray-500 text-lg mr-3"></i>
@@ -295,58 +286,58 @@
         <p class="text-sm text-gray-500 mt-1">Comprehensive monthly data for analysis</p>
       </div>
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-calendar"></i>
                   <span>Week</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-paint-roller"></i>
                   <span>Top Color</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-building"></i>
                   <span>Top Distributor</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-tasks"></i>
                   <span>Requests</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-percentage"></i>
                   <span>Completion Rate</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-chart-line"></i>
                   <span>Trend</span>
                 </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr 
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="bg-white divide-y divide-gray-200">
+            <TableRow 
               v-for="week in weeklyReports" 
               :key="week.week"
               class="hover:bg-gray-50 transition-colors duration-150"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="font-medium text-gray-900">Week {{ week.week }}</div>
                 <div class="text-sm text-gray-500">{{ week.dates }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div 
                     class="w-6 h-6 rounded mr-2 border" 
@@ -354,16 +345,16 @@
                   ></div>
                   <span class="text-sm font-medium text-gray-900">{{ week.topColor.name }}</span>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ week.topDistributor }}</div>
                 <div class="text-xs text-gray-500">{{ week.distributorSales }} gallons</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ week.totalRequests }}</div>
                 <div class="text-xs text-gray-500">{{ week.completedRequests }} completed</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
                     <div 
@@ -378,60 +369,65 @@
                   </div>
                   <span class="text-sm font-medium text-gray-900">{{ week.completionRate }}%</span>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center" :class="getTrendClass(week.trend)">
                   <i :class="getTrendIcon(week.trend)" class="mr-1"></i>
                   <span class="text-sm font-medium">{{ Math.abs(week.trend) }}%</span>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
-    </div>
+    </Card>
 
-    <!-- Decision Support Insights -->
-    <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
-      <div class="flex items-start mb-4">
-        <div class="flex-shrink-0">
-          <i class="fas fa-lightbulb text-blue-500 text-2xl"></i>
-        </div>
-        <div class="ml-4">
-          <h4 class="font-bold text-blue-900 text-lg">Decision Support Insights</h4>
-          <p class="text-blue-700 mt-2">
-            Based on the current reports, here are key insights for strategic planning:
-          </p>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div class="bg-white p-4 rounded-lg border border-blue-100">
-          <div class="flex items-center mb-2">
-            <i class="fas fa-palette text-purple-500 mr-2"></i>
-            <h5 class="font-semibold text-gray-800">Color Strategy</h5>
+    <Card class="bg-blue-50 border border-blue-200">
+      <CardContent class="p-6">
+        <div class="flex items-start mb-4">
+          <div class="flex-shrink-0">
+            <i class="fas fa-lightbulb text-blue-500 text-2xl"></i>
           </div>
-          <p class="text-sm text-gray-600">
-            {{ topColors[0].name }} accounts for {{ topColors[0].percentage }}% of all color selections. 
-            Consider increasing inventory for this popular shade.
-          </p>
-        </div>
-        <div class="bg-white p-4 rounded-lg border border-blue-100">
-          <div class="flex items-center mb-2">
-            <i class="fas fa-warehouse text-yellow-500 mr-2"></i>
-            <h5 class="font-semibold text-gray-800">Distributor Performance</h5>
+          <div class="ml-4">
+            <h4 class="font-bold text-blue-900 text-lg">Decision Support Insights</h4>
+            <p class="text-blue-700 mt-2">
+              Based on the current reports, here are key insights for strategic planning:
+            </p>
           </div>
-          <p class="text-sm text-gray-600">
-            Top distributor {{ topDistributors[0].name }} outperforms others by {{ getPerformanceDifference() }}%.
-            Consider implementing their best practices across the network.
-          </p>
         </div>
-      </div>
-    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="bg-white p-4 rounded-lg border border-blue-100">
+            <div class="flex items-center mb-2">
+              <i class="fas fa-palette text-purple-500 mr-2"></i>
+              <h5 class="font-semibold text-gray-800">Color Strategy</h5>
+            </div>
+            <p class="text-sm text-gray-600">
+              {{ topColors[0].name }} accounts for {{ topColors[0].percentage }}% of all color selections. 
+              Consider increasing inventory for this popular shade.
+            </p>
+          </div>
+          <div class="bg-white p-4 rounded-lg border border-blue-100">
+            <div class="flex items-center mb-2">
+              <i class="fas fa-warehouse text-yellow-500 mr-2"></i>
+              <h5 class="font-semibold text-gray-800">Distributor Performance</h5>
+            </div>
+            <p class="text-sm text-gray-600">
+              Top distributor {{ topDistributors[0].name }} outperforms others by {{ getPerformanceDifference() }}%.
+              Consider implementing their best practices across the network.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 // Current date for reports
 const selectedMonth = ref(new Date().toISOString().slice(0, 7))

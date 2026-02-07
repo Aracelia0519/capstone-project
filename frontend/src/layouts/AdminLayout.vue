@@ -1,158 +1,118 @@
 <template>
-  <div class="admin-layout">
-    <!-- Mobile Toggle Button -->
-    <button class="mobile-toggle-btn" @click="toggleSidebarMobile" v-if="isMobile">
-      <i :class="sidebarMobileVisible ? 'fas fa-times' : 'fas fa-bars'"></i>
-    </button>
+  <SidebarProvider>
+    <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-blue-500/30 overflow-hidden">
+      <Toaster position="top-right" />
 
-    <!-- Sidebar with Mobile Overlay -->
-    <div class="sidebar-overlay" 
-         v-if="isMobile && sidebarMobileVisible" 
-         @click="sidebarMobileVisible = false">
+      <sideBarAdmin @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
+
+      <SidebarInset class="main-content-area bg-white border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+        
+        <transition name="fade">
+          <div 
+            v-if="isLoggingOut" 
+            class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center"
+          >
+            <div class="w-full max-w-md p-8 text-center">
+              <div class="relative mb-8">
+                <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-4">
+                  <LogOut class="w-12 h-12 text-blue-400" />
+                </div>
+                <div class="absolute -inset-4 bg-blue-500/10 rounded-full animate-pulse" />
+              </div>
+              
+              <h3 class="text-2xl font-bold text-white mb-2">Ending Admin Session</h3>
+              <p class="text-slate-400 mb-8">Please wait while we securely terminate your session...</p>
+              
+              <div class="space-y-4">
+                <Progress 
+                  :model-value="logoutProgress" 
+                  class="h-2 bg-slate-800"
+                />
+                <p class="text-sm text-slate-400">{{ logoutProgress }}%</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
+        <header class="flex h-16 shrink-0 items-center gap-2 px-4 md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50">
+          <SidebarTrigger class="-ml-1 text-blue-500 hover:bg-slate-800" />
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Admin Panel</span>
+        </header>
+
+        <main class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1 text-slate-900">
+          <router-view v-slot="{ Component }">
+            <transition name="page-slide" mode="out-in">
+              <component 
+                :is="Component" 
+                v-if="userData" 
+                :user="userData" 
+                :dashboard-data="dashboardData" 
+              />
+            </transition>
+          </router-view>
+        </main>
+      </SidebarInset>
     </div>
-
-    <sideBarAdmin :class="{ 'mobile-visible': sidebarMobileVisible }" 
-                  @toggle="handleSidebarToggle" />
-
-    <main class="admin-content">
-      <router-view />
-    </main>
-  </div>
+  </SidebarProvider>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Toaster } from '@/components/ui/sonner'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
+import { Progress } from '@/components/ui/progress'
 import sideBarAdmin from '@/layouts/sideBarAdmin.vue'
 import axios from '@/utils/axios'
+import { LogOut } from 'lucide-vue-next'
 
+const router = useRouter()
 const userData = ref(null)
 const dashboardData = ref(null)
-const isLoading = ref(false)
+const isLoggingOut = ref(false)
+const logoutProgress = ref(0)
+let progressInterval = null
 
-// Fetch user data and dashboard data
+const handleLogoutStart = () => {
+  isLoggingOut.value = true
+  logoutProgress.value = 0
+  progressInterval = setInterval(() => {
+    if (logoutProgress.value < 90) logoutProgress.value += 10
+  }, 300)
+}
+
+const handleLogoutFinish = () => {
+  logoutProgress.value = 100
+  setTimeout(() => {
+    if (progressInterval) clearInterval(progressInterval)
+    isLoggingOut.value = false
+  }, 500)
+}
+
 const fetchData = async () => {
-  isLoading.value = true
   try {
-    // Get user profile
     const userResponse = await axios.get('/auth/me')
     userData.value = userResponse.data.user
     
-    // Get dashboard data based on role
-    const roleEndpoints = {
-      admin: '/dashboard/admin',
-      distributor: '/dashboard/distributor',
-      service_provider: '/dashboard/service-provider',
-      client: '/dashboard/client'
+    if (userData.value.role === 'admin') {
+      const res = await axios.get('/dashboard/admin')
+      dashboardData.value = res.data.data
     }
-    
-    if (roleEndpoints[userData.value.role]) {
-      const dashboardResponse = await axios.get(roleEndpoints[userData.value.role])
-      dashboardData.value = dashboardResponse.data.data
-    }
-    
   } catch (error) {
     console.error('Failed to fetch data:', error)
-  } finally {
-    isLoading.value = false
+    router.push('/Landing/logIn')
   }
 }
 
 onMounted(() => {
   fetchData()
 })
-
-const sidebarMobileVisible = ref(false)
-const isMobile = ref(false)
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-
-const toggleSidebarMobile = () => {
-  sidebarMobileVisible.value = !sidebarMobileVisible.value
-}
-
-const handleSidebarToggle = () => {
-  if (isMobile.value) {
-    sidebarMobileVisible.value = !sidebarMobileVisible.value
-  }
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkMobile)
-})
 </script>
 
 <style scoped>
-.admin-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-}
-
-.admin-content {
-  flex: 1;
-  height: 100vh;
-  overflow-y: auto;
-  background: #f5f6fa;
-  margin-left: 280px; /* <-- added */
-  transition: margin-left 0.3s ease;
-}
-
-/* When sidebar is collapsed */
-.sidebar.collapsed ~ .admin-content {
-  margin-left: 80px;
-}
-
-/* Mobile: no left margin since sidebar overlays */
-@media (max-width: 768px) {
-  .admin-content {
-    margin-left: 0;
-  }
-}
-
-
-
-/* Mobile Toggle Button */
-.mobile-toggle-btn {
-  display: none;
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  z-index: 1100;
-  background: linear-gradient(45deg, #4A90E2, #9B59B6);
-  color: white;
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Sidebar Overlay for Mobile */
-.sidebar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  backdrop-filter: blur(2px);
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .mobile-toggle-btn {
-    display: block;
-  }
-}
+.fade-enter-active, .fade-leave-active { transition: all 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.page-slide-enter-active, .page-slide-leave-active { transition: all 0.4s ease; }
+.page-slide-enter-from { opacity: 0; transform: translateX(20px); }
+.page-slide-leave-to { opacity: 0; transform: translateX(-20px); }
 </style>

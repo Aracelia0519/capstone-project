@@ -1,18 +1,15 @@
 <template>
-  <div class="dashboard-employee">
-    <!-- Welcome Header -->
+  <div class="dashboard-employee p-4 md:p-6">
     <div class="mb-8">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800">
-        Welcome back, <span class="text-indigo-600">John Doe</span>
+        Welcome back, <span class="text-indigo-600">Julian Namoc</span>
       </h1>
       <p class="text-gray-500 mt-1">Today is {{ formattedDate }}</p>
     </div>
 
-    <!-- Quick Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Attendance Status -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-        <div class="flex items-center justify-between">
+      <Card class="border-l-4 border-green-500 shadow-lg">
+        <CardContent class="p-6 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Today's Status</h3>
             <div class="mt-2">
@@ -24,12 +21,11 @@
           <div class="p-3 bg-green-50 rounded-lg">
             <i class="fas fa-clock text-green-600 text-xl"></i>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Next Payday -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-        <div class="flex items-center justify-between">
+      <Card class="border-l-4 border-blue-500 shadow-lg">
+        <CardContent class="p-6 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Next Payday</h3>
             <div class="mt-2">
@@ -40,12 +36,11 @@
           <div class="p-3 bg-blue-50 rounded-lg">
             <i class="fas fa-calendar-alt text-blue-600 text-xl"></i>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Latest Payslip -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
-        <div class="flex items-center justify-between">
+      <Card class="border-l-4 border-purple-500 shadow-lg">
+        <CardContent class="p-6 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Last Payslip</h3>
             <div class="mt-2">
@@ -56,12 +51,11 @@
           <div class="p-3 bg-purple-50 rounded-lg">
             <i class="fas fa-file-invoice-dollar text-purple-600 text-xl"></i>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Pending Requests -->
-      <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-amber-500">
-        <div class="flex items-center justify-between">
+      <Card class="border-l-4 border-amber-500 shadow-lg">
+        <CardContent class="p-6 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Pending Requests</h3>
             <div class="mt-2">
@@ -72,17 +66,17 @@
           <div class="p-3 bg-amber-50 rounded-lg">
             <i class="fas fa-exclamation-circle text-amber-600 text-xl"></i>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- Action Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <!-- Quick Actions -->
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-        <div class="space-y-3">
-          <button class="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+      <Card class="shadow-lg">
+        <CardHeader>
+          <CardTitle class="text-lg font-semibold text-gray-800">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-3">
+          <Button variant="ghost" class="w-full justify-between h-auto p-3 hover:bg-gray-50 rounded-lg">
             <div class="flex items-center">
               <div class="p-2 bg-indigo-100 rounded-lg mr-3">
                 <i class="fas fa-clock text-indigo-600"></i>
@@ -90,8 +84,9 @@
               <span class="text-gray-700">Clock In/Out</span>
             </div>
             <i class="fas fa-chevron-right text-gray-400"></i>
-          </button>
-          <button class="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+          </Button>
+
+          <Button variant="ghost" class="w-full justify-between h-auto p-3 hover:bg-gray-50 rounded-lg">
             <div class="flex items-center">
               <div class="p-2 bg-green-100 rounded-lg mr-3">
                 <i class="fas fa-calendar-plus text-green-600"></i>
@@ -99,8 +94,9 @@
               <span class="text-gray-700">File Leave</span>
             </div>
             <i class="fas fa-chevron-right text-gray-400"></i>
-          </button>
-          <button class="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+          </Button>
+
+          <Button variant="ghost" class="w-full justify-between h-auto p-3 hover:bg-gray-50 rounded-lg">
             <div class="flex items-center">
               <div class="p-2 bg-blue-100 rounded-lg mr-3">
                 <i class="fas fa-file-alt text-blue-600"></i>
@@ -108,14 +104,15 @@
               <span class="text-gray-700">View Payslip</span>
             </div>
             <i class="fas fa-chevron-right text-gray-400"></i>
-          </button>
-        </div>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
 
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
-        <div class="space-y-4">
+      <Card class="shadow-lg">
+        <CardHeader>
+          <CardTitle class="text-lg font-semibold text-gray-800">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-4">
           <div class="flex items-start">
             <div class="p-2 bg-green-100 rounded-lg mr-3">
               <i class="fas fa-check-circle text-green-600"></i>
@@ -143,13 +140,14 @@
               <p class="text-xs text-gray-500">3 days ago</p>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Upcoming Events -->
-      <div class="bg-white rounded-xl shadow-lg p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Upcoming</h3>
-        <div class="space-y-4">
+      <Card class="shadow-lg">
+        <CardHeader>
+          <CardTitle class="text-lg font-semibold text-gray-800">Upcoming</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
               <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
@@ -186,14 +184,16 @@
             </div>
             <span class="text-sm font-semibold text-blue-600">Required</span>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 const formattedDate = computed(() => {
   return new Date().toLocaleDateString('en-US', {
@@ -218,7 +218,7 @@ const pendingRequests = ref('3')
 
 <style scoped>
 .dashboard-employee {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 </style>

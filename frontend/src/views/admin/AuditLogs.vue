@@ -1,6 +1,5 @@
 <template>
   <div class="audit-logs p-6">
-    <!-- Page Header -->
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <div>
@@ -8,27 +7,27 @@
           <p class="text-gray-600">System activity tracking and accountability records</p>
         </div>
         <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
-          <button 
+          <Button 
             @click="clearOldLogs"
-            class="inline-flex items-center px-4 py-2 border border-red-300 text-red-700 rounded-lg text-sm font-medium bg-white hover:bg-red-50 transition-colors"
+            variant="outline"
+            class="border-red-300 text-red-700 hover:bg-red-50"
           >
             <i class="fas fa-trash-alt mr-2"></i>
             Clear Old Logs
-          </button>
-          <button 
+          </Button>
+          <Button 
             @click="exportLogs"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            class="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <i class="fas fa-file-export mr-2"></i>
             Export Logs
-          </button>
+          </Button>
         </div>
       </div>
 
-      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-blue-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-blue-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Total Logs</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.totalLogs }}</h3>
@@ -36,11 +35,11 @@
             <div class="p-3 bg-blue-50 rounded-lg">
               <i class="fas fa-history text-blue-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-green-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-green-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Today's Activity</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.todaysLogs }}</h3>
@@ -48,11 +47,11 @@
             <div class="p-3 bg-green-50 rounded-lg">
               <i class="fas fa-calendar-day text-green-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-purple-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-purple-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Active Users</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.activeUsers }}</h3>
@@ -60,11 +59,11 @@
             <div class="p-3 bg-purple-50 rounded-lg">
               <i class="fas fa-users text-purple-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
         
-        <div class="bg-white rounded-xl p-5 shadow-md border-l-4 border-yellow-500">
-          <div class="flex items-center justify-between">
+        <Card class="shadow-md border-l-4 border-l-yellow-500">
+          <CardContent class="p-5 flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-500">Security Events</p>
               <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.securityEvents }}</h3>
@@ -72,154 +71,162 @@
             <div class="p-3 bg-yellow-50 rounded-lg">
               <i class="fas fa-shield-alt text-yellow-500 text-xl"></i>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
 
-    <!-- Filters and Search -->
-    <div class="bg-white rounded-xl p-4 shadow-sm mb-6">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex flex-col md:flex-row gap-4 flex-1">
-          <div class="relative flex-1 md:max-w-md">
-            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-            <input 
-              v-model="searchQuery"
-              type="text" 
-              placeholder="Search users, actions, or details..."
-              class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-            >
+    <Card class="shadow-sm mb-6">
+      <CardContent class="p-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex flex-col md:flex-row gap-4 flex-1">
+            <div class="relative flex-1 md:max-w-md">
+              <i class="fas fa-search absolute left-3 top-3 text-gray-400 z-10"></i>
+              <Input 
+                v-model="searchQuery"
+                type="text" 
+                placeholder="Search users, actions, or details..."
+                class="pl-10 pr-4 w-full border-gray-300 focus-visible:ring-blue-500"
+              />
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+              <Select v-model="selectedUser">
+                <SelectTrigger class="w-[180px] border-gray-300">
+                  <SelectValue placeholder="All Users" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem v-for="user in uniqueUsers" :key="user" :value="user">{{ user }}</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select v-model="selectedAction">
+                <SelectTrigger class="w-[180px] border-gray-300">
+                  <SelectValue placeholder="All Actions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem v-for="action in uniqueActions" :key="action" :value="action">
+                    {{ formatAction(action) }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select v-model="selectedSeverity">
+                <SelectTrigger class="w-[180px] border-gray-300">
+                  <SelectValue placeholder="All Severity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severity</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
-          <div class="flex flex-wrap gap-3">
-            <select 
-              v-model="selectedUser"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="all">All Users</option>
-              <option v-for="user in uniqueUsers" :value="user">{{ user }}</option>
-            </select>
-            
-            <select 
-              v-model="selectedAction"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="all">All Actions</option>
-              <option v-for="action in uniqueActions" :value="action">{{ formatAction(action) }}</option>
-            </select>
-            
-            <select 
-              v-model="selectedSeverity"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            >
-              <option value="all">All Severity</option>
-              <option value="info">Info</option>
-              <option value="warning">Warning</option>
-              <option value="critical">Critical</option>
-            </select>
+          <div class="flex items-center gap-2 text-sm text-gray-600">
+            <i class="fas fa-info-circle"></i>
+            <span>Showing last {{ timeRange }} days</span>
           </div>
         </div>
         
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <i class="fas fa-info-circle"></i>
-          <span>Showing last {{ timeRange }} days</span>
-        </div>
-      </div>
-      
-      <!-- Time Range Filter -->
-      <div class="mt-4 flex items-center gap-4">
-        <div class="text-sm text-gray-600">Time Range:</div>
-        <div class="flex flex-wrap gap-2">
-          <button 
-            v-for="range in timeRanges" 
-            :key="range.value"
-            @click="setTimeRange(range.value)"
-            class="px-3 py-1 text-sm rounded-lg transition-colors"
-            :class="timeRange === range.value 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-          >
-            {{ range.label }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Audit Logs Table -->
-    <div class="bg-white rounded-xl shadow overflow-hidden">
-      <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center">
-            <i class="fas fa-clipboard-list text-gray-500 text-lg mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">System Audit Trail</h3>
-          </div>
-          <div class="flex items-center gap-3">
-            <div class="text-xs text-gray-500">
-              Auto-refresh: 
-              <span class="font-medium" :class="autoRefresh ? 'text-green-600' : 'text-gray-400'">
-                {{ autoRefresh ? 'ON' : 'OFF' }}
-              </span>
-            </div>
-            <button 
-              @click="toggleAutoRefresh"
-              class="text-sm text-blue-600 hover:text-blue-800"
+        <div class="mt-4 flex items-center gap-4">
+          <div class="text-sm text-gray-600">Time Range:</div>
+          <div class="flex flex-wrap gap-2">
+            <Button 
+              v-for="range in timeRanges" 
+              :key="range.value"
+              @click="setTimeRange(range.value)"
+              size="sm"
+              :variant="timeRange === range.value ? 'default' : 'secondary'"
+              :class="timeRange === range.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
             >
-              <i class="fas fa-sync-alt"></i>
-            </button>
+              {{ range.label }}
+            </Button>
           </div>
         </div>
-        <p class="text-sm text-gray-500 mt-1">Complete record of all system activities and user actions</p>
+      </CardContent>
+    </Card>
+
+    <Card class="shadow overflow-hidden bg-white">
+      <div class="border-b border-gray-200 px-6 py-4 bg-gray-50 flex flex-wrap justify-between items-center">
+        <div class="flex items-center">
+          <i class="fas fa-clipboard-list text-gray-500 text-lg mr-3"></i>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">System Audit Trail</h3>
+            <p class="text-sm text-gray-500 mt-1">Complete record of all system activities and user actions</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-4 sm:mt-0">
+          <div class="text-xs text-gray-500">
+            Auto-refresh: 
+            <span class="font-medium" :class="autoRefresh ? 'text-green-600' : 'text-gray-400'">
+              {{ autoRefresh ? 'ON' : 'OFF' }}
+            </span>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            @click="toggleAutoRefresh"
+            class="text-blue-600 hover:text-blue-800 h-8 w-8"
+          >
+            <i class="fas fa-sync-alt"></i>
+          </Button>
+        </div>
       </div>
       
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+        <Table>
+          <TableHeader class="bg-gray-50">
+            <TableRow>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-user"></i>
                   <span>User</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-bolt"></i>
                   <span>Action</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-calendar-alt"></i>
                   <span>Timestamp</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-info-circle"></i>
                   <span>Details</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-exclamation-triangle"></i>
                   <span>Severity</span>
                 </div>
-              </th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
+              </TableHead>
+              <TableHead class="px-6 py-3">
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <i class="fas fa-map-marker-alt"></i>
                   <span>IP Address</span>
                 </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr 
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody class="bg-white divide-y divide-gray-200">
+            <TableRow 
               v-for="log in filteredLogs" 
               :key="log.id"
               class="hover:bg-gray-50 transition-colors duration-150"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div 
                     class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center"
@@ -232,8 +239,8 @@
                     <div class="text-xs text-gray-500">{{ log.userRole }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4">
+              </TableCell>
+              <TableCell class="px-6 py-4">
                 <div class="flex items-center">
                   <div class="mr-3">
                     <i :class="getActionIcon(log.actionType)" class="text-lg" :style="{ color: getActionColor(log.actionType) }"></i>
@@ -243,37 +250,36 @@
                     <div class="text-xs text-gray-500">{{ log.entityType }}</div>
                   </div>
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ formatDate(log.timestamp) }}</div>
                 <div class="text-xs text-gray-500">{{ formatTime(log.timestamp) }}</div>
                 <div class="text-xs text-gray-400">{{ getTimeAgo(log.timestamp) }}</div>
-              </td>
-              <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 max-w-xs truncate">{{ log.details }}</div>
+              </TableCell>
+              <TableCell class="px-6 py-4">
+                <div class="text-sm text-gray-900 max-w-xs truncate" :title="log.details">{{ log.details }}</div>
                 <div v-if="log.entityId" class="text-xs text-gray-500">
                   ID: {{ log.entityId }}
                 </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
+                <Badge 
+                  class="px-3 py-1 text-xs font-semibold rounded-full border-0 shadow-none"
                   :class="getSeverityClass(log.severity)"
                 >
                   <i :class="getSeverityIcon(log.severity)" class="mr-1"></i>
                   {{ log.severity.charAt(0).toUpperCase() + log.severity.slice(1) }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+                </Badge>
+              </TableCell>
+              <TableCell class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-mono text-gray-900">{{ log.ipAddress }}</div>
                 <div class="text-xs text-gray-500">{{ log.browser }}</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
       
-      <!-- Empty State -->
       <div v-if="filteredLogs.length === 0" class="text-center py-16">
         <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
           <i class="fas fa-search text-gray-400 text-3xl"></i>
@@ -282,7 +288,6 @@
         <p class="text-gray-500 max-w-sm mx-auto">Try adjusting your search or filter criteria.</p>
       </div>
       
-      <!-- Table Footer -->
       <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between">
           <div class="text-sm text-gray-500 mb-2 md:mb-0">
@@ -293,13 +298,15 @@
             </span>
           </div>
           <div class="flex items-center gap-4">
-            <button 
+            <Button 
+              variant="outline"
+              size="sm"
               @click="loadMoreLogs"
-              class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
             >
               <i class="fas fa-plus mr-2"></i>
               Load More
-            </button>
+            </Button>
             <div class="text-xs text-gray-500">
               <i class="fas fa-database mr-1"></i>
               Log retention: 90 days
@@ -307,72 +314,79 @@
           </div>
         </div>
       </div>
-    </div>
+    </Card>
 
-    <!-- Audit Information Panel -->
     <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Activity Summary -->
-      <div class="bg-white rounded-xl shadow p-6">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-chart-pie text-blue-500 text-lg mr-3"></i>
-          <h4 class="font-bold text-gray-800">Activity Summary</h4>
-        </div>
-        <div class="space-y-4">
-          <div 
-            v-for="activity in activitySummary" 
-            :key="activity.type"
-            class="flex items-center justify-between"
-          >
-            <div class="flex items-center">
-              <div class="w-3 h-3 rounded-full mr-3" :style="{ backgroundColor: activity.color }"></div>
-              <span class="text-sm text-gray-700">{{ activity.label }}</span>
+      <Card class="shadow">
+        <CardContent class="p-6">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-chart-pie text-blue-500 text-lg mr-3"></i>
+            <h4 class="font-bold text-gray-800">Activity Summary</h4>
+          </div>
+          <div class="space-y-4">
+            <div 
+              v-for="activity in activitySummary" 
+              :key="activity.type"
+              class="flex items-center justify-between"
+            >
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full mr-3" :style="{ backgroundColor: activity.color }"></div>
+                <span class="text-sm text-gray-700">{{ activity.label }}</span>
+              </div>
+              <div class="text-sm font-medium text-gray-900">{{ activity.count }} events</div>
             </div>
-            <div class="text-sm font-medium text-gray-900">{{ activity.count }} events</div>
           </div>
-        </div>
-        <div class="mt-6 pt-6 border-t border-gray-100">
-          <div class="text-xs text-gray-500">
-            <i class="fas fa-clock mr-1"></i>
-            Last updated: {{ lastUpdated }}
+          <div class="mt-6 pt-6 border-t border-gray-100">
+            <div class="text-xs text-gray-500">
+              <i class="fas fa-clock mr-1"></i>
+              Last updated: {{ lastUpdated }}
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <!-- Security Notice -->
-      <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <div class="flex items-start mb-4">
-          <div class="flex-shrink-0">
-            <i class="fas fa-shield-alt text-blue-500 text-2xl"></i>
+      <Card class="bg-blue-50 border-blue-200 shadow-none">
+        <CardContent class="p-6">
+          <div class="flex items-start mb-4">
+            <div class="flex-shrink-0">
+              <i class="fas fa-shield-alt text-blue-500 text-2xl"></i>
+            </div>
+            <div class="ml-4">
+              <h4 class="font-bold text-blue-900">Security & Compliance</h4>
+              <p class="text-blue-700 text-sm mt-2">
+                Audit logs provide accountability and are essential for security monitoring, 
+                compliance requirements, and troubleshooting system issues.
+              </p>
+            </div>
           </div>
-          <div class="ml-4">
-            <h4 class="font-bold text-blue-900">Security & Compliance</h4>
-            <p class="text-blue-700 text-sm mt-2">
-              Audit logs provide accountability and are essential for security monitoring, 
-              compliance requirements, and troubleshooting system issues.
-            </p>
-          </div>
-        </div>
-        <ul class="text-sm text-blue-700 space-y-2 mt-4">
-          <li class="flex items-start">
-            <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-            <span>All user actions are logged for accountability</span>
-          </li>
-          <li class="flex items-start">
-            <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-            <span>Logs are retained for 90 days for compliance</span>
-          </li>
-          <li class="flex items-start">
-            <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-            <span>Critical security events trigger alerts</span>
-          </li>
-        </ul>
-      </div>
+          <ul class="text-sm text-blue-700 space-y-2 mt-4">
+            <li class="flex items-start">
+              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+              <span>All user actions are logged for accountability</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+              <span>Logs are retained for 90 days for compliance</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
+              <span>Critical security events trigger alerts</span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 // Audit logs data
 const auditLogs = ref([
@@ -692,9 +706,9 @@ const getTimeAgo = (timestamp) => {
 
 const getSeverityClass = (severity) => {
   const classes = {
-    'info': 'bg-blue-100 text-blue-800',
-    'warning': 'bg-yellow-100 text-yellow-800',
-    'critical': 'bg-red-100 text-red-800'
+    'info': 'bg-blue-100 text-blue-800 hover:bg-blue-100',
+    'warning': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
+    'critical': 'bg-red-100 text-red-800 hover:bg-red-100'
   }
   return classes[severity] || 'bg-gray-100 text-gray-800'
 }
@@ -712,7 +726,6 @@ const getSeverityIcon = (severity) => {
 const setTimeRange = (days) => {
   timeRange.value = days
   console.log(`Loading logs from last ${days} days`)
-  // In real app: fetch logs for the selected time range
 }
 
 const toggleAutoRefresh = () => {
@@ -726,7 +739,6 @@ const toggleAutoRefresh = () => {
 
 const loadMoreLogs = () => {
   console.log('Loading more audit logs...')
-  // In real app: fetch more logs from API with pagination
   alert('Loading additional audit logs...')
 }
 
@@ -772,7 +784,6 @@ onMounted(() => {
   if (autoRefresh.value) {
     refreshInterval = setInterval(() => {
       console.log('Auto-refreshing audit logs...')
-      // In real app: fetch latest logs from API
     }, 30000) // Every 30 seconds
   }
 })
@@ -785,14 +796,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Custom styles */
-.w-10 {
-  width: 2.5rem;
-}
-.h-10 {
-  height: 2.5rem;
-}
-
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .text-3xl {
