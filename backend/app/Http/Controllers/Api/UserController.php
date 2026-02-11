@@ -57,7 +57,6 @@ class UserController extends Controller
                     'full_name' => $user->full_name,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'address' => $user->address,
                     'role' => $user->role,
                     'status' => $user->status,
                     'email_verified_at' => $user->email_verified_at,
@@ -108,7 +107,6 @@ class UserController extends Controller
                         'full_name' => $user->full_name,
                         'email' => $user->email,
                         'phone' => $user->phone,
-                        'address' => $user->address,
                         'role' => $user->role,
                         'status' => $user->status,
                         'email_verified_at' => $user->email_verified_at,
@@ -140,7 +138,6 @@ class UserController extends Controller
                 'last_name' => 'sometimes|string|max:255',
                 'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
                 'phone' => 'nullable|string|max:20',
-                'address' => 'nullable|string|max:500',
                 'role' => ['sometimes', Rule::in(['client', 'distributor', 'service_provider', 'admin'])],
                 'status' => ['sometimes', Rule::in(['pending', 'active', 'inactive'])]
             ]);
@@ -155,7 +152,7 @@ class UserController extends Controller
 
             $user->update($request->only([
                 'first_name', 'last_name', 'email', 'phone', 
-                'address', 'role', 'status'
+                'role', 'status'
             ]));
 
             return response()->json([
@@ -301,7 +298,6 @@ class UserController extends Controller
                     'full_name' => $user->full_name,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'address' => $user->address,
                     'role' => $user->role,
                     'status' => $user->status,
                     'email_verified_at' => $user->email_verified_at,
@@ -325,7 +321,6 @@ class UserController extends Controller
             'last_name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:500'
         ]);
 
         if ($validator->fails()) {
@@ -337,7 +332,7 @@ class UserController extends Controller
         }
 
         try {
-            $user->update($request->only(['first_name', 'last_name', 'email', 'phone', 'address']));
+            $user->update($request->only(['first_name', 'last_name', 'email', 'phone']));
 
             return response()->json([
                 'status' => 'success',
@@ -348,7 +343,6 @@ class UserController extends Controller
                         'full_name' => $user->full_name,
                         'email' => $user->email,
                         'phone' => $user->phone,
-                        'address' => $user->address
                     ]
                 ]
             ]);

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Distributor\HRManagerController;
 use App\Http\Controllers\Api\Distributor\FinanceManagerController; 
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Distributor\ProductController;
+use App\Http\Controllers\Api\Employee\AttendanceRequestController;
 
 
 // Public routes
@@ -90,6 +91,12 @@ Route::middleware('auth:sanctum')->group(function () {
             // Submit business verification
             Route::post('/', [DistributorRequirementController::class, 'store']);
             
+            // NEW: Address specific routes
+            Route::prefix('address')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Distributor\DistributorAddressController::class, 'index']);
+                Route::post('/coordinates', [\App\Http\Controllers\Api\Distributor\DistributorAddressController::class, 'updateCoordinates']);
+            });
+            
             // Admin routes
             Route::prefix('admin')->group(function () {
                 // Get all pending verifications
@@ -102,6 +109,13 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
             });
         });
+
+        Route::prefix('payroll-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'update']);
+        });
+
+        
         
         // Operational Distributors Routes
         Route::prefix('operational-distributors')->group(function () {
@@ -152,6 +166,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', [ProductController::class, 'update']);
             Route::delete('/{id}', [ProductController::class, 'destroy']);
         });
+
+        Route::prefix('working-hours')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\WorkingHourController::class, 'index']);
+            Route::put('/', [\App\Http\Controllers\Api\Distributor\WorkingHourController::class, 'update']);
+        });
     });
 
     // Admin User Management Routes
@@ -186,6 +205,21 @@ Route::middleware('auth:sanctum')->group(function () {
             // New route for employee accessibility
             Route::get('/{id}/accessibility', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'getEmployeeAccessibility']);
             // Add this route in your HR routes section
+            
+            
+        });
+
+        Route::prefix('payroll')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\HR\PayrollController::class, 'index']); // History
+            Route::post('/calculate', [\App\Http\Controllers\Api\HR\PayrollController::class, 'calculate']); // Preview
+            Route::post('/process', [\App\Http\Controllers\Api\HR\PayrollController::class, 'store']); // Save
+        });
+
+        // Attendance Requests Management
+        Route::prefix('attendance-requests')->group(function () {
+            Route::get('/', [AttendanceRequestController::class, 'index']); // List all requests
+            Route::post('/{id}/approve', [AttendanceRequestController::class, 'approve']); // Approve request
+            Route::post('/{id}/reject', [AttendanceRequestController::class, 'reject']); // Reject request
         });
 
         Route::prefix('positions')->group(function () {
@@ -231,6 +265,20 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/requests/{id}/approve', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'approve']);
             Route::post('/requests/{id}/reject', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'reject']);
             Route::get('/statistics', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'statistics']);
+        });
+    });
+
+    // Employee Attendance Routes
+    Route::prefix('employee')->group(function () {
+        Route::get('/schedule', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'getSchedule']);
+        
+        Route::prefix('attendance')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'index']);
+            Route::post('/clock-in', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'clockIn']);
+            Route::post('/clock-out', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'clockOut']);
+            
+            // New Route for Requesting Adjustment
+            Route::post('/request', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'submitRequest']);
         });
     });
 

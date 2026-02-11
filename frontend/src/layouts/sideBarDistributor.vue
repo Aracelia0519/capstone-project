@@ -134,8 +134,8 @@
 import { ref, computed, onMounted, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  LayoutDashboard, Package, ClipboardList, TrendingUp, Users, 
-  Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, 
+  LayoutDashboard, Package, ClipboardList, TrendingUp, Users, Clock, 
+  Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, Calendar, 
   History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2
 } from 'lucide-vue-next'
 import { 
@@ -192,7 +192,9 @@ const navigation = [
       { name: 'Service Providers', path: '/distributor/ServiceProviders', icon: Users, color: 'text-teal-400', badge: '24', requiresVerify: true },
       { name: 'Operational Distributors', path: '/distributor/OperationalDistributorD', icon: Building2, color: 'text-indigo-400', requiresVerify: true },
       { name: 'HR Managers', path: '/distributor/HRmanagerD', icon: UserCog, color: 'text-green-400', requiresVerify: true },
-      { name: 'Finance Managers', path: '/distributor/FinanceManagerD', icon: Wallet, color: 'text-purple-400', requiresVerify: true }
+      { name: 'Finance Managers', path: '/distributor/FinanceManagerD', icon: Wallet, color: 'text-purple-400', requiresVerify: true },
+      { name: 'Working Hours', path: '/distributor/WorkingHours', icon: Clock, color: 'text-purple-400', requiresVerify: true },
+      { name: 'Payroll Frequency', path: '/distributor/PayrollFrequency', icon: Calendar, color: 'text-orange-400', badge: 'New', requiresVerify: true }
     ]
   },
   {

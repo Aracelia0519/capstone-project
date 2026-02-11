@@ -25,6 +25,8 @@ import ServiceProviders from '@/views/distributor/ServiceProviders.vue'
 import OperationalDistributors from '@/views/distributor/OperationalDistributors.vue'
 import HRManagers from '@/views/distributor/HRManagers.vue'
 import FinanceManagers from '@/views/distributor/FinanceManagers.vue'
+import WorkingHours from '@/views/distributor/WorkingHours.vue'
+import PayrollFrequency from '@/views/distributor/PayrollFrequency.vue'
 import CoreDepartments from '@/views/distributor/CoreDepartments.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
@@ -67,6 +69,8 @@ import EmploymentStatus from '@/views/humanResource/EmploymentStatus.vue'
 import ReportsHR from '@/views/humanResource/Reports.vue'
 import RecruitmentApplication from '@/views/humanResource/RecruitmentApplication.vue'
 import PayrollManagement from '@/views/humanResource/PayrollManagement.vue'
+import AttendanceRequestHR from '@/views/humanResource/AttendanceRequestHR.vue'
+
 
 
 import FinanceLayout from '@/layouts/financeLayout.vue'
@@ -115,6 +119,7 @@ import LeavesEmployee from '@/views/Employees/LeavesEmployee.vue'
 import RequestsEmployee from '@/views/Employees/RequestsEmployee.vue'
 import ProfileEmployee from '@/views/Employees/ProfileEmployee.vue'
 import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
+import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
 
 
 const routes = [
@@ -244,6 +249,18 @@ const routes = [
         path: 'FinanceManagerD',
         name: 'FinanceManagerD',
         component: FinanceManagers,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'WorkingHours',
+        name: 'WorkingHours',
+        component: WorkingHours,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PayrollFrequency',
+        name: 'PayrollFrequency',
+        component: PayrollFrequency,
         meta: { requiresVerification: true }
       },
       {
@@ -390,6 +407,11 @@ const routes = [
         name: 'signUp',
         component: SignUp
       },
+      {
+        path: 'payrollLogin',
+        name: 'payrollLogin',
+        component: PayrollLogin
+      },
     ]
   },
 
@@ -436,6 +458,11 @@ const routes = [
         path: 'payrollHR',
         name: 'payrollHR',
         component: PayrollManagement
+      },
+      {
+        path: 'attendanceRequestHR',
+        name: 'attendanceRequestHR',
+        component: AttendanceRequestHR
       },
       {
         path: 'reportsHR',
@@ -632,7 +659,7 @@ const routes = [
   {
     path: '/Employees',
     component: EmployeeLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true },
     children: [
       {
         path: 'DashboardEmployee',
@@ -863,8 +890,11 @@ axios.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       clearAuthData()
       clearVerificationCache()
-      // Only redirect if not already going to login
-      if (!router.currentRoute.value.path.includes('/logIn')) {
+      
+      // UPDATED: Added check for payrollLogin to prevent redirecting away from it on failed login
+      // Only redirect if not already going to a login page
+      const currentPath = router.currentRoute.value.path
+      if (!currentPath.includes('/logIn') && !currentPath.includes('/payrollLogin')) {
         router.push('/Landing/logIn')
       }
     }

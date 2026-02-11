@@ -403,22 +403,7 @@
                       <p v-if="hrPhoneError" class="text-xs text-red-500 mt-1 animate-pulse">{{ hrPhoneError }}</p>
                     </div>
                     
-                    <div class="md:col-span-2 space-y-2">
-                      <label class="block text-sm font-medium text-gray-700">
-                        Address
-                      </label>
-                      <div class="relative group">
-                        <div class="absolute top-3 left-3 flex items-center pointer-events-none">
-                          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </div>
-                        <textarea v-model="hrForm.address" rows="3" 
-                          class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-300 group-hover:border-green-400 resize-none"
-                          placeholder="Complete address including city and region"></textarea>
-                      </div>
-                    </div>
+                    
                   </div>
                 </div>
               </div>
@@ -1131,7 +1116,6 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        address: '',
         employment_type: '',
         hire_date: '',
         salary: '',
@@ -1453,7 +1437,6 @@ export default {
         formData.append('last_name', this.hrForm.last_name)
         formData.append('email', this.hrForm.email)
         formData.append('phone', this.hrForm.phone)
-        formData.append('address', this.hrForm.address)
         formData.append('employment_type', this.hrForm.employment_type)
         formData.append('hire_date', this.hrForm.hire_date)
         formData.append('salary', this.hrForm.salary)
@@ -1637,7 +1620,6 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        address: '',
         employment_type: '',
         hire_date: '',
         salary: '',

@@ -376,36 +376,7 @@
                   </div>
                 </div>
 
-                <!-- Address -->
-                <div class="group">
-                  <label class="block text-sm font-medium text-gray-300 mb-2">
-                    <div class="flex items-center space-x-2">
-                      <svg class="w-4 h-4 text-gray-400 group-hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      </svg>
-                      <span class="group-hover:text-amber-300 transition-colors">Address</span>
-                    </div>
-                  </label>
-                  <div class="relative">
-                    <textarea
-                      v-model="form.address"
-                      required
-                      placeholder="Enter your complete address (Street, City, Province)"
-                      rows="3"
-                      class="w-full px-4 py-3 pl-11 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500/60 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all duration-300 group-hover:border-amber-500/30 resize-none"
-                      :class="validationErrors.address ? 'border-red-500/50 focus:ring-red-500/30 validation-error' : ''"
-                      @input="validateStep2"
-                    ></textarea>
-                    <svg class="absolute left-3 top-4 transform w-5 h-5 text-gray-500 group-hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                  </div>
-                  <div v-if="validationErrors.address" class="mt-1 text-xs text-red-400">
-                    {{ validationErrors.address }}
-                  </div>
-                </div>
+                
               </div>
             </div>
 
@@ -635,10 +606,7 @@
                           <p class="text-xs text-gray-400 mb-1">Phone</p>
                           <p class="text-sm text-white">{{ form.phone || 'Not provided' }}</p>
                         </div>
-                        <div>
-                          <p class="text-xs text-gray-400 mb-1">Address</p>
-                          <p class="text-sm text-white">{{ form.address || 'Not provided' }}</p>
-                        </div>
+                        
                       </div>
                     </div>
 
@@ -926,7 +894,6 @@ const form = reactive({
   firstName: '',
   lastName: '',
   phone: '',
-  address: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -1215,14 +1182,7 @@ const validateStep2 = (silent = false) => {
     }
   }
 
-  // Address
-  if (!form.address.trim()) {
-    errors.address = 'Address is required'
-    isValid = false
-  } else if (form.address.length < 10) {
-    errors.address = 'Please enter a complete address'
-    isValid = false
-  }
+  
 
   if (!silent) {
     Object.assign(validationErrors, errors)
@@ -1339,7 +1299,6 @@ const handleSignup = async () => {
       last_name: form.lastName,
       email: form.email,
       phone: form.phone.replace(/\D/g, ''),
-      address: form.address,
       password: form.password,
       password_confirmation: form.confirmPassword,
       role: form.role,

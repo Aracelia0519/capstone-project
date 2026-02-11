@@ -1,6 +1,5 @@
 <template>
   <div class="employees-list p-4 md:p-6">
-    <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Employees</h1>
@@ -30,7 +29,6 @@
       </div>
     </div>
 
-    <!-- Statistics Cards -->
     <div v-if="statistics" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
         <div class="flex items-center">
@@ -86,7 +84,6 @@
       </div>
     </div>
 
-    <!-- Search and Filters -->
     <div class="bg-white rounded-xl shadow-md p-4 mb-6">
       <div class="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
         <div class="flex-1">
@@ -118,12 +115,10 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <div v-if="loading" class="flex justify-center items-center py-12">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
 
-    <!-- Error State -->
     <div v-else-if="error" class="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-6 mb-6">
       <div class="flex items-center">
         <svg class="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +134,6 @@
       </div>
     </div>
 
-    <!-- Employee Table -->
     <div v-else class="bg-white rounded-xl shadow-md overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -220,7 +214,6 @@
         </table>
       </div>
 
-      <!-- Empty State -->
       <div v-if="!loading && filteredEmployees.length === 0" class="py-12 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -237,7 +230,6 @@
         </div>
       </div>
 
-      <!-- Pagination -->
       <div v-if="filteredEmployees.length > 0" class="bg-white px-6 py-4 border-t border-gray-200">
         <div class="flex flex-col md:flex-row md:items-center justify-between">
           <div class="mb-4 md:mb-0">
@@ -260,11 +252,9 @@
       </div>
     </div>
 
-    <!-- Add Employee Wizard Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+    <div v-if="showAddModal" class="fixed inset-0 bg-white/30 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 z-40 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto">
         <div class="p-4 sm:p-6">
-          <!-- Wizard Header -->
           <div class="flex items-center justify-between mb-6 sticky top-0 bg-white pb-4 border-b z-10">
             <div>
               <h3 class="text-lg sm:text-xl font-bold text-gray-800">Add New Employee</h3>
@@ -277,7 +267,6 @@
             </button>
           </div>
 
-          <!-- Wizard Progress Bar -->
           <div class="mb-8">
             <div class="flex justify-between items-center mb-2">
               <div class="flex-1">
@@ -293,13 +282,11 @@
               </span>
             </div>
             
-            <!-- Wizard Steps -->
             <div class="flex justify-between mt-6 overflow-x-auto pb-2">
               <div 
                 v-for="(step, index) in steps" 
                 :key="step.name"
-                @click="goToStep(index + 1)"
-                class="flex flex-col items-center cursor-pointer group min-w-[80px] sm:min-w-0"
+                class="flex flex-col items-center min-w-[80px] sm:min-w-0"
                 :class="{ 'opacity-50': currentStep < index + 1 }"
               >
                 <div 
@@ -333,9 +320,17 @@
             </div>
           </div>
 
-          <!-- Wizard Content -->
-          <form @submit.prevent="saveEmployee" class="space-y-6" enctype="multipart/form-data">
-            <!-- Step 1: Basic Information -->
+          <div v-if="formError" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+             <svg class="w-5 h-5 text-red-500 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+             <div>
+               <h4 class="text-sm font-semibold text-red-800">Validation Error</h4>
+               <p class="text-sm text-red-700">{{ formError }}</p>
+             </div>
+          </div>
+
+          <form @submit.prevent="checkAndOpenConfirmDialog" class="space-y-6" enctype="multipart/form-data">
             <div v-if="currentStep === 1" class="space-y-6 animate-fade-in">
               <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100">
                 <h4 class="font-bold text-lg text-blue-800 mb-3 flex items-center">
@@ -354,10 +349,11 @@
                     <input 
                       v-model="newEmployee.first_name" 
                       type="text" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.first_name, 'border-gray-300': !errors.first_name}"
                       placeholder="Enter first name"
                     >
+                    <p v-if="errors.first_name" class="text-red-500 text-xs mt-1">{{ errors.first_name[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -377,10 +373,11 @@
                     <input 
                       v-model="newEmployee.last_name" 
                       type="text" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.last_name, 'border-gray-300': !errors.last_name}"
                       placeholder="Enter last name"
                     >
+                    <p v-if="errors.last_name" class="text-red-500 text-xs mt-1">{{ errors.last_name[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -389,10 +386,11 @@
                     <input 
                       v-model="newEmployee.email" 
                       type="email" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.email, 'border-gray-300': !errors.email}"
                       placeholder="employee@company.com"
                     >
+                    <p v-if="errors.email" class="text-red-500 text-xs mt-1">{{ errors.email[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -400,11 +398,15 @@
                     </label>
                     <input 
                       v-model="newEmployee.phone" 
-                      type="tel" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      placeholder="+63 912 345 6789"
+                      type="tel"
+                      maxlength="11"
+                      @input="newEmployee.phone = newEmployee.phone.replace(/[^0-9]/g, '')"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.phone, 'border-gray-300': !errors.phone}"
+                      placeholder="09123456789"
                     >
+                    <p class="text-xs text-gray-500">11 digits, numbers only</p>
+                    <p v-if="errors.phone" class="text-red-500 text-xs mt-1">{{ errors.phone[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -412,15 +414,16 @@
                     </label>
                     <input 
                       v-model="newEmployee.emergency_contact" 
-                      type="tel" 
+                      type="tel"
+                      maxlength="11"
+                      @input="newEmployee.emergency_contact = newEmployee.emergency_contact.replace(/[^0-9]/g, '')"
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      placeholder="Emergency contact number"
+                      placeholder="09123456789"
                     >
+                    <p class="text-xs text-gray-500">11 digits, numbers only</p>
                   </div>
                 </div>
-                <!-- Add this after the emergency contact field in Step 1 -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-                  <!-- Password Section -->
                   <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100">
                     <h5 class="font-semibold text-blue-800 mb-4 flex items-center">
                       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,28 +436,42 @@
                         <label class="block text-sm font-medium text-gray-700">
                           Password <span class="text-red-500">*</span>
                         </label>
-                        <input 
-                          v-model="newEmployee.password" 
-                          type="password" 
-                          required 
-                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                          placeholder="Create a password"
-                          autocomplete="new-password"
-                        >
+                        <div class="relative">
+                          <input 
+                            v-model="newEmployee.password" 
+                            :type="showPassword ? 'text' : 'password'"
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
+                            :class="{'border-red-500': errors.password, 'border-gray-300': !errors.password}"
+                            placeholder="Create a password"
+                            autocomplete="new-password"
+                          >
+                          <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                            <svg v-if="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                          </button>
+                        </div>
                         <p class="text-xs text-gray-500">Minimum 8 characters</p>
+                        <p v-if="errors.password" class="text-red-500 text-xs mt-1">{{ errors.password[0] }}</p>
                       </div>
                       <div class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700">
                           Confirm Password <span class="text-red-500">*</span>
                         </label>
-                        <input 
-                          v-model="newEmployee.password_confirmation" 
-                          type="password" 
-                          required 
-                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                          placeholder="Confirm password"
-                          autocomplete="new-password"
-                        >
+                        <div class="relative">
+                          <input 
+                            v-model="newEmployee.password_confirmation" 
+                            :type="showPassword ? 'text' : 'password'"
+                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
+                            :class="{'border-red-500': errors.password_confirmation, 'border-gray-300': !errors.password_confirmation}"
+                            placeholder="Confirm password"
+                            autocomplete="new-password"
+                          >
+                          <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                             <svg v-if="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                             <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                          </button>
+                        </div>
+                        <p v-if="errors.password_confirmation" class="text-red-500 text-xs mt-1">{{ errors.password_confirmation[0] }}</p>
                       </div>
                     </div>
                   </div>
@@ -462,7 +479,6 @@
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Personal Details -->
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                   <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                     <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,9 +494,10 @@
                       <input 
                         v-model="newEmployee.date_of_birth" 
                         type="date" 
-                        required 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.date_of_birth, 'border-gray-300': !errors.date_of_birth}"
                       >
+                      <p v-if="errors.date_of_birth" class="text-red-500 text-xs mt-1">{{ errors.date_of_birth[0] }}</p>
                     </div>
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-gray-700">
@@ -488,14 +505,15 @@
                       </label>
                       <select 
                         v-model="newEmployee.gender" 
-                        required 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.gender, 'border-gray-300': !errors.gender}"
                       >
                         <option value="">Select Gender</option>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                         <option value="other">Other</option>
                       </select>
+                      <p v-if="errors.gender" class="text-red-500 text-xs mt-1">{{ errors.gender[0] }}</p>
                     </div>
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-gray-700">
@@ -503,8 +521,8 @@
                       </label>
                       <select 
                         v-model="newEmployee.marital_status" 
-                        required 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.marital_status, 'border-gray-300': !errors.marital_status}"
                       >
                         <option value="">Select Status</option>
                         <option value="single">Single</option>
@@ -513,6 +531,7 @@
                         <option value="separated">Separated</option>
                         <option value="divorced">Divorced</option>
                       </select>
+                      <p v-if="errors.marital_status" class="text-red-500 text-xs mt-1">{{ errors.marital_status[0] }}</p>
                     </div>
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-gray-700">
@@ -521,15 +540,14 @@
                       <input 
                         v-model="newEmployee.nationality" 
                         type="text" 
-                        required 
-                        value="Filipino" 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.nationality, 'border-gray-300': !errors.nationality}"
                       >
+                      <p v-if="errors.nationality" class="text-red-500 text-xs mt-1">{{ errors.nationality[0] }}</p>
                     </div>
                   </div>
                 </div>
 
-                <!-- Address Information -->
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                   <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                     <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,17 +564,17 @@
                       <textarea 
                         v-model="newEmployee.address" 
                         rows="3" 
-                        required 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
+                        :class="{'border-red-500': errors.address, 'border-gray-300': !errors.address}"
                         placeholder="Enter complete address"
                       ></textarea>
+                      <p v-if="errors.address" class="text-red-500 text-xs mt-1">{{ errors.address[0] }}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 2: Employment Details -->
             <div v-if="currentStep === 2" class="space-y-6 animate-fade-in">
               <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-green-100">
                 <h4 class="font-bold text-lg text-green-800 mb-3 flex items-center">
@@ -574,15 +592,16 @@
                     </label>
                     <select 
                       v-model="newEmployee.department" 
-                      required 
                       @change="loadPositionsForDepartment"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.department, 'border-gray-300': !errors.department}"
                     >
                       <option value="">Select Department</option>
                       <option v-for="dept in availableDepartments" :key="dept" :value="dept">
                         {{ dept }}
                       </option>
                     </select>
+                    <p v-if="errors.department" class="text-red-500 text-xs mt-1">{{ errors.department[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -590,20 +609,21 @@
                     </label>
                     <select 
                       v-model="newEmployee.position" 
-                      required 
                       :disabled="!newEmployee.department || availablePositions.length === 0"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                      :class="{'border-red-500': errors.position, 'border-gray-300': !errors.position}"
                     >
                       <option value="">Select Position</option>
                       <option v-for="position in availablePositions" :key="position.id" :value="position.title">
                         {{ position.title }}
                       </option>
                     </select>
+                    <p v-if="errors.position" class="text-red-500 text-xs mt-1">{{ errors.position[0] }}</p>
                     <p v-if="!newEmployee.department" class="text-xs text-gray-500">
                       Please select a department first
                     </p>
                     <p v-if="newEmployee.department && availablePositions.length === 0" class="text-xs text-yellow-600">
-                      No positions available for this department. Please add positions first in the Positions section.
+                      No positions available. Please add positions first.
                     </p>
                   </div>
                   <div class="space-y-2">
@@ -612,8 +632,8 @@
                     </label>
                     <select 
                       v-model="newEmployee.employment_type" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.employment_type, 'border-gray-300': !errors.employment_type}"
                     >
                       <option value="">Select Type</option>
                       <option value="full_time">Full Time</option>
@@ -622,6 +642,7 @@
                       <option value="probationary">Probationary</option>
                       <option value="intern">Intern</option>
                     </select>
+                    <p v-if="errors.employment_type" class="text-red-500 text-xs mt-1">{{ errors.employment_type[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -629,8 +650,8 @@
                     </label>
                     <select 
                       v-model="newEmployee.employment_status" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.employment_status, 'border-gray-300': !errors.employment_status}"
                     >
                       <option value="probationary">Probationary</option>
                       <option value="regular">Regular</option>
@@ -639,6 +660,7 @@
                       <option value="terminated">Terminated</option>
                       <option value="retired">Retired</option>
                     </select>
+                    <p v-if="errors.employment_status" class="text-red-500 text-xs mt-1">{{ errors.employment_status[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -647,10 +669,11 @@
                     <input 
                       v-model="newEmployee.hire_date" 
                       type="date" 
-                      required 
                       :max="today" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.hire_date, 'border-gray-300': !errors.hire_date}"
                     >
+                    <p v-if="errors.hire_date" class="text-red-500 text-xs mt-1">{{ errors.hire_date[0] }}</p>
                   </div>
                   <div v-if="newEmployee.employment_status === 'probationary'" class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -666,7 +689,6 @@
                 </div>
               </div>
 
-              <!-- Salary Information -->
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -690,36 +712,37 @@
                       </select>
                       <input 
                         v-model="newEmployee.salary" 
-                        type="number" 
+                        type="number"
                         step="0.01" 
-                        min="0" 
-                        required 
+                        min="0"
+                        @keydown="preventInvalidMathChars"
                         placeholder="0.00" 
-                        class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.salary, 'border-gray-300': !errors.salary}"
                       >
                     </div>
+                    <p class="text-xs text-gray-500">Numeric values only</p>
+                    <p v-if="errors.salary" class="text-red-500 text-xs mt-1">{{ errors.salary[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
                       Payment Frequency <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.payment_frequency" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                      <option value="">Select Frequency</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="bi_monthly">Bi-Monthly</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="daily">Daily</option>
-                    </select>
+                    <div class="relative">
+                      <input 
+                        :value="formatFrequency(newEmployee.payment_frequency)" 
+                        type="text" 
+                        readonly
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed"
+                      >
+                    </div>
+                    <p class="text-xs text-gray-500">Determined by Distributor settings</p>
+                    <p v-if="errors.payment_frequency" class="text-red-500 text-xs mt-1">{{ errors.payment_frequency[0] }}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 3: Financial & Government -->
             <div v-if="currentStep === 3" class="space-y-6 animate-fade-in">
               <div class="bg-gradient-to-r from-purple-50 to-violet-50 p-5 rounded-xl border border-purple-100">
                 <h4 class="font-bold text-lg text-purple-800 mb-3 flex items-center">
@@ -732,7 +755,6 @@
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Bank Details -->
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                   <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                     <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -759,9 +781,11 @@
                       <input 
                         v-model="newEmployee.bank_account_number" 
                         type="text" 
+                        @input="newEmployee.bank_account_number = newEmployee.bank_account_number.replace(/[^0-9]/g, '')"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Enter account number"
                       >
+                      <p class="text-xs text-gray-500">Numbers only</p>
                     </div>
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-gray-700">
@@ -777,7 +801,6 @@
                   </div>
                 </div>
 
-                <!-- Government Numbers -->
                 <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                   <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                     <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -793,8 +816,9 @@
                       <input 
                         v-model="newEmployee.sss_number" 
                         type="text" 
+                        @input="newEmployee.sss_number = newEmployee.sss_number.replace(/[^0-9]/g, '')"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        placeholder="XX-XXXXXXX-X"
+                        placeholder="Numbers only"
                       >
                     </div>
                     <div class="space-y-2">
@@ -804,8 +828,9 @@
                       <input 
                         v-model="newEmployee.philhealth_number" 
                         type="text" 
+                        @input="newEmployee.philhealth_number = newEmployee.philhealth_number.replace(/[^0-9]/g, '')"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        placeholder="XX-XXXXXXXXX-X"
+                        placeholder="Numbers only"
                       >
                     </div>
                     <div class="space-y-2">
@@ -815,8 +840,9 @@
                       <input 
                         v-model="newEmployee.pagibig_number" 
                         type="text" 
+                        @input="newEmployee.pagibig_number = newEmployee.pagibig_number.replace(/[^0-9]/g, '')"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        placeholder="XXXX-XXXX-XXXX"
+                        placeholder="Numbers only"
                       >
                     </div>
                     <div class="space-y-2">
@@ -826,8 +852,9 @@
                       <input 
                         v-model="newEmployee.tin_number" 
                         type="text" 
+                        @input="newEmployee.tin_number = newEmployee.tin_number.replace(/[^0-9]/g, '')"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        placeholder="XXX-XXX-XXX-XXXXX"
+                        placeholder="Numbers only"
                       >
                     </div>
                   </div>
@@ -835,7 +862,6 @@
               </div>
             </div>
 
-            <!-- Step 4: Identification & Education -->
             <div v-if="currentStep === 4" class="space-y-6 animate-fade-in">
               <div class="bg-gradient-to-r from-yellow-50 to-amber-50 p-5 rounded-xl border border-yellow-100">
                 <h4 class="font-bold text-lg text-yellow-800 mb-3 flex items-center">
@@ -847,7 +873,6 @@
                 <p class="text-yellow-700 text-sm mb-4">Provide identification documents and educational background.</p>
               </div>
 
-              <!-- Identification -->
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -862,8 +887,8 @@
                     </label>
                     <select 
                       v-model="newEmployee.valid_id_type" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.valid_id_type, 'border-gray-300': !errors.valid_id_type}"
                     >
                       <option value="">Select ID Type</option>
                       <option value="passport">Passport</option>
@@ -878,6 +903,7 @@
                       <option value="tin">TIN ID</option>
                       <option value="other">Other</option>
                     </select>
+                    <p v-if="errors.valid_id_type" class="text-red-500 text-xs mt-1">{{ errors.valid_id_type[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -886,31 +912,40 @@
                     <input 
                       v-model="newEmployee.id_number" 
                       type="text" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      placeholder="Enter ID number"
+                      @input="newEmployee.id_number = newEmployee.id_number.replace(/[^0-9]/g, '')"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.id_number, 'border-gray-300': !errors.id_number}"
+                      placeholder="Numbers only"
                     >
+                    <p class="text-xs text-gray-500">Numbers only</p>
+                    <p v-if="errors.id_number" class="text-red-500 text-xs mt-1">{{ errors.id_number[0] }}</p>
                   </div>
                   <div class="space-y-2 sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">
-                      Valid ID Photo (Image or PDF)
+                      Valid ID Photo (Image or PDF) <span class="text-red-500">*</span>
                     </label>
-                    <div class="flex items-center space-x-3">
+                    <div v-if="newEmployee.valid_id_photo" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <svg class="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.valid_id_photo.name }}</span>
+                        <button type="button" @click="removeFile('valid_id_photo')" class="text-red-500 hover:text-red-700 ml-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div v-else class="flex items-center space-x-3">
                       <input 
                         type="file" 
                         @change="handleFileUpload($event, 'valid_id_photo')" 
                         accept="image/*,.pdf" 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.valid_id_photo, 'border-gray-300': !errors.valid_id_photo}"
                       >
-                      <div class="text-xs text-gray-500 whitespace-nowrap">
-                        Max 5MB
-                      </div>
+                      <div class="text-xs text-gray-500 whitespace-nowrap">Max 5MB</div>
                     </div>
+                    <p v-if="errors.valid_id_photo" class="text-red-500 text-xs mt-1">{{ errors.valid_id_photo[0] }}</p>
                   </div>
                 </div>
               </div>
 
-              <!-- Educational Background -->
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -927,8 +962,8 @@
                     </label>
                     <select 
                       v-model="newEmployee.educational_attainment" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.educational_attainment, 'border-gray-300': !errors.educational_attainment}"
                     >
                       <option value="">Select Attainment</option>
                       <option value="elementary">Elementary</option>
@@ -938,6 +973,7 @@
                       <option value="post_graduate">Post Graduate</option>
                       <option value="doctorate">Doctorate</option>
                     </select>
+                    <p v-if="errors.educational_attainment" class="text-red-500 text-xs mt-1">{{ errors.educational_attainment[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -946,10 +982,11 @@
                     <input 
                       v-model="newEmployee.school_graduated" 
                       type="text" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.school_graduated, 'border-gray-300': !errors.school_graduated}"
                       placeholder="University or School name"
                     >
+                    <p v-if="errors.school_graduated" class="text-red-500 text-xs mt-1">{{ errors.school_graduated[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -960,10 +997,11 @@
                       type="number" 
                       min="1900" 
                       :max="currentYear" 
-                      required 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.year_graduated, 'border-gray-300': !errors.year_graduated}"
                       placeholder="Year"
                     >
+                    <p v-if="errors.year_graduated" class="text-red-500 text-xs mt-1">{{ errors.year_graduated[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
@@ -972,16 +1010,16 @@
                     <input 
                       v-model="newEmployee.course" 
                       type="text" 
-                      required 
                       placeholder="e.g., Bachelor of Science in Business Administration" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      :class="{'border-red-500': errors.course, 'border-gray-300': !errors.course}"
                     >
+                    <p v-if="errors.course" class="text-red-500 text-xs mt-1">{{ errors.course[0] }}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Step 5: Documents & Review -->
             <div v-if="currentStep === 5" class="space-y-6 animate-fade-in">
               <div class="bg-gradient-to-r from-indigo-50 to-blue-50 p-5 rounded-xl border border-indigo-100">
                 <h4 class="font-bold text-lg text-indigo-800 mb-3 flex items-center">
@@ -993,7 +1031,6 @@
                 <p class="text-indigo-700 text-sm mb-4">Upload additional documents and review employee information.</p>
               </div>
 
-              <!-- Company Information -->
               <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-200">
                 <h5 class="font-semibold text-blue-800 mb-3 flex items-center">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1023,79 +1060,74 @@
                 </div>
               </div>
 
-              <!-- Documents Upload -->
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Additional Documents (Optional)
+                  Additional Documents
                 </h5>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      Resume
-                    </label>
-                    <input 
-                      type="file" 
-                      @change="handleFileUpload($event, 'resume')" 
-                      accept=".pdf,.doc,.docx" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                    <p class="text-xs text-gray-500">PDF, DOC, DOCX</p>
+                    <label class="block text-sm font-medium text-gray-700">Resume <span class="text-red-500">*</span></label>
+                    <div v-if="newEmployee.resume" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.resume.name }}</span>
+                        <button type="button" @click="removeFile('resume')" class="text-red-500 hover:text-red-700 ml-2">X</button>
+                    </div>
+                    <div v-else>
+                        <input type="file" @change="handleFileUpload($event, 'resume')" accept=".pdf,.doc,.docx" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.resume, 'border-gray-300': !errors.resume}">
+                        <p class="text-xs text-gray-500">PDF, DOC, DOCX</p>
+                        <p v-if="errors.resume" class="text-red-500 text-xs mt-1">{{ errors.resume[0] }}</p>
+                    </div>
                   </div>
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      Employment Contract
-                    </label>
-                    <input 
-                      type="file" 
-                      @change="handleFileUpload($event, 'employment_contract')" 
-                      accept=".pdf" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                    <p class="text-xs text-gray-500">PDF only</p>
+                    <label class="block text-sm font-medium text-gray-700">Employment Contract <span class="text-red-500">*</span></label>
+                    <div v-if="newEmployee.employment_contract" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.employment_contract.name }}</span>
+                        <button type="button" @click="removeFile('employment_contract')" class="text-red-500 hover:text-red-700 ml-2">X</button>
+                    </div>
+                    <div v-else>
+                        <input type="file" @change="handleFileUpload($event, 'employment_contract')" accept=".pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.employment_contract, 'border-gray-300': !errors.employment_contract}">
+                        <p class="text-xs text-gray-500">PDF only</p>
+                        <p v-if="errors.employment_contract" class="text-red-500 text-xs mt-1">{{ errors.employment_contract[0] }}</p>
+                    </div>
                   </div>
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      Medical Certificate
-                    </label>
-                    <input 
-                      type="file" 
-                      @change="handleFileUpload($event, 'medical_certificate')" 
-                      accept="image/*,.pdf" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                    <p class="text-xs text-gray-500">Image or PDF</p>
+                    <label class="block text-sm font-medium text-gray-700">Medical Certificate <span class="text-red-500">*</span></label>
+                    <div v-if="newEmployee.medical_certificate" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.medical_certificate.name }}</span>
+                        <button type="button" @click="removeFile('medical_certificate')" class="text-red-500 hover:text-red-700 ml-2">X</button>
+                    </div>
+                    <div v-else>
+                        <input type="file" @change="handleFileUpload($event, 'medical_certificate')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.medical_certificate, 'border-gray-300': !errors.medical_certificate}">
+                        <p v-if="errors.medical_certificate" class="text-red-500 text-xs mt-1">{{ errors.medical_certificate[0] }}</p>
+                    </div>
                   </div>
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      NBI Clearance
-                    </label>
-                    <input 
-                      type="file" 
-                      @change="handleFileUpload($event, 'nbi_clearance')" 
-                      accept="image/*,.pdf" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                    <p class="text-xs text-gray-500">Image or PDF</p>
+                    <label class="block text-sm font-medium text-gray-700">NBI Clearance <span class="text-red-500">*</span></label>
+                    <div v-if="newEmployee.nbi_clearance" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.nbi_clearance.name }}</span>
+                        <button type="button" @click="removeFile('nbi_clearance')" class="text-red-500 hover:text-red-700 ml-2">X</button>
+                    </div>
+                    <div v-else>
+                        <input type="file" @change="handleFileUpload($event, 'nbi_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.nbi_clearance, 'border-gray-300': !errors.nbi_clearance}">
+                        <p v-if="errors.nbi_clearance" class="text-red-500 text-xs mt-1">{{ errors.nbi_clearance[0] }}</p>
+                    </div>
                   </div>
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700">
-                      Police Clearance
-                    </label>
-                    <input 
-                      type="file" 
-                      @change="handleFileUpload($event, 'police_clearance')" 
-                      accept="image/*,.pdf" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                    >
-                    <p class="text-xs text-gray-500">Image or PDF</p>
+                    <label class="block text-sm font-medium text-gray-700">Police Clearance <span class="text-red-500">*</span></label>
+                    <div v-if="newEmployee.police_clearance" class="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <span class="text-sm text-blue-800 truncate flex-1">{{ newEmployee.police_clearance.name }}</span>
+                        <button type="button" @click="removeFile('police_clearance')" class="text-red-500 hover:text-red-700 ml-2">X</button>
+                    </div>
+                    <div v-else>
+                        <input type="file" @change="handleFileUpload($event, 'police_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.police_clearance, 'border-gray-300': !errors.police_clearance}">
+                        <p v-if="errors.police_clearance" class="text-red-500 text-xs mt-1">{{ errors.police_clearance[0] }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Notes -->
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h5 class="font-semibold text-gray-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1114,7 +1146,6 @@
                 </div>
               </div>
 
-              <!-- Review Summary -->
               <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-xl border border-green-200">
                 <h5 class="font-semibold text-green-800 mb-4 flex items-center">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1145,7 +1176,6 @@
           </form>
         </div>
 
-        <!-- Wizard Navigation -->
         <div class="sticky bottom-0 bg-white border-t border-gray-200 p-4 sm:p-6">
           <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
             <div class="text-sm text-gray-600">
@@ -1170,8 +1200,8 @@
               </button>
               <button 
                 v-if="currentStep === steps.length"
-                type="submit" 
-                @click="saveEmployee"
+                type="button" 
+                @click="checkAndOpenConfirmDialog"
                 :disabled="saving" 
                 class="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
@@ -1186,6 +1216,36 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showConfirmDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in">
+        <div class="flex items-center mb-4">
+          <div class="p-2 bg-yellow-100 rounded-full mr-3">
+            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900">Confirm Employee Creation</h3>
+        </div>
+        <p class="text-gray-600 mb-6">
+          Are you sure you want to create this employee record? Please verify that all information is correct before proceeding.
+        </p>
+        <div class="flex justify-end space-x-3">
+          <button 
+            @click="showConfirmDialog = false" 
+            class="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="finalizeEmployeeCreation" 
+            class="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+          >
+            Confirm & Create
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1194,6 +1254,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 import { getCurrentUser } from '@/utils/auth'
+import { toast } from 'vue-sonner' // Added Sonner toast
 
 const router = useRouter()
 
@@ -1205,9 +1266,12 @@ const employmentStatusFilter = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 10
 const showAddModal = ref(false)
+const showConfirmDialog = ref(false) // Added for Confirmation Dialog
 const loading = ref(false)
 const saving = ref(false)
 const error = ref(null)
+const formError = ref(null)
+const errors = ref({}) // State for form validation errors
 const employees = ref([])
 const departments = ref([])
 const statistics = ref(null)
@@ -1216,6 +1280,7 @@ const userInfo = ref(null)
 const currentStep = ref(1)
 const availableDepartments = ref([])
 const availablePositions = ref([])
+const showPassword = ref(false) // State for password visibility
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 const currentYear = new Date().getFullYear()
@@ -1235,6 +1300,7 @@ onMounted(async () => {
     userInfo.value = await getCurrentUser()
     fetchEmployees()
     fetchDepartments()
+    fetchPayrollSettings() // Fetch payroll settings when component mounts
   } catch (err) {
     console.error('Failed to get user info:', err)
   }
@@ -1273,7 +1339,7 @@ const newEmployee = reactive({
   regularization_date: '',
   salary: 0,
   salary_currency: 'PHP',
-  payment_frequency: 'monthly',
+  payment_frequency: '', // Will be set by API
   
   // Bank Details
   bank_name: '',
@@ -1307,20 +1373,106 @@ const newEmployee = reactive({
   notes: ''
 })
 
+// Frontend Validation Logic Per Step
+const validateStep = (step) => {
+    errors.value = {} // Clear errors
+    formError.value = null
+    let isValid = true
+
+    // Helper to add error
+    const addError = (field, message) => {
+        errors.value[field] = [message]
+        isValid = false
+    }
+
+    if (step === 1) {
+        if (!newEmployee.first_name) addError('first_name', 'First name is required')
+        if (!newEmployee.last_name) addError('last_name', 'Last name is required')
+        if (!newEmployee.email) addError('email', 'Email is required')
+        if (!newEmployee.phone) addError('phone', 'Phone number is required')
+        // Validate phone: 11 digits
+        else if (!/^\d{11}$/.test(newEmployee.phone)) addError('phone', 'Phone must be exactly 11 digits')
+        
+        // Validate emergency contact if present: 11 digits
+        if (newEmployee.emergency_contact && !/^\d{11}$/.test(newEmployee.emergency_contact)) {
+            addError('emergency_contact', 'Emergency contact must be exactly 11 digits')
+        }
+
+        if (!newEmployee.password) addError('password', 'Password is required')
+        if (newEmployee.password.length < 8) addError('password', 'Password must be at least 8 characters')
+        if (newEmployee.password !== newEmployee.password_confirmation) addError('password_confirmation', 'Passwords do not match')
+        if (!newEmployee.date_of_birth) addError('date_of_birth', 'Date of birth is required')
+        if (!newEmployee.address) addError('address', 'Address is required')
+        if (!newEmployee.nationality) addError('nationality', 'Nationality is required')
+    }
+
+    if (step === 2) {
+        if (!newEmployee.department) addError('department', 'Department is required')
+        if (!newEmployee.position) addError('position', 'Position is required')
+        if (!newEmployee.employment_type) addError('employment_type', 'Employment type is required')
+        if (!newEmployee.employment_status) addError('employment_status', 'Employment status is required')
+        if (!newEmployee.hire_date) addError('hire_date', 'Hire date is required')
+        if (!newEmployee.salary && newEmployee.salary !== 0) addError('salary', 'Salary is required')
+        if (!newEmployee.payment_frequency) addError('payment_frequency', 'Payment frequency is not set. Please check distributor settings.')
+    }
+
+    // Step 3 (Financial) usually has optional fields, but if you have required ones, add here.
+    
+    if (step === 4) {
+        if (!newEmployee.valid_id_type) addError('valid_id_type', 'ID Type is required')
+        if (!newEmployee.id_number) addError('id_number', 'ID Number is required')
+        if (!newEmployee.valid_id_photo) addError('valid_id_photo', 'Valid ID photo is required')
+        if (!newEmployee.educational_attainment) addError('educational_attainment', 'Educational attainment is required')
+        if (!newEmployee.school_graduated) addError('school_graduated', 'School graduated is required')
+        if (!newEmployee.year_graduated) addError('year_graduated', 'Year graduated is required')
+        if (!newEmployee.course) addError('course', 'Course is required')
+    }
+    
+    // Step 5 - Final Review and Document Check (ensure all docs are present)
+    if (step === 5) {
+        if (!newEmployee.resume) addError('resume', 'Resume is required')
+        if (!newEmployee.employment_contract) addError('employment_contract', 'Employment contract is required')
+        if (!newEmployee.medical_certificate) addError('medical_certificate', 'Medical certificate is required')
+        if (!newEmployee.nbi_clearance) addError('nbi_clearance', 'NBI clearance is required')
+        if (!newEmployee.police_clearance) addError('police_clearance', 'Police clearance is required')
+    }
+
+    if (!isValid) {
+        formError.value = "Please fix the errors in the form before proceeding."
+        toast.error("Please fix the errors in the form before proceeding.") // Added sonner
+    }
+
+    return isValid
+}
+
+// Handler to prevent mathematical characters in salary input
+const preventInvalidMathChars = (e) => {
+  const invalidChars = ['e', 'E', '+', '-'];
+  if (invalidChars.includes(e.key)) {
+    e.preventDefault();
+  }
+}
+
 // Wizard navigation
 const nextStep = () => {
-  if (currentStep.value < steps.length) {
-    currentStep.value++
+  if (validateStep(currentStep.value)) {
+    if (currentStep.value < steps.length) {
+        currentStep.value++
+    }
   }
 }
 
 const prevStep = () => {
   if (currentStep.value > 1) {
     currentStep.value--
+    formError.value = null // Clear errors when going back
+    errors.value = {}
   }
 }
 
 const goToStep = (step) => {
+  // Only allow jumping to steps if previous steps are valid (optional strictness)
+  // For now, allow navigation but clear errors
   if (step >= 1 && step <= steps.length) {
     currentStep.value = step
   }
@@ -1335,18 +1487,38 @@ const formatCurrency = (amount) => {
   })
 }
 
+// Helper to format frequency for display
+const formatFrequency = (freq) => {
+    if (!freq) return 'Loading...';
+    // Handle specific cases or capitalize
+    const map = {
+        'daily': 'Daily',
+        'weekly': 'Weekly',
+        'bi-monthly': 'Bi-Monthly',
+        'bi_monthly': 'Bi-Monthly', // Handle potential db/frontend mismatch
+        'monthly': 'Monthly'
+    };
+    return map[freq] || freq.charAt(0).toUpperCase() + freq.slice(1);
+}
+
 // File upload handling
 const handleFileUpload = (event, field) => {
   const file = event.target.files[0]
   if (file) {
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size exceeds 5MB limit')
+      toast.error('File size exceeds 5MB limit') // Changed to Sonner
       event.target.value = ''
       return
     }
     newEmployee[field] = file
+    // Clear any previous error for this field
+    if (errors.value[field]) delete errors.value[field]
   }
+}
+
+const removeFile = (field) => {
+    newEmployee[field] = null
 }
 
 // Fetch departments from positions
@@ -1394,6 +1566,27 @@ const loadPositionsForDepartment = async () => {
     console.error('Failed to fetch positions:', err)
     availablePositions.value = []
   }
+}
+
+// Fetch Payroll Settings for the Distributor
+const fetchPayrollSettings = async () => {
+    try {
+        const response = await axios.get('/distributor/payroll-settings')
+        if (response.data) {
+            // Map the DB value to the frontend value if needed
+            // DB might return 'bi-monthly', frontend select usually expects 'bi_monthly' or vice versa
+            // We'll trust the DB value but ensure it matches valid enum values if the backend validates it strictly
+            let freq = response.data.frequency;
+            
+            // Normalize if needed (e.g., ensuring consistency with backend expected enum)
+            if (freq === 'bi-monthly') freq = 'bi_monthly'; 
+            
+            newEmployee.payment_frequency = freq;
+        }
+    } catch (err) {
+        console.error('Failed to fetch payroll settings:', err)
+        toast.error('Could not load payroll settings.')
+    }
 }
 
 // Computed properties
@@ -1498,13 +1691,29 @@ const fetchEmployees = async () => {
   } catch (err) {
     console.error('Failed to fetch employees:', err)
     error.value = err.response?.data?.message || 'Failed to load employees'
+    toast.error('Failed to load employees') // Added Sonner
   } finally {
     loading.value = false
   }
 }
 
-const saveEmployee = async () => {
+// Logic Step 1: Check validation and open dialog
+const checkAndOpenConfirmDialog = () => {
+  if (!validateStep(currentStep.value)) {
+    return;
+  }
+  // Open confirmation dialog instead of saving immediately
+  showConfirmDialog.value = true;
+}
+
+// Logic Step 2: Finalize creation after confirmation
+const finalizeEmployeeCreation = async () => {
+  // Close the dialog first
+  showConfirmDialog.value = false;
+
   saving.value = true
+  formError.value = null
+  errors.value = {}
   
   try {
     // Create FormData for file uploads
@@ -1534,9 +1743,12 @@ const saveEmployee = async () => {
     
     if (response.data.status === 'success') {
       // Show success message
-      alert('Employee created successfully!')
+      toast.success('Employee created successfully!') // Changed to Sonner
       
       // Reset form and wizard
+      // We need to re-fetch payroll settings to ensure the default is correct for next entry
+      const currentFreq = newEmployee.payment_frequency;
+      
       Object.keys(newEmployee).forEach(key => {
         if (key === 'gender') newEmployee[key] = 'male'
         else if (key === 'marital_status') newEmployee[key] = 'single'
@@ -1545,7 +1757,7 @@ const saveEmployee = async () => {
         else if (key === 'employment_status') newEmployee[key] = 'probationary'
         else if (key === 'hire_date') newEmployee[key] = today.value
         else if (key === 'salary_currency') newEmployee[key] = 'PHP'
-        else if (key === 'payment_frequency') newEmployee[key] = 'monthly'
+        else if (key === 'payment_frequency') newEmployee[key] = currentFreq // Keep the fetched frequency
         else if (key === 'year_graduated') newEmployee[key] = currentYear
         else if (key === 'salary') newEmployee[key] = 0
         else newEmployee[key] = ''
@@ -1563,8 +1775,29 @@ const saveEmployee = async () => {
     }
   } catch (err) {
     console.error('Failed to create employee:', err)
-    const errorMsg = err.response?.data?.message || err.response?.data?.errors || 'Failed to create employee'
-    alert(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg)
+    
+    // Check if it's a validation error (422)
+    if (err.response && err.response.status === 422) {
+        errors.value = err.response.data.errors // Capture specific field errors
+        formError.value = err.response.data.message || 'Please fix the errors in the form.'
+        toast.error(formError.value) // Added Sonner
+        
+        // Find which step the error belongs to and jump there
+        const errorFields = Object.keys(errors.value)
+        if (errorFields.some(f => ['first_name', 'last_name', 'email', 'phone', 'password', 'date_of_birth'].includes(f))) {
+            currentStep.value = 1
+        } else if (errorFields.some(f => ['department', 'position', 'salary'].includes(f))) {
+            currentStep.value = 2
+        } else if (errorFields.some(f => ['bank_name', 'sss_number', 'tin_number'].includes(f))) {
+            currentStep.value = 3
+        } else if (errorFields.some(f => ['valid_id_type', 'school_graduated'].includes(f))) {
+            currentStep.value = 4
+        }
+    } else {
+        // Here we handle the 500 error message properly now!
+        const serverMessage = err.response?.data?.message || err.message;
+        toast.error(`Failed to create employee: ${serverMessage}`); // Changed to Sonner
+    }
   } finally {
     saving.value = false
   }
@@ -1578,7 +1811,7 @@ const editEmployee = (id) => {
   // For now, just show a message
   const employee = employees.value.find(emp => emp.id === id)
   if (employee) {
-    alert(`Edit employee: ${employee.full_name} (ID: ${employee.employee_code})`)
+    toast.info(`Edit employee: ${employee.full_name} (ID: ${employee.employee_code})`) // Changed to Sonner
   }
 }
 
@@ -1587,12 +1820,12 @@ const regularizeEmployee = async (id) => {
     try {
       const response = await axios.post(`/hr/employees/${id}/regularize`)
       if (response.data.status === 'success') {
-        alert('Employee regularized successfully!')
+        toast.success('Employee regularized successfully!') // Changed to Sonner
         fetchEmployees()
       }
     } catch (err) {
       console.error('Failed to regularize employee:', err)
-      alert(err.response?.data?.message || 'Failed to regularize employee')
+      toast.error(err.response?.data?.message || 'Failed to regularize employee') // Changed to Sonner
     }
   }
 }
@@ -1600,7 +1833,7 @@ const regularizeEmployee = async (id) => {
 const uploadDocument = (id) => {
   const employee = employees.value.find(emp => emp.id === id)
   if (employee) {
-    alert(`Upload document for: ${employee.full_name}`)
+    toast.info(`Upload document for: ${employee.full_name}`) // Changed to Sonner
   }
 }
 
@@ -1614,9 +1847,13 @@ const nextPage = () => {
 
 const closeAddModal = () => {
   showAddModal.value = false
+  showConfirmDialog.value = false // Ensure confirm dialog is also closed
   currentStep.value = 1
+  formError.value = null
+  errors.value = {}
   
   // Reset form
+  const currentFreq = newEmployee.payment_frequency;
   Object.keys(newEmployee).forEach(key => {
     if (key === 'gender') newEmployee[key] = 'male'
     else if (key === 'marital_status') newEmployee[key] = 'single'
@@ -1625,7 +1862,7 @@ const closeAddModal = () => {
     else if (key === 'employment_status') newEmployee[key] = 'probationary'
     else if (key === 'hire_date') newEmployee[key] = today.value
     else if (key === 'salary_currency') newEmployee[key] = 'PHP'
-    else if (key === 'payment_frequency') newEmployee[key] = 'monthly'
+    else if (key === 'payment_frequency') newEmployee[key] = currentFreq // Keep fetched settings
     else if (key === 'year_graduated') newEmployee[key] = currentYear
     else if (key === 'salary') newEmployee[key] = 0
     // Don't reset password fields - let them be empty
@@ -1668,7 +1905,7 @@ const exportToCSV = () => {
   link.download = `employees_${new Date().toISOString().split('T')[0]}.csv`
   link.click()
   
-  alert('CSV exported successfully!')
+  toast.success('CSV exported successfully!') // Changed to Sonner
 }
 </script>
 

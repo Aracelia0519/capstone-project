@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class AdminUserController extends Controller
 {
@@ -54,8 +55,13 @@ class AdminUserController extends Controller
             }
             
             // Get paginated results
+            // UPDATED SORTING LOGIC: Pending users first, then by date descending
             $perPage = $request->get('per_page', 10);
-            $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
+            
+            $users = $query
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 1 ELSE 2 END ASC")
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
             
             // Transform users with additional data
             $transformedUsers = $users->getCollection()->map(function ($user) {

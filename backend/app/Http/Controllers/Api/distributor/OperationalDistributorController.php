@@ -42,6 +42,7 @@ class OperationalDistributorController extends Controller
             $perPage = $request->input('per_page', 10);
             $search = $request->input('search', '');
             $status = $request->input('status', '');
+            $employmentType = $request->input('employment_type', '');
             
             $query = OperationalDistributor::byParent($user->id);
             
@@ -51,13 +52,19 @@ class OperationalDistributorController extends Controller
                     $q->where('first_name', 'like', "%{$search}%")
                       ->orWhere('last_name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('id_number', 'like', "%{$search}%");
                 });
             }
             
             // Apply status filter
             if ($status) {
                 $query->where('status', $status);
+            }
+
+            // Apply employment type filter
+            if ($employmentType) {
+                $query->where('employment_type', $employmentType);
             }
             
             // Paginate results
@@ -74,10 +81,22 @@ class OperationalDistributorController extends Controller
                     'email' => $distributor->email,
                     'phone' => $distributor->phone,
                     'address' => $distributor->address,
+                    
+                    // Employment Data
+                    'employment_type' => $distributor->employment_type,
+                    'employment_type_name' => $distributor->employment_type_name,
+                    'hire_date' => $distributor->hire_date ? $distributor->hire_date->format('Y-m-d') : null,
+                    'salary' => $distributor->salary,
+                    'position' => $distributor->position,
+                    
+                    // Documents
                     'valid_id_type' => $distributor->valid_id_type,
                     'id_type_name' => $distributor->id_type_name,
                     'id_number' => $distributor->id_number,
                     'valid_id_photo_url' => $distributor->valid_id_photo_url,
+                    'resume_url' => $distributor->resume_url,
+                    'employment_contract_url' => $distributor->employment_contract_url,
+                    
                     'status' => $distributor->status,
                     'status_class' => $distributor->status_class,
                     'has_user_account' => $distributor->hasUserAccount(),
@@ -118,149 +137,159 @@ class OperationalDistributorController extends Controller
     /**
      * Create a new operational distributor
      */
-     /**
- * Create a new operational distributor
- */
-public function store(Request $request)
-{
-    try {
-        $user = Auth::user();
-        
-        // Only allow distributor users
-        if ($user->role !== 'distributor') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized access'
-            ], 403);
-        }
-        
-        // Check if parent distributor is verified
-        $parentVerification = $user->distributorRequirement;
-        if (!$parentVerification || $parentVerification->status !== 'approved') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You must be verified as a distributor to create operational distributors'
-            ], 403);
-        }
-        
-        // Validate request
-        $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email|unique:operational_distributors,email',
-            'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
-            'address' => 'nullable|string|max:500',
-            'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
-            'id_number' => 'required|string|max:100',
-            'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'password' => 'required|string|min:8|confirmed',
-            'password_confirmation' => 'required|string|min:8'
-        ], [
-            'first_name.required' => 'First name is required',
-            'last_name.required' => 'Last name is required',
-            'email.required' => 'Email address is required',
-            'email.email' => 'Please enter a valid email address',
-            'email.unique' => 'This email is already registered',
-            'phone.required' => 'Phone number is required',
-            'phone.max' => 'Phone number must be exactly 11 digits',
-            'phone.min' => 'Phone number must be exactly 11 digits',
-            'phone.regex' => 'Phone number must contain only digits',
-            'valid_id_type.required' => 'Please select a valid ID type',
-            'id_number.required' => 'ID number is required',
-            'valid_id_photo.required' => 'Valid ID photo is required',
-            'valid_id_photo.mimes' => 'Only JPG, PNG, and PDF files are allowed',
-            'valid_id_photo.max' => 'File size must be less than 5MB',
-            'password.required' => 'Password is required',
-            'password.min' => 'Password must be at least 8 characters',
-            'password.confirmed' => 'Password confirmation does not match'
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
-        // Handle file upload
-        $validIdPhotoPath = null;
-        if ($request->hasFile('valid_id_photo')) {
-            $file = $request->file('valid_id_photo');
-            $fileName = 'operational_distributor_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $folderPath = 'operational_distributors/valid_ids';
+    public function store(Request $request)
+    {
+        try {
+            $user = Auth::user();
             
-            $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
-            $validIdPhotoPath = $folderPath . '/' . $fileName;
-        }
-        
-        // Create the user account with role 'operational_distributor'
-        $userAccount = User::create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
-            'password' => $request->password, // plain password; mutator will hash it
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'role' => 'operational_distributor',
-            'status' => 'pending'
-        ]);
-        
-        // Create operational distributor linked to the user account
-        $operationalDistributor = OperationalDistributor::create([
-            'parent_distributor_id' => $user->id,
-            'user_id' => $userAccount->id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'address' => $request->address,
-            'valid_id_type' => $request->valid_id_type,
-            'id_number' => $request->id_number,
-            'valid_id_photo' => $validIdPhotoPath,
-            'status' => 'pending'
-        ]);
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Operational distributor created successfully. User account has been created.',
-            'data' => [
-                'operational_distributor' => [
-                    'id' => $operationalDistributor->id,
-                    'first_name' => $operationalDistributor->first_name,
-                    'last_name' => $operationalDistributor->last_name,
-                    'full_name' => $operationalDistributor->full_name,
-                    'email' => $operationalDistributor->email,
-                    'phone' => $operationalDistributor->phone,
-                    'address' => $operationalDistributor->address,
-                    'valid_id_type' => $operationalDistributor->valid_id_type,
-                    'id_type_name' => $operationalDistributor->id_type_name,
-                    'id_number' => $operationalDistributor->id_number,
-                    'valid_id_photo_url' => $operationalDistributor->valid_id_photo_url,
-                    'status' => $operationalDistributor->status,
-                    'status_class' => $operationalDistributor->status_class,
-                    'has_user_account' => true,
-                    'user_id' => $operationalDistributor->user_id,
-                    'created_at' => $operationalDistributor->created_at->format('Y-m-d H:i:s')
-                ]
-            ]
-        ], 201);
-        
-    } catch (\Exception $e) {
-        Log::error('Error creating operational distributor:', [
-            'user_id' => Auth::id(),
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Failed to create operational distributor',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-}
+            // Only allow distributor users
+            if ($user->role !== 'distributor') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+            
+            // Check if parent distributor is verified
+            $parentVerification = $user->distributorRequirement;
+            if (!$parentVerification || $parentVerification->status !== 'approved') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You must be verified as a distributor to create operational distributors'
+                ], 403);
+            }
+            
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|email|max:255|unique:users,email|unique:operational_distributors,email',
+                'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
+                'address' => 'nullable|string',
+                
+                // Employment info
+                'employment_type' => 'required|string|in:full_time,part_time,contract,temporary',
+                'hire_date' => 'required|date',
+                'salary' => 'required|numeric|min:0',
+                'position' => 'nullable|string|max:255',
+                
+                // IDs
+                'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
+                'id_number' => 'required|string|max:100',
+                'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                
+                // Optional docs
+                'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'employment_contract' => 'nullable|file|mimes:pdf|max:5120',
+                
+                // Account
+                'password' => 'required|string|min:8|confirmed',
+                'password_confirmation' => 'required|string|min:8'
+            ], [
+                'first_name.required' => 'First name is required',
+                'last_name.required' => 'Last name is required',
+                'email.required' => 'Email address is required',
+                'email.unique' => 'This email is already registered',
+                'phone.required' => 'Phone number is required',
+                'employment_type.required' => 'Employment type is required',
+                'hire_date.required' => 'Hire date is required',
+                'salary.required' => 'Salary is required',
+                'valid_id_type.required' => 'Please select a valid ID type',
+                'valid_id_photo.required' => 'Valid ID photo is required',
+                'password.confirmed' => 'Password confirmation does not match'
+            ]);
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            // Handle file uploads
+            $validIdPhotoPath = null;
+            $resumePath = null;
+            $contractPath = null;
+            
+            if ($request->hasFile('valid_id_photo')) {
+                $file = $request->file('valid_id_photo');
+                $fileName = 'op_dist_id_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $folderPath = 'operational_distributors/valid_ids';
+                $validIdPhotoPath = $file->storeAs($folderPath, $fileName, 'public');
+            }
 
+            if ($request->hasFile('resume')) {
+                $file = $request->file('resume');
+                $fileName = 'op_dist_resume_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $folderPath = 'operational_distributors/resumes';
+                $resumePath = $file->storeAs($folderPath, $fileName, 'public');
+            }
+
+            if ($request->hasFile('employment_contract')) {
+                $file = $request->file('employment_contract');
+                $fileName = 'op_dist_contract_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $folderPath = 'operational_distributors/contracts';
+                $contractPath = $file->storeAs($folderPath, $fileName, 'public');
+            }
+            
+            // Create the user account
+            $userAccount = User::create([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => $request->email,
+                'password' => $request->password, // Mutator hashes this
+                'phone' => $request->phone,
+                'address' => $request->address,
+                'role' => 'operational_distributor',
+                'status' => 'active' // Set active by default for new operational distributors
+            ]);
+            
+            // Create operational distributor linked to the user account
+            $operationalDistributor = OperationalDistributor::create([
+                'parent_distributor_id' => $user->id,
+                'user_id' => $userAccount->id,
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'address' => $request->address,
+                
+                'employment_type' => $request->employment_type,
+                'hire_date' => $request->hire_date,
+                'salary' => $request->salary,
+                'position' => $request->position ?? 'Operational Distributor',
+                
+                'valid_id_type' => $request->valid_id_type,
+                'id_number' => $request->id_number,
+                'valid_id_photo' => $validIdPhotoPath,
+                'resume' => $resumePath,
+                'employment_contract' => $contractPath,
+                
+                'status' => 'active'
+            ]);
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Operational distributor created successfully.',
+                'data' => [
+                    'operational_distributor' => $operationalDistributor
+                ]
+            ], 201);
+            
+        } catch (\Exception $e) {
+            Log::error('Error creating operational distributor:', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create operational distributor',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
     /**
      * Get specific operational distributor
@@ -293,10 +322,20 @@ public function store(Request $request)
                         'email' => $operationalDistributor->email,
                         'phone' => $operationalDistributor->phone,
                         'address' => $operationalDistributor->address,
+                        
+                        'employment_type' => $operationalDistributor->employment_type,
+                        'employment_type_name' => $operationalDistributor->employment_type_name,
+                        'hire_date' => $operationalDistributor->hire_date ? $operationalDistributor->hire_date->format('Y-m-d') : null,
+                        'salary' => $operationalDistributor->salary,
+                        'position' => $operationalDistributor->position,
+                        
                         'valid_id_type' => $operationalDistributor->valid_id_type,
                         'id_type_name' => $operationalDistributor->id_type_name,
                         'id_number' => $operationalDistributor->id_number,
                         'valid_id_photo_url' => $operationalDistributor->valid_id_photo_url,
+                        'resume_url' => $operationalDistributor->resume_url,
+                        'employment_contract_url' => $operationalDistributor->employment_contract_url,
+                        
                         'status' => $operationalDistributor->status,
                         'status_class' => $operationalDistributor->status_class,
                         'has_user_account' => $operationalDistributor->hasUserAccount(),
@@ -308,12 +347,6 @@ public function store(Request $request)
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Error fetching operational distributor:', [
-                'user_id' => Auth::id(),
-                'distributor_id' => $id,
-                'error' => $e->getMessage()
-            ]);
-            
             return response()->json([
                 'status' => 'error',
                 'message' => 'Operational distributor not found'
@@ -357,10 +390,19 @@ public function store(Request $request)
                     }
                 ],
                 'phone' => 'sometimes|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
+                'address' => 'nullable|string',
+                
+                'employment_type' => 'sometimes|string|in:full_time,part_time,contract,temporary',
+                'hire_date' => 'sometimes|date',
+                'salary' => 'sometimes|numeric|min:0',
+                
                 'valid_id_type' => 'sometimes|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
                 'id_number' => 'sometimes|string|max:100',
-                'valid_id_photo' => 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                
+                'valid_id_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'employment_contract' => 'nullable|file|mimes:pdf|max:5120',
+                
                 'status' => 'sometimes|in:active,inactive'
             ]);
             
@@ -372,54 +414,60 @@ public function store(Request $request)
                 ], 422);
             }
             
-            // Handle file upload if provided
+            // Handle file updates
             if ($request->hasFile('valid_id_photo')) {
-                // Delete old file if exists
                 if ($operationalDistributor->valid_id_photo) {
                     Storage::disk('public')->delete($operationalDistributor->valid_id_photo);
                 }
-                
                 $file = $request->file('valid_id_photo');
-                $fileName = 'operational_distributor_' . $operationalDistributor->id . '_' . time() . '.' . $file->getClientOriginalExtension();
-                $folderPath = 'operational_distributors/valid_ids';
-                
-                $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
-                $operationalDistributor->valid_id_photo = $folderPath . '/' . $fileName;
+                $fileName = 'op_dist_id_' . $operationalDistributor->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $operationalDistributor->valid_id_photo = $file->storeAs('operational_distributors/valid_ids', $fileName, 'public');
+            }
+
+            if ($request->hasFile('resume')) {
+                if ($operationalDistributor->resume) {
+                    Storage::disk('public')->delete($operationalDistributor->resume);
+                }
+                $file = $request->file('resume');
+                $fileName = 'op_dist_resume_' . $operationalDistributor->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $operationalDistributor->resume = $file->storeAs('operational_distributors/resumes', $fileName, 'public');
+            }
+
+            if ($request->hasFile('employment_contract')) {
+                if ($operationalDistributor->employment_contract) {
+                    Storage::disk('public')->delete($operationalDistributor->employment_contract);
+                }
+                $file = $request->file('employment_contract');
+                $fileName = 'op_dist_contract_' . $operationalDistributor->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $operationalDistributor->employment_contract = $file->storeAs('operational_distributors/contracts', $fileName, 'public');
             }
             
-            // Update fields
-            $updateData = $request->only([
-                'first_name', 'last_name', 'email', 'phone', 'address',
-                'valid_id_type', 'id_number', 'status'
-            ]);
-            
-            $operationalDistributor->update($updateData);
+            // Update main data
+            $operationalDistributor->fill($request->except(['valid_id_photo', 'resume', 'employment_contract', 'password', 'password_confirmation']));
+            $operationalDistributor->save();
             
             // Update user account if exists
             if ($operationalDistributor->hasUserAccount()) {
-                $userAccount = $operationalDistributor->user;
-                $userAccount->update([
+                $userUpdateData = [
                     'first_name' => $operationalDistributor->first_name,
                     'last_name' => $operationalDistributor->last_name,
                     'email' => $operationalDistributor->email,
                     'phone' => $operationalDistributor->phone,
                     'address' => $operationalDistributor->address,
                     'status' => $operationalDistributor->status === 'active' ? 'active' : 'inactive'
-                ]);
+                ];
+                
+                // Allow password update
+                if ($request->filled('password')) {
+                    $userUpdateData['password'] = $request->password;
+                }
+                
+                $operationalDistributor->user->update($userUpdateData);
             }
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'Operational distributor updated successfully',
-                'data' => [
-                    'operational_distributor' => [
-                        'id' => $operationalDistributor->id,
-                        'full_name' => $operationalDistributor->full_name,
-                        'email' => $operationalDistributor->email,
-                        'status' => $operationalDistributor->status,
-                        'has_user_account' => $operationalDistributor->hasUserAccount()
-                    ]
-                ]
+                'message' => 'Operational distributor updated successfully'
             ]);
             
         } catch (\Exception $e) {
@@ -461,9 +509,15 @@ public function store(Request $request)
                 $operationalDistributor->user->delete();
             }
             
-            // Delete valid ID photo if exists
+            // Delete files
             if ($operationalDistributor->valid_id_photo) {
                 Storage::disk('public')->delete($operationalDistributor->valid_id_photo);
+            }
+            if ($operationalDistributor->resume) {
+                Storage::disk('public')->delete($operationalDistributor->resume);
+            }
+            if ($operationalDistributor->employment_contract) {
+                Storage::disk('public')->delete($operationalDistributor->employment_contract);
             }
             
             // Soft delete

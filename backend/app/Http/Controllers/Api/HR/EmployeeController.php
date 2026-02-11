@@ -302,6 +302,30 @@ class EmployeeController extends Controller
                 ], 404);
             }
             
+            // Define custom error messages
+            $messages = [
+                'email.unique' => 'The email address is already in use by another user or employee.',
+                'phone.required' => 'A contact number is required.',
+                'phone.regex' => 'The phone number must be exactly 11 digits and contain only numbers.',
+                'emergency_contact.regex' => 'The emergency contact must be exactly 11 digits and contain only numbers.',
+                'password.confirmed' => 'The password confirmation does not match.',
+                'hire_date.date' => 'Please provide a valid hire date.',
+                'date_of_birth.before' => 'The employee must be at least 1 day old.',
+                'salary.min' => 'Salary cannot be negative.',
+                'valid_id_photo.required' => 'A valid ID photo is required.',
+                'resume.required' => 'A resume is required.',
+                'employment_contract.required' => 'An employment contract is required.',
+                'medical_certificate.required' => 'A medical certificate is required.',
+                'nbi_clearance.required' => 'An NBI clearance is required.',
+                'police_clearance.required' => 'A police clearance is required.',
+                'bank_account_number.regex' => 'Bank account number must contain only numbers.',
+                'sss_number.regex' => 'SSS number must contain only numbers.',
+                'philhealth_number.regex' => 'PhilHealth number must contain only numbers.',
+                'pagibig_number.regex' => 'Pag-IBIG number must contain only numbers.',
+                'tin_number.regex' => 'TIN number must contain only numbers.',
+                'id_number.regex' => 'ID number must contain only numbers.',
+            ];
+
             // Validate request
             $validator = Validator::make($request->all(), [
                 // Personal Information
@@ -311,8 +335,9 @@ class EmployeeController extends Controller
                 'email' => 'required|string|email|max:255|unique:hr_employees,email|unique:users,email',
                 'password' => 'required|string|min:8|confirmed',
                 'password_confirmation' => 'required|string|min:8',
-                'phone' => 'required|string|max:20',
-                'emergency_contact' => 'nullable|string|max:20',
+                // Updated: strictly 11 digits
+                'phone' => ['required', 'string', 'regex:/^[0-9]{11}$/'],
+                'emergency_contact' => ['nullable', 'string', 'regex:/^[0-9]{11}$/'],
                 'address' => 'required|string|max:500',
                 'date_of_birth' => 'required|date|before:today',
                 'gender' => 'required|in:male,female,other',
@@ -335,18 +360,20 @@ class EmployeeController extends Controller
                 
                 // Bank Details
                 'bank_name' => 'nullable|string|max:255',
-                'bank_account_number' => 'nullable|string|max:50',
+                // Updated: numbers only
+                'bank_account_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
                 'bank_account_name' => 'nullable|string|max:255',
                 
-                // Government Numbers
-                'sss_number' => 'nullable|string|max:20',
-                'philhealth_number' => 'nullable|string|max:20',
-                'pagibig_number' => 'nullable|string|max:20',
-                'tin_number' => 'nullable|string|max:20',
+                // Government Numbers (Updated: numbers only)
+                'sss_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
+                'philhealth_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
+                'pagibig_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
+                'tin_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
                 
                 // Identification
                 'valid_id_type' => 'required|string|max:100',
-                'id_number' => 'required|string|max:50',
+                // Updated: numbers only
+                'id_number' => ['required', 'string', 'regex:/^[0-9]+$/'],
                 
                 // Educational Background
                 'educational_attainment' => 'required|string|max:100',
@@ -354,34 +381,50 @@ class EmployeeController extends Controller
                 'year_graduated' => 'required|integer|min:1900|max:' . date('Y'),
                 'course' => 'required|string|max:255',
                 
-                // File Uploads (optional during creation)
-                'valid_id_photo' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
-                'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
-                'employment_contract' => 'nullable|file|mimes:pdf|max:5120',
-                'medical_certificate' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
-                'nbi_clearance' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
-                'police_clearance' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                // File Uploads (NOW REQUIRED)
+                'valid_id_photo' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'resume' => 'required|file|mimes:pdf,doc,docx|max:5120',
+                'employment_contract' => 'required|file|mimes:pdf|max:5120',
+                'medical_certificate' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'nbi_clearance' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'police_clearance' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
                 
                 'notes' => 'nullable|string'
-            ]);
+            ], $messages);
             
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Validation failed',
+                    'message' => 'Please check the form for errors.',
                     'errors' => $validator->errors()
                 ], 422);
             }
             
-            // Generate employee code
-            $employeeCode = Employee::generateEmployeeCode($hrManager->parent_distributor_id);
+            // GENERATE EMPLOYEE CODE - Logic moved here to prevent Model dependency error
+            // Format: EMP-{ParentDistributorID}-{Year}-{Sequence}
+            // e.g., EMP-1-2024-0001
+            $prefix = 'EMP-' . $hrManager->parent_distributor_id . '-' . date('Y') . '-';
+            
+            $lastEmployee = Employee::where('employee_code', 'like', $prefix . '%')
+                ->orderBy('id', 'desc')
+                ->first();
+            
+            if ($lastEmployee) {
+                // Extract the sequence number
+                $lastSequence = intval(substr($lastEmployee->employee_code, -4));
+                $sequence = $lastSequence + 1;
+            } else {
+                $sequence = 1;
+            }
+            
+            $employeeCode = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
             
             // Step 1: Create User account
             $userData = [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => $request->password,
+                'password' => $request->password, // Hash the password!
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'employee', // New role for employees
@@ -392,7 +435,7 @@ class EmployeeController extends Controller
             
             // Step 2: Create employee data array
             $employeeData = $request->only([
-                'first_name', 'middle_name', 'last_name', 'email', 'password',
+                'first_name', 'middle_name', 'last_name', 'email', 
                 'phone', 'emergency_contact', 'address', 'date_of_birth', 'gender',
                 'marital_status', 'nationality', 'department', 'position',
                 'employment_type', 'employment_status', 'hire_date',
@@ -405,6 +448,7 @@ class EmployeeController extends Controller
             ]);
             
             // Add system fields
+            $employeeData['password'] = $userData['password']; // Store hashed password in employee table too if needed
             $employeeData['employee_code'] = $employeeCode;
             $employeeData['parent_distributor_id'] = $hrManager->parent_distributor_id;
             $employeeData['hr_manager_id'] = $hrManager->id;
@@ -431,7 +475,7 @@ class EmployeeController extends Controller
                 }
             }
             
-            // Create employee (password will be automatically hashed via mutator)
+            // Create employee
             $employee = Employee::create($employeeData);
             
             // Log the creation
@@ -439,9 +483,7 @@ class EmployeeController extends Controller
                 'employee_id' => $employee->id,
                 'employee_code' => $employee->employee_code,
                 'user_id' => $employeeUser->id,
-                'created_by' => $user->id,
-                'company' => $hrManager->parent_distributor_id,
-                'timestamp' => now()
+                'created_by' => $user->id
             ]);
             
             // Commit transaction
@@ -453,7 +495,7 @@ class EmployeeController extends Controller
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'Employee created successfully with user account',
+                'message' => 'Employee created successfully',
                 'data' => [
                     'employee' => [
                         'id' => $employee->id,
@@ -462,23 +504,19 @@ class EmployeeController extends Controller
                         'email' => $employee->email,
                         'department' => $employee->department,
                         'position' => $employee->position,
-                        'employment_status' => $employee->employment_status,
-                        'hire_date' => $employee->hire_date->format('Y-m-d'),
-                        'formatted_salary' => $employee->formatted_salary,
                         'company_name' => $companyName,
-                        'user_id' => $employeeUser->id,
-                        'user_status' => $employeeUser->status,
-                        'created_by' => $user->full_name
                     ]
                 ]
             ], 201);
             
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Employee creation failed: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to create employee',
+                'message' => 'Server Error: ' . $e->getMessage(), // Return exact error for debugging
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -543,13 +581,14 @@ class EmployeeController extends Controller
             
             // Only update password if provided
             if ($request->filled('password')) {
-                $updateData['password'] = $request->password;
+                $hashedPassword = Hash::make($request->password);
+                $updateData['password'] = $hashedPassword;
                 
                 // Also update the corresponding User account password
                 if ($employee->user_id) {
                     $user = User::find($employee->user_id);
                     if ($user) {
-                        $user->update(['password' => $request->password]);
+                        $user->update(['password' => $hashedPassword]);
                     }
                 }
             }

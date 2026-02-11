@@ -41,6 +41,14 @@ class DistributorRequirements extends Model
     }
 
     /**
+     * NEW: Get the address record associated with the requirement.
+     */
+    public function address()
+    {
+        return $this->hasOne(DistributorAddress::class, 'distributor_requirements_id');
+    }
+
+    /**
      * Get the display name for ID type
      */
     public function getIdTypeNameAttribute()

@@ -21,13 +21,21 @@ class OperationalDistributor extends Model
         'email',
         'phone',
         'address',
+        'employment_type',
+        'hire_date',
+        'salary',
+        'position',
         'valid_id_type',
         'id_number',
         'valid_id_photo',
+        'resume',
+        'employment_contract',
         'status'
     ];
 
     protected $casts = [
+        'hire_date' => 'date',
+        'salary' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -55,6 +63,14 @@ class OperationalDistributor extends Model
     public function getFullNameAttribute()
     {
         return trim($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Get readable employment type
+     */
+    public function getEmploymentTypeNameAttribute()
+    {
+        return ucwords(str_replace('_', ' ', $this->employment_type));
     }
 
     /**
@@ -102,6 +118,22 @@ class OperationalDistributor extends Model
         }
         
         return asset('storage/' . $this->valid_id_photo);
+    }
+
+    public function getResumeUrlAttribute()
+    {
+        if (!$this->resume) {
+            return null;
+        }
+        return asset('storage/' . $this->resume);
+    }
+
+    public function getEmploymentContractUrlAttribute()
+    {
+        if (!$this->employment_contract) {
+            return null;
+        }
+        return asset('storage/' . $this->employment_contract);
     }
 
     /**

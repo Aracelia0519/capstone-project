@@ -80,7 +80,6 @@ class FinanceManagerController extends Controller
                     'full_name' => $manager->full_name,
                     'email' => $manager->email,
                     'phone' => $manager->phone,
-                    'address' => $manager->address,
                     'valid_id_type' => $manager->valid_id_type,
                     'id_type_name' => $manager->id_type_name,
                     'id_number' => $manager->id_number,
@@ -162,7 +161,6 @@ class FinanceManagerController extends Controller
                 'last_name' => 'required|string|max:255',
                 'email' => 'required|email|max:255|unique:users,email|unique:finance_managers,email',
                 'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
                 'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
                 'id_number' => 'required|string|max:100',
                 'valid_id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -246,9 +244,8 @@ class FinanceManagerController extends Controller
                 'email' => $request->email,
                 'password' => $request->password,
                 'phone' => $request->phone,
-                'address' => $request->address,
                 'role' => 'finance_manager', 
-                'status' => 'pending'
+                'status' => 'active'
             ]);
             
             // Create finance manager linked to the user account
@@ -259,7 +256,6 @@ class FinanceManagerController extends Controller
                 'last_name' => $request->last_name,
                 'email' => $request->email,
                 'phone' => $request->phone,
-                'address' => $request->address,
                 'valid_id_type' => $request->valid_id_type,
                 'id_number' => $request->id_number,
                 'valid_id_photo' => $validIdPhotoPath,
@@ -269,7 +265,7 @@ class FinanceManagerController extends Controller
                 'position' => $request->position ?? 'Finance Manager',
                 'resume' => $resumePath,
                 'employment_contract' => $employmentContractPath,
-                'status' => 'pending'
+                'status' => 'active'
             ]);
             
             return response()->json([
@@ -283,7 +279,6 @@ class FinanceManagerController extends Controller
                         'full_name' => $financeManager->full_name,
                         'email' => $financeManager->email,
                         'phone' => $financeManager->phone,
-                        'address' => $financeManager->address,
                         'valid_id_type' => $financeManager->valid_id_type,
                         'id_type_name' => $financeManager->id_type_name,
                         'id_number' => $financeManager->id_number,
@@ -351,7 +346,6 @@ class FinanceManagerController extends Controller
                         'full_name' => $financeManager->full_name,
                         'email' => $financeManager->email,
                         'phone' => $financeManager->phone,
-                        'address' => $financeManager->address,
                         'valid_id_type' => $financeManager->valid_id_type,
                         'id_type_name' => $financeManager->id_type_name,
                         'id_number' => $financeManager->id_number,
@@ -425,7 +419,6 @@ class FinanceManagerController extends Controller
                     }
                 ],
                 'phone' => 'sometimes|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
                 'valid_id_type' => 'sometimes|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
                 'id_number' => 'sometimes|string|max:100',
                 'valid_id_photo' => 'sometimes|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -491,7 +484,7 @@ class FinanceManagerController extends Controller
             
             // Update fields
             $updateData = $request->only([
-                'first_name', 'last_name', 'email', 'phone', 'address',
+                'first_name', 'last_name', 'email', 'phone',
                 'valid_id_type', 'id_number', 'employment_type', 'hire_date',
                 'salary', 'position', 'status'
             ]);
@@ -506,7 +499,6 @@ class FinanceManagerController extends Controller
                     'last_name' => $financeManager->last_name,
                     'email' => $financeManager->email,
                     'phone' => $financeManager->phone,
-                    'address' => $financeManager->address,
                     'status' => $financeManager->status === 'active' ? 'active' : 'inactive'
                 ]);
             }

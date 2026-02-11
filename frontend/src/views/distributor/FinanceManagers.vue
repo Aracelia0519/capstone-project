@@ -402,22 +402,7 @@
                       <p v-if="financePhoneError" class="text-xs text-red-500 mt-1 animate-pulse">{{ financePhoneError }}</p>
                     </div>
                     
-                    <div class="md:col-span-2 space-y-2">
-                      <label class="block text-sm font-medium text-gray-700">
-                        Address
-                      </label>
-                      <div class="relative group">
-                        <div class="absolute top-3 left-3 flex items-center pointer-events-none">
-                          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </div>
-                        <textarea v-model="financeForm.address" rows="3" 
-                          class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 group-hover:border-purple-400 resize-none"
-                          placeholder="Complete address including city and region"></textarea>
-                      </div>
-                    </div>
+                    
                   </div>
                 </div>
               </div>
@@ -1130,7 +1115,6 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        address: '',
         employment_type: '',
         hire_date: '',
         salary: '',
@@ -1457,7 +1441,6 @@ export default {
         formData.append('last_name', this.financeForm.last_name)
         formData.append('email', this.financeForm.email)
         formData.append('phone', this.financeForm.phone)
-        formData.append('address', this.financeForm.address)
         formData.append('employment_type', this.financeForm.employment_type)
         formData.append('hire_date', this.financeForm.hire_date)
         formData.append('salary', this.financeForm.salary)
@@ -1641,7 +1624,6 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        address: '',
         employment_type: '',
         hire_date: '',
         salary: '',

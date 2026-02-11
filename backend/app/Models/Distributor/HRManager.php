@@ -20,7 +20,6 @@ class HRManager extends Model
         'last_name',
         'email',
         'phone',
-        'address',
         'position',
         'employment_type',
         'hire_date',

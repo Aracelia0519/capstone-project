@@ -20,7 +20,6 @@ class FinanceManager extends Model
         'last_name',
         'email',
         'phone',
-        'address',
         'valid_id_type',
         'id_number',
         'valid_id_photo',

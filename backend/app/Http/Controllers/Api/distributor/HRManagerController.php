@@ -81,7 +81,6 @@ class HRManagerController extends Controller
                     'full_name' => $manager->full_name,
                     'email' => $manager->email,
                     'phone' => $manager->phone,
-                    'address' => $manager->address,
                     'position' => $manager->position,
                     'employment_type' => $manager->employment_type,
                     'employment_type_name' => $manager->employment_type_name,
@@ -169,7 +168,6 @@ class HRManagerController extends Controller
                 'last_name' => 'required|string|max:255',
                 'email' => 'required|email|max:255|unique:users,email|unique:hr_managers,email',
                 'phone' => 'required|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
                 'employment_type' => 'required|string|in:full_time,part_time,contract,temporary',
                 'hire_date' => 'required|date',
                 'salary' => 'required|numeric|min:0',
@@ -260,9 +258,8 @@ class HRManagerController extends Controller
                 'email' => $request->email,
                 'password' => $request->password, // <-- removed Hash::make
                 'phone' => $request->phone,
-                'address' => $request->address,
                 'role' => 'hr_manager',
-                'status' => 'pending'
+                'status' => 'active'
             ]);
 
             
@@ -274,7 +271,6 @@ class HRManagerController extends Controller
                 'last_name' => $request->last_name,
                 'email' => $request->email,
                 'phone' => $request->phone,
-                'address' => $request->address,
                 'position' => 'HR Manager',
                 'employment_type' => $request->employment_type,
                 'hire_date' => $request->hire_date,
@@ -284,7 +280,7 @@ class HRManagerController extends Controller
                 'valid_id_photo' => $validIdPhotoPath,
                 'resume' => $resumePath,
                 'employment_contract' => $contractPath,
-                'status' => 'pending'
+                'status' => 'active'
             ]);
             
             return response()->json([
@@ -298,7 +294,6 @@ class HRManagerController extends Controller
                         'full_name' => $hrManager->full_name,
                         'email' => $hrManager->email,
                         'phone' => $hrManager->phone,
-                        'address' => $hrManager->address,
                         'position' => $hrManager->position,
                         'employment_type' => $hrManager->employment_type,
                         'employment_type_name' => $hrManager->employment_type_name,
@@ -366,7 +361,6 @@ class HRManagerController extends Controller
                         'full_name' => $hrManager->full_name,
                         'email' => $hrManager->email,
                         'phone' => $hrManager->phone,
-                        'address' => $hrManager->address,
                         'position' => $hrManager->position,
                         'employment_type' => $hrManager->employment_type,
                         'employment_type_name' => $hrManager->employment_type_name,
@@ -440,7 +434,6 @@ class HRManagerController extends Controller
                     }
                 ],
                 'phone' => 'sometimes|string|max:11|min:11|regex:/^[0-9]+$/',
-                'address' => 'nullable|string|max:500',
                 'employment_type' => 'sometimes|string|in:full_time,part_time,contract,temporary',
                 'hire_date' => 'sometimes|date',
                 'salary' => 'sometimes|numeric|min:0',
@@ -462,7 +455,7 @@ class HRManagerController extends Controller
             
             // Handle file uploads if provided
             $updateData = $request->only([
-                'first_name', 'last_name', 'email', 'phone', 'address',
+                'first_name', 'last_name', 'email', 'phone', 
                 'employment_type', 'hire_date', 'salary',
                 'valid_id_type', 'id_number', 'status'
             ]);
@@ -523,7 +516,6 @@ class HRManagerController extends Controller
                     'last_name' => $hrManager->last_name,
                     'email' => $hrManager->email,
                     'phone' => $hrManager->phone,
-                    'address' => $hrManager->address,
                     'status' => $hrManager->status === 'active' ? 'active' : 'inactive'
                 ]);
             }

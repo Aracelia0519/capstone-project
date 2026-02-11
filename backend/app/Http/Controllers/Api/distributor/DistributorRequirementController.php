@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Distributor\DistributorRequirements;
+use App\Models\Distributor\DistributorAddress; // Import the new model
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB; // Import DB for transactions
 
 class DistributorRequirementController extends Controller
 {
@@ -29,7 +31,8 @@ class DistributorRequirementController extends Controller
                 ], 403);
             }
             
-            $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+            // Eager load the address
+            $requirements = DistributorRequirements::with('address')->where('user_id', $user->id)->first();
             
             if (!$requirements) {
                 return response()->json([
@@ -53,6 +56,10 @@ class DistributorRequirementController extends Controller
                     'id_type_name' => $requirements->id_type_name,
                     'id_number' => $requirements->id_number,
                     'business_registration_number' => $requirements->business_registration_number,
+                    
+                    // Include Address Data
+                    'address' => $requirements->address, 
+                    
                     'status' => $requirements->status,
                     'is_verified' => $requirements->status === 'approved',
                     'verification_status' => $requirements->status,
@@ -105,19 +112,15 @@ class DistributorRequirementController extends Controller
                 'mayor_permit_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'barangay_clearance_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'business_registration_number' => 'required|string|max:100',
-                'business_registration_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120'
-            ], [
-                'company_name.required' => 'Company name is required',
-                'valid_id_type.required' => 'Please select a valid ID type',
-                'id_number.required' => 'ID number is required',
-                'valid_id_photo.required' => 'Valid ID photo is required',
-                'dti_certificate_photo.required' => 'DTI certificate photo is required',
-                'mayor_permit_photo.required' => 'Mayor\'s permit photo is required',
-                'barangay_clearance_photo.required' => 'Barangay clearance photo is required',
-                'business_registration_number.required' => 'Business registration number is required',
-                'business_registration_photo.required' => 'Business registration plate photo is required',
-                '*.mimes' => 'Only JPG, PNG, and PDF files are allowed',
-                '*.max' => 'File size must be less than 5MB'
+                'business_registration_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                
+                // New Address Validation
+                'province' => 'required|string|in:Cavite',
+                'city' => 'required|string|max:255',
+                'barangay' => 'required|string|max:255',
+                'block_address' => 'required|string|max:1000',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
             ]);
             
             if ($validator->fails()) {
@@ -140,73 +143,90 @@ class DistributorRequirementController extends Controller
                 ], 400);
             }
             
-            // Handle file uploads
-            $uploadData = [];
-            $photoFields = [
-                'valid_id_photo',
-                'dti_certificate_photo',
-                'mayor_permit_photo',
-                'barangay_clearance_photo',
-                'business_registration_photo'
-            ];
+            // Use Transaction to ensure both Requirements and Address are saved
+            DB::beginTransaction();
             
-            foreach ($photoFields as $field) {
-                if ($request->hasFile($field)) {
-                    $file = $request->file($field);
-                    $fileName = $user->id . '_' . $field . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $folderPath = 'distributor_verification';
-                    
-                    // Store the file
-                    $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
-                    $uploadData[$field] = $folderPath . '/' . $fileName;
-                    
-                    Log::info('File uploaded:', [
-                        'user_id' => $user->id,
-                        'field' => $field,
-                        'file_name' => $fileName,
-                        'path' => $path
-                    ]);
+            try {
+                // Handle file uploads
+                $uploadData = [];
+                $photoFields = [
+                    'valid_id_photo',
+                    'dti_certificate_photo',
+                    'mayor_permit_photo',
+                    'barangay_clearance_photo',
+                    'business_registration_photo'
+                ];
+                
+                foreach ($photoFields as $field) {
+                    if ($request->hasFile($field)) {
+                        $file = $request->file($field);
+                        $fileName = $user->id . '_' . $field . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                        $folderPath = 'distributor_verification';
+                        
+                        // Store the file
+                        $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
+                        $uploadData[$field] = $folderPath . '/' . $fileName;
+                    }
                 }
+                
+                // Create distributor requirement
+                $requirements = DistributorRequirements::create([
+                    'user_id' => $user->id,
+                    'company_name' => $request->company_name,
+                    'valid_id_type' => $request->valid_id_type,
+                    'id_number' => $request->id_number,
+                    'valid_id_photo' => $uploadData['valid_id_photo'],
+                    'dti_certificate_photo' => $uploadData['dti_certificate_photo'],
+                    'mayor_permit_photo' => $uploadData['mayor_permit_photo'],
+                    'barangay_clearance_photo' => $uploadData['barangay_clearance_photo'],
+                    'business_registration_number' => $request->business_registration_number,
+                    'business_registration_photo' => $uploadData['business_registration_photo'],
+                    'status' => 'pending',
+                    'rejection_reason' => null
+                ]);
+
+                // Create Address
+                DistributorAddress::create([
+                    'distributor_requirements_id' => $requirements->id,
+                    'province' => 'Cavite', // Enforced as per request
+                    'city' => $request->city,
+                    'barangay' => $request->barangay,
+                    'block_address' => $request->block_address,
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                ]);
+
+                DB::commit();
+
+                $photoUrls = $requirements->getAllPhotoUrls();
+                $requirements->load('address'); // Load the new address
+                
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Business verification submitted successfully! Your documents are now pending review.',
+                    'data' => [
+                        'id' => $requirements->id,
+                        'company_name' => $requirements->company_name,
+                        'valid_id_type' => $requirements->valid_id_type,
+                        'id_type_name' => $requirements->id_type_name,
+                        'id_number' => $requirements->id_number,
+                        'business_registration_number' => $requirements->business_registration_number,
+                        'address' => $requirements->address, // Return address
+                        'status' => $requirements->status,
+                        'is_verified' => false,
+                        'verification_status' => 'pending',
+                        'status_class' => $requirements->status_class,
+                        'is_complete' => $requirements->is_complete,
+                        'has_submitted' => true,
+                        'photos' => $photoUrls,
+                        'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s')
+                    ]
+                ], 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-            
-            // Create distributor requirement
-            $requirements = DistributorRequirements::create([
-                'user_id' => $user->id,
-                'company_name' => $request->company_name,
-                'valid_id_type' => $request->valid_id_type,
-                'id_number' => $request->id_number,
-                'valid_id_photo' => $uploadData['valid_id_photo'],
-                'dti_certificate_photo' => $uploadData['dti_certificate_photo'],
-                'mayor_permit_photo' => $uploadData['mayor_permit_photo'],
-                'barangay_clearance_photo' => $uploadData['barangay_clearance_photo'],
-                'business_registration_number' => $request->business_registration_number,
-                'business_registration_photo' => $uploadData['business_registration_photo'],
-                'status' => 'pending',
-                'rejection_reason' => null
-            ]);
-            
-            $photoUrls = $requirements->getAllPhotoUrls();
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Business verification submitted successfully! Your documents are now pending review.',
-                'data' => [
-                    'id' => $requirements->id,
-                    'company_name' => $requirements->company_name,
-                    'valid_id_type' => $requirements->valid_id_type,
-                    'id_type_name' => $requirements->id_type_name,
-                    'id_number' => $requirements->id_number,
-                    'business_registration_number' => $requirements->business_registration_number,
-                    'status' => $requirements->status,
-                    'is_verified' => false,
-                    'verification_status' => 'pending',
-                    'status_class' => $requirements->status_class,
-                    'is_complete' => $requirements->is_complete,
-                    'has_submitted' => true,
-                    'photos' => $photoUrls,
-                    'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s')
-                ]
-            ], 200);
             
         } catch (\Exception $e) {
             Log::error('Error submitting distributor verification:', [
@@ -307,7 +327,7 @@ class DistributorRequirementController extends Controller
             $search = $request->get('search', '');
             
             $query = DistributorRequirements::pending()
-                ->with(['user:id,first_name,last_name,email,phone,created_at']);
+                ->with(['user:id,first_name,last_name,email,phone,created_at', 'address']); // Load address
             
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -342,6 +362,9 @@ class DistributorRequirementController extends Controller
                     'id_type_name' => $requirement->id_type_name,
                     'id_number' => $requirement->id_number,
                     'business_registration_number' => $requirement->business_registration_number,
+                    
+                    'address' => $requirement->address, // Return Address
+                    
                     'status' => $requirement->status,
                     'is_verified' => $requirement->status === 'approved',
                     'status_class' => $requirement->status_class,
@@ -423,95 +446,96 @@ class DistributorRequirementController extends Controller
             ], 500);
         }
     }
+
     /**
- * Update distributor information
- */
-public function updateDistributorInfo(Request $request)
-{
-    try {
-        $user = Auth::user();
-        
-        // Only allow distributor users
-        if ($user->role !== 'distributor') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized access'
-            ], 403);
-        }
-        
-        // Check if user has submitted verification
-        $existing = DistributorRequirements::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'approved'])
-            ->first();
+     * Update distributor information
+     */
+    public function updateDistributorInfo(Request $request)
+    {
+        try {
+            $user = Auth::user();
             
-        if ($existing) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot update distributor information while verification is ' . $existing->status
-            ], 400);
-        }
-        
-        // Validate request
-        $validator = Validator::make($request->all(), [
-            'company_name' => 'required|string|max:255',
-            'business_registration_number' => 'required|string|max:100',
-            'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
-            'id_number' => 'required|string|max:100'
-        ]);
-        
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-        
-        // Check if distributor requirements already exist
-        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
-        
-        if (!$requirements) {
-            // Create new record
-            $requirements = DistributorRequirements::create([
-                'user_id' => $user->id,
-                'company_name' => $request->company_name,
-                'business_registration_number' => $request->business_registration_number,
-                'valid_id_type' => $request->valid_id_type,
-                'id_number' => $request->id_number,
-                'status' => 'draft'
+            // Only allow distributor users
+            if ($user->role !== 'distributor') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+            
+            // Check if user has submitted verification
+            $existing = DistributorRequirements::where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'approved'])
+                ->first();
+                
+            if ($existing) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Cannot update distributor information while verification is ' . $existing->status
+                ], 400);
+            }
+            
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'company_name' => 'required|string|max:255',
+                'business_registration_number' => 'required|string|max:100',
+                'valid_id_type' => 'required|string|in:passport,driver_license,umid,prc,postal,voter,tin,sss,philhealth,other',
+                'id_number' => 'required|string|max:100'
             ]);
-        } else {
-            // Update existing record
-            $requirements->company_name = $request->company_name;
-            $requirements->business_registration_number = $request->business_registration_number;
-            $requirements->valid_id_type = $request->valid_id_type;
-            $requirements->id_number = $request->id_number;
-            $requirements->save();
+            
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
+            // Check if distributor requirements already exist
+            $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+            
+            if (!$requirements) {
+                // Create new record
+                $requirements = DistributorRequirements::create([
+                    'user_id' => $user->id,
+                    'company_name' => $request->company_name,
+                    'business_registration_number' => $request->business_registration_number,
+                    'valid_id_type' => $request->valid_id_type,
+                    'id_number' => $request->id_number,
+                    'status' => 'draft'
+                ]);
+            } else {
+                // Update existing record
+                $requirements->company_name = $request->company_name;
+                $requirements->business_registration_number = $request->business_registration_number;
+                $requirements->valid_id_type = $request->valid_id_type;
+                $requirements->id_number = $request->id_number;
+                $requirements->save();
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Distributor information updated successfully',
+                'data' => [
+                    'company_name' => $requirements->company_name,
+                    'business_registration_number' => $requirements->business_registration_number,
+                    'valid_id_type' => $requirements->valid_id_type,
+                    'id_type_name' => $requirements->id_type_name,
+                    'id_number' => $requirements->id_number,
+                    'has_submitted' => false
+                ]
+            ], 200);
+            
+        } catch (\Exception $e) {
+            Log::error('Error updating distributor information:', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update distributor information'
+            ], 500);
         }
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Distributor information updated successfully',
-            'data' => [
-                'company_name' => $requirements->company_name,
-                'business_registration_number' => $requirements->business_registration_number,
-                'valid_id_type' => $requirements->valid_id_type,
-                'id_type_name' => $requirements->id_type_name,
-                'id_number' => $requirements->id_number,
-                'has_submitted' => false
-            ]
-        ], 200);
-        
-    } catch (\Exception $e) {
-        Log::error('Error updating distributor information:', [
-            'user_id' => Auth::id(),
-            'error' => $e->getMessage()
-        ]);
-        
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Failed to update distributor information'
-        ], 500);
     }
-}
 }

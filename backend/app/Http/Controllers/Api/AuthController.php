@@ -26,7 +26,6 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:500',
             'role' => ['required', Rule::in(['client', 'distributor', 'service_provider'])]
         ]);
 
@@ -46,7 +45,6 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'password' => $request->password,
                 'phone' => $request->phone,
-                'address' => $request->address,
                 'role' => $request->role,
                 'status' => 'pending',
             ]);
@@ -59,7 +57,6 @@ class AuthController extends Controller
                 'full_name' => $user->full_name,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'address' => $user->address,
                 'role' => $user->role,
                 'status' => $user->status,
                 'created_at' => $user->created_at
@@ -167,7 +164,6 @@ class AuthController extends Controller
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'phone' => $user->phone,
-                'address' => $user->address
             ];
             
             // Add employee data if exists
@@ -290,7 +286,6 @@ class AuthController extends Controller
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'phone' => $user->phone,
-            'address' => $user->address,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at
         ];

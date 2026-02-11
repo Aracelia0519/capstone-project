@@ -1,6 +1,5 @@
 <template>
-  <div class="user-management min-h-screen bg-gray-50 p-6">
-    <!-- Page Header -->
+  <div class="user-management min-h-screen p-6">
     <div class="mb-8">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -16,7 +15,6 @@
         </button>
       </div>
       
-      <!-- Quick Stats -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div 
           @click="activeTab = 'all'" 
@@ -95,9 +93,7 @@
       </div>
     </div>
 
-    <!-- Filters Section -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <!-- Tabs -->
       <div class="flex flex-wrap gap-2 mb-6">
         <button 
           v-for="tab in tabs" 
@@ -115,7 +111,6 @@
         </button>
       </div>
       
-      <!-- Search and Filters -->
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1 relative">
           <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -149,9 +144,7 @@
       </div>
     </div>
 
-    <!-- Users Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <!-- Table Header -->
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center justify-between">
           <div>
@@ -161,7 +154,6 @@
         </div>
       </div>
       
-      <!-- Table -->
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="bg-gray-50">
@@ -176,7 +168,6 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
-            <!-- Loading State -->
             <tr v-if="loading">
               <td colspan="7" class="py-8">
                 <div class="flex items-center justify-center">
@@ -186,7 +177,6 @@
               </td>
             </tr>
             
-            <!-- Empty State -->
             <tr v-if="!loading && users.length === 0">
               <td colspan="7" class="py-12 text-center">
                 <div class="text-gray-500">
@@ -197,7 +187,6 @@
               </td>
             </tr>
             
-            <!-- Users List -->
             <tr 
               v-for="user in users" 
               :key="user.id"
@@ -287,7 +276,6 @@
               
               <td class="py-4 px-6">
                 <div class="flex items-center gap-2">
-                  <!-- View Button -->
                   <button 
                     @click="viewUser(user)"
                     class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 rounded-lg transition-colors duration-200 group"
@@ -297,7 +285,6 @@
                     <span class="text-sm">View</span>
                   </button>
                   
-                  <!-- Edit Button -->
                   <button 
                     @click="editUser(user)"
                     class="flex items-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 hover:text-yellow-700 rounded-lg transition-colors duration-200 group"
@@ -313,7 +300,6 @@
         </table>
       </div>
       
-      <!-- Pagination -->
       <div v-if="!loading && pagination.last_page > 1" class="px-6 py-4 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700">
@@ -355,10 +341,8 @@
       </div>
     </div>
 
-    <!-- View User Modal -->
     <div v-if="showViewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <!-- Modal Header -->
         <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg"
@@ -385,12 +369,9 @@
           </button>
         </div>
         
-        <!-- Modal Body with Scroll -->
         <div class="flex-1 overflow-y-auto p-6">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- User Profile Section -->
             <div class="lg:col-span-1 space-y-6">
-              <!-- Basic Info Card -->
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <i class="fas fa-id-card text-blue-600"></i>
@@ -429,7 +410,6 @@
                 </div>
               </div>
               
-              <!-- Verification Status Card -->
               <div v-if="viewingUser.verification_status" class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <i class="fas fa-shield-alt text-purple-600"></i>
@@ -452,7 +432,6 @@
                 </div>
               </div>
 
-              <!-- Action Card -->
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                   <i class="fas fa-cogs text-yellow-600"></i>
@@ -468,7 +447,6 @@
                       Edit User
                     </button>
                     
-                    <!-- Approve/Reject Buttons for Pending Users -->
                     <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
                       <button 
                         @click="approveUser(viewingUser)"
@@ -487,7 +465,6 @@
                       </button>
                     </template>
                     
-                    <!-- Activate/Deactivate for Active/Inactive Users -->
                     <template v-else>
                       <button 
                         v-if="viewingUser.status === 'active'"
@@ -512,9 +489,7 @@
               </div>
             </div>
             
-            <!-- User Details Section -->
             <div class="lg:col-span-2 space-y-6">
-              <!-- Personal Information -->
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                   <i class="fas fa-user-circle text-blue-600"></i>
@@ -550,28 +525,23 @@
                 </div>
               </div>
               
-              <!-- Requirements Section -->
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                   <i class="fas fa-file-contract text-purple-600"></i>
                   User Requirements
                 </h4>
                 
-                <!-- Loading State -->
                 <div v-if="loadingRequirements" class="text-center py-8">
                   <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p class="text-gray-600 mt-3">Loading requirements...</p>
                 </div>
                 
-                <!-- No Requirements -->
                 <div v-if="!loadingRequirements && (!userRequirements || Object.keys(userRequirements).length === 0)" class="text-center py-8">
                   <i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i>
                   <p class="text-gray-500">No requirements submitted yet</p>
                 </div>
                 
-                <!-- Requirements Content -->
                 <div v-if="!loadingRequirements && userRequirements && Object.keys(userRequirements).length > 0">
-                  <!-- Distributor Requirements -->
                   <div v-if="viewingUser.role === 'distributor' && userRequirements.distributor" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">Business Information</h5>
@@ -587,11 +557,9 @@
                       </div>
                     </div>
                     
-                    <!-- Distributor Documents -->
                     <div>
                       <h5 class="font-semibold text-gray-800 mb-4">Business Documents</h5>
                       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Valid ID -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
                           <div class="space-y-2">
@@ -606,7 +574,6 @@
                           </div>
                         </div>
                         
-                        <!-- DTI Certificate -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">DTI Certificate</h6>
                           <div v-if="userRequirements.distributor.dti_certificate_photo_url">
@@ -617,7 +584,6 @@
                           </div>
                         </div>
                         
-                        <!-- Mayor's Permit -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Mayor's Permit</h6>
                           <div v-if="userRequirements.distributor.mayor_permit_photo_url">
@@ -628,7 +594,6 @@
                           </div>
                         </div>
                         
-                        <!-- Barangay Clearance -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Barangay Clearance</h6>
                           <div v-if="userRequirements.distributor.barangay_clearance_photo_url">
@@ -639,7 +604,6 @@
                           </div>
                         </div>
                         
-                        <!-- Business Registration -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Business Registration</h6>
                           <div v-if="userRequirements.distributor.business_registration_photo_url">
@@ -653,7 +617,6 @@
                     </div>
                   </div>
                   
-                  <!-- Client Requirements -->
                   <div v-if="viewingUser.role === 'client' && userRequirements.client" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
@@ -669,7 +632,6 @@
                       </div>
                     </div>
                     
-                    <!-- Client Documents -->
                     <div>
                       <h5 class="font-semibold text-gray-800 mb-4">ID Document</h5>
                       <div class="flex justify-center">
@@ -683,7 +645,6 @@
                     </div>
                   </div>
                   
-                  <!-- Service Provider Requirements -->
                   <div v-if="viewingUser.role === 'service_provider' && userRequirements.service_provider" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
@@ -699,7 +660,6 @@
                       </div>
                     </div>
                     
-                    <!-- Service Provider Documents -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <h6 class="font-medium text-gray-700 mb-3">Valid ID</h6>
@@ -722,7 +682,6 @@
                     </div>
                   </div>
                   
-                  <!-- HR Manager Requirements -->
                   <div v-if="viewingUser.role === 'hr_manager' && userRequirements.hr_manager" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">Employee Information</h5>
@@ -746,11 +705,9 @@
                       </div>
                     </div>
                     
-                    <!-- HR Manager Documents -->
                     <div>
                       <h5 class="font-semibold text-gray-800 mb-4">Documents</h5>
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Valid ID -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
                           <div v-if="userRequirements.hr_manager.valid_id_photo_url" class="mt-2">
@@ -761,7 +718,6 @@
                           </div>
                         </div>
                         
-                        <!-- Resume -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Resume</h6>
                           <div v-if="userRequirements.hr_manager.resume_url" class="mt-2">
@@ -774,7 +730,6 @@
                           </div>
                         </div>
                         
-                        <!-- Employment Contract -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Employment Contract</h6>
                           <div v-if="userRequirements.hr_manager.employment_contract_url" class="mt-2">
@@ -790,7 +745,6 @@
                     </div>
                   </div>
                   
-                  <!-- Finance Manager Requirements -->
                   <div v-if="viewingUser.role === 'finance_manager' && userRequirements.finance_manager" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">Employee Information</h5>
@@ -814,11 +768,9 @@
                       </div>
                     </div>
                     
-                    <!-- Finance Manager Documents -->
                     <div>
                       <h5 class="font-semibold text-gray-800 mb-4">Documents</h5>
                       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Valid ID -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
                           <div v-if="userRequirements.finance_manager.valid_id_photo_url" class="mt-2">
@@ -829,7 +781,6 @@
                           </div>
                         </div>
                         
-                        <!-- Resume -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Resume</h6>
                           <div v-if="userRequirements.finance_manager.resume_url" class="mt-2">
@@ -842,7 +793,6 @@
                           </div>
                         </div>
                         
-                        <!-- Employment Contract -->
                         <div class="border border-gray-200 rounded-lg p-4">
                           <h6 class="font-medium text-gray-700 mb-2">Employment Contract</h6>
                           <div v-if="userRequirements.finance_manager.employment_contract_url" class="mt-2">
@@ -858,7 +808,6 @@
                     </div>
                   </div>
                   
-                  <!-- Operational Distributor Requirements -->
                   <div v-if="viewingUser.role === 'operational_distributor' && userRequirements.operational_distributor" class="space-y-6">
                     <div class="border-b border-gray-200 pb-6">
                       <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
@@ -874,7 +823,6 @@
                       </div>
                     </div>
                     
-                    <!-- Operational Distributor Documents -->
                     <div>
                       <h5 class="font-semibold text-gray-800 mb-4">ID Document</h5>
                       <div class="flex justify-center">
@@ -890,7 +838,6 @@
                 </div>
               </div>
               
-              <!-- Recent Activity -->
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                   <i class="fas fa-history text-purple-600"></i>
@@ -932,7 +879,6 @@
           </div>
         </div>
         
-        <!-- Modal Footer -->
         <div class="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <button @click="closeViewModal" class="flex items-center gap-2 px-6 py-3 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors duration-200">
             <i class="fas fa-times"></i>
@@ -959,7 +905,6 @@
       </div>
     </div>
 
-    <!-- Image Modal -->
     <div v-if="showImageModalFlag" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
       <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <div class="flex items-center justify-between p-4 border-b border-gray-200">
@@ -984,7 +929,6 @@
       </div>
     </div>
 
-    <!-- Edit User Modal -->
     <div v-if="showEditUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-2xl w-full max-w-2xl">
         <div class="p-6 border-b border-gray-200">
@@ -1097,7 +1041,6 @@
       </div>
     </div>
 
-    <!-- Add User Modal -->
     <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-2xl w-full max-w-2xl">
         <div class="p-6 border-b border-gray-200">
@@ -1246,14 +1189,50 @@
         </div>
       </div>
     </div>
+
+    <AlertDialog :open="alertDialog.open" @update:open="alertDialog.open = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ alertDialog.title }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ alertDialog.description }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="alertDialog.open = false">Cancel</AlertDialogCancel>
+          <AlertDialogAction @click="handleAlertDialogAction">Continue</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import { toast } from 'vue-sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default {
   name: 'UserManagement',
+  components: {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+  },
   data() {
     return {
       // Tabs data
@@ -1323,7 +1302,15 @@ export default {
       currentImageUrl: '',
       currentImageTitle: '',
       
-      debounceTimer: null
+      debounceTimer: null,
+      
+      // Alert Dialog State
+      alertDialog: {
+        open: false,
+        title: '',
+        description: '',
+        action: null
+      }
     }
   },
   mounted() {
@@ -1340,13 +1327,30 @@ export default {
     }
   },
   methods: {
+    // Alert Dialog Helper
+    confirmAction(title, description, action) {
+      this.alertDialog = {
+        open: true,
+        title,
+        description,
+        action
+      };
+    },
+    
+    async handleAlertDialogAction() {
+      if (this.alertDialog.action) {
+        await this.alertDialog.action();
+      }
+      this.alertDialog.open = false;
+    },
+
     // Fetch users with role-based filtering
     async fetchUsers() {
       this.loading = true;
       try {
         const token = localStorage.getItem('auth_token');
         if (!token) {
-          this.showToast('Please login first', 'error');
+          toast.error('Please login first');
           this.$router.push('/login');
           return;
         }
@@ -1374,7 +1378,7 @@ export default {
           this.pagination = response.data.pagination;
           this.statistics = response.data.statistics || this.statistics;
         } else {
-          this.showToast(response.data.message || 'Failed to load users', 'error');
+          toast.error(response.data.message || 'Failed to load users');
         }
       } catch (error) {
         this.handleError(error);
@@ -1385,51 +1389,50 @@ export default {
     
     // Fetch statistics
     async fetchStatistics() {
-  try {
-    // First try the API
-    const token = localStorage.getItem('auth_token');
-    const baseURL = 'http://localhost:8000';
-    
-    try {
-      const response = await axios.get(`${baseURL}/api/admin/users/statistics`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data.success) {
-        this.statistics = response.data.statistics;
-        return;
+      try {
+        // First try the API
+        const token = localStorage.getItem('auth_token');
+        const baseURL = 'http://localhost:8000';
+        
+        try {
+          const response = await axios.get(`${baseURL}/api/admin/users/statistics`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (response.data.success) {
+            this.statistics = response.data.statistics;
+            return;
+          }
+        } catch (apiError) {
+          // Silent catch for stats API failure, fallback to calculation
+        }
+        
+        // Fallback: Calculate from existing users data
+        this.calculateStatisticsFromUsers();
+        
+      } catch (error) {
+        this.calculateStatisticsFromUsers();
       }
-    } catch (apiError) {
-      console.log('API failed, calculating from existing data');
-    }
-    
-    // Fallback: Calculate from existing users data
-    this.calculateStatisticsFromUsers();
-    
-  } catch (error) {
-    console.error('Error in fetchStatistics:', error);
-    this.calculateStatisticsFromUsers();
-  }
-},
+    },
 
-calculateStatisticsFromUsers() {
-  // Calculate statistics from the users you already have
-  const stats = {
-    total: this.users.length,
-    admin: this.users.filter(u => u.role === 'admin').length,
-    distributor: this.users.filter(u => u.role === 'distributor').length,
-    service_provider: this.users.filter(u => u.role === 'service_provider').length,
-    client: this.users.filter(u => u.role === 'client').length,
-    operational_distributor: this.users.filter(u => u.role === 'operational_distributor').length,
-    hr_manager: this.users.filter(u => u.role === 'hr_manager').length,
-    finance_manager: this.users.filter(u => u.role === 'finance_manager').length,
-    active: this.users.filter(u => u.status === 'active').length,
-    inactive: this.users.filter(u => u.status === 'inactive').length,
-    pending: this.users.filter(u => u.status === 'pending').length,
-  };
-  
-  this.statistics = stats;
-},
+    calculateStatisticsFromUsers() {
+      // Calculate statistics from the users you already have
+      const stats = {
+        total: this.users.length,
+        admin: this.users.filter(u => u.role === 'admin').length,
+        distributor: this.users.filter(u => u.role === 'distributor').length,
+        service_provider: this.users.filter(u => u.role === 'service_provider').length,
+        client: this.users.filter(u => u.role === 'client').length,
+        operational_distributor: this.users.filter(u => u.role === 'operational_distributor').length,
+        hr_manager: this.users.filter(u => u.role === 'hr_manager').length,
+        finance_manager: this.users.filter(u => u.role === 'finance_manager').length,
+        active: this.users.filter(u => u.status === 'active').length,
+        inactive: this.users.filter(u => u.status === 'inactive').length,
+        pending: this.users.filter(u => u.status === 'pending').length,
+      };
+      
+      this.statistics = stats;
+    },
     
     // Fetch user requirements
     async fetchUserRequirements(userId) {
@@ -1543,7 +1546,6 @@ calculateStatisticsFromUsers() {
           }
         }
       } catch (error) {
-        console.error('Error fetching user requirements:', error);
         this.userRequirements = null;
       } finally {
         this.loadingRequirements = false;
@@ -1625,7 +1627,7 @@ calculateStatisticsFromUsers() {
         });
         
         if (response.data.success) {
-          this.showToast('User updated successfully', 'success');
+          toast.success('User updated successfully');
           this.closeEditUserModal();
           this.fetchUsers();
           this.fetchStatistics();
@@ -1647,7 +1649,7 @@ calculateStatisticsFromUsers() {
         });
         
         if (response.data.success) {
-          this.showToast('User created successfully', 'success');
+          toast.success('User created successfully');
           this.closeAddUserModal();
           this.fetchUsers();
           this.fetchStatistics();
@@ -1660,69 +1662,71 @@ calculateStatisticsFromUsers() {
     },
     
     // Approve user (activate account and approve requirements)
-    async approveUser(user) {
-      const message = `Are you sure you want to approve ${user.full_name}? This will activate their account and approve all requirements.`;
-      
-      if (!confirm(message)) return;
-      
-      try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        
-        // First, try the approve endpoint (if it exists)
-        try {
-          const approveResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/approve`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (approveResponse.data.success) {
-            this.showToast('User approved successfully', 'success');
-            this.closeViewModal();
-            this.fetchUsers();
-            this.fetchStatistics();
-            return;
-          }
-        } catch (approveError) {
-          console.log('Approve endpoint not found, using activate instead');
-        }
-        
-        // Fallback to activate endpoint
-        const userResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (userResponse.data.success) {
-          this.showToast('User activated successfully', 'success');
-          
-          // If user is distributor, also approve their requirements
-          if (user.role === 'distributor' && user.verification_status === 'pending') {
+    approveUser(user) {
+      this.confirmAction(
+        'Approve User',
+        `Are you sure you want to approve ${user.full_name}? This will activate their account and approve all requirements.`,
+        async () => {
+          try {
+            const token = localStorage.getItem('auth_token');
+            const baseURL = 'http://localhost:8000';
+            
+            // First, try the approve endpoint (if it exists)
             try {
-              const distributorReq = await axios.get(`${baseURL}/api/distributor/requirements/admin/pending`, {
+              const approveResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/approve`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
               });
               
-              const pendingReq = distributorReq.data.data?.find(req => req.user_id === user.id);
-              if (pendingReq) {
-                await axios.put(`${baseURL}/api/distributor/requirements/admin/${pendingReq.id}`, {
-                  status: 'approved',
-                  rejection_reason: null
-                }, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                this.showToast('Distributor requirements approved', 'success');
+              if (approveResponse.data.success) {
+                toast.success('User approved successfully');
+                this.closeViewModal();
+                this.fetchUsers();
+                this.fetchStatistics();
+                return;
               }
-            } catch (error) {
-              console.error('Error approving distributor requirements:', error);
+            } catch (approveError) {
+              // Proceed to fallback
             }
+            
+            // Fallback to activate endpoint
+            const userResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (userResponse.data.success) {
+              toast.success('User activated successfully');
+              
+              // If user is distributor, also approve their requirements
+              if (user.role === 'distributor' && user.verification_status === 'pending') {
+                try {
+                  const distributorReq = await axios.get(`${baseURL}/api/distributor/requirements/admin/pending`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  
+                  const pendingReq = distributorReq.data.data?.find(req => req.user_id === user.id);
+                  if (pendingReq) {
+                    await axios.put(`${baseURL}/api/distributor/requirements/admin/${pendingReq.id}`, {
+                      status: 'approved',
+                      rejection_reason: null
+                    }, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    toast.success('Distributor requirements approved');
+                  }
+                } catch (error) {
+                  // Silent fail for nested requirement approval
+                }
+              }
+              
+              this.closeViewModal();
+              this.fetchUsers();
+              this.fetchStatistics();
+            }
+          } catch (error) {
+            this.handleError(error);
           }
-          
-          this.closeViewModal();
-          this.fetchUsers();
-          this.fetchStatistics();
         }
-      } catch (error) {
-        this.handleError(error);
-      }
+      );
     },
     
     // Reject user (with reason)
@@ -1731,7 +1735,7 @@ calculateStatisticsFromUsers() {
       if (reason === null) return; // User cancelled
       
       if (!reason.trim()) {
-        this.showToast('Please provide a rejection reason', 'error');
+        toast.error('Please provide a rejection reason');
         return;
       }
       
@@ -1748,14 +1752,14 @@ calculateStatisticsFromUsers() {
           });
           
           if (rejectResponse.data.success) {
-            this.showToast(`User rejected: ${reason}`, 'success');
+            toast.success(`User rejected: ${reason}`);
             this.closeViewModal();
             this.fetchUsers();
             this.fetchStatistics();
             return;
           }
         } catch (rejectError) {
-          console.log('Reject endpoint not found, using deactivate instead');
+          // Proceed to fallback
         }
         
         // Fallback to deactivate endpoint
@@ -1781,11 +1785,11 @@ calculateStatisticsFromUsers() {
                 });
               }
             } catch (error) {
-              console.error('Error rejecting distributor requirements:', error);
+              // Silent fail for nested requirement rejection
             }
           }
           
-          this.showToast(`User rejected: ${reason}`, 'success');
+          toast.success(`User rejected: ${reason}`);
           this.closeViewModal();
           this.fetchUsers();
           this.fetchStatistics();
@@ -1796,50 +1800,58 @@ calculateStatisticsFromUsers() {
     },
     
     // Activate user
-    async activateUser(user) {
-      if (!confirm(`Are you sure you want to activate ${user.full_name}?`)) return;
-      
-      try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (response.data.success) {
-          this.showToast('User activated successfully', 'success');
-          this.fetchUsers();
-          this.fetchStatistics();
+    activateUser(user) {
+      this.confirmAction(
+        'Activate User',
+        `Are you sure you want to activate ${user.full_name}?`,
+        async () => {
+          try {
+            const token = localStorage.getItem('auth_token');
+            const baseURL = 'http://localhost:8000';
+            const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+              toast.success('User activated successfully');
+              this.fetchUsers();
+              this.fetchStatistics();
+            }
+          } catch (error) {
+            this.handleError(error);
+          }
         }
-      } catch (error) {
-        this.handleError(error);
-      }
+      );
     },
     
     // Deactivate user
-    async deactivateUser(user) {
-      if (!confirm(`Are you sure you want to deactivate ${user.full_name}?`)) return;
-      
-      try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/deactivate`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (response.data.success) {
-          this.showToast('User deactivated successfully', 'success');
-          this.fetchUsers();
-          this.fetchStatistics();
+    deactivateUser(user) {
+      this.confirmAction(
+        'Deactivate User',
+        `Are you sure you want to deactivate ${user.full_name}?`,
+        async () => {
+          try {
+            const token = localStorage.getItem('auth_token');
+            const baseURL = 'http://localhost:8000';
+            const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/deactivate`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.success) {
+              toast.success('User deactivated successfully');
+              this.fetchUsers();
+              this.fetchStatistics();
+            }
+          } catch (error) {
+            this.handleError(error);
+          }
         }
-      } catch (error) {
-        this.handleError(error);
-      }
+      );
     },
     
     // Review requirements (for distributors)
     async reviewRequirements(user) {
-      this.showToast('Redirecting to requirements review page...', 'info');
+      toast.info('Redirecting to requirements review page...');
       // In a real app, you would navigate to the requirements review page
       // this.$router.push(`/admin/distributor-requirements/${user.id}`);
     },
@@ -1998,15 +2010,6 @@ calculateStatisticsFromUsers() {
       });
     },
     
-    // Utility methods
-    showToast(message, type = 'info') {
-      if (this.$toast) {
-        this.$toast[type](message);
-      } else {
-        alert(message);
-      }
-    },
-    
     handleError(error) {
       let errorMessage = 'An error occurred';
       
@@ -2037,7 +2040,7 @@ calculateStatisticsFromUsers() {
         errorMessage = 'An error occurred: ' + error.message;
       }
       
-      this.showToast(errorMessage, 'error');
+      toast.error(errorMessage);
     }
   }
 }

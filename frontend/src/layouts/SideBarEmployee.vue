@@ -5,14 +5,14 @@
         <div class="relative shrink-0 flex items-center justify-center">
           <Avatar class="w-10 h-10 ring-2 ring-indigo-500/30 ring-offset-2 ring-offset-indigo-950">
             <div class="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-              <UserCheck class="w-5 h-5 text-white" />
+              <component :is="roleIcon" class="w-5 h-5 text-white" />
             </div>
           </Avatar>
         </div>
         
         <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 nav-text-clip flex-1">
           <h2 class="text-sm font-bold text-slate-100 truncate tracking-tight">{{ userName }}</h2>
-          <p class="text-[10px] font-semibold text-indigo-400/80 uppercase tracking-widest">Employee Portal</p>
+          <p class="text-[10px] font-semibold text-indigo-400/80 uppercase tracking-widest">{{ userRoleLabel }}</p>
         </div>
       </div>
     </SidebarHeader>
@@ -20,7 +20,7 @@
     <SidebarContent class="px-3 py-4 space-y-6 bg-indigo-950 overflow-x-hidden">
       <SidebarGroup class="p-0">
         <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-2 nav-text-clip">
-          EMPLOYEE PORTAL
+          {{ userRoleLabel.toUpperCase() }}
         </SidebarGroupLabel>
         
         <SidebarMenu>
@@ -105,11 +105,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue'
+import { ref, onMounted, defineEmits, defineProps, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Clock, Banknote, CalendarDays, 
-  FileText, User, Bell, LogOut, Loader2, UserCheck 
+  FileText, User, Bell, LogOut, Loader2, UserCheck, 
+  Briefcase, Calculator, Users 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -122,6 +123,14 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/utils/axios'
 
+// Define Props to receive user data
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
+
 const { state, isMobile } = useSidebar()
 const router = useRouter()
 const emit = defineEmits(['logout-started', 'logout-finished', 'toggle'])
@@ -129,6 +138,33 @@ const emit = defineEmits(['logout-started', 'logout-finished', 'toggle'])
 const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Employee Name')
+
+// Dynamic Role Label
+const userRoleLabel = computed(() => {
+  if (!props.user) return 'Employee Portal'
+  const role = props.user.role
+  if (role === 'hr_manager') return 'HR Manager'
+  if (role === 'finance_manager') return 'Finance Manager'
+  if (role === 'operational_distributor') return 'Operational Dist.'
+  return 'Employee Portal'
+})
+
+// Dynamic Header Icon
+const roleIcon = computed(() => {
+  if (!props.user) return UserCheck
+  const role = props.user.role
+  if (role === 'hr_manager') return Users
+  if (role === 'finance_manager') return Calculator
+  if (role === 'operational_distributor') return Briefcase
+  return UserCheck
+})
+
+// Update user name when props change
+watch(() => props.user, (newUser) => {
+  if (newUser) {
+    userName.value = newUser.full_name || `${newUser.first_name} ${newUser.last_name}`
+  }
+}, { immediate: true })
 
 const navItems = ref([
   { id: 'dashboard', text: 'Dashboard', route: '/Employees/DashboardEmployee' },
@@ -170,24 +206,33 @@ const handleNavClick = () => {
   if (isMobile.value) emit('toggle')
 }
 
+// Integrated Backend Logout Logic
 const confirmLogout = async () => {
   isLoggingOut.value = true
   showLogoutModal.value = false
+  
+  // Emit start event to parent (EmployeeLayout) to trigger animation
   emit('logout-started')
   
   try {
+    // Simulate API call delay for smoother UX
     await new Promise(resolve => setTimeout(resolve, 1500))
-    // Note: Assuming axios is setup as 'api' or imports appropriately
+    
+    // Call the actual backend logout endpoint
     const response = await api.post('/auth/logout')
     
     if (response.data.status === 'success') {
       emit('logout-finished')
+      
+      // Clear local storage and redirect
       setTimeout(() => {
         localStorage.clear()
         router.push('/Landing/logIn')
       }, 1000)
     }
   } catch (error) {
+    console.error('Logout failed:', error)
+    // Force logout on error
     emit('logout-finished')
     setTimeout(() => {
       localStorage.clear()
@@ -196,6 +241,14 @@ const confirmLogout = async () => {
   }
 }
 
+onMounted(() => {
+  // Fallback if props aren't ready yet (double check localStorage)
+  const data = localStorage.getItem('user_data')
+  if (data) {
+    const user = JSON.parse(data)
+    userName.value = user.full_name || `${user.first_name} ${user.last_name}`
+  }
+})
 </script>
 
 <style scoped>

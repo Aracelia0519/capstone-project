@@ -115,7 +115,7 @@ import { ref, onMounted, computed, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ShieldCheck, Building2, ClipboardCheck, 
-  FileStack, Banknote, BarChart3, Settings, LogOut, Loader2, Lock 
+  FileStack, Banknote, BarChart3, CalendarCheck, Settings, LogOut, Loader2, Lock 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -136,9 +136,16 @@ const userRole = ref('')
 const userAccessibility = ref([])
 
 const iconMap = {
-  dashboard: LayoutDashboard, employees: Users, positions: ShieldCheck,
-  departments: Building2, status: ClipboardCheck, recruitment: FileStack,
-  payroll: Banknote, reports: BarChart3, settings: Settings
+  dashboard: LayoutDashboard,
+  employees: Users,
+  positions: ShieldCheck,
+  departments: Building2,
+  status: ClipboardCheck,
+  recruitment: FileStack,
+  payroll: Banknote,
+  reports: BarChart3,
+  settings: Settings,
+  attendanceRequest: CalendarCheck
 }
 const getIcon = (id) => iconMap[id] || Settings
 
@@ -149,7 +156,8 @@ const hrNavItems = ref([
   { id: 'departments', text: 'Departments', route: '/HR/departmentsHR', permissionKey: 'departments' },
   { id: 'status', text: 'Employment Status', route: '/HR/employmentStatusHR', permissionKey: 'employment_status' },
   { id: 'recruitment', text: 'Recruitment Application', route: '/HR/recruitmentApplication', permissionKey: 'recruitment' },
-  { id: 'payroll', text: 'Payroll Management', route: '/HR/payrollHR', permissionKey: 'payroll_management' }, 
+  { id: 'payroll', text: 'Payroll Management', route: '/HR/payrollHR', permissionKey: 'payroll_management' },
+  { id: 'attendanceRequest', text: 'attendanceRequest', route: '/HR/attendanceRequestHR', permissionKey: 'attendance_request' }, 
 ])
 
 const toolsNavItems = ref([

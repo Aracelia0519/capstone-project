@@ -1,5 +1,5 @@
 <template>
-  <div class="page-transition p-4 md:p-6 min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+  <div class="page-transition p-4 md:p-6 min-h-screen">
     <div
       v-if="loading"
       class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center"
@@ -15,17 +15,17 @@
 
     <Toaster position="top-right" />
 
-    <div class="mb-8 md:mb-10">
+    <div class="mb-6">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-3 mb-2">
-            <div class="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg icon-hover">
+            <div class="p-2 bg-linear-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg icon-hover">
               <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
             </div>
-            <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 class="text-2xl md:text-3xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Profile & Settings
             </h1>
           </div>
@@ -39,9 +39,9 @@
             class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg text-base"
             :class="[
               hasUnsavedChanges && !saving 
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
+                ? 'bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
                 : 'bg-gray-200 text-gray-500 hover:bg-gray-200 cursor-not-allowed',
-              saving ? 'bg-gradient-to-r from-blue-400 to-blue-500 cursor-wait' : ''
+              saving ? 'bg-linear-to-r from-blue-400 to-blue-500 cursor-wait' : ''
             ]"
           >
             <Loader2 v-if="saving" class="w-5 h-5 mr-2 animate-spin" />
@@ -52,15 +52,14 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
       
-      <div class="lg:col-span-2 space-y-6 md:space-y-8">
-        
-        <Card class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
-          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 card-header-hover">
+      <div class="lg:col-span-2">
+        <Card class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl h-full">
+          <div class="bg-linear-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 card-header-hover">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-md icon-hover">
+                <div class="p-2 bg-linear-to-br from-blue-500 to-indigo-500 rounded-lg shadow-md icon-hover">
                   <User class="w-5 h-5 text-white" />
                 </div>
                 <h2 class="text-lg md:text-xl font-bold text-gray-800">Personal Information</h2>
@@ -70,11 +69,11 @@
           </div>
 
           <CardContent class="p-6">
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 mb-6">
+            <div class="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-5 mb-6">
               <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                   <div class="relative">
-                    <div class="avatar-hover w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <div class="avatar-hover w-24 h-24 rounded-2xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
                       <span class="text-3xl font-bold text-white">{{ getInitials(userInfo.full_name) }}</span>
                     </div>
                     <button @click="changeProfilePhoto" class="absolute -bottom-2 -right-2 p-2 bg-white rounded-full border-2 border-white shadow-lg hover:bg-gray-50 transition-transform hover:scale-110">
@@ -93,10 +92,10 @@
                     <Badge :class="[
                       'px-3 py-1.5 rounded-full text-sm font-medium shadow-sm border',
                       userInfo.status === 'active' 
-                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:bg-green-50'
+                        ? 'bg-linear-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:bg-green-50'
                         : userInfo.status === 'pending' 
-                          ? 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50'
-                          : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 hover:bg-red-50'
+                          ? 'bg-linear-to-r from-yellow-50 to-amber-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50'
+                          : 'bg-linear-to-r from-red-50 to-rose-50 text-red-700 border-red-200 hover:bg-red-50'
                     ]">
                       <CheckCircle2 v-if="userInfo.status === 'active'" class="w-3 h-3 mr-1.5 icon-hover" />
                       <Clock v-if="userInfo.status === 'pending'" class="w-3 h-3 mr-1.5 icon-hover" />
@@ -108,12 +107,12 @@
                       :class="[
                         'px-3 py-1.5 rounded-full text-sm font-medium shadow-sm border',
                         verificationData.status === 'approved' 
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:bg-green-50'
+                          ? 'bg-linear-to-r from-green-50 to-emerald-50 text-green-700 border-green-200 hover:bg-green-50'
                           : verificationData.status === 'pending' 
-                            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50'
+                            ? 'bg-linear-to-r from-yellow-50 to-amber-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50'
                             : verificationData.status === 'rejected' 
-                              ? 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200 hover:bg-red-50'
-                              : 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-700 border-gray-200 hover:bg-gray-50'
+                              ? 'bg-linear-to-r from-red-50 to-rose-50 text-red-700 border-red-200 hover:bg-red-50'
+                              : 'bg-linear-to-r from-gray-50 to-slate-50 text-gray-700 border-gray-200 hover:bg-gray-50'
                       ]">
                       <CheckCircle2 v-if="verificationData.status === 'approved'" class="w-3 h-3 mr-1.5 icon-hover" />
                       <Clock v-if="verificationData.status === 'pending'" class="w-3 h-3 mr-1.5 icon-hover" />
@@ -176,9 +175,9 @@
                   class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg font-medium text-base w-full md:w-auto"
                   :class="[
                     userInfoChanged && !saving 
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
+                      ? 'bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
                       : 'bg-gray-200 text-gray-500 hover:bg-gray-200 cursor-not-allowed',
-                    saving ? 'bg-gradient-to-r from-blue-400 to-blue-500 cursor-wait' : ''
+                    saving ? 'bg-linear-to-r from-blue-400 to-blue-500 cursor-wait' : ''
                   ]">
                   <Loader2 v-if="saving" class="w-5 h-5 mr-2 animate-spin" />
                   <Save v-else class="w-5 h-5 mr-2 icon-hover" />
@@ -188,109 +187,32 @@
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card v-if="userInfo.role === 'distributor'" class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
-          <div class="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200 card-header-hover">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg shadow-md icon-hover">
-                  <Briefcase class="w-5 h-5 text-white" />
-                </div>
-                <h2 class="text-lg md:text-xl font-bold text-gray-800">Distributor Information</h2>
-              </div>
-              <Badge variant="secondary" class="bg-green-100 text-green-600 hover:bg-green-100 rounded-full px-3">Business Info</Badge>
-            </div>
-          </div>
-
-          <CardContent class="p-6 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Company Name</Label>
-                <Input v-model="distributorInfo.company_name" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
-                  :readonly="verificationData && verificationData.has_submitted" />
-              </div>
-              
-              <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Business License Number</Label>
-                <Input v-model="distributorInfo.business_registration_number" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
-                  :readonly="verificationData && verificationData.has_submitted" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">ID Type</Label>
-                <Input v-model="distributorInfo.valid_id_type_display" type="text" 
-                  class="h-12 bg-gray-100 border-gray-200 rounded-xl text-gray-600 cursor-not-allowed" readonly />
-              </div>
-              
-              <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">ID Number</Label>
-                <Input v-model="distributorInfo.id_number" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
-                  :readonly="verificationData && verificationData.has_submitted" />
-              </div>
-            </div>
-
-            <div v-if="verificationData && verificationData.has_submitted" 
-              class="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-blue-200">
-              <div class="flex items-start">
-                <div class="p-2 bg-blue-100 rounded-lg mr-3 flex-shrink-0 icon-hover">
-                  <Lock class="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-800 mb-2">Information Locked</h4>
-                  <p class="text-sm text-gray-600">
-                    Your distributor information is currently locked because you have submitted business verification. 
-                    To make changes, please contact admin support or wait for your verification to be processed.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="pt-6 border-t border-gray-200">
-              <Button @click="saveDistributorInfo" 
-                :disabled="!distributorInfoChanged || savingDistributor || (verificationData && verificationData.has_submitted)"
-                class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg font-medium text-base w-full md:w-auto"
-                :class="[
-                  distributorInfoChanged && !savingDistributor && (!verificationData || !verificationData.has_submitted)
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect'
-                    : 'bg-gray-200 text-gray-500 hover:bg-gray-200 cursor-not-allowed',
-                  savingDistributor ? 'bg-gradient-to-r from-green-400 to-green-500 cursor-wait' : ''
-                ]">
-                <Loader2 v-if="savingDistributor" class="w-5 h-5 mr-2 animate-spin" />
-                <Save v-else class="w-5 h-5 mr-2 icon-hover" />
-                {{ savingDistributor ? 'Saving...' : 'Update Distributor Information' }}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div class="lg:col-span-1 space-y-5">
+        
         <Card class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
-          <div class="bg-gradient-to-r from-red-50 to-rose-50 px-6 py-4 border-b border-gray-200 card-header-hover">
+          <div class="bg-linear-to-r from-red-50 to-rose-50 px-6 py-4 border-b border-gray-200 card-header-hover">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-md icon-hover">
+                <div class="p-2 bg-linear-to-br from-red-500 to-rose-500 rounded-lg shadow-md icon-hover">
                   <ShieldCheck class="w-5 h-5 text-white" />
                 </div>
-                <h2 class="text-lg md:text-xl font-bold text-gray-800">Security Settings</h2>
+                <h2 class="text-lg font-bold text-gray-800">Security</h2>
               </div>
               <Badge variant="secondary" class="bg-red-100 text-red-600 hover:bg-red-100 rounded-full px-3">Security</Badge>
             </div>
           </div>
-
           <CardContent class="p-6 space-y-6">
-            <div class="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 p-4">
+            <div class="bg-linear-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 p-4">
               <div class="flex items-start">
-                <div class="p-2 bg-yellow-100 rounded-lg mr-3 flex-shrink-0 icon-hover">
+                <div class="p-2 bg-yellow-100 rounded-lg mr-3 shrink-0 icon-hover">
                   <AlertTriangle class="w-5 h-5 text-yellow-600" />
                 </div>
                 <div>
-                  <h4 class="font-semibold text-yellow-800 mb-2">Security Recommendation</h4>
-                  <p class="text-sm text-yellow-700">
-                    Use a strong password with at least 8 characters including uppercase, lowercase, numbers, and special characters.
+                  <h4 class="font-semibold text-yellow-800 mb-2">Recommendation</h4>
+                  <p class="text-xs text-yellow-700">
+                    Use a strong password with at least 8 characters including uppercase, lowercase, numbers, and symbols.
                   </p>
                 </div>
               </div>
@@ -309,7 +231,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="grid grid-cols-1 gap-6"> 
                 <div class="space-y-4">
                   <div class="form-group space-y-2">
                     <Label class="smooth-color font-semibold text-gray-700">New Password</Label>
@@ -324,14 +246,14 @@
                   </div>
                   
                   <div class="space-y-2">
-                    <p class="smooth-color text-sm font-semibold text-gray-700">Password Requirements</p>
+                    <p class="smooth-color text-xs font-semibold text-gray-700">Password Requirements</p>
                     <div class="space-y-1.5">
                       <div v-for="requirement in passwordRequirements" :key="requirement.text" class="flex items-center">
-                        <div class="flex-shrink-0 w-5 h-5 mr-2 flex items-center justify-center icon-hover">
-                          <CheckCircle2 v-if="requirement.met" class="w-4 h-4 text-green-500" />
-                          <div v-else class="w-4 h-4 rounded-full border border-gray-300"></div>
+                        <div class="shrink-0 w-4 h-4 mr-2 flex items-center justify-center icon-hover">
+                          <CheckCircle2 v-if="requirement.met" class="w-3.5 h-3.5 text-green-500" />
+                          <div v-else class="w-3 h-3 rounded-full border border-gray-300"></div>
                         </div>
-                        <span class="text-sm smooth-color" :class="requirement.met ? 'text-green-600' : 'text-gray-500'">
+                        <span class="text-xs smooth-color" :class="requirement.met ? 'text-green-600' : 'text-gray-500'">
                           {{ requirement.text }}
                         </span>
                       </div>
@@ -341,7 +263,7 @@
 
                 <div class="space-y-4">
                   <div class="form-group space-y-2">
-                    <Label class="smooth-color font-semibold text-gray-700">Confirm New Password</Label>
+                    <Label class="smooth-color font-semibold text-gray-700">Confirm Password</Label>
                     <div class="relative">
                       <Lock class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
                       <Input v-model="password.confirm" :type="confirmPasswordFieldType" class="pl-10 pr-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
@@ -349,22 +271,6 @@
                         <EyeOff v-if="showConfirmPassword" class="w-5 h-5" />
                         <Eye v-else class="w-5 h-5" />
                       </button>
-                    </div>
-                  </div>
-                  
-                  <div class="space-y-2">
-                    <p class="smooth-color text-sm font-semibold text-gray-700">Password Match</p>
-                    <div class="flex items-center p-3 rounded-lg bg-gray-50 border border-gray-200 document-card">
-                      <div class="flex-shrink-0 w-6 h-6 mr-3 flex items-center justify-center icon-hover">
-                        <CheckCircle2 v-if="passwordMatch" class="w-5 h-5 text-green-500" />
-                        <XCircle v-else-if="password.confirm" class="w-5 h-5 text-red-500" />
-                        <div v-else class="w-4 h-4 rounded-full border-2 border-gray-300"></div>
-                      </div>
-                      <span class="text-sm font-medium smooth-color" :class="passwordMatch ? 'text-green-600' : password.confirm ? 'text-red-600' : 'text-gray-500'">
-                        {{ password.new && password.confirm 
-                          ? (passwordMatch ? 'Passwords match' : 'Passwords do not match') 
-                          : 'Enter password to check' }}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -377,25 +283,104 @@
                 class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg font-medium text-base w-full touch-friendly"
                 :class="[
                   canChangePassword && !changingPassword 
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
+                    ? 'bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-blue-500/25 btn-hover-effect' 
                     : 'bg-gray-200 text-gray-500 hover:bg-gray-200 cursor-not-allowed',
-                  changingPassword ? 'bg-gradient-to-r from-blue-400 to-blue-500 cursor-wait' : ''
+                  changingPassword ? 'bg-linear-to-r from-blue-400 to-blue-500 cursor-wait' : ''
                 ]">
                 <Loader2 v-if="changingPassword" class="w-5 h-5 mr-2 animate-spin" />
                 <Key v-else class="w-5 h-5 mr-2 icon-hover" />
-                {{ changingPassword ? 'Changing Password...' : 'Change Password' }}
+                {{ changingPassword ? 'Updating...' : 'Change Password' }}
               </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <div class="space-y-6 md:space-y-8" v-if="userInfo.role === 'distributor'">
-        <Card class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
-          <div class="bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4 border-b border-gray-200 card-header-hover">
+        <Card v-if="userInfo.role === 'distributor'" class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
+          <div class="bg-linear-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200 card-header-hover">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg shadow-md icon-hover">
+                <div class="p-2 bg-linear-to-br from-green-500 to-emerald-500 rounded-lg shadow-md icon-hover">
+                  <Briefcase class="w-5 h-5 text-white" />
+                </div>
+                <h2 class="text-lg font-bold text-gray-800">Distributor Info</h2>
+              </div>
+              <Badge variant="secondary" class="bg-green-100 text-green-600 hover:bg-green-100 rounded-full px-3">Business</Badge>
+            </div>
+          </div>
+
+          <CardContent class="p-6 space-y-6">
+            <div class="grid grid-cols-1 gap-6">
+              <div class="form-group space-y-2">
+                <Label class="smooth-color font-semibold text-gray-700">Company Name</Label>
+                <Input v-model="distributorInfo.company_name" type="text" 
+                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  :readonly="verificationData && verificationData.has_submitted" />
+              </div>
+              
+              <div class="form-group space-y-2">
+                <Label class="smooth-color font-semibold text-gray-700">License Number</Label>
+                <Input v-model="distributorInfo.business_registration_number" type="text" 
+                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  :readonly="verificationData && verificationData.has_submitted" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6">
+              <div class="form-group space-y-2">
+                <Label class="smooth-color font-semibold text-gray-700">ID Type</Label>
+                <Input v-model="distributorInfo.valid_id_type_display" type="text" 
+                  class="h-12 bg-gray-100 border-gray-200 rounded-xl text-gray-600 cursor-not-allowed" readonly />
+              </div>
+              
+              <div class="form-group space-y-2">
+                <Label class="smooth-color font-semibold text-gray-700">ID Number</Label>
+                <Input v-model="distributorInfo.id_number" type="text" 
+                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  :readonly="verificationData && verificationData.has_submitted" />
+              </div>
+            </div>
+
+            <div v-if="verificationData && verificationData.has_submitted" 
+              class="p-4 bg-linear-to-r from-gray-50 to-blue-50 rounded-xl border border-blue-200">
+              <div class="flex items-start">
+                <div class="p-2 bg-blue-100 rounded-lg mr-3 shrink-0 icon-hover">
+                  <Lock class="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h4 class="font-semibold text-gray-800 mb-1">Locked</h4>
+                  <p class="text-xs text-gray-600">
+                    Your distributor information is currently locked because you have submitted business verification.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-200">
+              <Button @click="saveDistributorInfo" 
+                :disabled="!distributorInfoChanged || savingDistributor || (verificationData && verificationData.has_submitted)"
+                class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg font-medium text-base w-full"
+                :class="[
+                  distributorInfoChanged && !savingDistributor && (!verificationData || !verificationData.has_submitted)
+                    ? 'bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect'
+                    : 'bg-gray-200 text-gray-500 hover:bg-gray-200 cursor-not-allowed',
+                  savingDistributor ? 'bg-linear-to-r from-green-400 to-green-500 cursor-wait' : ''
+                ]">
+                <Loader2 v-if="savingDistributor" class="w-5 h-5 mr-2 animate-spin" />
+                <Save v-else class="w-5 h-5 mr-2 icon-hover" />
+                {{ savingDistributor ? 'Saving...' : 'Update' }}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      <div v-if="userInfo.role === 'distributor'" class="lg:col-span-3">
+        <Card id="verification-wizard" class="card-shadow depth-hover border-gray-100 overflow-hidden rounded-2xl">
+          <div class="bg-linear-to-r from-purple-50 to-indigo-50 px-6 py-4 border-b border-gray-200 card-header-hover">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-linear-to-br from-purple-500 to-indigo-500 rounded-lg shadow-md icon-hover">
                   <ShieldCheck class="w-5 h-5 text-white" />
                 </div>
                 <h2 class="text-lg md:text-xl font-bold text-gray-800">Business Verification</h2>
@@ -408,16 +393,16 @@
             <div :class="[
               'p-5 rounded-xl border shadow-sm',
               verificationData.status === 'approved' 
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-green-500/10'
+                ? 'bg-linear-to-r from-green-50 to-emerald-50 border-green-200 shadow-green-500/10'
                 : verificationData.status === 'pending' 
-                  ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-yellow-500/10'
+                  ? 'bg-linear-to-r from-yellow-50 to-amber-50 border-yellow-200 shadow-yellow-500/10'
                   : verificationData.status === 'rejected' 
-                    ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200 shadow-red-500/10'
-                    : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200 shadow-blue-500/10'
+                    ? 'bg-linear-to-r from-red-50 to-rose-50 border-red-200 shadow-red-500/10'
+                    : 'bg-linear-to-r from-blue-50 to-cyan-50 border-blue-200 shadow-blue-500/10'
             ]">
               <div class="flex items-start">
                 <div :class="[
-                  'p-3 rounded-lg mr-4 flex-shrink-0 icon-hover',
+                  'p-3 rounded-lg mr-4 shrink-0 icon-hover',
                   verificationData.status === 'approved' ? 'bg-green-100' :
                   verificationData.status === 'pending' ? 'bg-yellow-100' :
                   verificationData.status === 'rejected' ? 'bg-red-100' :
@@ -453,65 +438,49 @@
           </div>
 
           <div v-if="!verificationData || !verificationData.has_submitted || verificationData.status === 'rejected'">
-            <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+            <div class="p-6 border-b border-gray-200 bg-linear-to-r from-gray-50 to-blue-50">
               <div class="flex items-center justify-between relative">
                 <div class="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0"></div>
-                <div class="absolute top-4 left-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 z-0 transition-all duration-500 ease-out"
+                <div class="absolute top-4 left-0 h-0.5 bg-linear-to-r from-blue-500 to-purple-600 z-0 transition-all duration-500 ease-out"
                   :style="{ width: getProgressWidth() }"></div>
 
                 <div class="nav-item flex flex-col items-center relative z-10" @click="currentStep >= 1 ? currentStep = 1 : null">
-                  <div :class="[
-                    'progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer',
-                    currentStep >= 1 
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg shadow-blue-500/50' 
-                      : 'bg-white border-gray-300 text-gray-400'
-                  ]">
+                  <div :class="['progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer', currentStep >= 1 ? 'bg-linear-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' : 'bg-white border-gray-300 text-gray-400']">
                     <span v-if="currentStep > 1" class="text-sm font-bold">✓</span>
                     <span v-else class="text-sm font-bold">1</span>
                   </div>
-                  <span class="mt-2 text-xs font-semibold" 
-                    :class="currentStep >= 1 ? 'text-gray-800' : 'text-gray-500'">Company</span>
+                  <span class="mt-2 text-xs font-semibold" :class="currentStep >= 1 ? 'text-gray-800' : 'text-gray-500'">Company</span>
                 </div>
 
                 <div class="nav-item flex flex-col items-center relative z-10" @click="currentStep >= 2 ? currentStep = 2 : null">
-                  <div :class="[
-                    'progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer',
-                    currentStep >= 2 
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg shadow-blue-500/50' 
-                      : 'bg-white border-gray-300 text-gray-400'
-                  ]">
+                  <div :class="['progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer', currentStep >= 2 ? 'bg-linear-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' : 'bg-white border-gray-300 text-gray-400']">
                     <span v-if="currentStep > 2" class="text-sm font-bold">✓</span>
                     <span v-else class="text-sm font-bold">2</span>
                   </div>
-                  <span class="mt-2 text-xs font-semibold" 
-                    :class="currentStep >= 2 ? 'text-gray-800' : 'text-gray-500'">Valid ID</span>
+                  <span class="mt-2 text-xs font-semibold" :class="currentStep >= 2 ? 'text-gray-800' : 'text-gray-500'">Address</span>
                 </div>
 
                 <div class="nav-item flex flex-col items-center relative z-10" @click="currentStep >= 3 ? currentStep = 3 : null">
-                  <div :class="[
-                    'progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer',
-                    currentStep >= 3 
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg shadow-blue-500/50' 
-                      : 'bg-white border-gray-300 text-gray-400'
-                  ]">
+                  <div :class="['progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer', currentStep >= 3 ? 'bg-linear-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' : 'bg-white border-gray-300 text-gray-400']">
                     <span v-if="currentStep > 3" class="text-sm font-bold">✓</span>
                     <span v-else class="text-sm font-bold">3</span>
                   </div>
-                  <span class="mt-2 text-xs font-semibold" 
-                    :class="currentStep >= 3 ? 'text-gray-800' : 'text-gray-500'">Documents</span>
+                  <span class="mt-2 text-xs font-semibold" :class="currentStep >= 3 ? 'text-gray-800' : 'text-gray-500'">Valid ID</span>
                 </div>
 
                 <div class="nav-item flex flex-col items-center relative z-10" @click="currentStep >= 4 ? currentStep = 4 : null">
-                  <div :class="[
-                    'progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer',
-                    currentStep >= 4 
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg shadow-blue-500/50' 
-                      : 'bg-white border-gray-300 text-gray-400'
-                  ]">
-                    <span class="text-sm font-bold">4</span>
+                  <div :class="['progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer', currentStep >= 4 ? 'bg-linear-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' : 'bg-white border-gray-300 text-gray-400']">
+                    <span v-if="currentStep > 4" class="text-sm font-bold">✓</span>
+                    <span v-else class="text-sm font-bold">4</span>
                   </div>
-                  <span class="mt-2 text-xs font-semibold" 
-                    :class="currentStep >= 4 ? 'text-gray-800' : 'text-gray-500'">Review</span>
+                  <span class="mt-2 text-xs font-semibold" :class="currentStep >= 4 ? 'text-gray-800' : 'text-gray-500'">Documents</span>
+                </div>
+
+                <div class="nav-item flex flex-col items-center relative z-10" @click="currentStep >= 5 ? currentStep = 5 : null">
+                  <div :class="['progress-step w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer', currentStep >= 5 ? 'bg-linear-to-br from-blue-500 to-purple-600 border-blue-500 text-white shadow-lg' : 'bg-white border-gray-300 text-gray-400']">
+                    <span class="text-sm font-bold">5</span>
+                  </div>
+                  <span class="mt-2 text-xs font-semibold" :class="currentStep >= 5 ? 'text-gray-800' : 'text-gray-500'">Review</span>
                 </div>
               </div>
             </div>
@@ -519,8 +488,8 @@
             <CardContent class="p-6">
               <div v-if="currentStep === 1" class="space-y-6">
                 <div class="text-center mb-6">
-                  <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <div class="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                       <Building2 class="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -530,33 +499,90 @@
 
                 <div class="space-y-5">
                   <div class="form-group">
-                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">
-                      Company Name
-                      <span class="text-red-500">*</span>
-                    </Label>
-                    <Input v-model="verificationForm.company_name" type="text" 
-                      class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300 form-input"
-                      placeholder="Enter your company name"
-                      @input="validateStep(1)" />
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Company Name <span class="text-red-500">*</span></Label>
+                    <Input v-model="verificationForm.company_name" type="text" class="h-12 bg-gray-50 border-gray-200 rounded-xl form-input" placeholder="Enter your company name" @input="validateStep(1)" />
                   </div>
 
                   <div class="form-group">
-                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">
-                      Business Registration Number
-                      <span class="text-red-500">*</span>
-                    </Label>
-                    <Input v-model="verificationForm.business_registration_number" type="text" 
-                      class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300 form-input"
-                      placeholder="Enter registration number"
-                      @input="validateStep(1)" />
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Business Registration Number <span class="text-red-500">*</span></Label>
+                    <Input v-model="verificationForm.business_registration_number" type="text" class="h-12 bg-gray-50 border-gray-200 rounded-xl form-input" placeholder="Enter registration number" @input="validateStep(1)" />
                   </div>
                 </div>
               </div>
 
               <div v-if="currentStep === 2" class="space-y-6">
                 <div class="text-center mb-6">
-                  <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <div class="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                      <MapPin class="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-800">Business Address & Location</h3>
+                  <p class="text-gray-600 mt-2">Where is your business located? Drag the pin to adjust.</p>
+                </div>
+
+                <div class="space-y-5">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div class="form-group">
+                        <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Province <span class="text-red-500">*</span></Label>
+                        <Input model-value="Cavite" readonly class="h-12 bg-gray-100 border-gray-200 rounded-xl cursor-not-allowed text-gray-600" />
+                     </div>
+
+                     <div class="form-group">
+                        <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">City/Municipality <span class="text-red-500">*</span></Label>
+                        <Select v-model="verificationForm.city" @update:modelValue="validateStep(2)">
+                           <SelectTrigger class="h-12 bg-gray-50 border-gray-200 rounded-xl form-select">
+                              <SelectValue placeholder="Select City/Municipality" />
+                           </SelectTrigger>
+                           <SelectContent>
+                              <SelectItem v-for="city in caviteCities" :key="city" :value="city">{{ city }}</SelectItem>
+                           </SelectContent>
+                        </Select>
+                     </div>
+                  </div>
+
+                  <div class="form-group">
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Barangay <span class="text-red-500">*</span></Label>
+                    <Input v-model="verificationForm.barangay" type="text" class="h-12 bg-gray-50 border-gray-200 rounded-xl form-input" placeholder="Enter Barangay" @input="validateStep(2)" />
+                  </div>
+
+                  <div class="form-group">
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Block/Street/Subdivision <span class="text-red-500">*</span></Label>
+                    <Textarea v-model="verificationForm.block_address" rows="2" class="px-4 py-3 bg-gray-50 border-gray-200 rounded-xl resize-none form-textarea" placeholder="Block No., Lot No., Street Name, Subdivision/Village" @input="validateStep(2)" />
+                  </div>
+
+                  <div class="form-group p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <div class="flex items-center justify-between mb-3">
+                      <Label class="smooth-color block text-sm font-semibold text-gray-700">Pin Location <span class="text-red-500">*</span></Label>
+                      <Button type="button" size="sm" @click="getCurrentLocation" :disabled="gettingLocation" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1 text-xs">
+                        <Navigation v-if="!gettingLocation" class="w-3 h-3 mr-1.5" />
+                        <Loader2 v-else class="w-3 h-3 mr-1.5 animate-spin" />
+                        {{ gettingLocation ? 'Locating...' : 'Get My Location' }}
+                      </Button>
+                    </div>
+                    
+                    <div id="map" class="h-72 w-full rounded-xl border-2 border-white shadow-md z-0 overflow-hidden relative"></div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-3">
+                       <div>
+                         <span class="text-xs text-gray-500 block mb-1">Latitude</span>
+                         <Input v-model="verificationForm.latitude" readonly class="h-10 bg-white border-blue-200" placeholder="0.000000" />
+                       </div>
+                       <div>
+                         <span class="text-xs text-gray-500 block mb-1">Longitude</span>
+                         <Input v-model="verificationForm.longitude" readonly class="h-10 bg-white border-blue-200" placeholder="0.000000" />
+                       </div>
+                    </div>
+                    <p class="text-xs text-red-500 mt-2" v-if="locationError">{{ locationError }}</p>
+                    <p class="text-xs text-gray-500 mt-2" v-else>Drag the blue pin to your exact business location.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="currentStep === 3" class="space-y-6">
+                <div class="text-center mb-6">
+                  <div class="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                       <CreditCard class="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -566,11 +592,8 @@
 
                 <div class="space-y-5">
                   <div class="form-group">
-                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">
-                      Type of Valid ID
-                      <span class="text-red-500">*</span>
-                    </Label>
-                    <Select v-model="verificationForm.valid_id_type" @update:modelValue="validateStep(2)">
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Type of Valid ID <span class="text-red-500">*</span></Label>
+                    <Select v-model="verificationForm.valid_id_type" @update:modelValue="validateStep(3)">
                       <SelectTrigger class="h-12 bg-gray-50 border-gray-200 rounded-xl form-select">
                         <SelectValue placeholder="Select ID Type" />
                       </SelectTrigger>
@@ -590,21 +613,12 @@
                   </div>
 
                   <div class="form-group">
-                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">
-                      ID Number
-                      <span class="text-red-500">*</span>
-                    </Label>
-                    <Input v-model="verificationForm.id_number" type="text" 
-                      class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300 form-input"
-                      placeholder="Enter your ID number"
-                      @input="validateStep(2)" />
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">ID Number <span class="text-red-500">*</span></Label>
+                    <Input v-model="verificationForm.id_number" type="text" class="h-12 bg-gray-50 border-gray-200 rounded-xl form-input" placeholder="Enter your ID number" @input="validateStep(3)" />
                   </div>
 
                   <div class="form-group">
-                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">
-                      Photo of Valid ID (Front)
-                      <span class="text-red-500">*</span>
-                    </Label>
+                    <Label class="smooth-color block text-sm font-semibold text-gray-700 mb-2">Photo of Valid ID (Front) <span class="text-red-500">*</span></Label>
                     <div @click="triggerFileInput('valid_id_photo')" 
                       @dragover.prevent @drop.prevent="handleFileDrop($event, 'valid_id_photo')"
                       class="file-upload-area shine-effect mt-1 cursor-pointer flex flex-col items-center justify-center px-6 pt-8 pb-8 border-2 border-dashed rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]"
@@ -621,16 +635,15 @@
                         </p>
                       </div>
                     </div>
-                    <input ref="valid_id_photo_input" type="file" class="sr-only" accept="image/*,.pdf" 
-                      @change="handleFileChange($event, 'valid_id_photo')">
+                    <input ref="valid_id_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'valid_id_photo')">
                   </div>
                 </div>
               </div>
 
-              <div v-if="currentStep === 3" class="space-y-6">
+              <div v-if="currentStep === 4" class="space-y-6">
                 <div class="text-center mb-6">
-                  <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <div class="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                       <FileText class="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -643,96 +656,76 @@
                     @dragover.prevent @drop.prevent="handleFileDrop($event, 'dti_certificate_photo')"
                     :class="[
                       'document-card file-upload-area cursor-pointer p-4 border-2 rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]',
-                      verificationForm.dti_certificate_photo 
-                        ? 'border-green-300 bg-green-50' 
-                        : 'border-gray-300 bg-white'
+                      verificationForm.dti_certificate_photo ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white'
                     ]">
                     <div class="flex flex-col items-center justify-center space-y-2">
-                      <div class="p-3 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
+                      <div class="p-3 rounded-lg bg-linear-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
                         <FileText class="h-8 w-8" :class="verificationForm.dti_certificate_photo ? 'text-green-500' : 'text-gray-400'" />
                       </div>
                       <span class="text-sm font-semibold text-gray-700 text-center">DTI Certificate</span>
                       <span class="text-xs text-gray-500 text-center">Click to upload</span>
-                      <p v-if="verificationForm.dti_certificate_photo" class="text-xs text-green-600 font-medium">
-                        ✓ Uploaded
-                      </p>
+                      <p v-if="verificationForm.dti_certificate_photo" class="text-xs text-green-600 font-medium">✓ Uploaded</p>
                     </div>
-                    <input ref="dti_certificate_photo_input" type="file" class="sr-only" accept="image/*,.pdf" 
-                      @change="handleFileChange($event, 'dti_certificate_photo')">
+                    <input ref="dti_certificate_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'dti_certificate_photo')">
                   </div>
 
                   <div @click="triggerFileInput('mayor_permit_photo')" 
                     @dragover.prevent @drop.prevent="handleFileDrop($event, 'mayor_permit_photo')"
                     :class="[
                       'document-card file-upload-area cursor-pointer p-4 border-2 rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]',
-                      verificationForm.mayor_permit_photo 
-                        ? 'border-green-300 bg-green-50' 
-                        : 'border-gray-300 bg-white'
+                      verificationForm.mayor_permit_photo ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white'
                     ]">
                     <div class="flex flex-col items-center justify-center space-y-2">
-                      <div class="p-3 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
+                      <div class="p-3 rounded-lg bg-linear-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
                         <FileText class="h-8 w-8" :class="verificationForm.mayor_permit_photo ? 'text-green-500' : 'text-gray-400'" />
                       </div>
                       <span class="text-sm font-semibold text-gray-700 text-center">Mayor's Permit</span>
                       <span class="text-xs text-gray-500 text-center">Click to upload</span>
-                      <p v-if="verificationForm.mayor_permit_photo" class="text-xs text-green-600 font-medium">
-                        ✓ Uploaded
-                      </p>
+                      <p v-if="verificationForm.mayor_permit_photo" class="text-xs text-green-600 font-medium">✓ Uploaded</p>
                     </div>
-                    <input ref="mayor_permit_photo_input" type="file" class="sr-only" accept="image/*,.pdf" 
-                      @change="handleFileChange($event, 'mayor_permit_photo')">
+                    <input ref="mayor_permit_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'mayor_permit_photo')">
                   </div>
 
                   <div @click="triggerFileInput('barangay_clearance_photo')" 
                     @dragover.prevent @drop.prevent="handleFileDrop($event, 'barangay_clearance_photo')"
                     :class="[
                       'document-card file-upload-area cursor-pointer p-4 border-2 rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]',
-                      verificationForm.barangay_clearance_photo 
-                        ? 'border-green-300 bg-green-50' 
-                        : 'border-gray-300 bg-white'
+                      verificationForm.barangay_clearance_photo ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white'
                     ]">
                     <div class="flex flex-col items-center justify-center space-y-2">
-                      <div class="p-3 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
+                      <div class="p-3 rounded-lg bg-linear-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
                         <FileText class="h-8 w-8" :class="verificationForm.barangay_clearance_photo ? 'text-green-500' : 'text-gray-400'" />
                       </div>
                       <span class="text-sm font-semibold text-gray-700 text-center">Barangay Clearance</span>
                       <span class="text-xs text-gray-500 text-center">Click to upload</span>
-                      <p v-if="verificationForm.barangay_clearance_photo" class="text-xs text-green-600 font-medium">
-                        ✓ Uploaded
-                      </p>
+                      <p v-if="verificationForm.barangay_clearance_photo" class="text-xs text-green-600 font-medium">✓ Uploaded</p>
                     </div>
-                    <input ref="barangay_clearance_photo_input" type="file" class="sr-only" accept="image/*,.pdf" 
-                      @change="handleFileChange($event, 'barangay_clearance_photo')">
+                    <input ref="barangay_clearance_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'barangay_clearance_photo')">
                   </div>
 
                   <div @click="triggerFileInput('business_registration_photo')" 
                     @dragover.prevent @drop.prevent="handleFileDrop($event, 'business_registration_photo')"
                     :class="[
                       'document-card file-upload-area cursor-pointer p-4 border-2 rounded-xl transition-all duration-300 hover:border-blue-400 hover:bg-blue-50 hover:scale-[1.02]',
-                      verificationForm.business_registration_photo 
-                        ? 'border-green-300 bg-green-50' 
-                        : 'border-gray-300 bg-white'
+                      verificationForm.business_registration_photo ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white'
                     ]">
                     <div class="flex flex-col items-center justify-center space-y-2">
-                      <div class="p-3 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
+                      <div class="p-3 rounded-lg bg-linear-to-br from-gray-100 to-gray-200 mb-2 icon-hover">
                         <FileText class="h-8 w-8" :class="verificationForm.business_registration_photo ? 'text-green-500' : 'text-gray-400'" />
                       </div>
                       <span class="text-sm font-semibold text-gray-700 text-center">Business Plate</span>
                       <span class="text-xs text-gray-500 text-center">Click to upload</span>
-                      <p v-if="verificationForm.business_registration_photo" class="text-xs text-green-600 font-medium">
-                        ✓ Uploaded
-                      </p>
+                      <p v-if="verificationForm.business_registration_photo" class="text-xs text-green-600 font-medium">✓ Uploaded</p>
                     </div>
-                    <input ref="business_registration_photo_input" type="file" class="sr-only" accept="image/*,.pdf" 
-                      @change="handleFileChange($event, 'business_registration_photo')">
+                    <input ref="business_registration_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'business_registration_photo')">
                   </div>
                 </div>
               </div>
 
-              <div v-if="currentStep === 4" class="space-y-6">
+              <div v-if="currentStep === 5" class="space-y-6">
                 <div class="text-center mb-6">
-                  <div class="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
-                    <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <div class="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 bg-linear-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                       <CheckCircle class="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -741,7 +734,7 @@
                 </div>
 
                 <div class="space-y-4">
-                  <div class="document-card bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
+                  <div class="document-card bg-linear-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
                     <h4 class="font-bold text-gray-800 mb-4 flex items-center">
                       <Building2 class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
                       Company Information
@@ -758,7 +751,36 @@
                     </div>
                   </div>
 
-                  <div class="document-card bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
+                  <div class="document-card bg-linear-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
+                    <h4 class="font-bold text-gray-800 mb-4 flex items-center">
+                      <MapPin class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
+                      Business Address
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <p class="text-xs text-gray-600 mb-1">Province</p>
+                        <p class="font-semibold text-gray-900">Cavite</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-gray-600 mb-1">City/Municipality</p>
+                        <p class="font-semibold text-gray-900">{{ verificationForm.city || 'Not provided' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-gray-600 mb-1">Barangay</p>
+                        <p class="font-semibold text-gray-900">{{ verificationForm.barangay || 'Not provided' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-gray-600 mb-1">Coordinates</p>
+                        <p class="font-semibold text-gray-900 text-xs">{{ verificationForm.latitude }}, {{ verificationForm.longitude }}</p>
+                      </div>
+                      <div class="col-span-2">
+                        <p class="text-xs text-gray-600 mb-1">Block/Street</p>
+                        <p class="font-semibold text-gray-900">{{ verificationForm.block_address || 'Not provided' }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="document-card bg-linear-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
                     <h4 class="font-bold text-gray-800 mb-4 flex items-center">
                       <CreditCard class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
                       Valid ID Details
@@ -775,7 +797,7 @@
                     </div>
                   </div>
 
-                  <div class="document-card bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
+                  <div class="document-card bg-linear-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 p-5">
                     <h4 class="font-bold text-gray-800 mb-4 flex items-center">
                       <FileText class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
                       Uploaded Documents
@@ -784,7 +806,7 @@
                       <template v-for="(value, key) in verificationForm" :key="key">
                         <div v-if="key.includes('photo') && value && typeof value === 'object' && value.name" 
                           class="flex items-center p-3 bg-white border border-gray-200 rounded-lg document-card">
-                          <div class="p-1.5 bg-green-100 rounded-lg mr-3 flex-shrink-0 icon-hover">
+                          <div class="p-1.5 bg-green-100 rounded-lg mr-3 shrink-0 icon-hover">
                             <CheckCircle2 class="w-4 h-4 text-green-500" />
                           </div>
                           <span class="text-sm text-gray-700 truncate font-medium">{{ value.name }}</span>
@@ -793,7 +815,7 @@
                     </div>
                   </div>
 
-                  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                  <div class="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
                     <div class="flex items-start">
                       <input type="checkbox" v-model="acceptedTerms" id="terms" 
                         class="form-checkbox mt-1 mr-3 w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
@@ -813,26 +835,26 @@
                 </Button>
                 <div v-else></div>
 
-                <Button v-if="currentStep < 4" @click="nextStep" 
+                <Button v-if="currentStep < 5" @click="nextStep" 
                   :disabled="!isStepValid(currentStep)"
                   class="h-auto px-5 py-2.5 rounded-xl transition-all duration-300 flex items-center font-medium shadow-md touch-friendly"
                   :class="[
                     isStepValid(currentStep) 
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-blue-500/25 btn-hover-effect' 
+                      ? 'bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-blue-500/25 btn-hover-effect' 
                       : 'bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-not-allowed'
                   ]">
                   Continue
                   <ChevronRight class="w-4 h-4 ml-2 icon-hover" />
                 </Button>
 
-                <Button v-if="currentStep === 4" @click="submitVerification" 
-                  :disabled="!isStepValid(4) || !acceptedTerms || submittingVerification"
+                <Button v-if="currentStep === 5" @click="submitVerification" 
+                  :disabled="!isStepValid(5) || !acceptedTerms || submittingVerification"
                   class="h-auto px-5 py-2.5 rounded-xl transition-all duration-300 flex items-center font-medium shadow-md touch-friendly"
                   :class="[
-                    isStepValid(4) && acceptedTerms && !submittingVerification 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect' 
+                    isStepValid(5) && acceptedTerms && !submittingVerification 
+                      ? 'bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect' 
                       : 'bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-not-allowed',
-                    submittingVerification ? 'bg-gradient-to-r from-green-400 to-green-500 cursor-wait' : ''
+                    submittingVerification ? 'bg-linear-to-r from-green-400 to-green-500 cursor-wait' : ''
                   ]">
                   <Loader2 v-if="submittingVerification" class="w-4 h-4 mr-2 animate-spin" />
                   <Save v-else class="w-4 h-4 mr-2 icon-hover" />
@@ -844,7 +866,7 @@
 
           <CardContent v-if="verificationData && verificationData.has_submitted && (verificationData.status === 'pending' || verificationData.status === 'approved')" 
             class="p-6">
-            <div class="document-card bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-5">
+            <div class="document-card bg-linear-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-5">
               <h3 class="font-bold text-gray-800 mb-4">Submitted Documents</h3>
               <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -855,6 +877,15 @@
                   <div>
                     <p class="text-xs text-gray-600 mb-1">ID Type:</p>
                     <p class="font-semibold text-gray-900">{{ verificationData.id_type_name }}</p>
+                  </div>
+                  <div v-if="verificationData.address" class="col-span-1 md:col-span-2">
+                    <p class="text-xs text-gray-600 mb-1">Registered Address:</p>
+                    <p class="font-semibold text-gray-900">
+                        {{ verificationData.address.block_address }}, 
+                        {{ verificationData.address.barangay }}, 
+                        {{ verificationData.address.city }}, 
+                        {{ verificationData.address.province }}
+                    </p>
                   </div>
                   <div>
                     <p class="text-xs text-gray-600 mb-1">ID Number:</p>
@@ -885,9 +916,9 @@
                   <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at) }}</p>
                 </div>
                 
-                <div v-if="verificationData.status === 'pending'" class="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
+                <div v-if="verificationData.status === 'pending'" class="bg-linear-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
                   <div class="flex items-center">
-                    <div class="p-2 bg-yellow-100 rounded-lg mr-3 flex-shrink-0 icon-hover">
+                    <div class="p-2 bg-yellow-100 rounded-lg mr-3 shrink-0 icon-hover">
                       <Clock class="w-5 h-5 text-yellow-600" />
                     </div>
                     <div>
@@ -901,22 +932,36 @@
           </CardContent>
         </Card>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '@/utils/axios' // Assuming axios is set up here
+import axios from '@/utils/axios' 
 import { toast, Toaster } from 'vue-sonner'
 import { 
   Loader2, Save, User, Mail, Phone, Camera, 
   CheckCircle2, Clock, XCircle, AlertCircle, 
   Briefcase, Lock, ShieldCheck, AlertTriangle, 
   Eye, EyeOff, Key, Info, Building2, CreditCard, 
-  Upload, FileText, CheckCircle, ChevronLeft, ChevronRight 
+  Upload, FileText, CheckCircle, ChevronLeft, ChevronRight,
+  MapPin, Navigation
 } from 'lucide-vue-next'
+
+// Leaflet
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Import Marker Images with TypeScript ignoring to bypass missing definition file error
+// @ts-ignore
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+// @ts-ignore
+import iconUrl from 'leaflet/dist/images/marker-icon.png'
+// @ts-ignore
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
 // Shadcn Components
 import { Button } from '@/components/ui/button'
@@ -943,6 +988,23 @@ const changingPassword = ref(false)
 const submittingVerification = ref(false)
 const currentStep = ref(1)
 const acceptedTerms = ref(false)
+
+// Geolocation State
+const gettingLocation = ref(false)
+const locationError = ref('')
+
+// Map State
+const map = ref(null)
+const marker = ref(null)
+
+// Constants
+const caviteCities = [
+  'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
+  'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
+  'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 
+  'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 
+  'Silang', 'Tagaytay', 'Tanza', 'Ternate', 'Trece Martires'
+]
 
 // Data Structures
 const userInfo = reactive({
@@ -974,6 +1036,13 @@ const verificationData = ref(null)
 
 const verificationForm = reactive({
   company_name: '',
+  // NEW ADDRESS FIELDS
+  city: '',
+  barangay: '',
+  block_address: '',
+  latitude: '',
+  longitude: '',
+  // Existing fields
   valid_id_type: '',
   id_number: '',
   valid_id_photo: null,
@@ -1033,6 +1102,9 @@ const hasUnsavedChanges = computed(() => userInfoChanged.value || distributorInf
 
 const isVerificationFormValid = computed(() => {
   return verificationForm.company_name &&
+         verificationForm.city && 
+         verificationForm.barangay && 
+         verificationForm.block_address &&
          verificationForm.valid_id_type &&
          verificationForm.id_number &&
          verificationForm.valid_id_photo &&
@@ -1067,25 +1139,24 @@ const formatDateTime = (dateTimeString) => {
   return date.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// Wizard Navigation
+// Wizard Navigation - UPDATED for 5 Steps
 const isStepValid = (step) => {
   switch(step) {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
-    case 2: return verificationForm.valid_id_type && verificationForm.id_number && verificationForm.valid_id_photo
-    case 3: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo
-    case 4: return isVerificationFormValid.value
+    case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude
+    case 3: return verificationForm.valid_id_type && verificationForm.id_number && verificationForm.valid_id_photo
+    case 4: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo
+    case 5: return isVerificationFormValid.value
     default: return false
   }
 }
 
 const validateStep = (step) => {
-  // Logic to trigger validation reactivity if needed, 
-  // but computed/reactive handles this mostly in Vue 3
   return isStepValid(step)
 }
 
 const nextStep = () => {
-  if (isStepValid(currentStep.value) && currentStep.value < 4) {
+  if (isStepValid(currentStep.value) && currentStep.value < 5) {
     currentStep.value++
     scrollToTop()
   }
@@ -1099,12 +1170,16 @@ const previousStep = () => {
 }
 
 const getProgressWidth = () => {
-  const percentage = ((currentStep.value - 1) / 3) * 100
+  // Adjusted for 5 steps (0% to 100%)
+  const percentage = ((currentStep.value - 1) / 4) * 100
   return `${percentage}%`
 }
 
 const scrollToTop = () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  const wizardElement = document.getElementById('verification-wizard')
+  if (wizardElement) {
+    wizardElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
 }
 
 const formatIDType = (type) => {
@@ -1131,6 +1206,182 @@ const toggleConfirmPasswordVisibility = () => showConfirmPassword.value = !showC
 const changeProfilePhoto = () => {
   toast.info('Feature to change profile photo would open file picker')
 }
+
+// ---- LEAFLET MAP LOGIC ----
+
+// Helper to safely find address components (case-insensitive)
+const getAddressComponent = (address, keys) => {
+  if (!address) return '';
+  for (const key of keys) {
+    if (address[key]) return address[key];
+  }
+  return '';
+}
+
+// Fix Leaflet Icons in Vue/Vite environment
+const fixLeafletIcons = () => {
+  // Fix TS Error 2339 by casting to any
+  delete (L.Icon.Default.prototype as any)._getIconUrl
+  
+  L.Icon.Default.mergeOptions({
+    // Fix TS Error 1343 by using direct imports instead of import.meta.url
+    iconRetinaUrl,
+    iconUrl,
+    shadowUrl,
+  })
+}
+
+// Initialize Map
+const initMap = () => {
+  // Prevent multiple initializations
+  if (map.value) return;
+  
+  // Basic Cavite Coordinates (center point)
+  const defaultLat = 14.24
+  const defaultLng = 120.88
+  
+  // Use existing form values if available, otherwise default
+  const startLat = verificationForm.latitude ? parseFloat(verificationForm.latitude) : defaultLat
+  const startLng = verificationForm.longitude ? parseFloat(verificationForm.longitude) : defaultLng
+
+  fixLeafletIcons()
+
+  map.value = L.map('map').setView([startLat, startLng], 12)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map.value)
+
+  marker.value = L.marker([startLat, startLng], { draggable: true }).addTo(map.value)
+
+  // Drag End Event - Reverse Geocode
+  marker.value.on('dragend', async function(e) {
+    const latlng = e.target.getLatLng()
+    await updateLocationFromCoords(latlng.lat, latlng.lng)
+  })
+
+  // Map Click Event - Move Marker
+  map.value.on('click', async function(e) {
+    marker.value.setLatLng(e.latlng)
+    await updateLocationFromCoords(e.latlng.lat, e.latlng.lng)
+  })
+}
+
+// Reverse Geocode Logic (Nominatim OSM)
+const updateLocationFromCoords = async (lat, lon) => {
+  verificationForm.latitude = lat.toString()
+  verificationForm.longitude = lon.toString()
+  
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
+    )
+    
+    if (!response.ok) throw new Error('Failed to fetch address')
+    
+    const data = await response.json()
+    const addr = data.address
+    
+    if (addr) {
+      // 1. City/Municipality
+      const rawCity = getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county'])
+      const matchedCity = caviteCities.find(c => 
+        rawCity.toLowerCase().includes(c.toLowerCase()) || 
+        c.toLowerCase().includes(rawCity.toLowerCase())
+      )
+      verificationForm.city = matchedCity || rawCity
+
+      // 2. Barangay
+      const rawBarangay = getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district'])
+      verificationForm.barangay = rawBarangay.replace('Barangay', '').trim()
+
+      // 3. Block Address
+      const parts = []
+      if (addr.house_number) parts.push(`No. ${addr.house_number}`)
+      if (addr.building) parts.push(addr.building)
+      
+      const road = getAddressComponent(addr, ['road', 'pedestrian', 'highway', 'street'])
+      if (road) parts.push(road)
+      
+      const subdivision = getAddressComponent(addr, ['residential', 'subdivision', 'village', 'allotments'])
+      if (subdivision && subdivision !== rawCity && subdivision !== rawBarangay) {
+          parts.push(subdivision)
+      }
+
+      verificationForm.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map')
+    }
+  } catch (error) {
+    console.error('Reverse geocoding error:', error)
+  }
+}
+
+// Geolocation Logic - Updated for Leaflet
+const getCurrentLocation = async () => {
+  if (!navigator.geolocation) {
+    locationError.value = "Geolocation is not supported by your browser"
+    return
+  }
+  
+  gettingLocation.value = true
+  locationError.value = ""
+  
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude
+      const lon = position.coords.longitude
+      
+      // Update form
+      verificationForm.latitude = lat.toString()
+      verificationForm.longitude = lon.toString()
+      
+      // Update Map
+      if (map.value && marker.value) {
+        map.value.flyTo([lat, lon], 16)
+        marker.value.setLatLng([lat, lon])
+        await updateLocationFromCoords(lat, lon)
+      } else {
+        // Fallback if map isn't ready (shouldn't happen on step 2)
+        await updateLocationFromCoords(lat, lon)
+      }
+      
+      gettingLocation.value = false
+    },
+    (error) => {
+      gettingLocation.value = false
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          locationError.value = "User denied the request for Geolocation."
+          break
+        case error.POSITION_UNAVAILABLE:
+          locationError.value = "Location information is unavailable."
+          break
+        case error.TIMEOUT:
+          locationError.value = "Request timed out."
+          break
+        default:
+          locationError.value = "An unknown error occurred."
+          break
+      }
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  )
+}
+
+// Watcher to Initialize Map when Step 2 becomes visible
+watch(currentStep, async (newStep) => {
+  if (newStep === 2) {
+    await nextTick() // Wait for v-if to render the DOM element
+    initMap()
+  } else {
+    // Cleanup map instance if user leaves step 2
+    if (map.value) {
+      map.value.remove()
+      map.value = null
+      marker.value = null
+    }
+  }
+})
+
 
 // API Calls
 const fetchUserData = async () => {
@@ -1183,7 +1434,6 @@ const fetchDistributorData = async () => {
       }
     } catch (error) {
       console.error('Error fetching distributor data:', error)
-      // Similar error handling as original
       Object.assign(distributorInfo, {
           company_name: '',
           business_registration_number: '',
@@ -1206,6 +1456,15 @@ const fetchVerificationData = async () => {
         verificationForm.valid_id_type = verificationData.value.valid_id_type || ''
         verificationForm.id_number = verificationData.value.id_number || ''
         verificationForm.business_registration_number = verificationData.value.business_registration_number || ''
+        
+        // Populate address if exists (optional logic for rejected state re-fill)
+        if(verificationData.value.address) {
+            verificationForm.city = verificationData.value.address.city || ''
+            verificationForm.barangay = verificationData.value.address.barangay || ''
+            verificationForm.block_address = verificationData.value.address.block_address || ''
+            verificationForm.latitude = verificationData.value.address.latitude || ''
+            verificationForm.longitude = verificationData.value.address.longitude || ''
+        }
       }
     }
   } catch (error) {
@@ -1341,11 +1600,19 @@ const submitVerification = async () => {
     formData.append('id_number', verificationForm.id_number)
     formData.append('business_registration_number', verificationForm.business_registration_number)
     
-    formData.append('valid_id_photo', verificationForm.valid_id_photo)
-    formData.append('dti_certificate_photo', verificationForm.dti_certificate_photo)
-    formData.append('mayor_permit_photo', verificationForm.mayor_permit_photo)
-    formData.append('barangay_clearance_photo', verificationForm.barangay_clearance_photo)
-    formData.append('business_registration_photo', verificationForm.business_registration_photo)
+    // Append Address Fields
+    formData.append('province', 'Cavite')
+    formData.append('city', verificationForm.city)
+    formData.append('barangay', verificationForm.barangay)
+    formData.append('block_address', verificationForm.block_address)
+    formData.append('latitude', verificationForm.latitude)
+    formData.append('longitude', verificationForm.longitude)
+    
+    if(verificationForm.valid_id_photo) formData.append('valid_id_photo', verificationForm.valid_id_photo)
+    if(verificationForm.dti_certificate_photo) formData.append('dti_certificate_photo', verificationForm.dti_certificate_photo)
+    if(verificationForm.mayor_permit_photo) formData.append('mayor_permit_photo', verificationForm.mayor_permit_photo)
+    if(verificationForm.barangay_clearance_photo) formData.append('barangay_clearance_photo', verificationForm.barangay_clearance_photo)
+    if(verificationForm.business_registration_photo) formData.append('business_registration_photo', verificationForm.business_registration_photo)
     
     const response = await axios.post('/distributor/requirements', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -1374,7 +1641,12 @@ const submitVerification = async () => {
         mayor_permit_photo: null,
         barangay_clearance_photo: null,
         business_registration_number: '',
-        business_registration_photo: null
+        business_registration_photo: null,
+        city: '',
+        barangay: '',
+        block_address: '',
+        latitude: '',
+        longitude: ''
       })
       currentStep.value = 1
       acceptedTerms.value = false
@@ -1482,16 +1754,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Paste your exact provided CSS content here to maintain 100% design fidelity. 
-   I have included the original CSS file logic below as part of this style block.
-*/
-
-/* Smooth scrolling */
+/* Keeping original styles as requested */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar with gradient */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1513,7 +1780,6 @@ html {
   transform: scale(1.1);
 }
 
-/* Gradient text effects */
 .text-gradient {
   background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
   -webkit-background-clip: text;
@@ -1521,7 +1787,6 @@ html {
   background-clip: text;
 }
 
-/* Modern card shadows with enhanced hover */
 .card-shadow {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1532,7 +1797,6 @@ html {
   transform: translateY(-4px);
 }
 
-/* Form input hover effects */
 .form-input {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: left center;
@@ -1551,7 +1815,6 @@ html {
   box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
 }
 
-/* Select dropdown hover */
 .form-select {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -1570,7 +1833,6 @@ html {
   box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
 }
 
-/* Textarea hover effects */
 .form-textarea {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform-origin: top left;
@@ -1589,7 +1851,6 @@ html {
   box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
 }
 
-/* File upload area hover effects */
 .file-upload-area {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -1622,7 +1883,6 @@ html {
   }
 }
 
-/* Button hover effects with 3D illusion */
 .btn-hover-effect {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -1654,7 +1914,6 @@ html {
   transition: transform 0.1s ease;
 }
 
-/* Checkbox hover effects */
 .form-checkbox {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -1681,7 +1940,6 @@ html {
   }
 }
 
-/* Progress step hover effects */
 .progress-step {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -1705,7 +1963,6 @@ html {
   }
 }
 
-/* Card header hover effects */
 .card-header-hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1714,7 +1971,6 @@ html {
   background-position: 100% 50%;
 }
 
-/* Status badge hover effects */
 .status-badge {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1724,7 +1980,6 @@ html {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Document card hover effects */
 .document-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -1736,7 +1991,6 @@ html {
   border-color: #3b82f6;
 }
 
-/* Password visibility toggle hover */
 .password-toggle {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1746,7 +2000,6 @@ html {
   color: #3b82f6;
 }
 
-/* Tab/step navigation hover */
 .nav-item {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -1778,7 +2031,6 @@ html {
   }
 }
 
-/* Shine effect for premium elements */
 .shine-effect {
   position: relative;
   overflow: hidden;
@@ -1809,7 +2061,6 @@ html {
   transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
 }
 
-/* Icon hover effects */
 .icon-hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1819,7 +2070,6 @@ html {
   filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.1));
 }
 
-/* Touch-friendly buttons with feedback */
 @media (max-width: 768px) {
   .touch-friendly {
     min-height: 48px;
@@ -1833,7 +2083,6 @@ html {
   }
 }
 
-/* Form group hover effects */
 .form-group {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1851,7 +2100,6 @@ html {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Avatar hover effects */
 .avatar-hover {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1861,14 +2109,12 @@ html {
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* Smooth color transitions */
 .smooth-color {
   transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Depth effect on hover */
 .depth-hover {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1880,7 +2126,6 @@ html {
     0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* Page transition */
 .page-transition {
   animation: pageFadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }

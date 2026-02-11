@@ -24,10 +24,18 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
             
-            // ID verification fields
+            // Employment Information
+            $table->enum('employment_type', ['full_time', 'part_time', 'contract', 'temporary'])->default('full_time');
+            $table->date('hire_date')->nullable();
+            $table->decimal('salary', 12, 2)->default(0.00);
+            $table->string('position')->default('Operational Distributor');
+            
+            // Documents
             $table->string('valid_id_type')->nullable();
             $table->string('id_number')->nullable();
             $table->string('valid_id_photo')->nullable();
+            $table->string('resume')->nullable();
+            $table->string('employment_contract')->nullable();
             
             // Status fields
             $table->enum('status', ['pending', 'active', 'inactive'])->default('active');
