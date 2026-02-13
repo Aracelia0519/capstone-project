@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Distributor\FinanceManagerController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Distributor\ProductController;
 use App\Http\Controllers\Api\Employee\AttendanceRequestController;
+use App\Http\Controllers\Api\Employee\PayrollController;
 
 
 // Public routes
@@ -266,6 +267,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/requests/{id}/reject', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'reject']);
             Route::get('/statistics', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'statistics']);
         });
+
+        Route::prefix('payroll-requests')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Finance\PayrollRequestController::class, 'index']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\Finance\PayrollRequestController::class, 'show']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\Finance\PayrollRequestController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Finance\PayrollRequestController::class, 'reject']);
+        });
+
+        Route::prefix('disbursement')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Finance\PayrollDisbursementController::class, 'index']);
+            Route::post('/{id}/pay', [\App\Http\Controllers\Api\Finance\PayrollDisbursementController::class, 'markAsPaid']);
+        });
     });
 
     // Employee Attendance Routes
@@ -279,6 +292,11 @@ Route::middleware('auth:sanctum')->group(function () {
             
             // New Route for Requesting Adjustment
             Route::post('/request', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'submitRequest']);
+        });
+
+        Route::prefix('payroll')->group(function () {
+            Route::get('/', [PayrollController::class, 'index']);
+            Route::get('/{id}', [PayrollController::class, 'show']);
         });
     });
 

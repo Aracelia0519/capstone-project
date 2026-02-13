@@ -80,7 +80,8 @@ import PaymentMethods from '@/views/finance/PaymentMethods.vue'
 import Invoices from '@/views/finance/Invoices.vue'
 import ReportsFinance from '@/views/finance/ReportsFinance.vue'
 import ProcurementRequestFinance from '@/views/finance/ProcurementRequestFinance.vue'
-
+import PayrollRequestFinance from '@/views/finance/PayrollRequestFinance.vue'
+import PayrollPaidFinance from '@/views/finance/PayrollPaidFinance.vue'
 
 import CRMLayout from '@/layouts/CRMLayout.vue'
 import CRMDashboard from '@/views/CRM/CRMDashboard.vue'
@@ -510,6 +511,16 @@ const routes = [
         path: 'procurementRequestFinance',
         name: 'procurementRequestFinance',
         component: ProcurementRequestFinance
+      },
+      {
+        path: 'PayrollRequestFinance',
+        name: 'PayrollRequestFinance',
+        component: PayrollRequestFinance
+      },
+      {
+        path: 'PayrollPaidFinance',
+        name: 'PayrollPaidFinance',
+        component: PayrollPaidFinance
       },
     ]
   },

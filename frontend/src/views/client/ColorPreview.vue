@@ -32,7 +32,7 @@
                   
                   <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold text-white text-lg">Color {{ index + 1 }}</h3>
-                    <Switch :checked="color.active" @update:checked="color.active = $event" />
+                    <Switch :model-value="color.active" @update:model-value="toggleActive(index, $event)" />
                   </div>
 
                   <div class="space-y-4">
@@ -49,7 +49,7 @@
                         <Label class="text-xs text-slate-400 mb-2 block uppercase tracking-tighter">Hex Selection</Label>
                         <div class="flex gap-2">
                           <Input type="color" v-model="color.hex" @input="onColorChange(index, $event)" class="w-12 h-10 p-1 bg-slate-950 border-slate-700 cursor-pointer" />
-                          <Input v-model="color.hex" class="h-10 bg-slate-950/50 border-slate-700 text-xs font-mono" readonly />
+                          <Input v-model="color.hex" class="h-10 bg-slate-950/50 border-slate-700 text-xs font-mono text-white" readonly />
                         </div>
                       </div>
 
@@ -60,7 +60,7 @@
                         </div>
                         <Slider 
                           :model-value="[color.weight]" 
-                          @update:model-value="(v) => color.weight = v[0]" 
+                          @update:model-value="(v) => updateWeight(index, v[0])" 
                           :max="100" 
                           :step="1" 
                           :disabled="!color.active" 
@@ -286,9 +286,9 @@ import api from '@/utils/axios'
 
 // --- State ---
 const colors = ref([
-  { id: 1, name: 'Vibrant Red', hex: '#FF3636', rgb: '255, 54, 54', active: true, weight: 40 },
-  { id: 2, name: 'Sunshine Yellow', hex: '#FFE436', rgb: '255, 228, 54', active: true, weight: 35 },
-  { id: 3, name: 'Ocean Blue', hex: '#00C8FF', rgb: '0, 200, 255', active: true, weight: 25 }
+  { id: 1, name: 'Vibrant Red', hex: '#FF3636', rgb: '255, 54, 54', active: true, weight: 34 },
+  { id: 2, name: 'Sunshine Yellow', hex: '#FFE436', rgb: '255, 228, 54', active: true, weight: 33 },
+  { id: 3, name: 'Ocean Blue', hex: '#00C8FF', rgb: '0, 200, 255', active: true, weight: 33 }
 ])
 
 const mixedColor = ref({
@@ -401,6 +401,9 @@ const calculateMixedColor = () => {
     tr += r * c.weight; tg += g * c.weight; tb += b * c.weight; tw += c.weight;
   });
 
+  // Prevent divide by zero if weights somehow reach 0
+  tw = tw || 1;
+
   const r = Math.round(tr / tw), g = Math.round(tg / tw), b = Math.round(tb / tw);
   const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
   const hsl = rgbToHSL(r, g, b);
@@ -441,6 +444,63 @@ const generateComplementary = () => {
 }
 
 // --- Methods ---
+
+const toggleActive = (index, isActive) => {
+  colors.value[index].active = isActive;
+  balanceWeights(); // Always re-balance to 100% when checking/unchecking
+}
+
+// Smart Weight Adjustment System
+const updateWeight = (index, newVal) => {
+  const color = colors.value[index];
+  if (!color.active) return;
+  
+  // 1. Identify other active colors
+  const otherActive = colors.value.filter((c, i) => c.active && i !== index);
+  
+  // Edge Case: If this is the only active color, it MUST be 100%.
+  if (otherActive.length === 0) {
+    color.weight = 100;
+    return;
+  }
+
+  // 2. Clamp the new value (must leave at least 0% for others, though logic handles it)
+  // Actually, max value for this one is 100.
+  let validVal = Math.max(0, Math.min(100, newVal));
+  
+  color.weight = validVal;
+  
+  // 3. Distribute the remaining percentage among other active colors
+  const remainingSpace = 100 - validVal;
+  const currentOthersSum = otherActive.reduce((sum, c) => sum + c.weight, 0);
+  
+  if (currentOthersSum === 0) {
+    // If others were all 0, distribute equally
+    const split = Math.floor(remainingSpace / otherActive.length);
+    let remainder = remainingSpace % otherActive.length;
+    
+    otherActive.forEach(c => {
+      c.weight = split + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+    });
+  } else {
+    // Distribute proportionally based on their current weights
+    let distributed = 0;
+    
+    // We iterate through all but the last one to assign proportional weights
+    for (let i = 0; i < otherActive.length - 1; i++) {
+      const c = otherActive[i];
+      const ratio = c.weight / currentOthersSum;
+      const newWeight = Math.round(ratio * remainingSpace);
+      c.weight = newWeight;
+      distributed += newWeight;
+    }
+    
+    // Assign the exact remainder to the last one to ensure sum is exactly 100
+    otherActive[otherActive.length - 1].weight = remainingSpace - distributed;
+  }
+}
+
 const onColorChange = (i, e) => {
   const hex = e.target.value.toUpperCase();
   const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
@@ -450,14 +510,35 @@ const onColorChange = (i, e) => {
 
 const randomizeColors = () => {
   colors.value.forEach(c => {
+    if (!c.active) return;
     c.hex = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
     const r = parseInt(c.hex.slice(1,3), 16), g = parseInt(c.hex.slice(3,5), 16), b = parseInt(c.hex.slice(5,7), 16);
     c.rgb = `${r}, ${g}, ${b}`;
-    c.active = true;
+  });
+  // Note: We do NOT need to re-balance here because weights didn't change, only HEX values.
+}
+
+const balanceWeights = () => {
+  const activeColors = colors.value.filter(c => c.active);
+  const count = activeColors.length;
+  
+  if (count === 0) return;
+  
+  const baseWeight = Math.floor(100 / count);
+  let remainder = 100 % count;
+  
+  colors.value.forEach(c => {
+    if (c.active) {
+      let weightToAdd = baseWeight;
+      if (remainder > 0) {
+        weightToAdd++;
+        remainder--;
+      }
+      c.weight = weightToAdd;
+    }
   });
 }
 
-const balanceWeights = () => colors.value.forEach(c => c.weight = 33)
 const resetColors = () => location.reload()
 
 const copyColor = (hex) => {
@@ -502,7 +583,13 @@ const saveMixedColor = async () => {
 const applySuggestion = (s) => {
   const target = colors.value.find(c => !c.active) || colors.value[0];
   target.hex = s.hex;
-  target.active = true;
+  
+  // If target was inactive, activate it and rebalance
+  if (!target.active) {
+    target.active = true;
+    balanceWeights();
+  }
+  
   const r = parseInt(s.hex.slice(1,3), 16), g = parseInt(s.hex.slice(3,5), 16), b = parseInt(s.hex.slice(5,7), 16);
   target.rgb = `${r}, ${g}, ${b}`;
 }
@@ -510,7 +597,10 @@ const applySuggestion = (s) => {
 const nextTip = () => currentTip.value = (currentTip.value + 1) % tips.length
 
 watch(colors, calculateMixedColor, { deep: true })
-onMounted(calculateMixedColor)
+onMounted(() => {
+  balanceWeights(); // Ensure strictly 100% on load
+  calculateMixedColor();
+})
 </script>
 
 <style scoped>

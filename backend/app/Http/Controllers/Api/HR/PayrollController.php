@@ -350,7 +350,6 @@ class PayrollController extends Controller
                     'net_pay' => $item['net_pay'],
                     'status' => 'pending',
                     'created_by' => Auth::id(), 
-                    'approved_by' => Auth::id()
                 ]);
                 
                 $savedRecords[] = $payroll;
