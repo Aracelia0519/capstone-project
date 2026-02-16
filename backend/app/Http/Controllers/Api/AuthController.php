@@ -26,7 +26,8 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
-            'role' => ['required', Rule::in(['client', 'distributor', 'service_provider'])]
+            // Added 'supplier' to the allowed roles
+            'role' => ['required', Rule::in(['client', 'distributor', 'service_provider', 'supplier'])]
         ]);
 
         if ($validator->fails()) {

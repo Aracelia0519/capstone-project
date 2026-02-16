@@ -1,11 +1,8 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4 overflow-hidden relative">
-    <!-- Interactive Particle Canvas -->
     <canvas ref="particleCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
     
-    <!-- Enhanced Paint Background -->
     <div class="absolute inset-0 overflow-hidden">
-      <!-- Paint splatter effects with continuous animation -->
       <div class="absolute top-1/4 left-1/4 w-96 h-96">
         <div class="absolute w-48 h-48 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-full blur-3xl animate-morph-slow"></div>
         <div class="absolute top-12 left-12 w-32 h-32 bg-gradient-to-r from-purple-500/15 to-pink-500/15 rounded-full blur-2xl animate-morph-medium"></div>
@@ -17,7 +14,6 @@
         <div class="absolute bottom-12 right-12 w-32 h-32 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 rounded-full blur-2xl animate-morph-medium-delay"></div>
       </div>
 
-      <!-- Smooth brush strokes with trail effect -->
       <div class="absolute top-1/3 right-1/3 w-64 h-96 opacity-10">
         <div class="absolute w-8 h-40 bg-gradient-to-b from-blue-400 to-transparent rounded-full transform rotate-45 animate-brush-trail"></div>
       </div>
@@ -26,7 +22,6 @@
         <div class="absolute w-8 h-32 bg-gradient-to-t from-purple-400 to-transparent rounded-full transform -rotate-12 animate-brush-trail-delay"></div>
       </div>
 
-      <!-- Floating paint droplets with parabolic motion -->
       <div class="absolute top-20 left-20 animate-parabolic-blue">
         <div class="w-6 h-6 bg-gradient-to-r from-blue-400/40 to-cyan-300/40 rounded-full blur-sm"></div>
       </div>
@@ -40,7 +35,6 @@
         <div class="w-5 h-5 bg-gradient-to-r from-amber-400/40 to-yellow-300/40 rounded-full blur-sm"></div>
       </div>
 
-      <!-- Animated gradient orbs -->
       <div class="absolute top-1/2 left-1/4 w-32 h-32 animate-orb-float">
         <div class="w-full h-full bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-2xl"></div>
       </div>
@@ -49,39 +43,30 @@
         <div class="w-full h-full bg-gradient-to-r from-pink-500/5 to-yellow-500/5 rounded-full blur-2xl"></div>
       </div>
 
-      <!-- Color ripple effect -->
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="w-1 h-1 animate-ripple"></div>
       </div>
     </div>
 
-    <!-- Enhanced Login Card -->
     <div class="relative w-full max-w-4xl z-10 animate-gentle-float">
       <div class="flex flex-col lg:flex-row bg-gray-800/20 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-700/30 overflow-hidden transform transition-all duration-1000 hover:scale-[1.01] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
         
-        <!-- Left Side - Enhanced Visuals -->
         <div class="lg:w-2/5 p-8 lg:p-12 bg-gradient-to-br from-blue-900/15 via-purple-900/15 to-pink-900/15 flex flex-col justify-center items-center relative overflow-hidden group">
-          <!-- Dynamic gradient overlay -->
           <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-gradient-shift"></div>
           
-          <!-- Animated particles container -->
           <div class="absolute inset-0 pointer-events-none">
             <div class="absolute inset-0 animate-particle-field"></div>
           </div>
           
-          <!-- Enhanced Logo Animation -->
           <div class="relative mb-6 z-30 transform transition-all duration-700 group-hover:scale-105">
             <div class="relative">
-              <!-- Outer glow ring -->
               <div class="absolute -inset-4 bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-xl animate-pulse-glow"></div>
               
-              <!-- Logo container -->
               <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 shadow-2xl flex items-center justify-center transform transition-all duration-500 hover:rotate-[360deg] hover:scale-110 animate-soft-spin">
                 <svg class="w-12 h-12 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
                 </svg>
                 
-                <!-- Paint drip effect -->
                 <div class="absolute bottom-0 w-2 h-4 bg-gradient-to-t from-blue-400 to-transparent rounded-b-full animate-drip"></div>
               </div>
             </div>
@@ -94,11 +79,9 @@
             </div>
           </div>
 
-          <!-- Enhanced Feature Cards -->
           <div class="space-y-4 mt-6 w-full max-w-xs">
             <div v-for="(feature, index) in features" :key="index"
                  class="relative overflow-hidden group/feature">
-              <!-- Background animation -->
               <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/feature:translate-x-[100%] transition-transform duration-1000"></div>
               
               <div class="relative flex items-center space-x-3 p-3 rounded-xl bg-gray-900/30 backdrop-blur-sm hover:bg-gray-900/50 transition-all duration-500 cursor-pointer"
@@ -116,25 +99,20 @@
             </div>
           </div>
 
-          <!-- Animated Tagline -->
           <div class="mt-8 text-center relative">
             <div class="absolute -inset-x-4 -inset-y-2 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <p class="text-gray-400/70 text-sm italic relative animate-typewriter">"Where Every Color Tells a Story"</p>
           </div>
         </div>
 
-        <!-- Right Side - Enhanced Login Form -->
         <div class="lg:w-3/5 p-8 lg:p-12 relative">
-          <!-- Form Header with Animation -->
           <div class="text-center mb-8 relative">
             <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full animate-expand-width"></div>
             <h2 class="text-2xl font-bold text-white mb-2 animate-fade-in-up">Welcome Back</h2>
             <p class="text-gray-400 animate-fade-in-up-delay">Sign in to your account</p>
           </div>
 
-          <!-- Login Form -->
           <form @submit.prevent="handleLogin" class="space-y-6">
-            <!-- Email & Password -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div class="group animate-input-slide-left">
                 <label class="block text-sm font-medium text-gray-300 mb-2">
@@ -202,7 +180,6 @@
               </div>
             </div>
 
-            <!-- Remember & Forgot -->
             <div class="flex items-center justify-between animate-fade-in-up">
               <label class="flex items-center space-x-3 cursor-pointer group">
                 <div class="relative">
@@ -235,27 +212,22 @@
               </button>
             </div>
 
-            <!-- Enhanced Submit Button -->
             <button
               type="submit"
               :disabled="isLoading"
               class="relative w-full py-3.5 text-white font-semibold rounded-xl shadow-2xl overflow-hidden group transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] animate-button-pulse"
               :class="isLoading ? 'opacity-50 cursor-not-allowed' : ''"
             >
-              <!-- Gradient background -->
               <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group-hover:from-blue-600 group-hover:via-purple-600 group-hover:to-pink-600 transition-all duration-500"></div>
               
-              <!-- Animated shine -->
               <div class="absolute inset-0 overflow-hidden">
                 <div class="absolute top-0 left-0 w-12 h-full bg-white/20 skew-x-12 animate-shine"></div>
               </div>
               
-              <!-- Ripple effect -->
               <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                 <div class="absolute inset-0 animate-ripple-button"></div>
               </div>
               
-              <!-- Button content -->
               <div class="relative flex items-center justify-center space-x-3">
                 <svg v-if="isLoading" class="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -270,7 +242,6 @@
               </div>
             </button>
 
-            <!-- Animated Divider -->
             <div class="relative animate-expand-width-delay flex justify-center">
               <div class="w-full max-w-md">
                 <div class="absolute inset-0 flex items-center">
@@ -282,17 +253,14 @@
               </div>
             </div>
 
-            <!-- Register Button -->
             <button
               type="button"
               @click="handleRegister"
               class="relative w-full py-3 text-gray-300 font-medium rounded-xl border-2 border-transparent group overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] animate-fade-in-up-delay"
             >
-              <!-- Gradient border animation -->
               <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div class="absolute inset-[2px] bg-gray-800/80 rounded-lg transition-all duration-500 group-hover:bg-gray-800/60"></div>
               
-              <!-- Content -->
               <div class="relative flex items-center justify-center space-x-2 group-hover:text-white transition-colors duration-500">
                 <svg class="w-5 h-5 transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
@@ -302,7 +270,6 @@
             </button>
           </form>
 
-          <!-- Footer -->
           <div class="mt-6 pt-4 border-t border-gray-700/30 text-center animate-fade-in-up-delay">
             <p class="text-gray-400/70 text-xs">
               © 2026 CaviteGo Paint • Secure authentication powered by Laravel Sanctum
@@ -312,7 +279,6 @@
       </div>
     </div>
 
-    <!-- Enhanced Toast Notification -->
     <transition
       enter-active-class="transition-all duration-500 ease-out"
       leave-active-class="transition-all duration-300 ease-in"
@@ -440,8 +406,9 @@ const getRedirectRoute = (user) => {
     client: '/Clients/dashboardC',
     operational_distributor: '/ECommerce/ECDashboard',
     finance_manager: '/finance/financeDashboard',
-    hr_manager: '/HR/HRdashboard', // Added this line
-    employee: '/employee/dashboard' // Default employee route
+    hr_manager: '/HR/HRdashboard', 
+    employee: '/employee/dashboard', 
+    supplier: '/Supplier/SupplierDashboard' // Added Supplier route here
   };
   
   return roleRoutes[role] || '/';

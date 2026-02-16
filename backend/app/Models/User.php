@@ -107,6 +107,14 @@ class User extends Authenticatable
     {
         return $this->role === 'service_provider';
     }
+    
+    /**
+     * Check if user is a supplier
+     */
+    public function isSupplier(): bool
+    {
+        return $this->role === 'supplier';
+    }
 
     /**
      * Check if user is admin

@@ -1,18 +1,14 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col">
-    <!-- Top Navigation Bar -->
     <TopBar />
     
-    <!-- Main Content - Adjusted for seamless integration -->
     <main class="flex-1 w-full">
       <router-view />
     </main>
 
-    <!-- Footer -->
     <footer class="bg-gradient-to-r from-gray-900 to-gray-800 text-white">
       <div class="container mx-auto px-4 py-12">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <!-- Company Info -->
           <div class="space-y-4">
             <div class="flex items-center space-x-3">
               <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
@@ -30,7 +26,6 @@
             </p>
           </div>
 
-          <!-- Quick Links -->
           <div>
             <h3 class="text-lg font-semibold mb-4 text-white">Quick Links</h3>
             <ul class="space-y-2">
@@ -58,7 +53,7 @@
                 </svg>
                 <span>Services</span>
               </router-link></li>
-              <li><router-link to="/landing/payrollLogin" class="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+              <li><router-link to="/landing/payrollLogin" @click="scrollToTop" class="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
                 <svg class="w-4 h-4 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
@@ -67,7 +62,6 @@
             </ul>
           </div>
 
-          <!-- Services -->
           <div>
             <h3 class="text-lg font-semibold mb-4 text-white">Our Services</h3>
             <ul class="space-y-2">
@@ -99,7 +93,6 @@
             </ul>
           </div>
 
-          <!-- Contact -->
           <div>
             <h3 class="text-lg font-semibold mb-4 text-white">Contact Us</h3>
             <div class="space-y-3">
@@ -132,7 +125,6 @@
           </div>
         </div>
 
-        <!-- Divider -->
         <div class="border-t border-gray-700 mt-8 pt-8">
           <div class="flex flex-col md:flex-row justify-between items-center">
             <p class="text-gray-500 text-sm">
@@ -152,6 +144,25 @@
 
 <script setup>
 import TopBar from '@/layouts/LandingTopBar.vue'
+import { watch } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// Watch for route changes and scroll to top
+watch(
+  () => route.path,
+  () => {
+    scrollToTop()
+  }
+)
+
+const scrollToTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  })
+}
 </script>
 
 <style scoped>

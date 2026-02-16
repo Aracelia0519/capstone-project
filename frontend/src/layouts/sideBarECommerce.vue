@@ -120,7 +120,7 @@ import { ref, onMounted, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
-  Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2, 
+  Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2,
   UserCircle, PackageSearch
 } from 'lucide-vue-next'
 import { 
@@ -153,7 +153,8 @@ const navigation = [
     title: 'Catalog & Inventory',
     items: [
       { name: 'Procurement', path: '/ECommerce/ECProcurement', icon: PackageSearch, color: 'text-blue-400', badge: 'Req' },
-      { name: 'Categories', path: '/ECommerce/ECCategories', icon: Tag, color: 'text-emerald-400' }
+      { name: 'Categories', path: '/ECommerce/ECCategories', icon: Tag, color: 'text-emerald-400' },
+      { name: 'Process Request', path: '/ECommerce/ECProcessProcurement', icon: ClipboardList, color: 'text-emerald-400', badge: 'Head' }
     ]
   },
   {

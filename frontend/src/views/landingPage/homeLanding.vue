@@ -87,7 +87,7 @@
               
               <div class="flex gap-3">
                 <button 
-                  @click="$router.push('/login')"
+                  @click="$router.push('/Landing/logIn')"
                   class="flex-1 px-6 py-4 border-2 border-gray-700 text-gray-300 rounded-xl font-semibold hover:bg-gray-800/50 transition-all duration-300 flex items-center justify-center space-x-2"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -97,7 +97,7 @@
                 </button>
                 
                 <button 
-                  @click="$router.push('/register')"
+                  @click="$router.push('/Landing/signUp')"
                   class="flex-1 px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-semibold hover:bg-gray-700 transition-all duration-300 flex items-center justify-center space-x-2"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

@@ -115,7 +115,7 @@ import { ref, onMounted, computed, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ShieldCheck, Building2, ClipboardCheck, 
-  FileStack, Banknote, BarChart3, CalendarCheck, Settings, LogOut, Loader2, Lock 
+  FileStack, Banknote, BarChart3, CalendarCheck, Settings, LogOut, Loader2, Lock, CalendarMinus 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -145,7 +145,8 @@ const iconMap = {
   payroll: Banknote,
   reports: BarChart3,
   settings: Settings,
-  attendanceRequest: CalendarCheck
+  attendanceRequest: CalendarCheck,
+  leaveRequest: CalendarMinus
 }
 const getIcon = (id) => iconMap[id] || Settings
 
@@ -157,7 +158,8 @@ const hrNavItems = ref([
   { id: 'status', text: 'Employment Status', route: '/HR/employmentStatusHR', permissionKey: 'employment_status' },
   { id: 'recruitment', text: 'Recruitment Application', route: '/HR/recruitmentApplication', permissionKey: 'recruitment' },
   { id: 'payroll', text: 'Payroll Management', route: '/HR/payrollHR', permissionKey: 'payroll_management' },
-  { id: 'attendanceRequest', text: 'attendanceRequest', route: '/HR/attendanceRequestHR', permissionKey: 'attendance_request' }, 
+  { id: 'attendanceRequest', text: 'Attendance Request', route: '/HR/attendanceRequestHR', permissionKey: 'attendance_request' },
+  { id: 'leaveRequest', text: 'Leave Request', route: '/HR/leaveRequestHR', permissionKey: 'leave_request' }
 ])
 
 const toolsNavItems = ref([

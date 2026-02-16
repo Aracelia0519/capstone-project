@@ -55,12 +55,15 @@
                   
                   <div class="flex items-center justify-between w-full md:w-40">
                     <div class="flex items-center gap-3">
-                      <!-- Using a custom switch handler -->
                       <button
                         :id="`day-${index}`"
                         @click="toggleDayOpen(index)"
+                        :disabled="day.day === currentDayName"
                         class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        :class="day.isOpen ? 'bg-green-500' : 'bg-gray-200'"
+                        :class="[
+                          day.isOpen ? 'bg-green-500' : 'bg-gray-200',
+                          day.day === currentDayName ? 'opacity-50 cursor-not-allowed' : ''
+                        ]"
                       >
                         <span class="sr-only">{{ day.isOpen ? 'Close' : 'Open' }} {{ day.day }}</span>
                         <span
@@ -314,7 +317,22 @@ onMounted(async () => {
 })
 
 // --- HELPER FUNCTIONS ---
+
+// Determine current day name (e.g., "Monday")
+const currentDayName = computed(() => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return days[new Date().getDay()]
+})
+
 const toggleDayOpen = (index) => {
+  const dayToToggle = schedule.value[index]
+  
+  // Validation: Prevent toggling the current day
+  if (dayToToggle.day === currentDayName.value) {
+    toast.error(`You cannot change the status for today (${dayToToggle.day}).`)
+    return
+  }
+
   // Create a new object to trigger reactivity
   const updatedSchedule = [...schedule.value]
   updatedSchedule[index] = {
@@ -452,8 +470,16 @@ const copyMondayToAll = () => {
   const monday = schedule.value.find(d => d.day === 'Monday')
   if (!monday) return
 
+  let skippedToday = false
+
   const updatedSchedule = schedule.value.map(day => {
     if (day.day !== 'Monday') {
+      // Validation: Skip current day during copy
+      if (day.day === currentDayName.value) {
+        skippedToday = true
+        return day
+      }
+
       return {
         ...day,
         isOpen: monday.isOpen,
@@ -465,7 +491,12 @@ const copyMondayToAll = () => {
   })
   
   schedule.value = updatedSchedule
-  toast.success('Monday schedule copied to all days!')
+  
+  if (skippedToday) {
+    toast.success(`Monday schedule copied! (Skipped today: ${currentDayName.value})`)
+  } else {
+    toast.success('Monday schedule copied to all days!')
+  }
 }
 
 const resetSchedule = () => {

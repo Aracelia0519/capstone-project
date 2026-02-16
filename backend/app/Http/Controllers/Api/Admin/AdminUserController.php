@@ -10,6 +10,7 @@ use App\Models\Distributor\HRManager;
 use App\Models\Finance\FinanceManager;
 use App\Models\Client\ClientRequirement;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
+use App\Models\Supplier\SupplierRequirements; // Added import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -105,6 +106,7 @@ class AdminUserController extends Controller
             'operational_distributor' => User::where('role', 'operational_distributor')->count(),
             'hr_manager' => User::where('role', 'hr_manager')->count(),
             'finance_manager' => User::where('role', 'finance_manager')->count(),
+            'supplier' => User::where('role', 'supplier')->count(), // Added supplier count
             'active' => User::where('status', 'active')->count(),
             'inactive' => User::where('status', 'inactive')->count(),
             'pending' => User::where('status', 'pending')->count(),
@@ -187,6 +189,14 @@ class AdminUserController extends Controller
                     $verificationDetails = $this->getFinanceManagerDetails($user->financeManager);
                 }
                 break;
+
+            case 'supplier': // Added Supplier Logic
+                $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
+                if ($supplierRequirement) {
+                    $verificationStatus = $supplierRequirement->status;
+                    $verificationDetails = $this->getSupplierRequirements($supplierRequirement);
+                }
+                break;
         }
         
         return [
@@ -238,6 +248,48 @@ class AdminUserController extends Controller
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
             'is_complete' => $requirement->getIsCompleteAttribute(),
+        ];
+    }
+
+    /**
+     * Get supplier requirements with URLs and Address
+     */
+    private function getSupplierRequirements(SupplierRequirements $requirement)
+    {
+        $requirement->load('address'); // Eager load address
+        
+        return [
+            'id' => $requirement->id,
+            'company_name' => $requirement->company_name,
+            'valid_id_type' => $requirement->valid_id_type,
+            'valid_id_type_display' => $requirement->getIdTypeNameAttribute(),
+            'id_number' => $requirement->id_number,
+            'business_registration_number' => $requirement->business_registration_number,
+            
+            // URLs using Storage::url
+            'valid_id_photo' => $requirement->valid_id_photo,
+            'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
+            
+            'dti_certificate_photo' => $requirement->dti_certificate_photo,
+            'dti_certificate_photo_url' => $requirement->dti_certificate_photo ? Storage::url($requirement->dti_certificate_photo) : null,
+            
+            'mayor_permit_photo' => $requirement->mayor_permit_photo,
+            'mayor_permit_photo_url' => $requirement->mayor_permit_photo ? Storage::url($requirement->mayor_permit_photo) : null,
+            
+            'barangay_clearance_photo' => $requirement->barangay_clearance_photo,
+            'barangay_clearance_photo_url' => $requirement->barangay_clearance_photo ? Storage::url($requirement->barangay_clearance_photo) : null,
+            
+            'business_registration_photo' => $requirement->business_registration_photo,
+            'business_registration_photo_url' => $requirement->business_registration_photo ? Storage::url($requirement->business_registration_photo) : null,
+            
+            // Address details
+            'address' => $requirement->address,
+            
+            'status' => $requirement->status,
+            'rejection_reason' => $requirement->rejection_reason,
+            'submitted_at' => $requirement->created_at,
+            'reviewed_at' => $requirement->updated_at,
+            'is_complete' => $requirement->is_complete,
         ];
     }
 
@@ -394,6 +446,7 @@ class AdminUserController extends Controller
             'operational_distributor' => 'Operational Distributor',
             'hr_manager' => 'HR Manager',
             'finance_manager' => 'Finance Manager',
+            'supplier' => 'Supplier', // Added Supplier
         ];
         
         return $roleNames[$role] ?? ucfirst(str_replace('_', ' ', $role));
@@ -412,6 +465,7 @@ class AdminUserController extends Controller
             'operational_distributor' => '#F39C12',
             'hr_manager' => '#3498DB',
             'finance_manager' => '#E74C3C',
+            'supplier' => '#FF7043', // Added Supplier Color
         ];
         
         return $colors[$role] ?? '#95A5A6';
@@ -438,7 +492,8 @@ class AdminUserController extends Controller
                 'serviceProviderRequirement',
                 'operationalDistributor.parentDistributor',
                 'hrManager.parentDistributor',
-                'financeManager.parentDistributor'
+                'financeManager.parentDistributor',
+                // For supplier, we check if relationship exists in User model, or query manually
             ])->find($id);
             
             if (!$user) {
@@ -498,6 +553,15 @@ class AdminUserController extends Controller
                         ];
                     }
                     break;
+
+                case 'supplier': // Added Supplier Logic
+                    $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
+                    if ($supplierRequirement) {
+                         $requirements = [
+                            'supplier' => $this->getSupplierRequirements($supplierRequirement)
+                        ];
+                    }
+                    break;
             }
             
             return response()->json([
@@ -535,7 +599,7 @@ class AdminUserController extends Controller
                 'last_name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
                 'password' => 'required|string|min:8',
-                'role' => 'required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager',
+                'role' => 'required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager,supplier', // Added supplier
                 'phone' => 'nullable|string|max:20',
                 'address' => 'nullable|string',
                 'status' => 'in:pending,active,inactive',
@@ -603,7 +667,7 @@ class AdminUserController extends Controller
                 'first_name' => 'sometimes|required|string|max:255',
                 'last_name' => 'sometimes|required|string|max:255',
                 'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id,
-                'role' => 'sometimes|required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager',
+                'role' => 'sometimes|required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager,supplier', // Added supplier
                 'phone' => 'nullable|string|max:20',
                 'address' => 'nullable|string',
                 'status' => 'sometimes|in:pending,active,inactive',
@@ -843,6 +907,16 @@ class AdminUserController extends Controller
                         $user->financeManager->update(['status' => 'active']);
                     }
                     break;
+                
+                case 'supplier': // Added Supplier Logic
+                    $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
+                    if ($supplierRequirement) {
+                        $supplierRequirement->update([
+                            'status' => 'approved',
+                            'rejection_reason' => null
+                        ]);
+                    }
+                    break;
             }
             
             return response()->json([
@@ -943,6 +1017,16 @@ class AdminUserController extends Controller
                 case 'finance_manager':
                     if ($user->financeManager) {
                         $user->financeManager->update(['status' => 'inactive']);
+                    }
+                    break;
+
+                case 'supplier': // Added Supplier Logic
+                    $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
+                    if ($supplierRequirement) {
+                        $supplierRequirement->update([
+                            'status' => 'rejected',
+                            'rejection_reason' => $request->reason
+                        ]);
                     }
                     break;
             }

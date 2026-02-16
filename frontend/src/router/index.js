@@ -70,6 +70,7 @@ import ReportsHR from '@/views/humanResource/Reports.vue'
 import RecruitmentApplication from '@/views/humanResource/RecruitmentApplication.vue'
 import PayrollManagement from '@/views/humanResource/PayrollManagement.vue'
 import AttendanceRequestHR from '@/views/humanResource/AttendanceRequestHR.vue'
+import LeaveRequestHR from '@/views/humanResource/LeaveRequestHR.vue'
 
 
 
@@ -96,6 +97,7 @@ import ECommerceLayout from '@/layouts/ECommerceLayout.vue'
 import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
 import ProcurementRequests from '@/views/E-commerce/ProcurementRequests.vue'
 import ECommerceCategories from '@/views/E-commerce/ECommerceCategories.vue'
+import ECProcessProcurement from '@/views/E-commerce/ECProcessProcurement.vue'
 import ECommerceOrders from '@/views/E-commerce/ECommerceOrders.vue'
 import ECommercePayments from '@/views/E-commerce/ECommercePayments.vue'
 import ECommerceDelivery from '@/views/E-commerce/ECommerceDelivery.vue'
@@ -121,6 +123,10 @@ import RequestsEmployee from '@/views/Employees/RequestsEmployee.vue'
 import ProfileEmployee from '@/views/Employees/ProfileEmployee.vue'
 import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
 import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
+
+import SupplierLayout from '@/layouts/SupplierLayout.vue'
+import SupplierSettings from '@/views/supplier/supplierSettings.vue'
+import SupplierDashboard from '@/views/supplier/SupplierDashboard.vue'
 
 
 const routes = [
@@ -466,6 +472,11 @@ const routes = [
         component: AttendanceRequestHR
       },
       {
+        path: 'leaveRequestHR',
+        name: 'leaveRequestHR',
+        component: LeaveRequestHR
+      },
+      {
         path: 'reportsHR',
         name: 'reportsHR',
         component: ReportsHR
@@ -547,6 +558,11 @@ const routes = [
         component: ECommerceCategories
       },
       {
+        path: 'ECProcessProcurement',
+        name: 'ECProcessProcurement',
+        component: ECProcessProcurement
+      },
+      {
         path: 'ECOrders',
         name: 'ECOrders',
         component: ECommerceOrders
@@ -580,6 +596,24 @@ const routes = [
         path: 'ECreports',
         name: 'ECreports',
         component: ECommerceReports
+      },
+    ]
+  },
+
+  {
+    path: '/Supplier',
+    component: SupplierLayout,
+    meta: { requiresAuth: true, role: 'supplier', requiresVerification: true },
+    children: [
+      {
+        path: 'SupplierDashboard',
+        name: 'SupplierDashboard',
+        component: SupplierDashboard
+      },
+      {
+        path: 'SupplierSettings',
+        name: 'SupplierSettings',
+        component: SupplierSettings
       },
     ]
   },

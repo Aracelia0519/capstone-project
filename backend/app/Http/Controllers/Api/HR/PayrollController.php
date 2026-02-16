@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Distributor\DistributorPayrollSetting;
 use App\Models\Distributor\DistributorWorkingHour; 
 use App\Models\Employee\EmployeeAttendance;
+use App\Models\Employee\LeaveRequest; 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -25,6 +26,11 @@ class PayrollController extends Controller
     // STEP 1: Calculate Payroll (Preview) before saving
     public function calculate(Request $request)
     {
+        $request->validate([
+            'period_start' => 'required|date',
+            'period_end' => 'required|date|after_or_equal:period_start',
+        ]);
+
         $periodStart = $request->input('period_start');
         $periodEnd = $request->input('period_end');
         
@@ -36,7 +42,7 @@ class PayrollController extends Controller
         $month = $end->month;
         $year = $end->year;
 
-        // Check for existing payrolls for this month
+        // Check for existing payrolls for this month to avoid duplicates
         $existingPayrollUserIds = Payroll::whereYear('period_end', $year)
             ->whereMonth('period_end', $month)
             ->pluck('user_id')
@@ -63,7 +69,7 @@ class PayrollController extends Controller
         foreach ($employees as $emp) {
             if (in_array($emp->user_id, $existingPayrollUserIds)) continue;
             
-            // Calculate Attendance Deductions
+            // Calculate Attendance Deductions (This is where the logic resides)
             $attendanceData = $this->calculateAttendanceDeductions($emp, $start, $end);
             
             $payrollData[] = $this->computePayrollItem($emp, 'Employee', $attendanceData);
@@ -136,12 +142,16 @@ class PayrollController extends Controller
         ]);
     }
 
-    // Helper to calculate Absent and Late Deductions
+    /**
+     * CORE LOGIC: Calculates Expected Days & Late Deductions
+     * Based on DistributorWorkingHour and DistributorPayrollSetting
+     */
     private function calculateAttendanceDeductions($employee, $periodStart, $periodEnd)
     {
         // 1. Determine Effective Start Date
         $hireDate = Carbon::parse($employee->hire_date);
         
+        // If hired after the period ends, no salary
         if ($hireDate->gt($periodEnd)) {
             return $this->zeroAttendance();
         }
@@ -149,21 +159,29 @@ class PayrollController extends Controller
         // Use the later date: Period Start or Hire Date
         $effectiveStart = $hireDate->gt($periodStart) ? $hireDate : $periodStart;
         
-        // 2. Fetch Settings & Working Hours
+        // CRITICAL FIX: Force Start to 00:00:00 and End to 23:59:59
+        // This ensures dates like "Feb 28" are fully included in the loop
+        $effectiveStart->startOfDay(); 
+        $periodEnd->endOfDay();
+        
+        // 2. Fetch Settings & Working Hours specific to the Distributor
         $distributorId = $employee->parent_distributor_id;
+        
         $settings = DistributorPayrollSetting::where('distributor_id', $distributorId)->first();
         
+        // Keyed by 'Monday', 'Tuesday', etc.
         $workingHours = DistributorWorkingHour::where('distributor_id', $distributorId)
             ->where('is_open', 1)
             ->get()
             ->keyBy('day_of_week'); 
 
         // 3. Calculate "Expected" Working Days
+        // Logic: Iterate through dates, check if day name exists in WorkingHours
         $expectedWorkingDays = 0;
         $current = $effectiveStart->copy();
         
-        while ($current <= $periodEnd) {
-            $dayName = $current->format('l');
+        while ($current->lte($periodEnd)) {
+            $dayName = $current->format('l'); // e.g., "Monday"
             if ($workingHours->has($dayName)) {
                 $expectedWorkingDays++;
             }
@@ -173,57 +191,117 @@ class PayrollController extends Controller
         if ($expectedWorkingDays == 0) return $this->zeroAttendance();
 
         // 4. Calculate Daily Rate
+        // Note: Fluctuates based on the number of working days in the month
         $monthlySalary = floatval($employee->salary ?? 0);
         $dailyRate = $monthlySalary / $expectedWorkingDays; 
         
-        // 5. Fetch Actual Attendance
+        // 5. Fetch Actual Attendance (Present or Late)
+        $daysPresent = EmployeeAttendance::where('employee_id', $employee->hr_employee_id)
+            ->whereBetween('date', [$effectiveStart->format('Y-m-d'), $periodEnd->format('Y-m-d')])
+            ->whereIn('status', ['Present', 'Late']) 
+            ->distinct('date')
+            ->count('date');
+
+        // 6. Fetch Approved Leaves
+        $leaves = LeaveRequest::where('employee_id', $employee->hr_employee_id)
+            ->where('status', 'Approved')
+            ->where(function($query) use ($effectiveStart, $periodEnd) {
+                // Check for overlapping dates
+                $query->whereBetween('start_date', [$effectiveStart, $periodEnd])
+                      ->orWhereBetween('end_date', [$effectiveStart, $periodEnd]);
+            })
+            ->get();
+
+        $paidLeaveDays = 0;
+        $unpaidLeaveDays = 0;
+
+        foreach ($leaves as $leave) {
+            $leaveStart = Carbon::parse($leave->start_date);
+            $leaveEnd = Carbon::parse($leave->end_date);
+            
+            $loopDate = $leaveStart->copy();
+            while ($loopDate->lte($leaveEnd)) {
+                // Only count if date is within payroll period and is a valid working day
+                if ($loopDate->between($effectiveStart, $periodEnd)) {
+                    $dayName = $loopDate->format('l');
+                    if ($workingHours->has($dayName)) {
+                        if ($leave->is_paid) {
+                            $paidLeaveDays++;
+                        } else {
+                            $unpaidLeaveDays++;
+                        }
+                    }
+                }
+                $loopDate->addDay();
+            }
+        }
+
+        // 7. Calculate Absents (Unauthorized)
+        // Formula: Expected - (Worked + Paid Leaves + Unpaid Leaves)
+        $unauthorizedAbsentDays = max(0, $expectedWorkingDays - ($daysPresent + $paidLeaveDays + $unpaidLeaveDays));
+        
+        $absentAmount = $unauthorizedAbsentDays * $dailyRate;
+        $unpaidLeaveAmount = $unpaidLeaveDays * $dailyRate;
+
+        // 8. Calculate Lates
+        // Depends on DistributorWorkingHour (start_time) and DistributorPayrollSetting (policy)
+        $lateCount = 0;
+        $lateAmount = 0;
+        
+        // Rate reference
+        $hourlyRate = $dailyRate / 8;
+        $minuteRate = $hourlyRate / 60; 
+
+        // Get actual attendance records to check timestamps
         $attendances = EmployeeAttendance::where('employee_id', $employee->hr_employee_id)
             ->whereBetween('date', [$effectiveStart->format('Y-m-d'), $periodEnd->format('Y-m-d')])
             ->get();
 
-        // 6. Calculate Absents
-        // Count distinct present days (ignoring records marked 'Absent')
-        $daysPresent = $attendances->where('status', '!=', 'Absent')->unique('date')->count();
-        
-        $absentDays = max(0, $expectedWorkingDays - $daysPresent);
-        $absentAmount = $absentDays * $dailyRate;
-
-        // 7. Calculate Lates
-        $lateCount = 0;
-        $lateAmount = 0;
-        
-        // Cost per minute
-        $hourlyRate = $dailyRate / 8;
-        $minuteRate = $hourlyRate / 60; 
-
         foreach ($attendances as $att) {
-            // Check status or time presence
-            if ($att->status === 'Late' || ($att->time_in && $att->status === 'Present')) {
-                
+            // Only check lates if status is Late or Present (with time_in)
+            if (($att->status === 'Late' || $att->status === 'Present') && $att->time_in) {
                 $dayName = Carbon::parse($att->date)->format('l');
-                $schedStartStr = $workingHours[$dayName]->start_time ?? '09:00:00';
                 
-                // --- FIX: Parse using the ATTENDANCE DATE, not "Today" ---
-                $actualIn = Carbon::parse($att->date . ' ' . $att->time_in);
-                $expectedIn = Carbon::parse($att->date . ' ' . $schedStartStr);
-                
-                // Add grace period
-                $graceMinutes = $settings->late_deduction_minutes ?? 15;
-                $expectedInWithGrace = $expectedIn->copy()->addMinutes($graceMinutes);
-
-                if ($actualIn->gt($expectedInWithGrace)) {
-                    $lateCount++;
+                // If it's a working day, check the time
+                if ($workingHours->has($dayName)) {
+                    $schedStartStr = $workingHours[$dayName]->start_time; // e.g. "09:00:00"
                     
-                    // Calculate Minutes Late (Positive difference)
-                    $minutesLate = $expectedIn->diffInMinutes($actualIn); 
+                    if ($schedStartStr) {
+                        $actualIn = Carbon::parse($att->date . ' ' . $att->time_in);
+                        $expectedIn = Carbon::parse($att->date . ' ' . $schedStartStr);
+                        
+                        // Apply Grace Period
+                        // Default to 0 if null, so we don't accidentally ignore lates
+                        $graceMinutes = $settings->late_deduction_minutes ?? 0;
+                        $expectedInWithGrace = $expectedIn->copy()->addMinutes($graceMinutes);
 
-                    if ($settings && $settings->late_deduction_policy === 'prorated') {
-                        $lateAmount += ($minutesLate * $minuteRate);
-                    } elseif ($settings && $settings->late_deduction_policy === 'amount') {
-                        $lateAmount += ($settings->late_deduction_amount ?? 0);
-                    } else {
-                        // Default
-                        $lateAmount += ($minutesLate * $minuteRate); 
+                        if ($actualIn->gt($expectedInWithGrace)) {
+                            $lateCount++;
+                            // Calculate minutes late relative to original start time (not grace time)
+                            $minutesLate = $expectedIn->diffInMinutes($actualIn); 
+
+                            // === APPLY POLICY STRICTLY ===
+                            if ($settings && $settings->late_deduction_policy === 'fixed_block') {
+                                // Block Logic: 50 pesos per 15 mins
+                                $blockMinutes = $settings->late_deduction_minutes > 0 ? $settings->late_deduction_minutes : 15;
+                                $blockPrice = $settings->late_deduction_amount ?? 0;
+                                
+                                // How many full blocks?
+                                $blocks = floor($minutesLate / $blockMinutes);
+                                if ($blocks < 1) $blocks = 1; // Minimum 1 charge if late
+                                
+                                $lateAmount += ($blocks * $blockPrice);
+                                
+                            } elseif ($settings && $settings->late_deduction_policy === 'prorated') {
+                                // Prorated Logic: Fixed amount per minute (e.g., 2 pesos / min)
+                                $pricePerMinute = $settings->late_deduction_amount ?? 0;
+                                $lateAmount += ($minutesLate * $pricePerMinute);
+                            
+                            } else {
+                                // Default/Fallback: Salary based deduction
+                                $lateAmount += ($minutesLate * $minuteRate); 
+                            }
+                        }
                     }
                 }
             }
@@ -232,10 +310,13 @@ class PayrollController extends Controller
         return [
             'expected_days' => $expectedWorkingDays,
             'days_present' => $daysPresent,
-            'absent_days' => $absentDays,
+            'absent_days' => $unauthorizedAbsentDays,
             'absent_amount' => round($absentAmount, 2),
             'late_count' => $lateCount,
-            'late_amount' => round($lateAmount, 2)
+            'late_amount' => round($lateAmount, 2),
+            'paid_leave_days' => $paidLeaveDays,
+            'unpaid_leave_days' => $unpaidLeaveDays,
+            'unpaid_leave_amount' => round($unpaidLeaveAmount, 2)
         ];
     }
     
@@ -246,7 +327,10 @@ class PayrollController extends Controller
             'absent_days' => 0,
             'absent_amount' => 0,
             'late_count' => 0,
-            'late_amount' => 0
+            'late_amount' => 0,
+            'paid_leave_days' => 0,
+            'unpaid_leave_days' => 0,
+            'unpaid_leave_amount' => 0
         ];
     }
 
@@ -254,11 +338,12 @@ class PayrollController extends Controller
     {
         $salary = floatval($data->salary ?? 0); 
         
-        // Ensure values are positive
+        // Fetch deduction amounts from attendance data
         $absentDeduction = abs($attendanceData ? $attendanceData['absent_amount'] : 0);
         $lateDeduction = abs($attendanceData ? $attendanceData['late_amount'] : 0);
+        $unpaidLeaveDeduction = abs($attendanceData ? $attendanceData['unpaid_leave_amount'] : 0);
         
-        // Statutory Deductions
+        // Statutory Deductions (Standard PH Tables - Simplified)
         $sss = $salary * 0.045;
         if ($sss > 1350) $sss = 1350; 
 
@@ -269,13 +354,16 @@ class PayrollController extends Controller
         $pagibig = ($salary * 0.02);
         if ($pagibig > 200) $pagibig = 200;
 
-        // Withholding Tax
         $statutoryDeductions = $sss + $philhealth + $pagibig;
-        $attendanceDeductions = $absentDeduction + $lateDeduction;
         
+        // Calculate Taxable Income
+        // Taxable = Basic - (Statutory + Absences + Lates + Unpaid Leaves)
+        $attendanceDeductions = $absentDeduction + $lateDeduction + $unpaidLeaveDeduction;
         $taxableIncome = $salary - $statutoryDeductions - $attendanceDeductions;
+        
         if ($taxableIncome < 0) $taxableIncome = 0;
 
+        // Withholding Tax Calculation (TRAIN Law - Monthly)
         $tax = 0;
         if ($taxableIncome > 20833 && $taxableIncome <= 33332) {
             $tax = ($taxableIncome - 20833) * 0.15;
@@ -305,10 +393,11 @@ class PayrollController extends Controller
                 'pagibig' => round($pagibig, 2),
                 'tax' => round($tax, 2),
                 'absent' => round($absentDeduction, 2), 
-                'late' => round($lateDeduction, 2),     
+                'late' => round($lateDeduction, 2),
+                'leave_unpaid' => round($unpaidLeaveDeduction, 2),
                 'total' => round($totalDeductions, 2)
             ],
-            'attendance_info' => $attendanceData,
+            'attendance_info' => $attendanceData, // Pass the breakdown to frontend
             'net_pay' => round($netPay, 2)
         ];
     }

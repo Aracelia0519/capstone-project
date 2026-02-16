@@ -1,1215 +1,767 @@
 <template>
-  <div class="user-management min-h-screen p-6">
-    <div class="mb-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
-          <p class="text-gray-600 mt-1">Control system access and manage user roles</p>
-        </div>
-        <button 
-          @click="showAddUserModal = true" 
-          class="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 hover:translate-y-[-2px]"
-        >
-          <i class="fas fa-plus"></i>
-          <span>Add New User</span>
-        </button>
+  <div class="user-management min-h-screen p-6 bg-slate-50/50 space-y-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">User Management</h1>
+        <p class="text-slate-500 mt-1">Control system access and manage user roles.</p>
       </div>
-      
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <div 
-          @click="activeTab = 'all'" 
-          class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        >
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-              <i class="fas fa-users text-white text-lg"></i>
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ statistics.total || 0 }}</p>
-              <p class="text-gray-600 text-sm">Total Users</p>
-            </div>
-          </div>
-        </div>
-        
-        <div 
-          @click="activeTab = 'admin'" 
-          class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        >
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
-              <i class="fas fa-user-shield text-white text-lg"></i>
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ statistics.admin || 0 }}</p>
-              <p class="text-gray-600 text-sm">Admins</p>
-            </div>
-          </div>
-        </div>
-        
-        <div 
-          @click="activeTab = 'distributor'" 
-          class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        >
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-              <i class="fas fa-truck text-white text-lg"></i>
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ statistics.distributor || 0 }}</p>
-              <p class="text-gray-600 text-sm">Distributors</p>
-            </div>
-          </div>
-        </div>
-        
-        <div 
-          @click="activeTab = 'service_provider'" 
-          class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        >
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
-              <i class="fas fa-tools text-white text-lg"></i>
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ statistics.service_provider || 0 }}</p>
-              <p class="text-gray-600 text-sm">Service Providers</p>
-            </div>
-          </div>
-        </div>
-        
-        <div 
-          @click="activeTab = 'client'" 
-          class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 cursor-pointer"
-        >
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center">
-              <i class="fas fa-user text-white text-lg"></i>
-            </div>
-            <div>
-              <p class="text-2xl font-bold text-gray-900">{{ statistics.client || 0 }}</p>
-              <p class="text-gray-600 text-sm">Clients</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Button 
+        @click="showAddUserModal = true" 
+        class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg transition-all hover:-translate-y-0.5"
+      >
+        <i class="fas fa-plus mr-2"></i>
+        Add New User
+      </Button>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <div class="flex flex-wrap gap-2 mb-6">
-        <button 
-          v-for="tab in tabs" 
-          :key="tab.value"
-          @click="activeTab = tab.value" 
-          :class="[
-            'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200',
-            activeTab === tab.value 
-              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' 
-              : 'text-gray-700 hover:bg-gray-100'
-          ]"
-        >
-          <i :class="tab.icon"></i>
-          <span>{{ tab.label }}</span>
-        </button>
-      </div>
-      
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1 relative">
-          <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="Search by name, email, or phone..." 
-            @input="debouncedFetchUsers"
-            class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-          >
-        </div>
-        
-        <select 
-          v-model="statusFilter" 
-          @change="fetchUsers"
-          class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="pending">Pending</option>
-        </select>
-        
-        <button 
-          @click="fetchUsers" 
-          class="flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-all duration-200"
-        >
-          <i class="fas fa-sync-alt"></i>
-          <span>Refresh</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="p-6 border-b border-gray-200">
-        <div class="flex items-center justify-between">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      <Card 
+        v-for="(stat, key) in {
+          total: { label: 'Total Users', icon: 'fa-users', color: 'from-blue-500 to-indigo-600' },
+          admin: { label: 'Admins', icon: 'fa-user-shield', color: 'from-red-500 to-pink-600' },
+          distributor: { label: 'Distributors', icon: 'fa-truck', color: 'from-green-500 to-emerald-600' },
+          supplier: { label: 'Suppliers', icon: 'fa-boxes', color: 'from-orange-500 to-red-500' },
+          service_provider: { label: 'Service Providers', icon: 'fa-tools', color: 'from-purple-500 to-violet-600' },
+          client: { label: 'Clients', icon: 'fa-user', color: 'from-gray-600 to-gray-700' }
+        }" 
+        :key="key"
+        @click="activeTab = key"
+        :class="[
+          'cursor-pointer hover:shadow-md transition-all border-l-4',
+          activeTab === key ? 'border-l-blue-600 ring-2 ring-blue-100' : 'border-l-transparent'
+        ]"
+      >
+        <CardContent class="p-6 flex items-center gap-4">
+          <div :class="`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-sm`">
+            <i :class="`fas ${stat.icon} text-white text-sm`"></i>
+          </div>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900">Users</h3>
-            <p class="text-gray-500 text-sm mt-1">{{ pagination.total }} users found</p>
+            <p class="text-2xl font-bold text-slate-900 leading-none">{{ statistics[key] || 0 }}</p>
+            <p class="text-xs text-slate-500 font-medium mt-1">{{ stat.label }}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <Card class="border-slate-200 shadow-sm">
+      <CardHeader class="pb-4">
+        <div class="flex flex-col md:flex-row justify-between gap-4">
+          <div class="flex flex-wrap gap-2">
+            <Button
+              v-for="tab in tabs"
+              :key="tab.value"
+              variant="outline"
+              size="sm"
+              @click="activeTab = tab.value"
+              :class="[
+                'h-8 transition-all',
+                activeTab === tab.value 
+                  ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ]"
+            >
+              <i :class="`${tab.icon} mr-2 text-xs opacity-70`"></i>
+              {{ tab.label }}
+            </Button>
           </div>
         </div>
-      </div>
-      
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">User</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Role</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Contact</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Verification</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date Added</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-              <th class="py-4 px-6 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="loading">
-              <td colspan="7" class="py-8">
-                <div class="flex items-center justify-center">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <span class="ml-3 text-gray-600">Loading users...</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr v-if="!loading && users.length === 0">
-              <td colspan="7" class="py-12 text-center">
-                <div class="text-gray-500">
-                  <i class="fas fa-users text-4xl mb-4"></i>
-                  <p class="text-lg font-medium">No users found</p>
-                  <p class="text-sm mt-1">Try changing your filters or add a new user</p>
-                </div>
-              </td>
-            </tr>
-            
-            <tr 
-              v-for="user in users" 
-              :key="user.id"
-              class="hover:bg-gray-50 transition-colors duration-150"
-            >
-              <td class="py-4 px-6">
-                <div class="flex items-center gap-4">
-                  <div 
-                    class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm"
-                    :style="{ backgroundColor: user.avatar_color }"
-                  >
-                    {{ user.initials }}
-                  </div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ user.full_name }}</p>
-                    <p class="text-gray-500 text-sm">{{ user.email }}</p>
-                  </div>
-                </div>
-              </td>
-              
-              <td class="py-4 px-6">
-                <div class="flex flex-col gap-1">
-                  <span 
-                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium w-fit"
-                    :class="getRoleBadgeClass(user.role)"
-                  >
-                    <i :class="getRoleIcon(user.role)"></i>
-                    {{ user.role_display }}
-                  </span>
-                  <button 
-                    v-if="user.role === 'distributor' && user.distributor_requirements_status === 'pending'"
-                    @click="viewUser(user)"
-                    class="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                  >
-                    <i class="fas fa-clipboard-check text-xs"></i>
-                    Review Requirements
-                  </button>
-                </div>
-              </td>
-              
-              <td class="py-4 px-6">
-                <div class="space-y-1">
-                  <div class="flex items-center gap-2 text-sm">
-                    <i class="fas fa-envelope text-gray-400 text-xs"></i>
-                    <span class="text-gray-700">{{ user.email }}</span>
-                  </div>
-                  <div class="flex items-center gap-2 text-sm">
-                    <i class="fas fa-phone text-gray-400 text-xs"></i>
-                    <span class="text-gray-700">{{ user.phone || 'Not provided' }}</span>
-                  </div>
-                </div>
-              </td>
-              
-              <td class="py-4 px-6">
-                <div class="flex flex-col gap-1">
-                  <span 
-                    class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium w-fit"
-                    :class="getVerificationBadgeClass(user.verification_status)"
-                  >
-                    <i :class="getVerificationIcon(user.verification_status)"></i>
-                    {{ user.verification_status || 'N/A' }}
-                  </span>
-                  <p 
-                    v-if="user.verification_details" 
-                    class="text-xs text-gray-500 truncate max-w-[200px]"
-                    :title="getVerificationDetails(user)"
-                  >
-                    {{ getVerificationDetails(user) }}
-                  </p>
-                </div>
-              </td>
-              
-              <td class="py-4 px-6">
-                <div class="text-sm text-gray-900">{{ user.created_at }}</div>
-                <div class="text-xs text-gray-500">Member since</div>
-              </td>
-              
-              <td class="py-4 px-6">
-                <span 
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeClass(user.status)"
-                >
-                  <span class="w-2 h-2 rounded-full" :class="getStatusDotClass(user.status)"></span>
-                  {{ user.status_display }}
-                </span>
-              </td>
-              
-              <td class="py-4 px-6">
-                <div class="flex items-center gap-2">
-                  <button 
-                    @click="viewUser(user)"
-                    class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 rounded-lg transition-colors duration-200 group"
-                    title="View Details"
-                  >
-                    <i class="fas fa-eye"></i>
-                    <span class="text-sm">View</span>
-                  </button>
-                  
-                  <button 
-                    @click="editUser(user)"
-                    class="flex items-center gap-2 px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 hover:text-yellow-700 rounded-lg transition-colors duration-200 group"
-                    title="Edit User"
-                  >
-                    <i class="fas fa-edit"></i>
-                    <span class="text-sm">Edit</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <div v-if="!loading && pagination.last_page > 1" class="px-6 py-4 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700">
-            Showing <span class="font-medium">{{ pagination.from }}</span> to 
-            <span class="font-medium">{{ pagination.to }}</span> of 
-            <span class="font-medium">{{ pagination.total }}</span> results
+        
+        <Separator class="my-4" />
+
+        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div class="relative w-full sm:max-w-md">
+            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm"></i>
+            <Input 
+              v-model="searchQuery" 
+              placeholder="Search by name, email, or phone..." 
+              @input="debouncedFetchUsers"
+              class="pl-9 bg-slate-50 border-slate-200 focus:bg-white"
+            />
           </div>
           
-          <div class="flex items-center gap-1">
-            <button 
-              @click="goToPage(currentPage - 1)" 
-              :disabled="currentPage === 1"
-              class="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select 
+              v-model="statusFilter" 
+              @change="fetchUsers"
+              class="h-10 w-full sm:w-[150px] rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <i class="fas fa-chevron-left"></i>
-            </button>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="pending">Pending</option>
+            </select>
             
-            <button 
-              v-for="page in getPaginationRange()" 
-              :key="page" 
-              @click="goToPage(page)"
-              class="w-10 h-10 rounded-lg flex items-center justify-center border font-medium transition-colors duration-200"
-              :class="currentPage === page 
-                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent' 
-                : 'border-gray-300 hover:bg-gray-50'"
-            >
-              {{ page }}
-            </button>
-            
-            <button 
-              @click="goToPage(currentPage + 1)" 
-              :disabled="currentPage === pagination.last_page"
-              class="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <i class="fas fa-chevron-right"></i>
-            </button>
+            <Button variant="outline" @click="fetchUsers" class="gap-2">
+              <i class="fas fa-sync-alt"></i>
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </CardHeader>
 
-    <div v-if="showViewModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg"
-                 :style="{ backgroundColor: viewingUser.avatar_color }">
-              {{ viewingUser.initials }}
-            </div>
-            <div>
-              <h2 class="text-2xl font-bold text-gray-900">{{ viewingUser.full_name }}</h2>
-              <div class="flex items-center gap-3 mt-1">
-                <span class="text-gray-600">{{ viewingUser.email }}</span>
-                <span class="w-2 h-2 bg-gray-300 rounded-full"></span>
-                <span 
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
-                  :class="getStatusBadgeClass(viewingUser.status)"
-                >
-                  <span class="w-2 h-2 rounded-full" :class="getStatusDotClass(viewingUser.status)"></span>
-                  {{ viewingUser.status_display }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button @click="closeViewModal" class="w-10 h-10 rounded-lg hover:bg-gray-200 flex items-center justify-center transition-colors duration-200">
-            <i class="fas fa-times text-gray-600"></i>
-          </button>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto p-6">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-1 space-y-6">
-              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <i class="fas fa-id-card text-blue-600"></i>
-                  User Profile
-                </h4>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <i class="fas fa-user-tag text-blue-600"></i>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Role</p>
-                      <p class="font-medium">{{ viewingUser.role_display }}</p>
-                    </div>
-                  </div>
-                  
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                      <i class="fas fa-calendar-alt text-green-600"></i>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Member Since</p>
-                      <p class="font-medium">{{ viewingUser.created_at }}</p>
-                    </div>
-                  </div>
-                  
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-lg" :class="getStatusColorClass(viewingUser.status)">
-                      <i :class="getStatusIcon(viewingUser.status)" class="text-lg"></i>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Account Status</p>
-                      <p class="font-medium">{{ viewingUser.status_display }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div v-if="viewingUser.verification_status" class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <i class="fas fa-shield-alt text-purple-600"></i>
-                  Verification Status
-                </h4>
-                <div class="space-y-3">
-                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center gap-3">
-                      <div class="w-8 h-8 rounded-full flex items-center justify-center" 
-                           :class="getVerificationBadgeClass(viewingUser.verification_status)">
-                        <i :class="getVerificationIcon(viewingUser.verification_status)" class="text-sm"></i>
-                      </div>
-                      <div>
-                        <p class="text-sm text-gray-600">Status</p>
-                        <p class="font-medium">{{ viewingUser.verification_status }}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
+      <CardContent class="p-0">
+        <div class="rounded-md border-t border-slate-100">
+          <Table>
+            <TableHeader class="bg-slate-50/50">
+              <TableRow>
+                <TableHead class="font-semibold text-slate-600">User</TableHead>
+                <TableHead class="font-semibold text-slate-600">Role</TableHead>
+                <TableHead class="font-semibold text-slate-600">Contact</TableHead>
+                <TableHead class="font-semibold text-slate-600">Verification</TableHead>
+                <TableHead class="font-semibold text-slate-600">Status</TableHead>
+                <TableHead class="font-semibold text-slate-600 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="loading">
+                <TableCell colspan="6" class="h-32 text-center">
+                   <div class="flex flex-col items-center justify-center gap-2 text-slate-500">
+                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span>Loading data...</span>
+                   </div>
+                </TableCell>
+              </TableRow>
 
-              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                  <i class="fas fa-cogs text-yellow-600"></i>
-                  Account Management
-                </h4>
-                <div class="space-y-4">
-                  <div class="flex flex-col gap-3">
-                    <button 
-                      @click="editUser(viewingUser)"
-                      class="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
+              <TableRow v-else-if="users.length === 0">
+                <TableCell colspan="6" class="h-32 text-center text-slate-500">
+                  <div class="flex flex-col items-center justify-center gap-1">
+                    <i class="fas fa-search text-2xl mb-2 opacity-20"></i>
+                    <p>No users found matching your criteria.</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+
+              <TableRow v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
+                <TableCell>
+                  <div class="flex items-center gap-3">
+                    <div 
+                      class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-white"
+                      :style="{ backgroundColor: user.avatar_color }"
                     >
-                      <i class="fas fa-edit"></i>
-                      Edit User
-                    </button>
-                    
-                    <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
-                      <button 
-                        @click="approveUser(viewingUser)"
-                        class="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
-                      >
-                        <i class="fas fa-check-circle"></i>
-                        Approve User
-                      </button>
-                      
-                      <button 
-                        @click="rejectUser(viewingUser)"
-                        class="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
-                      >
-                        <i class="fas fa-times-circle"></i>
-                        Reject User
-                      </button>
-                    </template>
-                    
-                    <template v-else>
-                      <button 
-                        v-if="viewingUser.status === 'active'"
-                        @click="deactivateUser(viewingUser)"
-                        class="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
-                      >
-                        <i class="fas fa-user-slash"></i>
-                        Deactivate User
-                      </button>
-                      
-                      <button 
-                        v-if="viewingUser.status === 'inactive'"
-                        @click="activateUser(viewingUser)"
-                        class="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium"
-                      >
-                        <i class="fas fa-user-check"></i>
-                        Activate User
-                      </button>
-                    </template>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="lg:col-span-2 space-y-6">
-              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                  <i class="fas fa-user-circle text-blue-600"></i>
-                  Personal Information
-                </h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-600">First Name</label>
-                    <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ viewingUser.first_name }}</p>
-                  </div>
-                  <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-600">Last Name</label>
-                    <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ viewingUser.last_name }}</p>
-                  </div>
-                  <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-600">Email Address</label>
-                    <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <i class="fas fa-envelope text-gray-400"></i>
-                      <p class="text-gray-900 font-medium">{{ viewingUser.email }}</p>
+                      {{ user.initials }}
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="font-medium text-slate-900">{{ user.full_name }}</span>
+                      <span class="text-xs text-slate-500">Added {{ user.created_at }}</span>
                     </div>
                   </div>
-                  <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-600">Phone Number</label>
-                    <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <i class="fas fa-phone text-gray-400"></i>
-                      <p class="text-gray-900 font-medium">{{ viewingUser.phone || 'Not provided' }}</p>
-                    </div>
-                  </div>
-                  <div class="md:col-span-2 space-y-1">
-                    <label class="block text-sm font-medium text-gray-600">Address</label>
-                    <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ viewingUser.address || 'Not provided' }}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                  <i class="fas fa-file-contract text-purple-600"></i>
-                  User Requirements
-                </h4>
+                </TableCell>
                 
-                <div v-if="loadingRequirements" class="text-center py-8">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p class="text-gray-600 mt-3">Loading requirements...</p>
-                </div>
-                
-                <div v-if="!loadingRequirements && (!userRequirements || Object.keys(userRequirements).length === 0)" class="text-center py-8">
-                  <i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i>
-                  <p class="text-gray-500">No requirements submitted yet</p>
-                </div>
-                
-                <div v-if="!loadingRequirements && userRequirements && Object.keys(userRequirements).length > 0">
-                  <div v-if="viewingUser.role === 'distributor' && userRequirements.distributor" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">Business Information</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Company Name</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.distributor.company_name }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Business Registration Number</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.distributor.business_registration_number }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 class="font-semibold text-gray-800 mb-4">Business Documents</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
-                          <div class="space-y-2">
-                            <p class="text-sm text-gray-600">Type: {{ userRequirements.distributor.valid_id_type_display || userRequirements.distributor.valid_id_type }}</p>
-                            <p class="text-sm text-gray-600">Number: {{ userRequirements.distributor.id_number }}</p>
-                            <div v-if="userRequirements.distributor.valid_id_photo_url" class="mt-2">
-                              <img :src="userRequirements.distributor.valid_id_photo_url" 
-                                   alt="Valid ID" 
-                                   class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                   @click="showImageModal(userRequirements.distributor.valid_id_photo_url, 'Valid ID')">
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">DTI Certificate</h6>
-                          <div v-if="userRequirements.distributor.dti_certificate_photo_url">
-                            <img :src="userRequirements.distributor.dti_certificate_photo_url" 
-                                 alt="DTI Certificate" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.distributor.dti_certificate_photo_url, 'DTI Certificate')">
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Mayor's Permit</h6>
-                          <div v-if="userRequirements.distributor.mayor_permit_photo_url">
-                            <img :src="userRequirements.distributor.mayor_permit_photo_url" 
-                                 alt="Mayor's Permit" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.distributor.mayor_permit_photo_url, 'Mayor\'s Permit')">
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Barangay Clearance</h6>
-                          <div v-if="userRequirements.distributor.barangay_clearance_photo_url">
-                            <img :src="userRequirements.distributor.barangay_clearance_photo_url" 
-                                 alt="Barangay Clearance" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.distributor.barangay_clearance_photo_url, 'Barangay Clearance')">
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Business Registration</h6>
-                          <div v-if="userRequirements.distributor.business_registration_photo_url">
-                            <img :src="userRequirements.distributor.business_registration_photo_url" 
-                                 alt="Business Registration" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.distributor.business_registration_photo_url, 'Business Registration')">
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.role === 'client' && userRequirements.client" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Type</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.client.valid_id_type_display || userRequirements.client.valid_id_type }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Number</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.client.id_number }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 class="font-semibold text-gray-800 mb-4">ID Document</h5>
-                      <div class="flex justify-center">
-                        <div v-if="userRequirements.client.valid_id_photo_url" class="max-w-md w-full">
-                          <img :src="userRequirements.client.valid_id_photo_url" 
-                               alt="Valid ID" 
-                               class="w-full h-auto object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                               @click="showImageModal(userRequirements.client.valid_id_photo_url, 'Valid ID')">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.role === 'service_provider' && userRequirements.service_provider" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Type</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Number</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.service_provider.id_number }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h6 class="font-medium text-gray-700 mb-3">Valid ID</h6>
-                        <div v-if="userRequirements.service_provider.valid_id_photo_url" class="mt-2">
-                          <img :src="userRequirements.service_provider.valid_id_photo_url" 
-                               alt="Valid ID" 
-                               class="w-full h-64 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                               @click="showImageModal(userRequirements.service_provider.valid_id_photo_url, 'Valid ID')">
-                        </div>
-                      </div>
-                      <div>
-                        <h6 class="font-medium text-gray-700 mb-3">Selfie with ID</h6>
-                        <div v-if="userRequirements.service_provider.selfie_with_id_photo_url" class="mt-2">
-                          <img :src="userRequirements.service_provider.selfie_with_id_photo_url" 
-                               alt="Selfie with ID" 
-                               class="w-full h-64 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                               @click="showImageModal(userRequirements.service_provider.selfie_with_id_photo_url, 'Selfie with ID')">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.role === 'hr_manager' && userRequirements.hr_manager" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">Employee Information</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Position</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.hr_manager.position }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Employment Type</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.hr_manager.employment_type_display || userRequirements.hr_manager.employment_type }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Salary</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ formatCurrency(userRequirements.hr_manager.salary) }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Hire Date</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ formatDate(userRequirements.hr_manager.hire_date) }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 class="font-semibold text-gray-800 mb-4">Documents</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
-                          <div v-if="userRequirements.hr_manager.valid_id_photo_url" class="mt-2">
-                            <img :src="userRequirements.hr_manager.valid_id_photo_url" 
-                                 alt="Valid ID" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.hr_manager.valid_id_photo_url, 'Valid ID')">
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Resume</h6>
-                          <div v-if="userRequirements.hr_manager.resume_url" class="mt-2">
-                            <a :href="userRequirements.hr_manager.resume_url" 
-                               target="_blank" 
-                               class="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-                              <i class="fas fa-file-pdf text-xl"></i>
-                              <span>View Resume</span>
-                            </a>
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Employment Contract</h6>
-                          <div v-if="userRequirements.hr_manager.employment_contract_url" class="mt-2">
-                            <a :href="userRequirements.hr_manager.employment_contract_url" 
-                               target="_blank" 
-                               class="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-                              <i class="fas fa-file-contract text-xl"></i>
-                              <span>View Contract</span>
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.role === 'finance_manager' && userRequirements.finance_manager" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">Employee Information</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Position</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.finance_manager.position }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Employment Type</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.finance_manager.employment_type_display || userRequirements.finance_manager.employment_type }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Salary</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ formatCurrency(userRequirements.finance_manager.salary) }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">Hire Date</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ formatDate(userRequirements.finance_manager.hire_date) }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 class="font-semibold text-gray-800 mb-4">Documents</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Valid ID</h6>
-                          <div v-if="userRequirements.finance_manager.valid_id_photo_url" class="mt-2">
-                            <img :src="userRequirements.finance_manager.valid_id_photo_url" 
-                                 alt="Valid ID" 
-                                 class="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                 @click="showImageModal(userRequirements.finance_manager.valid_id_photo_url, 'Valid ID')">
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Resume</h6>
-                          <div v-if="userRequirements.finance_manager.resume_url" class="mt-2">
-                            <a :href="userRequirements.finance_manager.resume_url" 
-                               target="_blank" 
-                               class="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-                              <i class="fas fa-file-pdf text-xl"></i>
-                              <span>View Resume</span>
-                            </a>
-                          </div>
-                        </div>
-                        
-                        <div class="border border-gray-200 rounded-lg p-4">
-                          <h6 class="font-medium text-gray-700 mb-2">Employment Contract</h6>
-                          <div v-if="userRequirements.finance_manager.employment_contract_url" class="mt-2">
-                            <a :href="userRequirements.finance_manager.employment_contract_url" 
-                               target="_blank" 
-                               class="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-                              <i class="fas fa-file-contract text-xl"></i>
-                              <span>View Contract</span>
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.role === 'operational_distributor' && userRequirements.operational_distributor" class="space-y-6">
-                    <div class="border-b border-gray-200 pb-6">
-                      <h5 class="font-semibold text-gray-800 mb-4">ID Verification</h5>
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Type</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.operational_distributor.valid_id_type_display || userRequirements.operational_distributor.valid_id_type }}</p>
-                        </div>
-                        <div>
-                          <label class="block text-sm font-medium text-gray-600 mb-1">ID Number</label>
-                          <p class="text-gray-900 font-medium p-3 bg-gray-50 rounded-lg">{{ userRequirements.operational_distributor.id_number }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h5 class="font-semibold text-gray-800 mb-4">ID Document</h5>
-                      <div class="flex justify-center">
-                        <div v-if="userRequirements.operational_distributor.valid_id_photo_url" class="max-w-md w-full">
-                          <img :src="userRequirements.operational_distributor.valid_id_photo_url" 
-                               alt="Valid ID" 
-                               class="w-full h-auto object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                               @click="showImageModal(userRequirements.operational_distributor.valid_id_photo_url, 'Valid ID')">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 class="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                  <i class="fas fa-history text-purple-600"></i>
-                  Account Activity
-                </h4>
-                <div class="space-y-4">
-                  <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <i class="fas fa-user-plus text-blue-600"></i>
-                    </div>
-                    <div class="flex-1">
-                      <p class="font-medium text-gray-900">Account Created</p>
-                      <p class="text-sm text-gray-500">{{ viewingUser.created_at }}</p>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.verification_details?.submitted_at" class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                      <i class="fas fa-clipboard-check text-green-600"></i>
-                    </div>
-                    <div class="flex-1">
-                      <p class="font-medium text-gray-900">Requirements Submitted</p>
-                      <p class="text-sm text-gray-500">{{ formatDate(viewingUser.verification_details.submitted_at) }}</p>
-                    </div>
-                  </div>
-                  
-                  <div v-if="viewingUser.verification_details?.reviewed_at" class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <i class="fas fa-eye text-yellow-600"></i>
-                    </div>
-                    <div class="flex-1">
-                      <p class="font-medium text-gray-900">Last Reviewed</p>
-                      <p class="text-sm text-gray-500">{{ formatDate(viewingUser.verification_details.reviewed_at) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
-          <button @click="closeViewModal" class="flex items-center gap-2 px-6 py-3 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors duration-200">
-            <i class="fas fa-times"></i>
-            Close
-          </button>
-          <div class="flex items-center gap-3">
-            <button 
-              v-if="viewingUser.role === 'distributor' && viewingUser.verification_status === 'pending'"
-              @click="reviewRequirements(viewingUser)"
-              class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg font-medium transition-all duration-200"
-            >
-              <i class="fas fa-file-contract"></i>
-              Review Requirements
-            </button>
-            <button 
-              @click="editUser(viewingUser)"
-              class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg font-medium transition-all duration-200"
-            >
-              <i class="fas fa-edit"></i>
-              Edit User
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showImageModalFlag" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
-      <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div class="flex items-center justify-between p-4 border-b border-gray-200">
-          <h3 class="text-xl font-bold text-gray-900">{{ currentImageTitle }}</h3>
-          <button @click="closeImageModal" class="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center">
-            <i class="fas fa-times text-gray-600"></i>
-          </button>
-        </div>
-        <div class="p-4 flex items-center justify-center h-[70vh]">
-          <img :src="currentImageUrl" 
-               :alt="currentImageTitle" 
-               class="max-w-full max-h-full object-contain rounded-lg">
-        </div>
-        <div class="p-4 border-t border-gray-200 flex justify-end">
-          <a :href="currentImageUrl" 
-             target="_blank" 
-             class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            <i class="fas fa-external-link-alt"></i>
-            Open in New Tab
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showEditUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl w-full max-w-2xl">
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-2xl font-bold text-gray-900">Edit User</h2>
-              <p class="text-gray-600 mt-1">Update user information and settings</p>
-            </div>
-            <button @click="closeEditUserModal" class="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center">
-              <i class="fas fa-times text-gray-500"></i>
-            </button>
-          </div>
-        </div>
-        
-        <div class="p-6">
-          <form @submit.prevent="saveEditedUser">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
-                <input 
-                  v-model="editingUser.first_name" 
-                  type="text" 
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
-                <input 
-                  v-model="editingUser.last_name" 
-                  type="text" 
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                <input 
-                  v-model="editingUser.email" 
-                  type="email" 
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                <input 
-                  v-model="editingUser.phone" 
-                  type="tel"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                <textarea 
-                  v-model="editingUser.address" 
-                  rows="2"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                ></textarea>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Role *</label>
-                <select 
-                  v-model="editingUser.role" 
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="admin">Administrator</option>
-                  <option value="distributor">Distributor</option>
-                  <option value="service_provider">Service Provider</option>
-                  <option value="client">Client</option>
-                  <option value="operational_distributor">Operational Distributor</option>
-                  <option value="hr_manager">HR Manager</option>
-                  <option value="finance_manager">Finance Manager</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select 
-                  v-model="editingUser.status"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-              <button 
-                type="button" 
-                @click="closeEditUserModal" 
-                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                :disabled="updatingUser"
-                class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg font-medium disabled:opacity-50"
-              >
-                <i v-if="updatingUser" class="fas fa-spinner fa-spin"></i>
-                <i v-else class="fas fa-save"></i>
-                {{ updatingUser ? 'Saving...' : 'Save Changes' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-2xl w-full max-w-2xl">
-        <div class="p-6 border-b border-gray-200">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-2xl font-bold text-gray-900">Add New User</h2>
-              <p class="text-gray-600 mt-1">Create a new user account</p>
-            </div>
-            <button @click="closeAddUserModal" class="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center">
-              <i class="fas fa-times text-gray-500"></i>
-            </button>
-          </div>
-        </div>
-        
-        <div class="p-6">
-          <form @submit.prevent="addNewUser">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
-                <input 
-                  v-model="newUser.first_name" 
-                  type="text" 
-                  placeholder="Enter first name"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
-                <input 
-                  v-model="newUser.last_name" 
-                  type="text" 
-                  placeholder="Enter last name"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                <input 
-                  v-model="newUser.email" 
-                  type="email" 
-                  placeholder="user@example.com"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                <input 
-                  v-model="newUser.phone" 
-                  type="tel" 
-                  placeholder="Enter phone number"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                <input 
-                  v-model="newUser.address" 
-                  type="text" 
-                  placeholder="Enter address"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Assign Role *</label>
-                <select 
-                  v-model="newUser.role" 
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select a role</option>
-                  <option value="admin">Administrator</option>
-                  <option value="distributor">Distributor</option>
-                  <option value="service_provider">Service Provider</option>
-                  <option value="client">Client</option>
-                  <option value="operational_distributor">Operational Distributor</option>
-                  <option value="hr_manager">HR Manager</option>
-                  <option value="finance_manager">Finance Manager</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Account Status</label>
-                <select 
-                  v-model="newUser.status"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Password *</label>
-                <div class="relative">
-                  <input 
-                    v-model="newUser.password" 
-                    :type="showPassword ? 'text' : 'password'" 
-                    placeholder="Enter password"
-                    required
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10"
+                <TableCell>
+                  <Badge variant="outline" :class="getRoleBadgeClass(user.role) + ' gap-1 border-0 font-normal'">
+                    <i :class="getRoleIcon(user.role)" class="text-[10px]"></i>
+                    {{ user.role_display }}
+                  </Badge>
+                  <div 
+                    v-if="(user.role === 'distributor' || user.role === 'supplier') && user.verification_status === 'pending'"
+                    @click="viewUser(user)"
+                    class="mt-1 text-[10px] text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 font-medium"
                   >
-                  <button 
-                    type="button" 
-                    @click="showPassword = !showPassword" 
-                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                  >
-                    <i v-if="showPassword" class="fas fa-eye-slash"></i>
-                    <i v-else class="fas fa-eye"></i>
-                  </button>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                    <i class="fas fa-exclamation-circle"></i> Needs Review
+                  </div>
+                </TableCell>
+                
+                <TableCell>
+                  <div class="flex flex-col gap-1 text-sm text-slate-600">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-envelope text-slate-400 text-xs w-4"></i>
+                      <span>{{ user.email }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-phone text-slate-400 text-xs w-4"></i>
+                      <span>{{ user.phone || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </TableCell>
+                
+                <TableCell>
+                  <div class="flex flex-col items-start gap-1">
+                    <Badge variant="secondary" :class="getVerificationBadgeClass(user.verification_status) + ' gap-1'">
+                      <i :class="getVerificationIcon(user.verification_status)"></i>
+                      {{ user.verification_status || 'N/A' }}
+                    </Badge>
+                    <span 
+                      v-if="user.verification_details" 
+                      class="text-[10px] text-slate-500 truncate max-w-[150px]"
+                      :title="getVerificationDetails(user)"
+                    >
+                      {{ getVerificationDetails(user) }}
+                    </span>
+                  </div>
+                </TableCell>
+                
+                <TableCell>
+                   <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border" :class="getStatusBadgeClass(user.status)">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="getStatusDotClass(user.status)"></span>
+                      {{ user.status_display }}
+                   </span>
+                </TableCell>
+                
+                <TableCell class="text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="icon" @click="viewUser(user)" class="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50">
+                      <i class="fas fa-eye text-xs">View</i>
+                    </Button>
+                    <Button variant="ghost" size="icon" @click="editUser(user)" class="h-8 w-8 text-slate-500 hover:text-amber-600 hover:bg-amber-50">
+                      <i class="fas fa-pencil-alt text-xs">Edit</i>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        
+        <div v-if="!loading && pagination.last_page > 1" class="flex items-center justify-between p-4 border-t border-slate-100 bg-slate-50/30">
+          <div class="text-sm text-slate-500">
+             Showing {{ pagination.from }}-{{ pagination.to }} of {{ pagination.total }}
+          </div>
+          <div class="flex gap-1">
+             <Button 
+                variant="outline" size="sm" 
+                @click="goToPage(currentPage - 1)" 
+                :disabled="currentPage === 1"
+                class="h-8 w-8 p-0"
+             >
+                <i class="fas fa-chevron-left text-xs"></i>
+             </Button>
+             
+             <Button 
+                v-for="page in getPaginationRange()" 
+                :key="page" 
+                :variant="currentPage === page ? 'default' : 'outline'"
+                size="sm"
+                @click="goToPage(page)"
+                class="h-8 w-8 p-0"
+                :class="currentPage === page ? 'bg-slate-900 hover:bg-slate-800' : ''"
+             >
+                {{ page }}
+             </Button>
+             
+             <Button 
+                variant="outline" size="sm" 
+                @click="goToPage(currentPage + 1)" 
+                :disabled="currentPage === pagination.last_page"
+                class="h-8 w-8 p-0"
+             >
+                <i class="fas fa-chevron-right text-xs"></i>
+             </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Dialog :open="showViewModal" @update:open="closeViewModal">
+      <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex items-center gap-4">
+              <div 
+                class="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md ring-4 ring-white"
+                :style="{ backgroundColor: viewingUser.avatar_color }"
+              >
+                {{ viewingUser.initials }}
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
-                <input 
-                  v-model="newUser.password_confirmation" 
-                  :type="showPassword ? 'text' : 'password'" 
-                  placeholder="Confirm password"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
+                <h2 class="text-2xl font-bold text-slate-900">{{ viewingUser.full_name }}</h2>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-slate-500 text-sm">{{ viewingUser.email }}</span>
+                  <Badge variant="outline" class="text-xs uppercase">{{ viewingUser.role_display }}</Badge>
+                </div>
               </div>
             </div>
-            
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
-              <button 
-                type="button" 
-                @click="closeAddUserModal" 
-                class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                :disabled="addingUser"
-                class="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg font-medium disabled:opacity-50"
-              >
-                <i v-if="addingUser" class="fas fa-spinner fa-spin"></i>
-                <i v-else class="fas fa-plus"></i>
-                {{ addingUser ? 'Creating...' : 'Create User' }}
-              </button>
-            </div>
-          </form>
+            <Button variant="ghost" size="icon" @click="closeViewModal" class="rounded-full hover:bg-slate-200">
+              <i class="fas fa-times text-slate-500"></i>
+            </Button>
+          </div>
+
+          <ScrollArea class="flex-1 p-6 bg-white overflow-y-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div class="lg:col-span-1 space-y-6">
+                <Card class="bg-slate-50/50 border-slate-200">
+                  <CardHeader class="pb-2">
+                    <CardTitle class="text-sm font-medium text-slate-500 uppercase tracking-wider">Account Status</CardTitle>
+                  </CardHeader>
+                  <CardContent class="space-y-4">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-slate-700">Access</span>
+                      <Badge :class="getStatusBadgeClass(viewingUser.status)">{{ viewingUser.status_display }}</Badge>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-slate-700">Verification</span>
+                      <Badge :class="getVerificationBadgeClass(viewingUser.verification_status)">{{ viewingUser.verification_status || 'N/A' }}</Badge>
+                    </div>
+                    <div class="pt-4 flex flex-col gap-2">
+                       <Button @click="editUser(viewingUser)" variant="outline" class="w-full justify-start gap-2">
+                          <i class="fas fa-edit text-slate-400"></i> Edit Profile
+                       </Button>
+
+                       <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
+                          <Button @click="approveUser(viewingUser)" class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white">
+                             <i class="fas fa-check-circle"></i> Approve User
+                          </Button>
+                          <Button @click="rejectUser(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
+                             <i class="fas fa-times-circle"></i> Reject User
+                          </Button>
+                       </template>
+                       
+                       <template v-else>
+                          <Button 
+                             v-if="viewingUser.status === 'active'" 
+                             @click="deactivateUser(viewingUser)" 
+                             variant="destructive" 
+                             class="w-full justify-start gap-2"
+                          >
+                             <i class="fas fa-user-slash"></i> Deactivate
+                          </Button>
+                          <Button 
+                             v-if="viewingUser.status === 'inactive'" 
+                             @click="activateUser(viewingUser)" 
+                             class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white"
+                          >
+                             <i class="fas fa-user-check"></i> Activate
+                          </Button>
+                       </template>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card class="border-slate-200">
+                   <CardContent class="p-4 space-y-3">
+                      <div class="flex items-center gap-3 text-sm">
+                         <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                            <i class="fas fa-calendar-alt"></i>
+                         </div>
+                         <div>
+                            <p class="text-slate-500 text-xs">Joined</p>
+                            <p class="font-medium">{{ viewingUser.created_at }}</p>
+                         </div>
+                      </div>
+                      <div v-if="viewingUser.verification_details?.submitted_at" class="flex items-center gap-3 text-sm">
+                         <div class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                            <i class="fas fa-file-contract"></i>
+                         </div>
+                         <div>
+                            <p class="text-slate-500 text-xs">Req. Submitted</p>
+                            <p class="font-medium">{{ formatDate(viewingUser.verification_details.submitted_at) }}</p>
+                         </div>
+                      </div>
+                   </CardContent>
+                </Card>
+              </div>
+
+              <div class="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                      <i class="fas fa-user-circle text-blue-600"></i>
+                      Personal Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div class="space-y-1">
+                        <Label class="text-slate-500">Full Name</Label>
+                        <p class="font-medium text-slate-900">{{ viewingUser.first_name }} {{ viewingUser.last_name }}</p>
+                     </div>
+                     <div class="space-y-1">
+                        <Label class="text-slate-500">Email</Label>
+                        <p class="font-medium text-slate-900">{{ viewingUser.email }}</p>
+                     </div>
+                     <div class="space-y-1">
+                        <Label class="text-slate-500">Phone</Label>
+                        <p class="font-medium text-slate-900">{{ viewingUser.phone || 'Not Provided' }}</p>
+                     </div>
+                     <div class="space-y-1">
+                        <Label class="text-slate-500">Address</Label>
+                        <p class="font-medium text-slate-900">{{ viewingUser.address || 'Not Provided' }}</p>
+                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                     <CardTitle class="flex items-center gap-2">
+                        <i class="fas fa-folder-open text-purple-600"></i>
+                        Requirements & Documents
+                     </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                     <div v-if="loadingRequirements" class="flex justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                     </div>
+                     
+                     <div v-else-if="!userRequirements || Object.keys(userRequirements).length === 0" class="text-center py-8 border-2 border-dashed rounded-lg">
+                        <p class="text-slate-500">No requirements submitted.</p>
+                     </div>
+
+                     <div v-else class="space-y-6">
+
+  <div v-if="viewingUser.role === 'distributor' && userRequirements.distributor">
+    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
+      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Company Name</Label>
+          <p class="font-medium text-slate-900">{{ userRequirements.distributor.company_name }}</p>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Registration Number</Label>
+          <p class="font-medium text-slate-900">{{ userRequirements.distributor.business_registration_number }}</p>
         </div>
       </div>
     </div>
+
+    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+      <i class="fas fa-file-image text-slate-400"></i> Business Documents
+    </h4>
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="(doc, label) in {
+        'Valid ID': userRequirements.distributor.valid_id_photo_url,
+        'DTI Certificate': userRequirements.distributor.dti_certificate_photo_url,
+        'Mayor\'s Permit': userRequirements.distributor.mayor_permit_photo_url,
+        'Barangay Clearance': userRequirements.distributor.barangay_clearance_photo_url,
+        'Business Registration': userRequirements.distributor.business_registration_photo_url
+      }" :key="label">
+        <div v-if="doc" 
+             class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
+             @click="showImageModal(doc, label)">
+          <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
+            <span class="text-white text-xs font-semibold">{{ label }}</span>
+          </div>
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="viewingUser.role === 'supplier' && userRequirements.supplier">
+    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
+      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Company Name</Label>
+          <p class="font-medium text-slate-900">{{ userRequirements.supplier.company_name }}</p>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Registration Number</Label>
+          <p class="font-medium text-slate-900">{{ userRequirements.supplier.business_registration_number }}</p>
+        </div>
+        <div v-if="userRequirements.supplier.address" class="md:col-span-2 space-y-1">
+          <Label class="text-xs text-slate-500">Business Address</Label>
+          <p class="font-medium text-slate-900">
+            {{ userRequirements.supplier.address.block_address }}, 
+            {{ userRequirements.supplier.address.barangay }}, 
+            {{ userRequirements.supplier.address.city }}, 
+            {{ userRequirements.supplier.address.province }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+      <i class="fas fa-file-image text-slate-400"></i> Business Documents
+    </h4>
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="(doc, label) in {
+        'Valid ID': userRequirements.supplier.valid_id_photo_url,
+        'DTI Certificate': userRequirements.supplier.dti_certificate_photo_url,
+        'Mayor\'s Permit': userRequirements.supplier.mayor_permit_photo_url,
+        'Barangay Clearance': userRequirements.supplier.barangay_clearance_photo_url,
+        'Business Registration': userRequirements.supplier.business_registration_photo_url
+      }" :key="label">
+        <div v-if="doc" 
+             class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
+             @click="showImageModal(doc, label)">
+          <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
+            <span class="text-white text-xs font-semibold">{{ label }}</span>
+          </div>
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <i class="fas fa-search-plus text-white text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="(viewingUser.role === 'hr_manager' && userRequirements.hr_manager) || (viewingUser.role === 'finance_manager' && userRequirements.finance_manager)">
+    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
+      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Employment Details</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Position</Label>
+          <p class="font-medium text-slate-900">
+            {{ viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.position : userRequirements.finance_manager.position }}
+          </p>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Salary</Label>
+          <p class="font-medium text-slate-900">
+            {{ formatCurrency(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.salary : userRequirements.finance_manager.salary) }}
+          </p>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Employment Type</Label>
+          <p class="font-medium text-slate-900">
+            {{ viewingUser.role === 'hr_manager' ? (userRequirements.hr_manager.employment_type_display || userRequirements.hr_manager.employment_type) : (userRequirements.finance_manager.employment_type_display || userRequirements.finance_manager.employment_type) }}
+          </p>
+        </div>
+        <div class="space-y-1">
+          <Label class="text-xs text-slate-500">Hire Date</Label>
+          <p class="font-medium text-slate-900">
+            {{ formatDate(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.hire_date : userRequirements.finance_manager.hire_date) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+      <i class="fas fa-folder text-slate-400"></i> Employment Documents
+    </h4>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url"
+           class="group relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer"
+           @click="showImageModal(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url, 'Valid ID')">
+        <img :src="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url" class="w-full h-full object-cover">
+        <div class="absolute bottom-0 left-0 right-0 p-2 bg-black/50 text-white text-xs font-medium text-center">Valid ID</div>
+      </div>
+
+      <Button v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.resume_url : userRequirements.finance_manager.resume_url" 
+              variant="outline" class="h-full min-h-[100px] flex flex-col gap-2 hover:bg-slate-50 hover:border-blue-300" 
+              as="a" :href="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.resume_url : userRequirements.finance_manager.resume_url" target="_blank">
+        <i class="fas fa-file-pdf text-red-500 text-2xl"></i>
+        <span>View Resume</span>
+      </Button>
+
+      <Button v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.employment_contract_url : userRequirements.finance_manager.employment_contract_url" 
+              variant="outline" class="h-full min-h-[100px] flex flex-col gap-2 hover:bg-slate-50 hover:border-blue-300" 
+              as="a" :href="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.employment_contract_url : userRequirements.finance_manager.employment_contract_url" target="_blank">
+        <i class="fas fa-file-contract text-blue-500 text-2xl"></i>
+        <span>View Contract</span>
+      </Button>
+    </div>
+  </div>
+
+  <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider) || (viewingUser.role === 'operational_distributor' && userRequirements.operational_distributor)">
+    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6 flex items-center justify-between">
+      <div class="space-y-1">
+        <Label class="text-xs text-slate-500">ID Type</Label>
+        <p class="font-medium text-slate-900">
+          {{ viewingUser.role === 'client' ? (userRequirements.client.valid_id_type_display || userRequirements.client.valid_id_type) : 
+             viewingUser.role === 'service_provider' ? (userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type) :
+             (userRequirements.operational_distributor.valid_id_type_display || userRequirements.operational_distributor.valid_id_type) }}
+        </p>
+      </div>
+      <div class="space-y-1 text-right">
+        <Label class="text-xs text-slate-500">ID Number</Label>
+        <p class="font-medium text-slate-900 font-mono">
+          {{ viewingUser.role === 'client' ? userRequirements.client.id_number : 
+             viewingUser.role === 'service_provider' ? userRequirements.service_provider.id_number :
+             userRequirements.operational_distributor.id_number }}
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div v-if="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : 
+                 viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url :
+                 userRequirements.operational_distributor.valid_id_photo_url">
+        <h6 class="text-sm font-medium text-slate-700 mb-3">Valid ID</h6>
+        <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
+             @click="showImageModal(viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url : userRequirements.operational_distributor.valid_id_photo_url, 'Valid ID')">
+          <img :src="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url : userRequirements.operational_distributor.valid_id_photo_url" class="w-full h-48 object-cover">
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <i class="fas fa-expand text-white text-xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="viewingUser.role === 'service_provider' && userRequirements.service_provider.selfie_with_id_photo_url">
+        <h6 class="text-sm font-medium text-slate-700 mb-3">Selfie with ID</h6>
+        <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
+             @click="showImageModal(userRequirements.service_provider.selfie_with_id_photo_url, 'Selfie with ID')">
+          <img :src="userRequirements.service_provider.selfie_with_id_photo_url" class="w-full h-48 object-cover">
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <i class="fas fa-expand text-white text-xl"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+             <Button variant="outline" @click="closeViewModal">Close</Button>
+             <Button 
+                v-if="(viewingUser.role === 'distributor' || viewingUser.role === 'supplier') && viewingUser.verification_status === 'pending'"
+                @click="reviewRequirements(viewingUser)"
+                class="bg-purple-600 hover:bg-purple-700 text-white"
+             >
+                <i class="fas fa-file-contract mr-2"></i> Review Requirements
+             </Button>
+          </div>
+        </div>
+      </div>
+    </Dialog>
+
+    <Dialog :open="showAddUserModal || showEditUserModal" @update:open="val => val ? null : (showAddUserModal ? closeAddUserModal() : closeEditUserModal())">
+      <div v-if="showAddUserModal || showEditUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <Card class="w-full max-w-2xl shadow-xl">
+          <CardHeader class="border-b">
+            <div class="flex items-center justify-between">
+              <div>
+                <CardTitle>{{ showAddUserModal ? 'Add New User' : 'Edit User' }}</CardTitle>
+                <p class="text-sm text-slate-500 mt-1">{{ showAddUserModal ? 'Create a new user account' : 'Update user information' }}</p>
+              </div>
+              <Button variant="ghost" size="icon" @click="showAddUserModal ? closeAddUserModal() : closeEditUserModal()">
+                <i class="fas fa-times"></i>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent class="p-6">
+            <form @submit.prevent="showAddUserModal ? addNewUser() : saveEditedUser()">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div class="space-y-2">
+                    <Label>First Name <span class="text-red-500">*</span></Label>
+                    <Input v-model="(showAddUserModal ? newUser : editingUser).first_name" required />
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Last Name <span class="text-red-500">*</span></Label>
+                    <Input v-model="(showAddUserModal ? newUser : editingUser).last_name" required />
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Email <span class="text-red-500">*</span></Label>
+                    <Input type="email" v-model="(showAddUserModal ? newUser : editingUser).email" required />
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Phone</Label>
+                    <Input type="tel" v-model="(showAddUserModal ? newUser : editingUser).phone" />
+                 </div>
+                 <div class="md:col-span-2 space-y-2">
+                    <Label>Address</Label>
+                    <Input v-model="(showAddUserModal ? newUser : editingUser).address" />
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Role <span class="text-red-500">*</span></Label>
+                    <select 
+                       v-model="(showAddUserModal ? newUser : editingUser).role" 
+                       required
+                       class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                       <option value="">Select Role</option>
+                       <option value="admin">Administrator</option>
+                       <option value="distributor">Distributor</option>
+                       <option value="service_provider">Service Provider</option>
+                       <option value="client">Client</option>
+                       <option value="operational_distributor">Operational Distributor</option>
+                       <option value="hr_manager">HR Manager</option>
+                       <option value="finance_manager">Finance Manager</option>
+                       <option value="supplier">Supplier</option>
+                    </select>
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Status</Label>
+                    <select 
+                       v-model="(showAddUserModal ? newUser : editingUser).status"
+                       class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                       <option value="active">Active</option>
+                       <option value="inactive">Inactive</option>
+                       <option value="pending">Pending</option>
+                    </select>
+                 </div>
+                 
+                 <template v-if="showAddUserModal">
+                    <div class="space-y-2">
+                       <Label>Password <span class="text-red-500">*</span></Label>
+                       <div class="relative">
+                          <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password" required />
+                          <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700">
+                             <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                          </button>
+                       </div>
+                    </div>
+                    <div class="space-y-2">
+                       <Label>Confirm Password <span class="text-red-500">*</span></Label>
+                       <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password_confirmation" required />
+                    </div>
+                 </template>
+              </div>
+
+              <div class="flex justify-end gap-3 mt-6 pt-6 border-t">
+                 <Button type="button" variant="outline" @click="showAddUserModal ? closeAddUserModal() : closeEditUserModal()">Cancel</Button>
+                 <Button type="submit" :disabled="addingUser || updatingUser" class="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
+                    <i v-if="addingUser || updatingUser" class="fas fa-spinner fa-spin mr-2"></i>
+                    {{ showAddUserModal ? (addingUser ? 'Creating...' : 'Create User') : (updatingUser ? 'Saving...' : 'Save Changes') }}
+                 </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </Dialog>
+
+    <Dialog :open="showImageModalFlag" @update:open="closeImageModal">
+      <div v-if="showImageModalFlag" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="font-bold text-lg">{{ currentImageTitle }}</h3>
+            <Button variant="ghost" size="icon" @click="closeImageModal">
+               <i class="fas fa-times">X</i>
+            </Button>
+          </div>
+          <div class="flex-1 p-4 bg-slate-900 flex items-center justify-center overflow-auto">
+             <img :src="currentImageUrl" class="max-w-full max-h-[70vh] rounded shadow-lg object-contain" />
+          </div>
+          <div class="p-4 border-t flex justify-end">
+            <Button variant="ghost" size="icon" @click="closeImageModal">
+               <i class="fas fa-times">Close</i>
+            </Button>
+             <Button as="a" :href="currentImageUrl" target="_blank" variant="secondary">
+                <i class="fas fa-external-link-alt mr-2"></i> Open Original
+             </Button>
+          </div>
+        </div>
+      </div>
+    </Dialog>
 
     <AlertDialog :open="alertDialog.open" @update:open="alertDialog.open = $event">
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{{ alertDialog.title }}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {{ alertDialog.description }}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{{ alertDialog.description }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="alertDialog.open = false">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="handleAlertDialogAction">Continue</AlertDialogAction>
+          <AlertDialogAction @click="handleAlertDialogAction" class="bg-blue-600 text-white hover:bg-blue-700">Continue</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
   </div>
 </template>
 
 <script>
 import axios from 'axios';
 import { toast } from 'vue-sonner';
+// Shadcn Components Imports
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Dialog } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1224,6 +776,10 @@ import {
 export default {
   name: 'UserManagement',
   components: {
+    Button, Input, Label, Badge, 
+    Card, CardHeader, CardTitle, CardContent,
+    Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+    Dialog, ScrollArea, Separator,
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -1240,6 +796,7 @@ export default {
         { label: 'All Users', value: 'all', icon: 'fas fa-users' },
         { label: 'Admins', value: 'admin', icon: 'fas fa-user-shield' },
         { label: 'Distributors', value: 'distributor', icon: 'fas fa-truck' },
+        { label: 'Suppliers', value: 'supplier', icon: 'fas fa-boxes' }, // Added Supplier
         { label: 'Service Providers', value: 'service_provider', icon: 'fas fa-tools' },
         { label: 'Clients', value: 'client', icon: 'fas fa-user' },
         { label: 'Operational', value: 'operational_distributor', icon: 'fas fa-cogs' },
@@ -1426,6 +983,7 @@ export default {
         operational_distributor: this.users.filter(u => u.role === 'operational_distributor').length,
         hr_manager: this.users.filter(u => u.role === 'hr_manager').length,
         finance_manager: this.users.filter(u => u.role === 'finance_manager').length,
+        supplier: this.users.filter(u => u.role === 'supplier').length, // Added Supplier Count
         active: this.users.filter(u => u.status === 'active').length,
         inactive: this.users.filter(u => u.status === 'inactive').length,
         pending: this.users.filter(u => u.status === 'pending').length,
@@ -1451,98 +1009,131 @@ export default {
         
         if (response.data.success) {
           const user = response.data.user;
+          const reqs = response.data.requirements;
           
-          // Process requirements based on user role
-          switch (user.role) {
-            case 'distributor':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  distributor: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
-                    dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
-                      `${baseURL}/storage/${user.verification_details.dti_certificate_photo}` : null,
-                    mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
-                      `${baseURL}/storage/${user.verification_details.mayor_permit_photo}` : null,
-                    barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
-                      `${baseURL}/storage/${user.verification_details.barangay_clearance_photo}` : null,
-                    business_registration_photo_url: user.verification_details.business_registration_photo ? 
-                      `${baseURL}/storage/${user.verification_details.business_registration_photo}` : null
+          if (reqs && reqs.supplier) {
+             this.userRequirements = {
+                supplier: {
+                    ...reqs.supplier,
+                    valid_id_photo_url: reqs.supplier.valid_id_photo ? `${baseURL}/storage/${reqs.supplier.valid_id_photo}` : null,
+                    dti_certificate_photo_url: reqs.supplier.dti_certificate_photo ? `${baseURL}/storage/${reqs.supplier.dti_certificate_photo}` : null,
+                    mayor_permit_photo_url: reqs.supplier.mayor_permit_photo ? `${baseURL}/storage/${reqs.supplier.mayor_permit_photo}` : null,
+                    barangay_clearance_photo_url: reqs.supplier.barangay_clearance_photo ? `${baseURL}/storage/${reqs.supplier.barangay_clearance_photo}` : null,
+                    business_registration_photo_url: reqs.supplier.business_registration_photo ? `${baseURL}/storage/${reqs.supplier.business_registration_photo}` : null
+                }
+             };
+          } else {
+              switch (user.role) {
+                case 'distributor':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      distributor: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
+                          `${baseURL}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
+                          `${baseURL}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
+                          `${baseURL}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                        business_registration_photo_url: user.verification_details.business_registration_photo ? 
+                          `${baseURL}/storage/${user.verification_details.business_registration_photo}` : null
+                      }
+                    };
                   }
-                };
-              }
-              break;
-              
-            case 'client':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  client: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                  break;
+                  
+                case 'client':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      client: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                      }
+                    };
                   }
-                };
-              }
-              break;
-              
-            case 'service_provider':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  service_provider: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
-                    selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.selfie_with_id_photo}` : null
+                  break;
+                  
+                case 'service_provider':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      service_provider: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                        selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.selfie_with_id_photo}` : null
+                      }
+                    };
                   }
-                };
-              }
-              break;
-              
-            case 'hr_manager':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  hr_manager: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
-                    resume_url: user.verification_details.resume ? 
-                      `${baseURL}/storage/${user.verification_details.resume}` : null,
-                    employment_contract_url: user.verification_details.employment_contract ? 
-                      `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                  break;
+                  
+                case 'hr_manager':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      hr_manager: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                        resume_url: user.verification_details.resume ? 
+                          `${baseURL}/storage/${user.verification_details.resume}` : null,
+                        employment_contract_url: user.verification_details.employment_contract ? 
+                          `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                      }
+                    };
                   }
-                };
-              }
-              break;
-              
-            case 'finance_manager':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  finance_manager: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
-                    resume_url: user.verification_details.resume ? 
-                      `${baseURL}/storage/${user.verification_details.resume}` : null,
-                    employment_contract_url: user.verification_details.employment_contract ? 
-                      `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                  break;
+                  
+                case 'finance_manager':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      finance_manager: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                        resume_url: user.verification_details.resume ? 
+                          `${baseURL}/storage/${user.verification_details.resume}` : null,
+                        employment_contract_url: user.verification_details.employment_contract ? 
+                          `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                      }
+                    };
                   }
-                };
-              }
-              break;
-              
-            case 'operational_distributor':
-              if (user.verification_details) {
-                this.userRequirements = {
-                  operational_distributor: {
-                    ...user.verification_details,
-                    valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                      `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                  break;
+                  
+                case 'operational_distributor':
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      operational_distributor: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                      }
+                    };
                   }
-                };
+                  break;
+
+                case 'supplier': // Added Supplier fallback
+                  if (user.verification_details) {
+                    this.userRequirements = {
+                      supplier: {
+                        ...user.verification_details,
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
+                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
+                          `${baseURL}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
+                          `${baseURL}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
+                          `${baseURL}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                        business_registration_photo_url: user.verification_details.business_registration_photo ? 
+                          `${baseURL}/storage/${user.verification_details.business_registration_photo}` : null
+                      }
+                    };
+                  }
+                  break;
               }
-              break;
           }
         }
       } catch (error) {
@@ -1717,6 +1308,11 @@ export default {
                   // Silent fail for nested requirement approval
                 }
               }
+
+              // Added Supplier fallback if specific Approve endpoint failed
+              if (user.role === 'supplier' && user.verification_status === 'pending') {
+                  // Assuming logic is handled by the unified approve endpoint now.
+              }
               
               this.closeViewModal();
               this.fetchUsers();
@@ -1849,11 +1445,11 @@ export default {
       );
     },
     
-    // Review requirements (for distributors)
+    // Review requirements (for distributors and suppliers)
     async reviewRequirements(user) {
       toast.info('Redirecting to requirements review page...');
       // In a real app, you would navigate to the requirements review page
-      // this.$router.push(`/admin/distributor-requirements/${user.id}`);
+      // this.$router.push(`/admin/requirements/${user.role}/${user.id}`);
     },
     
     // Modal methods
@@ -1903,15 +1499,16 @@ export default {
     // Style helper methods
     getRoleBadgeClass(role) {
       const classes = {
-        'admin': 'bg-red-100 text-red-800',
-        'distributor': 'bg-green-100 text-green-800',
-        'service_provider': 'bg-purple-100 text-purple-800',
-        'client': 'bg-gray-100 text-gray-800',
-        'operational_distributor': 'bg-yellow-100 text-yellow-800',
-        'hr_manager': 'bg-blue-100 text-blue-800',
-        'finance_manager': 'bg-indigo-100 text-indigo-800'
+        'admin': 'border-red-200 bg-red-50 text-red-700 hover:bg-red-50',
+        'distributor': 'border-green-200 bg-green-50 text-green-700 hover:bg-green-50',
+        'service_provider': 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50',
+        'client': 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50',
+        'operational_distributor': 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50',
+        'hr_manager': 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50',
+        'finance_manager': 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-50',
+        'supplier': 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50'
       };
-      return classes[role] || 'bg-gray-100 text-gray-800';
+      return classes[role] || 'border-slate-200 bg-slate-50 text-slate-700';
     },
     
     getRoleIcon(role) {
@@ -1922,21 +1519,22 @@ export default {
         'client': 'fas fa-user',
         'operational_distributor': 'fas fa-cogs',
         'hr_manager': 'fas fa-user-tie',
-        'finance_manager': 'fas fa-chart-line'
+        'finance_manager': 'fas fa-chart-line',
+        'supplier': 'fas fa-boxes' // Added Supplier
       };
       return icons[role] || 'fas fa-user';
     },
     
     getVerificationBadgeClass(status) {
-      if (!status) return 'bg-gray-100 text-gray-800';
+      if (!status) return 'bg-slate-100 text-slate-600 hover:bg-slate-200';
       
       const classes = {
-        'approved': 'bg-green-100 text-green-800',
-        'verified': 'bg-green-100 text-green-800',
-        'pending': 'bg-yellow-100 text-yellow-800',
-        'rejected': 'bg-red-100 text-red-800'
+        'approved': 'bg-green-100 text-green-700 hover:bg-green-200',
+        'verified': 'bg-green-100 text-green-700 hover:bg-green-200',
+        'pending': 'bg-amber-100 text-amber-700 hover:bg-amber-200',
+        'rejected': 'bg-red-100 text-red-700 hover:bg-red-200'
       };
-      return classes[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
+      return classes[status.toLowerCase()] || 'bg-slate-100 text-slate-600';
     },
     
     getVerificationIcon(status) {
@@ -1953,38 +1551,38 @@ export default {
     
     getStatusBadgeClass(status) {
       const classes = {
-        'active': 'bg-green-100 text-green-800',
-        'inactive': 'bg-red-100 text-red-800',
-        'pending': 'bg-yellow-100 text-yellow-800'
+        'active': 'border-green-200 bg-green-50 text-green-700',
+        'inactive': 'border-red-200 bg-red-50 text-red-700',
+        'pending': 'border-amber-200 bg-amber-50 text-amber-700'
       };
-      return classes[status] || 'bg-gray-100 text-gray-800';
+      return classes[status] || 'border-slate-200 bg-slate-50 text-slate-700';
     },
     
     getStatusDotClass(status) {
       const classes = {
         'active': 'bg-green-500',
         'inactive': 'bg-red-500',
-        'pending': 'bg-yellow-500'
+        'pending': 'bg-amber-500'
       };
-      return classes[status] || 'bg-gray-500';
+      return classes[status] || 'bg-slate-500';
     },
     
     getStatusIcon(status) {
       const icons = {
         'active': 'fas fa-check-circle text-green-600',
         'inactive': 'fas fa-times-circle text-red-600',
-        'pending': 'fas fa-clock text-yellow-600'
+        'pending': 'fas fa-clock text-amber-600'
       };
-      return icons[status] || 'fas fa-question-circle text-gray-600';
+      return icons[status] || 'fas fa-question-circle text-slate-600';
     },
     
     getStatusColorClass(status) {
       const classes = {
         'active': 'bg-green-100',
         'inactive': 'bg-red-100',
-        'pending': 'bg-yellow-100'
+        'pending': 'bg-amber-100'
       };
-      return classes[status] || 'bg-gray-100';
+      return classes[status] || 'bg-slate-100';
     },
     
     getVerificationDetails(user) {
@@ -1995,6 +1593,8 @@ export default {
         return details.company_name || '';
       } else if (user.role === 'client' || user.role === 'service_provider') {
         return details.valid_id_type || '';
+      } else if (user.role === 'supplier') { // Added Supplier logic
+        return details.company_name || '';
       }
       return '';
     },
@@ -2045,110 +1645,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-/* Custom scrollbar for modal */
-.modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Smooth transitions for dropdown */
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-/* Smooth modal transitions */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-/* Custom tooltip styles */
-[title] {
-  position: relative;
-}
-
-[title]:hover::after {
-  content: attr(title);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-  z-index: 1000;
-}
-
-/* Ensure dropdown appears above other elements */
-.relative {
-  position: relative;
-}
-
-/* Custom hover effects for table rows */
-tr:hover {
-  background-color: #f9fafb !important;
-}
-
-/* Style for the more actions dropdown */
-.dropdown-menu {
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-/* Custom focus styles */
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* Image hover effects */
-img {
-  transition: transform 0.2s ease-in-out;
-}
-
-img:hover {
-  transform: scale(1.02);
-}
-
-/* Document card styles */
-.document-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  background-color: #f9fafb;
-}
-
-.document-card:hover {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-}
-</style>

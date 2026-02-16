@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Employee\AttendanceRequestController;
 use App\Http\Controllers\Api\Employee\PayrollController;
 
 
+
 // Public routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -235,6 +236,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/{id}/accessibility', [\App\Http\Controllers\Api\HR\PositionController::class, 'getEmployeeAccessibility']);
             Route::get('/hr/positions/employee-accessibility/{id}', [\App\Http\Controllers\Api\HR\PositionController::class, 'getEmployeeSidebarAccessibility']);
         });
+
+        Route::prefix('leaves')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\HR\LeaveRequestController::class, 'index']);
+            Route::put('/{id}/status', [\App\Http\Controllers\Api\HR\LeaveRequestController::class, 'updateStatus']);
+        });
     });
 
     // Color Management Routes
@@ -298,7 +304,29 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [PayrollController::class, 'index']);
             Route::get('/{id}', [PayrollController::class, 'show']);
         });
+
+        Route::prefix('leaves')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Employee\LeaveRequestController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Employee\LeaveRequestController::class, 'store']);
+        });
     });
+
+    Route::prefix('supplier')->group(function () {
+        Route::prefix('requirements')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'index']);
+            
+            Route::post('/', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'store']);
+            
+            Route::put('/info', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
+
+            Route::prefix('address')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierAddressController::class, 'index']);
+                Route::post('/coordinates', [\App\Http\Controllers\Api\Supplier\SupplierAddressController::class, 'updateCoordinates']);
+            });
+        });
+    });
+
+    Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
 
 
     
