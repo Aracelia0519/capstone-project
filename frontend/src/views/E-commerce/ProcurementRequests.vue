@@ -1,7 +1,5 @@
-<!-- ProcurementRequests.vue -->
 <template>
   <div class="procurement-requests p-4 md:p-6">
-    <!-- Header -->
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -15,7 +13,7 @@
             </svg>
             Refresh Stats
           </button>
-          <button @click="showRequestModal = true" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
+          <button @click="openRequestModal" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -25,7 +23,6 @@
       </div>
     </div>
 
-    <!-- Statistics Cards -->
     <div v-if="statistics" class="mb-6">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
@@ -86,7 +83,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="mb-6 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
@@ -95,7 +91,7 @@
         </div>
         <div>
           <label class="block text-sm text-gray-300 mb-2">Status</label>
-          <select v-model="selectedStatus" @change="fetchRequests" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+          <select v-model="selectedStatus" @change="fetchRequests" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
@@ -107,7 +103,7 @@
         </div>
         <div>
           <label class="block text-sm text-gray-300 mb-2">Priority</label>
-          <select v-model="selectedPriority" @change="fetchRequests" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+          <select v-model="selectedPriority" @change="fetchRequests" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
             <option value="">All Priorities</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
@@ -125,13 +121,11 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <div v-if="loading" class="text-center py-8">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
       <p class="text-gray-400 mt-2">Loading requests...</p>
     </div>
 
-    <!-- Error State -->
     <div v-else-if="error" class="bg-red-900/20 border border-red-800 rounded-xl p-4 text-center">
       <p class="text-red-300">{{ error }}</p>
       <button @click="fetchRequests" class="mt-2 px-4 py-2 bg-red-800 hover:bg-red-700 text-white rounded-lg transition-colors">
@@ -139,7 +133,6 @@
       </button>
     </div>
 
-    <!-- Requests Table -->
     <div v-else class="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
@@ -228,7 +221,6 @@
         </table>
       </div>
       
-      <!-- Pagination -->
       <div v-if="pagination" class="flex items-center justify-between p-4 border-t border-gray-800">
         <div class="text-sm text-gray-400">
           Showing {{ pagination.from }} to {{ pagination.to }} of {{ pagination.total }} requests
@@ -255,7 +247,6 @@
       </div>
     </div>
 
-    <!-- Available Products Section -->
     <div class="mt-8">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-bold text-white">Available Products for Request</h2>
@@ -264,7 +255,6 @@
         </button>
       </div>
       
-      <!-- Products Loading State -->
       <div v-if="productsLoading" class="text-center py-8">
         <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
         <p class="text-gray-400 mt-2">Loading products...</p>
@@ -284,7 +274,6 @@
           <p class="text-sm text-gray-400 mb-2">{{ product.category }} - {{ product.type }}</p>
           <div class="flex items-center justify-between mb-3">
             <div>
-              <!-- Show both cost (for procurement) and price (selling price) -->
               <span class="text-white font-bold">Cost: ₱{{ formatCurrency(product.cost || product.price) }}</span>
               <p class="text-xs text-gray-400">Selling: ₱{{ formatCurrency(product.price) }}</p>
             </div>
@@ -297,7 +286,6 @@
       </div>
     </div>
 
-    <!-- New Request Modal with Wizard -->
     <div v-if="showRequestModal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-gray-800">
@@ -311,7 +299,6 @@
           </div>
         </div>
         
-        <!-- Wizard Progress -->
         <div class="wizard-progress p-6 border-b border-gray-800">
           <div 
             v-for="(step, index) in wizardSteps" 
@@ -330,20 +317,17 @@
           </div>
         </div>
         
-        <!-- Step Indicator for Mobile -->
         <div class="wizard-step-indicator p-3 bg-gray-800/50 text-center text-gray-300 text-sm">
           Step {{ currentStep }} of {{ wizardSteps.length }}: {{ wizardSteps[currentStep - 1].label }}
         </div>
         
         <div class="p-6">
           <form @submit.prevent="submitRequest">
-            <!-- Error Message -->
             <div v-if="submitError" class="mb-6 bg-red-900/20 border border-red-800 rounded-lg p-4">
               <p class="text-red-300">{{ submitError }}</p>
             </div>
             
             <div class="wizard-form-content">
-              <!-- Step 1: Product Selection -->
               <div v-if="currentStep === 1" class="wizard-form-step space-y-6">
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-4">Select Product</h4>
@@ -354,7 +338,7 @@
                       </svg>
                       Product <span class="text-red-400">*</span>
                     </label>
-                    <select v-model="requestForm.product_id" required @change="onProductSelect" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                    <select v-model="requestForm.product_id" required @change="onProductSelect" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
                       <option value="">Choose a product</option>
                       <option v-for="product in availableProducts" :key="product.id" :value="product.id">
                         {{ product.name }} - Cost: ₱{{ formatCurrency(product.cost || product.price) }} ({{ product.distributor?.first_name || 'Unknown' }})
@@ -390,7 +374,6 @@
                 </div>
               </div>
 
-              <!-- Step 2: Quantity & Pricing -->
               <div v-else-if="currentStep === 2" class="wizard-form-step space-y-6">
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-4">Quantity & Pricing</h4>
@@ -440,22 +423,22 @@
                     <div class="bg-gray-800/50 p-4 rounded-lg">
                       <h5 class="text-white font-medium mb-3">Supplier Information</h5>
                       <div class="wizard-form-group">
-                        <label class="block text-sm text-gray-300 mb-2">Supplier <span class="text-red-400">*</span></label>
-                        <select v-model="requestForm.supplier" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
-                          <option value="">Select supplier</option>
-                          <option value="CaviteGo Distributors">CaviteGo Distributors</option>
-                          <option value="Premium Paint Supply">Premium Paint Supply</option>
-                          <option value="Metro Paint Hub">Metro Paint Hub</option>
-                          <option value="South Paint Distributors">South Paint Distributors</option>
-                          <option value="Global Paint Suppliers">Global Paint Suppliers</option>
+                        <label class="block text-sm text-gray-300 mb-2">Partnered Supplier <span class="text-red-400">*</span></label>
+                        <select v-model="requestForm.supplier_id" required @change="onSupplierSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
+                          <option value="">Select a partner supplier</option>
+                          <option v-for="supplier in suppliers" :key="supplier.id" :value="supplier.id">
+                            {{ supplier.name }}
+                          </option>
                         </select>
+                        <div v-if="suppliers.length === 0" class="mt-2 text-xs text-yellow-500">
+                          No active supplier partners found.
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Step 3: Delivery & Payment -->
               <div v-else-if="currentStep === 3" class="wizard-form-step space-y-6">
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-4">Delivery & Payment</h4>
@@ -469,6 +452,14 @@
                         </svg>
                         Delivery Address <span class="text-red-400">*</span>
                       </label>
+                      
+                      <select v-if="distributorAddresses.length > 0" @change="onAddressSelect($event)" class="w-full mb-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm appearance-none">
+                        <option value="">Select Registered Address...</option>
+                        <option v-for="addr in distributorAddresses" :key="addr.id" :value="formatAddress(addr)">
+                          {{ addr.barangay }}, {{ addr.city }} ({{ addr.province }})
+                        </option>
+                      </select>
+
                       <textarea v-model="requestForm.delivery_address" required rows="3" placeholder="Enter complete delivery address" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"></textarea>
                     </div>
                     
@@ -486,7 +477,7 @@
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="wizard-form-group">
                       <label class="block text-sm text-gray-300 mb-2">Shipping Method</label>
-                      <select v-model="requestForm.shipping_method" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                      <select v-model="requestForm.shipping_method" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
                         <option value="standard">Standard Shipping (5-7 days)</option>
                         <option value="express">Express Delivery (2-3 days)</option>
                         <option value="pickup">Supplier Pickup</option>
@@ -495,11 +486,8 @@
                     
                     <div class="wizard-form-group">
                       <label class="block text-sm text-gray-300 mb-2">Payment Terms</label>
-                      <select v-model="requestForm.payment_terms" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
-                        <option value="net30">Net 30 Days</option>
-                        <option value="net60">Net 60 Days</option>
+                      <select v-model="requestForm.payment_terms" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
                         <option value="cod">Cash on Delivery</option>
-                        <option value="advance">50% Advance</option>
                       </select>
                     </div>
                   </div>
@@ -511,7 +499,6 @@
                 </div>
               </div>
 
-              <!-- Step 4: Priority & Review -->
               <div v-else-if="currentStep === 4" class="wizard-form-step space-y-6">
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-4">Priority & Review</h4>
@@ -552,7 +539,6 @@
                     </div>
                   </div>
                   
-                  <!-- Request Summary -->
                   <div class="bg-gray-800/50 rounded-xl p-6">
                     <h5 class="text-white font-semibold text-lg mb-4">Request Summary</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -628,7 +614,6 @@
               </div>
             </div>
 
-            <!-- Wizard Navigation -->
             <div class="flex justify-between items-center pt-6 border-t border-gray-800">
               <button 
                 type="button" 
@@ -707,6 +692,8 @@ const error = ref('')
 
 const requests = ref([])
 const availableProducts = ref([])
+const suppliers = ref([])
+const distributorAddresses = ref([])
 const statistics = ref(null)
 const pagination = ref(null)
 const currentPage = ref(1)
@@ -724,6 +711,7 @@ const requestForm = ref({
   product_id: '',
   quantity: 1,
   supplier: '',
+  supplier_id: '', // Added supplier_id
   priority: 'medium',
   delivery_address: '',
   shipping_method: 'standard',
@@ -749,9 +737,10 @@ const validateCurrentStep = computed(() => {
     case 1:
       return requestForm.value.product_id && selectedProduct.value
     case 2:
+      // Validated using supplier_id now
       return requestForm.value.quantity >= 1 && 
              requestForm.value.quantity <= 1000 &&
-             requestForm.value.supplier
+             requestForm.value.supplier_id
     case 3:
       return requestForm.value.delivery_address
     case 4:
@@ -784,7 +773,7 @@ const showValidationError = () => {
       errorMessage = 'Please select a product'
       break
     case 2:
-      if (!requestForm.value.supplier) {
+      if (!requestForm.value.supplier_id) {
         errorMessage = 'Please select a supplier'
       } else if (requestForm.value.quantity < 1 || requestForm.value.quantity > 1000) {
         errorMessage = 'Quantity must be between 1 and 1000 units'
@@ -933,6 +922,38 @@ const fetchAvailableProducts = async () => {
   }
 }
 
+// Fetch Form Options (Suppliers and Addresses)
+const fetchFormOptions = async () => {
+  try {
+    const response = await api.get('/procurement/form-options');
+    if (response.data.success) {
+      suppliers.value = response.data.data.suppliers;
+      distributorAddresses.value = response.data.data.addresses;
+    }
+  } catch (err) {
+    console.error('Error fetching form options:', err);
+  }
+}
+
+// Handle Supplier Selection to auto-fill name
+const onSupplierSelect = () => {
+  const selectedSupplier = suppliers.value.find(s => s.id === requestForm.value.supplier_id);
+  if (selectedSupplier) {
+    requestForm.value.supplier = selectedSupplier.name;
+  } else {
+    requestForm.value.supplier = '';
+  }
+}
+
+// Helper to format address for dropdown
+const formatAddress = (addr) => {
+  return `${addr.block_address}, ${addr.barangay}, ${addr.city}, ${addr.province}`;
+}
+
+const onAddressSelect = (event) => {
+  requestForm.value.delivery_address = event.target.value;
+}
+
 // Fetch statistics
 const fetchStatistics = async () => {
   try {
@@ -1004,12 +1025,19 @@ const cancelRequest = async (request) => {
 // Request product
 const requestProduct = (product) => {
   requestForm.value.product_id = product.id
-  requestForm.value.supplier = product.distributor?.first_name || 'Unknown Supplier'
+  // We don't auto-set supplier here anymore since we want to pick from partner list
+  requestForm.value.supplier = '' 
+  requestForm.value.supplier_id = '' // Reset ID
   requestForm.value.quantity = 1
   currentStep.value = 1
   wizardSteps.value.forEach(step => step.completed = false)
-  showRequestModal.value = true
+  openRequestModal()
   showToast(`Starting request for ${product.name}`, 'info')
+}
+
+const openRequestModal = () => {
+  showRequestModal.value = true;
+  fetchFormOptions(); // Fetch updated options when modal opens
 }
 
 // Handle product selection
@@ -1081,6 +1109,7 @@ const closeModal = () => {
     product_id: '',
     quantity: 1,
     supplier: '',
+    supplier_id: '', // Reset ID
     priority: 'medium',
     delivery_address: '',
     shipping_method: 'standard',

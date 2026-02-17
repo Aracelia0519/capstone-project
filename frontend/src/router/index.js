@@ -16,6 +16,7 @@ import AuditLogs from '@/views/admin/AuditLogs.vue'
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
+import PartneredSupplier from '@/views/distributor/PartneredSupplier.vue'
 import PaintInventory from '@/views/distributor/PaintInventory.vue'
 import ProductAvailable from '@/views/distributor/ProductAvailable.vue'
 import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
@@ -28,6 +29,7 @@ import FinanceManagers from '@/views/distributor/FinanceManagers.vue'
 import WorkingHours from '@/views/distributor/WorkingHours.vue'
 import PayrollFrequency from '@/views/distributor/PayrollFrequency.vue'
 import CoreDepartments from '@/views/distributor/CoreDepartments.vue'
+import PartnerDistributorReq from '@/views/distributor/PartnerDistributorReq.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
 
@@ -98,11 +100,13 @@ import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
 import ProcurementRequests from '@/views/E-commerce/ProcurementRequests.vue'
 import ECommerceCategories from '@/views/E-commerce/ECommerceCategories.vue'
 import ECProcessProcurement from '@/views/E-commerce/ECProcessProcurement.vue'
+import ECPTrackProcurement from '@/views/E-commerce/ECPTrackProcurement.vue'
 import ECommerceOrders from '@/views/E-commerce/ECommerceOrders.vue'
 import ECommercePayments from '@/views/E-commerce/ECommercePayments.vue'
 import ECommerceDelivery from '@/views/E-commerce/ECommerceDelivery.vue'
 import ECommerceReturns from '@/views/E-commerce/ECommerceReturns.vue'
 import ECommerceReviews from '@/views/E-commerce/ECommerceReviews.vue'
+import ECPartnerSupplier from '@/views/E-commerce/ECPartnerSupplier.vue'
 import ECommercePromotions from '@/views/E-commerce/ECommercePromotions.vue'
 import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
 
@@ -125,8 +129,12 @@ import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
 import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
 
 import SupplierLayout from '@/layouts/SupplierLayout.vue'
-import SupplierSettings from '@/views/supplier/supplierSettings.vue'
+import SupplierSettings from '@/views/supplier/SupplierSettings.vue'
 import SupplierDashboard from '@/views/supplier/SupplierDashboard.vue'
+import DistributorPartnerReq from '@/views/supplier/DistributorPartnerReq.vue'
+import SupplierOrderRequest from '@/views/supplier/SupplierOrderRequest.vue'
+import SupplierProcessOrders from '@/views/supplier/SupplierProcessOrders.vue'
+import SupplierShipments from '@/views/supplier/SupplierShipments.vue'
 
 
 const routes = [
@@ -195,6 +203,12 @@ const routes = [
         path: 'distributordashboard',
         name: 'distributordashboard',
         component: DistributorDashboard,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PartneredSupplier',
+        name: 'PartneredSupplier',
+        component: PartneredSupplier,
         meta: { requiresVerification: true }
       },
       {
@@ -268,6 +282,12 @@ const routes = [
         path: 'PayrollFrequency',
         name: 'PayrollFrequency',
         component: PayrollFrequency,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PartnerDistributorReq',
+        name: 'PartnerDistributorReq',
+        component: PartnerDistributorReq,
         meta: { requiresVerification: true }
       },
       {
@@ -563,6 +583,11 @@ const routes = [
         component: ECProcessProcurement
       },
       {
+        path: 'ECPTrackProcurement',
+        name: 'ECPTrackProcurement',
+        component: ECPTrackProcurement
+      },
+      {
         path: 'ECOrders',
         name: 'ECOrders',
         component: ECommerceOrders
@@ -586,6 +611,11 @@ const routes = [
         path: 'ECReviews',
         name: 'ECReviews',
         component: ECommerceReviews
+      },
+      {
+        path: 'ECPartnerSupplier',
+        name: 'ECPartnerSupplier',
+        component: ECPartnerSupplier
       },
       {
         path: 'ECPromotions',
@@ -614,6 +644,26 @@ const routes = [
         path: 'SupplierSettings',
         name: 'SupplierSettings',
         component: SupplierSettings
+      },
+      {
+        path: 'DistributorPartnerReq',
+        name: 'DistributorPartnerReq',
+        component: DistributorPartnerReq
+      },
+      {
+        path: 'SupplierOrderRequest',
+        name: 'SupplierOrderRequest',
+        component: SupplierOrderRequest
+      },
+      {
+        path: 'SupplierProcessOrders',
+        name: 'SupplierProcessOrders',
+        component: SupplierProcessOrders
+      },
+      {
+        path: 'SupplierShipments',
+        name: 'SupplierShipments',
+        component: SupplierShipments
       },
     ]
   },

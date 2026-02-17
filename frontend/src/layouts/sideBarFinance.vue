@@ -156,7 +156,7 @@ const navigation = [
     items: [
       { name: 'Invoices / Billing', path: '/finance/invoices', icon: FileText, color: 'text-emerald-400', badge: '8' },
       { name: 'Reports', path: '/finance/reportFinance', icon: BarChart3, color: 'text-teal-400' },
-      { name: 'Procurement', path: '/finance/procurementRequestFinance', icon: ShoppingCart, color: 'text-emerald-400', badge: 'New' },
+      { name: 'Procurement', path: '/finance/procurementRequestFinance', icon: ShoppingCart, color: 'text-emerald-400', badge: 'Req' },
       { name: 'Payroll Request', path: '/finance/PayrollRequestFinance', icon: Users, color: 'text-emerald-400', badge: 'Pending' },
       { name: 'Payroll Paid', path: '/finance/PayrollPaidFinance', icon: UserCheck, color: 'text-emerald-400', badge: 'New' }
     ]

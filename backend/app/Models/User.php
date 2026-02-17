@@ -219,6 +219,15 @@ class User extends Authenticatable
     {
         return $this->hasOne(ServiceProvider\ServiceProviderRequirement::class);
     }
+
+    /**
+     * Get the supplier requirement for this user (if they are a supplier)
+     * Added to fix the 500 Error
+     */
+    public function supplierRequirements()
+    {
+        return $this->hasOne(Supplier\SupplierRequirements::class, 'user_id');
+    }
     
     /**
      * Check if distributor is verified
@@ -317,4 +326,5 @@ class User extends Authenticatable
         $this->tokens()->delete();
         $this->update(['remember_token' => null]);
     }
+    
 }

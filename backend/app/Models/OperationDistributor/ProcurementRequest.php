@@ -15,11 +15,12 @@ class ProcurementRequest extends Model
     protected $fillable = [
         'requester_id',
         'distributor_id',
+        'supplier_id', // Added supplier_id
         'product_id',
         'request_code',
         'product_name',
         'category',
-        'supplier',
+        'supplier', // Keeping original string column
         'quantity',
         'unit_price',
         'total_cost',
@@ -71,6 +72,14 @@ class ProcurementRequest extends Model
     public function distributor()
     {
         return $this->belongsTo(\App\Models\User::class, 'distributor_id');
+    }
+
+    /**
+     * Get the supplier user (The actual account associated with the ID)
+     */
+    public function selectedSupplier()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'supplier_id');
     }
 
     /**
@@ -180,8 +189,8 @@ class ProcurementRequest extends Model
     }
 
     /**
- * Get the user who approved the request (finance)
- */
+     * Get the user who approved the request (finance)
+     */
     public function financeApprovedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'finance_approved_by');

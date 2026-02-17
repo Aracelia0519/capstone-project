@@ -111,6 +111,10 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
             });
         });
+        
+
+        Route::get('/partnered-suppliers', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'index']);
+
 
         Route::prefix('payroll-settings')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'show']);
@@ -172,6 +176,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('working-hours')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\WorkingHourController::class, 'index']);
             Route::put('/', [\App\Http\Controllers\Api\Distributor\WorkingHourController::class, 'update']);
+        });
+        
+        Route::prefix('partner-requests')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'reject']);
+        });
+
+        Route::prefix('procurement-fulfillment')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'index']);
+            Route::post('/{id}/ready', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'markAsReady']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'reject']);
         });
     });
 
@@ -261,6 +277,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'show']);
         Route::put('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'update']);
         Route::post('/requests/{id}/cancel', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'cancel']);
+        Route::get('/form-options', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'formOptions']);
         Route::get('/statistics', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'statistics']);
     });
 
@@ -324,9 +341,40 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/coordinates', [\App\Http\Controllers\Api\Supplier\SupplierAddressController::class, 'updateCoordinates']);
             });
         });
+
+        Route::prefix('distributor-requests')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'reject']);
+        });
+
+        Route::prefix('orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\OrderFulfillmentController::class, 'index']);
+            Route::post('/{id}/confirm', [\App\Http\Controllers\Api\Supplier\OrderFulfillmentController::class, 'confirmOrder']);
+        });
+
+        Route::prefix('processing-orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierOrderProcessingController::class, 'index']);
+            Route::post('/{id}/prepare', [\App\Http\Controllers\Api\Supplier\SupplierOrderProcessingController::class, 'store']);
+        });
+
+        Route::prefix('shipments')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'index']);
+            Route::post('/{id}/ship', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'ship']);
+        });
     });
 
     Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
+
+
+    Route::prefix('partners')->group(function () {
+        Route::get('/suppliers', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'index']);
+        Route::post('/request', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'store']);
+    });
+
+    
+
+    
 
 
     

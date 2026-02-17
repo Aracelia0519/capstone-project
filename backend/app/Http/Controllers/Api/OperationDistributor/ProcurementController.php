@@ -8,6 +8,12 @@ use App\Models\Distributor\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+// Import all necessary models
+use App\Models\Supplier\SupplierPartner;
+use App\Models\Distributor\DistributorRequirements;
+use App\Models\Distributor\OperationalDistributor; 
+use App\Models\Supplier\SupplierRequirements;
+use App\Models\Distributor\DistributorAddress; 
 
 class ProcurementController extends Controller
 {
@@ -59,7 +65,8 @@ class ProcurementController extends Controller
             
             // Paginate
             $perPage = $request->get('per_page', 15);
-            $requests = $query->with(['product', 'requester', 'distributor'])->paginate($perPage);
+            // Added selectedSupplier to with()
+            $requests = $query->with(['product', 'requester', 'distributor', 'selectedSupplier'])->paginate($perPage);
             
             return response()->json([
                 'success' => true,
@@ -116,6 +123,81 @@ class ProcurementController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get form options (suppliers and addresses)
+     */
+    public function formOptions(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            $distributorId = $user->id;
+
+            // Determine the distributor ID based on user role
+            if ($user->role === 'operational_distributor') {
+                $opDist = OperationalDistributor::where('user_id', $user->id)->first();
+                if ($opDist) {
+                    $distributorId = $opDist->parent_distributor_id;
+                }
+            }
+
+            // 1. Fetch Partnered Suppliers safely
+            // We use 'values()' to re-index array after filter
+            $suppliers = SupplierPartner::where('distributor_id', $distributorId)
+                ->where('status', 'active')
+                ->with('supplier')
+                ->get()
+                ->map(function($partner) {
+                    // Safety check: if supplier user is deleted/null, skip
+                    if (!$partner->supplier) {
+                        return null;
+                    }
+
+                    $supplierName = $partner->supplier->full_name ?? ($partner->supplier->first_name . ' ' . $partner->supplier->last_name);
+                    
+                    // Try to fetch company name
+                    $companyName = null;
+                    try {
+                        $companyName = SupplierRequirements::where('user_id', $partner->supplier_id)->value('company_name');
+                    } catch (\Exception $e) {
+                        // If table doesn't exist or error, ignore
+                    }
+                    
+                    return [
+                        'id' => $partner->supplier_id,
+                        'name' => $companyName ? $companyName : $supplierName,
+                        'value' => $companyName ? $companyName : $supplierName
+                    ];
+                })
+                ->filter() // Remove nulls
+                ->values(); // Reset keys
+
+            // 2. Fetch Distributor Addresses using direct query to avoid relationship errors
+            $addresses = [];
+            $distributorReq = DistributorRequirements::where('user_id', $distributorId)->first();
+            
+            if ($distributorReq) {
+                // Manually query addresses using the ID from requirements
+                $addresses = DistributorAddress::where('distributor_requirements_id', $distributorReq->id)->get();
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'suppliers' => $suppliers,
+                    'addresses' => $addresses
+                ],
+                'message' => 'Form options retrieved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            // Log the error for debugging (in a real app)
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve form options: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
     /**
      * Create a new procurement request
@@ -129,6 +211,7 @@ class ProcurementController extends Controller
             $validator = Validator::make($request->all(), [
                 'product_id' => 'required|exists:distributor_products,id',
                 'quantity' => 'required|integer|min:1',
+                'supplier_id' => 'required|exists:users,id', // Added validation for supplier_id
                 'supplier' => 'required|string|max:255',
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
@@ -149,8 +232,7 @@ class ProcurementController extends Controller
             // Get the product
             $product = Product::findOrFail($request->product_id);
             
-            // Check if product has enough stock (in a real system, you'd check actual stock)
-            // For now, we'll just check if quantity is reasonable
+            // Check quantity
             if ($request->quantity > 1000) {
                 return response()->json([
                     'success' => false,
@@ -158,8 +240,8 @@ class ProcurementController extends Controller
                 ], 400);
             }
             
-            // Calculate total cost using the product's cost field (not price)
-            $unitCost = $product->cost ?? $product->price; // Fallback to price if cost is not set
+            // Calculate total cost
+            $unitCost = $product->cost ?? $product->price; 
             $totalCost = $unitCost * $request->quantity;
             
             // Create the procurement request
@@ -167,12 +249,13 @@ class ProcurementController extends Controller
                 'requester_id' => $user->id,
                 'distributor_id' => $product->distributor_id,
                 'product_id' => $product->id,
+                'supplier_id' => $request->supplier_id, // Saving supplier_id
                 'request_code' => ProcurementRequest::generateRequestCode(),
                 'product_name' => $product->name,
                 'category' => $product->category,
                 'supplier' => $request->supplier,
                 'quantity' => $request->quantity,
-                'unit_price' => $unitCost, // Use cost field, not price
+                'unit_price' => $unitCost,
                 'total_cost' => $totalCost,
                 'priority' => $request->priority,
                 'status' => 'pending',
@@ -186,7 +269,7 @@ class ProcurementController extends Controller
             
             return response()->json([
                 'success' => true,
-                'data' => $procurementRequest->load(['product', 'distributor']),
+                'data' => $procurementRequest->load(['product', 'distributor', 'selectedSupplier']),
                 'message' => 'Procurement request created successfully'
             ], 201);
             
@@ -205,7 +288,8 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            $request = ProcurementRequest::with(['product', 'requester', 'distributor'])->findOrFail($id);
+            // Added selectedSupplier to with()
+            $request = ProcurementRequest::with(['product', 'requester', 'distributor', 'selectedSupplier'])->findOrFail($id);
             
             // Check authorization
             if (!$this->canViewRequest($user, $request)) {

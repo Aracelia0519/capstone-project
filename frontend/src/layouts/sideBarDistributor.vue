@@ -136,7 +136,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Package, ClipboardList, TrendingUp, Users, Clock, 
   Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, Calendar, 
-  History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2
+  History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2, Handshake 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -163,7 +163,23 @@ const navigation = [
   {
     title: 'Distributor Hub',
     items: [
-      { name: 'Dashboard', path: '/distributor/distributordashboard', icon: LayoutDashboard, color: 'text-blue-400', badge: 'Overview', requiresVerify: true }
+      { 
+        name: 'Dashboard', 
+        path: '/distributor/distributordashboard', 
+        icon: LayoutDashboard, 
+        color: 'text-blue-400', 
+        badge: 'Overview', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Supplier', 
+        path: '/distributor/PartneredSupplier', 
+        icon: Handshake, 
+        color: 'text-emerald-400', 
+        badge: 'Active',
+        badgeColor: 'bg-emerald-500/20 text-emerald-300',
+        requiresVerify: true 
+      }
     ]
   },
   {
@@ -194,7 +210,8 @@ const navigation = [
       { name: 'HR Managers', path: '/distributor/HRmanagerD', icon: UserCog, color: 'text-green-400', requiresVerify: true },
       { name: 'Finance Managers', path: '/distributor/FinanceManagerD', icon: Wallet, color: 'text-purple-400', requiresVerify: true },
       { name: 'Working Hours', path: '/distributor/WorkingHours', icon: Clock, color: 'text-purple-400', requiresVerify: true },
-      { name: 'Payroll Frequency', path: '/distributor/PayrollFrequency', icon: Calendar, color: 'text-orange-400', badge: 'New', requiresVerify: true }
+      { name: 'Payroll Frequency', path: '/distributor/PayrollFrequency', icon: Calendar, color: 'text-orange-400', badge: 'New', requiresVerify: true },
+      { name: 'Partner Distributor', path: '/distributor/PartnerDistributorReq', icon: Handshake, color: 'text-blue-400', badge: 'req', requiresVerify: true }
     ]
   },
   {

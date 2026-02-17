@@ -134,7 +134,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Package, ShoppingCart, Truck, Factory,
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
-  Loader2, ScrollText, Container
+  Loader2, ScrollText, Container, Handshake, ClipboardList, PackageCheck  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -166,10 +166,54 @@ const navigation = [
     ]
   },
   {
+    title: 'Network',
+    items: [
+      { 
+        name: 'Distributor Partner', path: '/supplier/DistributorPartnerReq', 
+        icon: Handshake, 
+        color: 'text-indigo-400', 
+        badge: 'req',
+        badgeColor: 'bg-amber-500/20 text-amber-300',
+        requiresVerify: true 
+      }
+    ]
+  },
+  {
     title: 'Order Management',
     items: [
-      { name: 'Purchase Orders', path: '/supplier/PurchaseOrders', icon: ShoppingCart, color: 'text-blue-400', badge: '5 New', badgeColor: 'bg-blue-500/20 text-blue-300', requiresVerify: true },
-      { name: 'Order History', path: '/supplier/OrderHistory', icon: ScrollText, color: 'text-indigo-400', requiresVerify: true }
+      { 
+        name: 'Purchase Orders', 
+        path: '/supplier/PurchaseOrders', 
+        icon: ShoppingCart, 
+        color: 'text-blue-400', 
+        badge: '5 New', 
+        badgeColor: 'bg-blue-500/20 text-blue-300', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Order Request', 
+        path: '/supplier/SupplierOrderRequest', 
+        icon: ClipboardList, 
+        color: 'text-emerald-400', 
+        badgeColor: 'bg-emerald-500/20 text-emerald-300',
+        requiresVerify: true 
+      },
+      { 
+        name: 'Process Orders', 
+        path: '/supplier/SupplierProcessOrders', 
+        icon: PackageCheck, 
+        color: 'text-amber-400', 
+        badge: 'Pending',
+        badgeColor: 'bg-amber-500/20 text-amber-300',
+        requiresVerify: true 
+      },
+      { 
+        name: 'Order History', 
+        path: '/supplier/OrderHistory', 
+        icon: ScrollText, 
+        color: 'text-indigo-400', 
+        requiresVerify: true 
+      }
     ]
   },
   {
@@ -182,8 +226,7 @@ const navigation = [
   {
     title: 'Logistics',
     items: [
-      { name: 'Shipments', path: '/supplier/Shipments', icon: Truck, color: 'text-purple-400', requiresVerify: true },
-      { name: 'Delivery Schedule', path: '/supplier/DeliverySchedule', icon: Calendar, color: 'text-pink-400', requiresVerify: true }
+      { name: 'Shipments', path: '/supplier/SupplierShipments', icon: Truck, color: 'text-purple-400', requiresVerify: true },
     ]
   },
   {
@@ -192,7 +235,7 @@ const navigation = [
       { name: 'Invoices', path: '/supplier/Invoices', icon: FileText, color: 'text-cyan-400', requiresVerify: true },
       { name: 'Payments', path: '/supplier/Payments', icon: Wallet, color: 'text-green-400', requiresVerify: true }
     ]
-  }
+  },
 ]
 
 const confirmLogout = async () => {
