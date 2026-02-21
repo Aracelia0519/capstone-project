@@ -18,8 +18,7 @@
             </DialogTitle>
             <DialogDescription class="text-slate-400 text-base leading-relaxed">
               Your account is currently in the <strong>{{ verificationStatus }}</strong> stage. 
-              To access all distributor features like inventory management and sales analytics, 
-              please complete your business verification.
+              {{ descriptionText }}
             </DialogDescription>
           </DialogHeader>
 
@@ -42,13 +41,6 @@
               @click="goToVerification"
             >
               Submit Requirements
-            </Button>
-            <Button 
-              variant="ghost" 
-              class="w-full h-12 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
-              @click="$emit('close')"
-            >
-              Explore Restricted Dashboard
             </Button>
           </div>
         </div>
@@ -74,6 +66,16 @@ const props = defineProps({
   verificationStatus: {
     type: String,
     default: 'none'
+  },
+  // Added redirect route with distributor as default
+  redirectRoute: {
+    type: String,
+    default: '/distributor/ProfileSettings' 
+  },
+  // Added dynamic description with distributor as default
+  descriptionText: {
+    type: String,
+    default: 'To access all distributor features like inventory management and sales analytics, please complete your business verification.'
   }
 })
 
@@ -82,6 +84,7 @@ const router = useRouter()
 
 const goToVerification = () => {
   emit('close')
-  router.push('/distributor/ProfileSettings') // Or your specific verification route
+  // Use the dynamic prop instead of a hardcoded string
+  router.push(props.redirectRoute) 
 }
 </script>

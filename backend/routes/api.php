@@ -63,6 +63,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ClientRequirementController::class, 'index']);
             Route::post('/', [ClientRequirementController::class, 'store']);
             
+            Route::prefix('address')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\Client\ClientAddressController::class, 'index']);
+                Route::post('/coordinates', [\App\Http\Controllers\Api\Client\ClientAddressController::class, 'updateCoordinates']);
+            });
+            
             Route::prefix('admin')->group(function () {
                 Route::put('/{id}', [ClientRequirementController::class, 'update']);
                 Route::get('/pending', [ClientRequirementController::class, 'pending']);
@@ -76,38 +81,48 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);
             Route::post('/', [ServiceProviderRequirementController::class, 'store']);
             
+            // NEW: Address specific routes
+            Route::prefix('address')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderAddressController::class, 'index']);
+                Route::post('/coordinates', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderAddressController::class, 'updateCoordinates']);
+            });
+
             Route::prefix('admin')->group(function () {
                 Route::get('/pending', [ServiceProviderRequirementController::class, 'pending']);
                 Route::put('/{id}', [ServiceProviderRequirementController::class, 'update']);
                 Route::get('/statistics', [ServiceProviderRequirementController::class, 'statistics']);
             });
         });
+
+        Route::post('/save-color', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'saveColor']);
+        Route::get('/colors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'getSavedColors']);
+        Route::get('/colors/{id}', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'getColor']);
+        Route::delete('/colors/{id}', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'deleteColor']);
+        Route::post('/colors/{id}/toggle-favorite', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'toggleFavorite']);
+        Route::get('/color-stats', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'getColorStats']);
+
+        Route::get('/color-history', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorHistoryController::class, 'index']);
+
+        Route::get('/distributors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'index']);
+        Route::post('/distributors/request', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestPartnership']);
     });
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
         Route::prefix('requirements')->group(function () {
-            // Get distributor's own business verification status
-            Route::get('/', [DistributorRequirementController::class, 'index']);
-            
-            // Submit business verification
+            Route::get('/', [DistributorRequirementController::class, 'index']);       
             Route::post('/', [DistributorRequirementController::class, 'store']);
             
-            // NEW: Address specific routes
             Route::prefix('address')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Api\Distributor\DistributorAddressController::class, 'index']);
                 Route::post('/coordinates', [\App\Http\Controllers\Api\Distributor\DistributorAddressController::class, 'updateCoordinates']);
             });
             
-            // Admin routes
             Route::prefix('admin')->group(function () {
-                // Get all pending verifications
                 Route::get('/pending', [DistributorRequirementController::class, 'pending']);
                 
-                // Update verification status
                 Route::put('/{id}', [DistributorRequirementController::class, 'update']);
                 
-                // Get verification statistics
                 Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
             });
         });
@@ -189,6 +204,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/ready', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'markAsReady']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'reject']);
         });
+
+        Route::get('/service-providers', [\App\Http\Controllers\Api\Distributor\ServiceProviderController::class, 'index']);
     });
 
     // Admin User Management Routes
@@ -362,6 +379,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'index']);
             Route::post('/{id}/ship', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'ship']);
         });
+
+        Route::prefix('raw-materials')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'store']);
+            Route::post('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'update']); // Use POST with _method=PUT for FormData uploads in Laravel
+            Route::delete('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'destroy']);
+        });
     });
 
     Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
@@ -370,6 +394,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('partners')->group(function () {
         Route::get('/suppliers', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'index']);
         Route::post('/request', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'store']);
+    });
+
+    Route::prefix('operation-distributor')->group(function () {
+        Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);
+        Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);
+
+        Route::prefix('service-provider-requests')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'reject']);
+        });
     });
 
     

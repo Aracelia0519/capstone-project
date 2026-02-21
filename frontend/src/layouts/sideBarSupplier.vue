@@ -219,7 +219,7 @@ const navigation = [
   {
     title: 'Inventory & Materials',
     items: [
-      { name: 'Raw Materials', path: '/supplier/RawMaterials', icon: Container, color: 'text-amber-400', requiresVerify: true },
+      { name: 'Raw Materials', path: '/supplier/SupplierRawMaterials', icon: Container, color: 'text-amber-400', requiresVerify: true },
       { name: 'Stock Levels', path: '/supplier/StockLevels', icon: Package, color: 'text-teal-400', badge: 'Low', badgeColor: 'bg-red-500/20 text-red-300', requiresVerify: true }
     ]
   },

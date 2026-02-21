@@ -48,7 +48,11 @@
       </Card>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-if="isLoading" class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+    </div>
+
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <Card v-for="category in categories" :key="category.id" 
            class="bg-gray-900/50 backdrop-blur-sm border-gray-800 hover:border-gray-700 transition-colors text-white">
         <CardContent class="p-6">
@@ -119,6 +123,7 @@
                    class="bg-gray-800 text-gray-300 hover:bg-gray-700 justify-center truncate border-0">
                 {{ product }}
               </Badge>
+              <span v-if="!category.sampleProducts || category.sampleProducts.length === 0" class="text-sm text-gray-500 italic">No products</span>
             </div>
           </div>
         </CardContent>
@@ -192,14 +197,80 @@
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog v-model:open="showProductsModal" @update:open="(val) => !val && (showProductsModal = false)">
+      <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle class="text-xl">Products in {{ selectedCategoryForProducts?.name }}</DialogTitle>
+          <DialogDescription class="text-gray-400">
+            A detailed list of all products grouped under this category.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="py-4">
+          <div v-if="isLoadingProducts" class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
+          </div>
+
+          <div v-else-if="categoryProducts.length === 0" class="text-center text-gray-400 py-8 bg-gray-800/50 rounded-lg border border-gray-800">
+            <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            No products found in this category.
+            <div class="mt-2 text-xs text-gray-500">Check browser console if you expect items here.</div>
+          </div>
+
+          <div v-else class="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+            <div v-for="product in categoryProducts" :key="product.id" 
+                 class="flex items-center justify-between bg-gray-800/50 p-4 rounded-xl border border-gray-700 hover:border-gray-600 transition-colors">
+              <div class="flex items-center space-x-4">
+                <div class="w-14 h-14 bg-gray-900 rounded-lg object-cover flex items-center justify-center overflow-hidden border border-gray-700">
+                  <img v-if="product.image_url" :src="`http://localhost:8000/storage/${product.image_url}`" :alt="product.name" class="w-full h-full object-cover" />
+                  <svg v-else class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="font-bold text-white text-lg leading-tight">{{ product.name }}</h4>
+                  <div class="flex items-center text-xs text-gray-400 mt-1 space-x-2">
+                    <span>SKU: <span class="text-gray-300">{{ product.sku_code || 'N/A' }}</span></span>
+                    <span>•</span>
+                    <span>Size: <span class="text-gray-300">{{ product.size }}</span></span>
+                    <span>•</span>
+                    <span v-if="product.type" class="bg-gray-700 px-2 py-0.5 rounded text-gray-300">{{ product.type }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex flex-col items-end justify-center">
+                <div class="font-bold text-emerald-400 text-lg mb-1">₱{{ Number(product.price || 0).toLocaleString('en-US', {minimumFractionDigits: 2}) }}</div>
+                <Badge variant="outline" :class="[
+                  'text-xs font-medium border-0',
+                  product.is_active || product.is_active === 1 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                ]">
+                  {{ (product.is_active || product.is_active === 1) ? 'Active' : 'Inactive' }}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pt-4 border-t border-gray-800 flex justify-end">
+          <Button type="button" variant="outline" @click="showProductsModal = false" 
+                 class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
+            Close
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import api from '@/utils/axios' 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -219,66 +290,38 @@ import {
 } from '@/components/ui/select'
 
 const showAddModal = ref(false)
+const showProductsModal = ref(false)
 const editingCategory = ref(null)
+const categories = ref([])
+const isLoading = ref(true)
 
-const categories = ref([
-  { 
-    id: 1, 
-    name: 'Interior Paints', 
-    description: 'High-quality paints for interior walls and ceilings',
-    status: 'Active', 
-    productCount: 42,
-    createdDate: '2024-01-15',
-    colorClass: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-    sampleProducts: ['White Gloss', 'Matte Finish', 'Premium White', 'Eco-Friendly']
-  },
-  { 
-    id: 2, 
-    name: 'Exterior Paints', 
-    description: 'Weather-resistant paints for exterior surfaces',
-    status: 'Active', 
-    productCount: 28,
-    createdDate: '2024-01-20',
-    colorClass: 'bg-gradient-to-br from-emerald-500 to-teal-500',
-    sampleProducts: ['Weatherproof', 'Anti-Mold', 'UV Protection', 'Heat Resistant']
-  },
-  { 
-    id: 3, 
-    name: 'Primers', 
-    description: 'Base coat preparations for optimal paint adhesion',
-    status: 'Active', 
-    productCount: 18,
-    createdDate: '2024-02-05',
-    colorClass: 'bg-gradient-to-br from-amber-500 to-yellow-500',
-    sampleProducts: ['Quick Dry', 'Multi-Surface', 'Stain Blocking', 'High Build']
-  },
-  { 
-    id: 4, 
-    name: 'Coatings', 
-    description: 'Specialized protective and decorative coatings',
-    status: 'Active', 
-    productCount: 15,
-    createdDate: '2024-02-10',
-    colorClass: 'bg-gradient-to-br from-purple-500 to-pink-500',
-    sampleProducts: ['Gloss Finish', 'Matte Coating', 'Textured', 'Clear Coat']
-  },
-  { 
-    id: 5, 
-    name: 'Painting Services', 
-    description: 'Professional painting and finishing services',
-    status: 'Inactive', 
-    productCount: 8,
-    createdDate: '2024-02-15',
-    colorClass: 'bg-gradient-to-br from-red-500 to-orange-500',
-    sampleProducts: ['Wall Painting', 'Ceiling Work', 'Exterior Service', 'Industrial']
-  }
-])
+// State for Products Modal
+const selectedCategoryForProducts = ref(null)
+const categoryProducts = ref([])
+const isLoadingProducts = ref(false)
 
 const categoryForm = ref({
   name: '',
   description: '',
   status: 'Active',
   colorClass: 'bg-gradient-to-br from-blue-500 to-cyan-500'
+})
+
+// Fetch Data from API
+const fetchCategories = async () => {
+  try {
+    isLoading.value = true
+    const response = await api.get('/operation-distributor/categories')
+    categories.value = response.data.categories
+  } catch (error) {
+    console.error('Failed to fetch categories:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchCategories()
 })
 
 const activeCategories = computed(() => {
@@ -290,11 +333,9 @@ const totalProducts = computed(() => {
 })
 
 const averageProducts = computed(() => {
+  if (categories.value.length === 0) return 0
   return Math.round(totalProducts.value / categories.value.length)
 })
-
-// Dropped toggleActions as Shadcn Dropdown handles it internally
-// Kept logic for data manipulation
 
 const editCategory = (category) => {
   editingCategory.value = category
@@ -307,29 +348,54 @@ const toggleStatus = (category) => {
 }
 
 const deleteCategory = (category) => {
-  if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
+  if (confirm(`Are you sure you want to remove the category "${category.name}" from view? Note: Real deletion requires re-assigning associated products in the database.`)) {
     categories.value = categories.value.filter(c => c.id !== category.id)
   }
 }
 
-const viewProducts = (category) => {
-  alert(`Viewing products in ${category.name}`)
+// Open modal and fetch products for the selected category using the new endpoint
+const viewProducts = async (category) => {
+  selectedCategoryForProducts.value = category
+  showProductsModal.value = true
+  isLoadingProducts.value = true
+  categoryProducts.value = []
+  
+  try {
+    // Calling the newly created endpoint and sending the category name directly
+    const response = await api.get(`/operation-distributor/categories/products?category=${encodeURIComponent(category.name)}`)
+    
+    console.log("Raw API Response for Products:", response.data)
+    
+    // Extract the payload
+    if (response.data && response.data.data) {
+      categoryProducts.value = response.data.data
+    } else if (Array.isArray(response.data)) {
+      categoryProducts.value = response.data
+    }
+  } catch (error) {
+    console.error('Failed to fetch products for category:', error)
+  } finally {
+    isLoadingProducts.value = false
+  }
 }
 
 const saveCategory = () => {
+  // NOTE: Categories are dynamic based on products. 
+  // To truly save this to the DB, you would need a standalone "categories" table schema.
+  // For now, it updates the UI state.
   if (editingCategory.value) {
     const index = categories.value.findIndex(c => c.id === editingCategory.value.id)
     if (index !== -1) {
       categories.value[index] = { ...categoryForm.value, id: editingCategory.value.id }
     }
   } else {
-    const newId = Math.max(...categories.value.map(c => c.id)) + 1
+    const newId = categories.value.length > 0 ? Math.max(...categories.value.map(c => c.id)) + 1 : 1
     categories.value.push({
       ...categoryForm.value,
       id: newId,
       productCount: 0,
       createdDate: new Date().toISOString().split('T')[0],
-      sampleProducts: ['Sample Product 1', 'Sample Product 2', 'Sample Product 3']
+      sampleProducts: []
     })
   }
   
@@ -351,6 +417,22 @@ const closeModal = () => {
 <style scoped>
 .ecommerce-categories {
   min-height: 100vh;
+}
+
+/* Custom Scrollbar for the Products Modal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.5); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.8); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 1); 
 }
 
 /* Mobile optimizations */

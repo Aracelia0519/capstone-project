@@ -1,5 +1,5 @@
 <template>
-  <div class="user-management min-h-screen p-6 bg-slate-50/50 space-y-8">
+  <div class="user-management min-h-screen p-6 space-y-8">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">User Management</h1>

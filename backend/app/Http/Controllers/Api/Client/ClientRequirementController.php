@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use App\Models\Client\ClientRequirement;
+use App\Models\Client\ClientAddress;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +23,7 @@ class ClientRequirementController extends Controller
         try {
             $user = Auth::user();
             
-            $requirement = ClientRequirement::where('user_id', $user->id)->first();
+            $requirement = ClientRequirement::with('address')->where('user_id', $user->id)->first();
             
             if (!$requirement) {
                 return response()->json([
@@ -44,7 +46,8 @@ class ClientRequirementController extends Controller
                     'status_class' => $requirement->status_class,
                     'rejection_reason' => $requirement->rejection_reason,
                     'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
-                    'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s')
+                    'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s'),
+                    'address' => $requirement->address
                 ]
             ], 200);
             
@@ -67,6 +70,7 @@ class ClientRequirementController extends Controller
      */
     public function store(Request $request)
     {
+        DB::beginTransaction();
         try {
             $user = Auth::user();
             
@@ -74,7 +78,14 @@ class ClientRequirementController extends Controller
             $validator = Validator::make($request->all(), [
                 'id_type' => 'required|string|in:philid,passport,driver_license,umid,prc,voter,postal,philhealth,nbi,senior_citizen,other',
                 'id_number' => 'required|string|max:100',
-                'id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120' // 5MB max
+                'id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB max
+                // Address validation
+                'province' => 'required|string|in:Cavite',
+                'city' => 'required|string|max:255',
+                'barangay' => 'required|string|max:255',
+                'block_address' => 'required|string|max:1000',
+                'latitude' => 'nullable|numeric',
+                'longitude' => 'nullable|numeric',
             ], [
                 'id_type.required' => 'Please select an ID type',
                 'id_type.in' => 'Please select a valid ID type',
@@ -112,16 +123,6 @@ class ClientRequirementController extends Controller
             // Store the file in the public disk
             $path = Storage::disk('public')->putFileAs($folderPath, $file, $fileName);
             
-            // Log for debugging
-            Log::info('File uploaded:', [
-                'user_id' => $user->id,
-                'file_name' => $fileName,
-                'storage_path' => $path,
-                'full_path' => storage_path('app/public/' . $folderPath . '/' . $fileName),
-                'url' => asset('storage/' . $folderPath . '/' . $fileName),
-                'file_exists' => Storage::disk('public')->exists($folderPath . '/' . $fileName)
-            ]);
-            
             // The path to store in database
             $dbFilePath = $folderPath . '/' . $fileName;
             
@@ -136,10 +137,25 @@ class ClientRequirementController extends Controller
                     'rejection_reason' => null
                 ]
             );
+
+            // Create or update address
+            ClientAddress::updateOrCreate(
+                ['client_requirements_id' => $requirement->id],
+                [
+                    'province' => 'Cavite',
+                    'city' => $request->city,
+                    'barangay' => $request->barangay,
+                    'block_address' => $request->block_address,
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                ]
+            );
+
+            DB::commit();
             
             return response()->json([
                 'status' => 'success',
-                'message' => 'ID verification submitted successfully! Your ID is now pending review.',
+                'message' => 'ID verification and location submitted successfully! Your ID is now pending review.',
                 'id_verification' => [
                     'id' => $requirement->id,
                     'id_type' => $requirement->valid_id_type,
@@ -148,11 +164,13 @@ class ClientRequirementController extends Controller
                     'id_photo_url' => asset('storage/' . $dbFilePath),
                     'status' => $requirement->status,
                     'status_class' => $requirement->status_class,
-                    'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s')
+                    'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
+                    'address' => $requirement->address
                 ]
             ], 200);
             
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Error submitting ID verification:', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
@@ -250,7 +268,7 @@ class ClientRequirementController extends Controller
             $search = $request->get('search', '');
             
             $query = ClientRequirement::pending()
-                ->with(['user:id,first_name,last_name,email,phone,created_at']);
+                ->with(['user:id,first_name,last_name,email,phone,created_at', 'address']);
             
             if ($search) {
                 $query->whereHas('user', function ($q) use ($search) {
@@ -282,7 +300,8 @@ class ClientRequirementController extends Controller
                         'status' => $requirement->status,
                         'status_class' => $requirement->status_class,
                         'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
-                        'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s')
+                        'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s'),
+                        'address' => $requirement->address
                     ];
                 });
             

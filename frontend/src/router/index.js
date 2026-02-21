@@ -107,6 +107,7 @@ import ECommerceDelivery from '@/views/E-commerce/ECommerceDelivery.vue'
 import ECommerceReturns from '@/views/E-commerce/ECommerceReturns.vue'
 import ECommerceReviews from '@/views/E-commerce/ECommerceReviews.vue'
 import ECPartnerSupplier from '@/views/E-commerce/ECPartnerSupplier.vue'
+import ECServiceProvider from '@/views/E-commerce/ECServiceProvider.vue'
 import ECommercePromotions from '@/views/E-commerce/ECommercePromotions.vue'
 import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
 
@@ -135,6 +136,7 @@ import DistributorPartnerReq from '@/views/supplier/DistributorPartnerReq.vue'
 import SupplierOrderRequest from '@/views/supplier/SupplierOrderRequest.vue'
 import SupplierProcessOrders from '@/views/supplier/SupplierProcessOrders.vue'
 import SupplierShipments from '@/views/supplier/SupplierShipments.vue'
+import SupplierRawMaterials from '@/views/supplier/SupplierRawMaterials.vue'
 
 
 const routes = [
@@ -618,6 +620,11 @@ const routes = [
         component: ECPartnerSupplier
       },
       {
+        path: 'ECServiceProvider',
+        name: 'ECServiceProvider',
+        component: ECServiceProvider
+      },
+      {
         path: 'ECPromotions',
         name: 'ECPromotions',
         component: ECommercePromotions
@@ -664,6 +671,11 @@ const routes = [
         path: 'SupplierShipments',
         name: 'SupplierShipments',
         component: SupplierShipments
+      },
+      {
+        path: 'SupplierRawMaterials',
+        name: 'SupplierRawMaterials',
+        component: SupplierRawMaterials
       },
     ]
   },

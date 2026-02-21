@@ -121,7 +121,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
   Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2, Handshake,
-  UserCircle, PackageSearch
+  UserCircle, PackageSearch, Briefcase
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -165,7 +165,25 @@ const navigation = [
       { name: 'Payments', path: '/ECommerce/ECPayment', icon: CreditCard, color: 'text-green-400' },
       { name: 'Delivery', path: '/ECommerce/ECDelivery', icon: Truck, color: 'text-cyan-400' },
       { name: 'Returns', path: '/ECommerce/ECReturns', icon: Undo2, color: 'text-red-400' },
-      { name: 'Partner Supplier', path: '/ECommerce/ECPartnerSupplier', icon: Handshake, color: 'text-indigo-400', badge: 'New' }
+    ]
+  },
+  {
+    title: 'Network',
+    items: [
+      { 
+        name: 'Partner Supplier', 
+        path: '/ECommerce/ECPartnerSupplier', 
+        icon: Handshake, 
+        color: 'text-indigo-400', 
+        badge: 'New' 
+      },
+
+      { 
+        name: 'Service Provider', 
+        path: '/ECommerce/ECServiceProvider', 
+        icon: Briefcase,
+        color: 'text-green-400'
+      }
     ]
   },
   {

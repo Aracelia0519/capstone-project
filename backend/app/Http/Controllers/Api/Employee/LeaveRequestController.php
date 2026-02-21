@@ -31,14 +31,12 @@ class LeaveRequestController extends Controller
             ->get();
 
         // Calculate Balances (Dynamic Logic)
-        // Note: Ideally, total credits should be in a database table. 
-        // For now, we assume standard defaults: Vacation: 15, Sick: 15, Emergency: 5, Maternity: 105
-        
+        // Updated defaults to align with the new 30-day max limits and 150 max maternity
         $defaults = [
-            'vacation' => 15,
-            'sick' => 15,
-            'emergency' => 5,
-            'maternity' => 105
+            'vacation' => 30,
+            'sick' => 30,
+            'emergency' => 30,
+            'maternity' => 150
         ];
 
         // Sum used approved leaves
@@ -108,8 +106,18 @@ class LeaveRequestController extends Controller
             'duration' => 'required|numeric|min:0.5',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'required|string|max:500',
+            'reason' => 'required|string|max:1000',
         ]);
+
+        // Dynamic Duration Validations
+        $validator->after(function ($validator) use ($request) {
+            if ($request->type !== 'maternity' && $request->duration > 30) {
+                $validator->errors()->add('duration', 'Maximum leave duration is 30 days.');
+            }
+            if ($request->type === 'maternity' && $request->duration > 150) {
+                $validator->errors()->add('duration', 'Maximum maternity leave duration is 150 days.');
+            }
+        });
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);

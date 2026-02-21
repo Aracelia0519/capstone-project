@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\HR\Payroll;
 use App\Models\User;
-use App\Models\Distributor\DistributorPayrollSetting;
 use App\Models\Distributor\DistributorWorkingHour; 
 use App\Models\Employee\EmployeeAttendance;
 use App\Models\Employee\LeaveRequest; 
@@ -48,7 +47,7 @@ class PayrollController extends Controller
             ->pluck('user_id')
             ->toArray();
 
-        // 1. Fetch HR Employees
+        // 1. Fetch HR Employees (Added 'payment_frequency' to select)
         $employees = DB::table('hr_employees')
             ->join('users', 'hr_employees.user_id', '=', 'users.id')
             ->select(
@@ -58,6 +57,7 @@ class PayrollController extends Controller
                 'users.first_name', 
                 'users.last_name', 
                 'hr_employees.salary', 
+                'hr_employees.payment_frequency',
                 'hr_employees.position', 
                 'hr_employees.department', 
                 'hr_employees.employment_type',
@@ -144,7 +144,7 @@ class PayrollController extends Controller
 
     /**
      * CORE LOGIC: Calculates Expected Days & Late Deductions
-     * Based on DistributorWorkingHour and DistributorPayrollSetting
+     * Strictly based on Employee Salary and Payment Frequency
      */
     private function calculateAttendanceDeductions($employee, $periodStart, $periodEnd)
     {
@@ -164,10 +164,8 @@ class PayrollController extends Controller
         $effectiveStart->startOfDay(); 
         $periodEnd->endOfDay();
         
-        // 2. Fetch Settings & Working Hours specific to the Distributor
+        // 2. Fetch Working Hours specific to the Distributor
         $distributorId = $employee->parent_distributor_id;
-        
-        $settings = DistributorPayrollSetting::where('distributor_id', $distributorId)->first();
         
         // Keyed by 'Monday', 'Tuesday', etc.
         $workingHours = DistributorWorkingHour::where('distributor_id', $distributorId)
@@ -175,8 +173,7 @@ class PayrollController extends Controller
             ->get()
             ->keyBy('day_of_week'); 
 
-        // 3. Calculate "Expected" Working Days
-        // Logic: Iterate through dates, check if day name exists in WorkingHours
+        // 3. Calculate "Expected" Working Days for the specific payroll period
         $expectedWorkingDays = 0;
         $current = $effectiveStart->copy();
         
@@ -190,10 +187,39 @@ class PayrollController extends Controller
 
         if ($expectedWorkingDays == 0) return $this->zeroAttendance();
 
-        // 4. Calculate Daily Rate
-        // Note: Fluctuates based on the number of working days in the month
-        $monthlySalary = floatval($employee->salary ?? 0);
-        $dailyRate = $monthlySalary / $expectedWorkingDays; 
+        // 4. Calculate Precise Daily & Minute Rate based on Frequency and Salary
+        $salary = floatval($employee->salary ?? 0);
+        $frequency = $employee->payment_frequency ?? 'monthly';
+        
+        if ($frequency === 'daily') {
+            $dailyRate = $salary;
+        } elseif ($frequency === 'weekly') {
+            $daysPerWeek = $workingHours->count() > 0 ? $workingHours->count() : 6;
+            $dailyRate = $salary / $daysPerWeek;
+        } else {
+            // Determine monthly equivalent
+            $monthlyEquivalent = ($frequency === 'bi_monthly') ? ($salary * 2) : $salary;
+            
+            // Find total working days in the full month to get an accurate daily rate
+            $monthStart = $periodEnd->copy()->startOfMonth();
+            $monthEnd = $periodEnd->copy()->endOfMonth();
+            
+            $daysInMonth = 0;
+            $monthCurr = $monthStart->copy();
+            while ($monthCurr->lte($monthEnd)) {
+                if ($workingHours->has($monthCurr->format('l'))) {
+                    $daysInMonth++;
+                }
+                $monthCurr->addDay();
+            }
+            
+            $divisor = $daysInMonth > 0 ? $daysInMonth : 22; // Fallback to 22 average days
+            $dailyRate = $monthlyEquivalent / $divisor;
+        }
+
+        // Generate Per-Minute breakdown (Assumes standard 8-hour workday)
+        $hourlyRate = $dailyRate / 8; 
+        $minuteRate = $hourlyRate / 60; 
         
         // 5. Fetch Actual Attendance (Present or Late)
         $daysPresent = EmployeeAttendance::where('employee_id', $employee->hr_employee_id)
@@ -243,15 +269,10 @@ class PayrollController extends Controller
         $absentAmount = $unauthorizedAbsentDays * $dailyRate;
         $unpaidLeaveAmount = $unpaidLeaveDays * $dailyRate;
 
-        // 8. Calculate Lates
-        // Depends on DistributorWorkingHour (start_time) and DistributorPayrollSetting (policy)
+        // 8. Calculate Lates Strictly Based on Computed Salary Rates
         $lateCount = 0;
         $lateAmount = 0;
         
-        // Rate reference
-        $hourlyRate = $dailyRate / 8;
-        $minuteRate = $hourlyRate / 60; 
-
         // Get actual attendance records to check timestamps
         $attendances = EmployeeAttendance::where('employee_id', $employee->hr_employee_id)
             ->whereBetween('date', [$effectiveStart->format('Y-m-d'), $periodEnd->format('Y-m-d')])
@@ -270,37 +291,13 @@ class PayrollController extends Controller
                         $actualIn = Carbon::parse($att->date . ' ' . $att->time_in);
                         $expectedIn = Carbon::parse($att->date . ' ' . $schedStartStr);
                         
-                        // Apply Grace Period
-                        // Default to 0 if null, so we don't accidentally ignore lates
-                        $graceMinutes = $settings->late_deduction_minutes ?? 0;
-                        $expectedInWithGrace = $expectedIn->copy()->addMinutes($graceMinutes);
-
-                        if ($actualIn->gt($expectedInWithGrace)) {
+                        // Strict check, no business-owner grace period from DB
+                        if ($actualIn->gt($expectedIn)) {
                             $lateCount++;
-                            // Calculate minutes late relative to original start time (not grace time)
                             $minutesLate = $expectedIn->diffInMinutes($actualIn); 
 
-                            // === APPLY POLICY STRICTLY ===
-                            if ($settings && $settings->late_deduction_policy === 'fixed_block') {
-                                // Block Logic: 50 pesos per 15 mins
-                                $blockMinutes = $settings->late_deduction_minutes > 0 ? $settings->late_deduction_minutes : 15;
-                                $blockPrice = $settings->late_deduction_amount ?? 0;
-                                
-                                // How many full blocks?
-                                $blocks = floor($minutesLate / $blockMinutes);
-                                if ($blocks < 1) $blocks = 1; // Minimum 1 charge if late
-                                
-                                $lateAmount += ($blocks * $blockPrice);
-                                
-                            } elseif ($settings && $settings->late_deduction_policy === 'prorated') {
-                                // Prorated Logic: Fixed amount per minute (e.g., 2 pesos / min)
-                                $pricePerMinute = $settings->late_deduction_amount ?? 0;
-                                $lateAmount += ($minutesLate * $pricePerMinute);
-                            
-                            } else {
-                                // Default/Fallback: Salary based deduction
-                                $lateAmount += ($minutesLate * $minuteRate); 
-                            }
+                            // Calculation directly multiplied by the employee's custom minute rate
+                            $lateAmount += ($minutesLate * $minuteRate);
                         }
                     }
                 }

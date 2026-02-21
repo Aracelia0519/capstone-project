@@ -132,8 +132,8 @@
                 <p v-if="validationErrors.phone" class="text-xs text-red-400">{{ validationErrors.phone[0] }}</p>
               </div>
               <div class="space-y-2 md:col-span-2">
-                <Label class="text-slate-300">Address</Label>
-                <Textarea v-model="user.address" @input="markChanged" placeholder="Enter your complete address" rows="3" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                <Label class="text-slate-300">Address (Overview)</Label>
+                <Textarea v-model="user.address" @input="markChanged" placeholder="Enter your basic address" rows="3" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
                 <p v-if="validationErrors.address" class="text-xs text-red-400">{{ validationErrors.address[0] }}</p>
               </div>
             </div>
@@ -231,7 +231,7 @@
               </svg>
             </div>
             <div>
-              <CardTitle class="text-white text-xl">Identity Verification</CardTitle>
+              <CardTitle class="text-white text-xl">Identity & Location Verification</CardTitle>
               <CardDescription class="text-slate-400">Complete verification to unlock all features</CardDescription>
             </div>
           </div>
@@ -270,7 +270,69 @@
 
           <div class="p-6 md:p-8 min-h-[400px]">
             
-            <div v-if="currentStep === 0" class="animate-in fade-in slide-in-from-right-4 duration-300">
+            <div v-show="currentStep === 0" class="animate-in fade-in slide-in-from-right-4 duration-300">
+              <h3 class="text-lg font-semibold text-white mb-1 text-center">Address & Location</h3>
+              <p class="text-slate-400 text-sm text-center mb-6">Pinpoint your location for verification</p>
+              
+              <div class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <Label class="text-slate-300">Province <span class="text-red-500">*</span></Label>
+                    <Input model-value="Cavite" readonly class="bg-slate-800 border-slate-700 text-slate-400 cursor-not-allowed" />
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label class="text-slate-300">City/Municipality <span class="text-red-500">*</span></Label>
+                    <Select v-model="idVerification.city" :disabled="idVerification.status === 'pending' || idVerification.status === 'approved' || idVerification.status === 'verified'">
+                      <SelectTrigger class="w-full bg-slate-900/50 border-slate-700 text-slate-100">
+                          <SelectValue placeholder="Select City/Municipality" />
+                      </SelectTrigger>
+                      <SelectContent class="bg-slate-800 border-slate-700 text-white max-h-56">
+                        <SelectItem v-for="city in caviteCities" :key="city" :value="city">{{ city }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <Label class="text-slate-300">Barangay <span class="text-red-500">*</span></Label>
+                  <Input v-model="idVerification.barangay" type="text" :disabled="idVerification.status === 'pending' || idVerification.status === 'approved' || idVerification.status === 'verified'" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600" placeholder="Enter Barangay" />
+                </div>
+
+                <div class="space-y-2">
+                  <Label class="text-slate-300">Block/Street/Subdivision <span class="text-red-500">*</span></Label>
+                  <Textarea v-model="idVerification.block_address" rows="2" :disabled="idVerification.status === 'pending' || idVerification.status === 'approved' || idVerification.status === 'verified'" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 resize-none" placeholder="Block No., Lot No., Street Name, Subdivision/Village" />
+                </div>
+
+                <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <Label class="text-slate-300">Pin Location <span class="text-red-500">*</span></Label>
+                    <Button type="button" size="sm" @click="getCurrentLocation" :disabled="gettingLocation || idVerification.status === 'pending' || idVerification.status === 'approved' || idVerification.status === 'verified'" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-1 text-xs w-full sm:w-auto flex justify-center">
+                      <svg v-if="!gettingLocation" class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                      <svg v-else class="w-3 h-3 mr-1.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      {{ gettingLocation ? 'Locating...' : 'Get My Location' }}
+                    </Button>
+                  </div>
+                  
+                  <div id="client-map" class="h-80 sm:h-96 md:h-[450px] w-full rounded-xl border border-slate-600 shadow-md z-0 overflow-hidden relative"></div>
+
+                  <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <span class="text-xs text-slate-500 block mb-1">Latitude</span>
+                      <Input v-model="idVerification.latitude" readonly class="h-10 bg-slate-900/50 border-slate-700 text-slate-400" placeholder="0.000000" />
+                    </div>
+                    <div>
+                      <span class="text-xs text-slate-500 block mb-1">Longitude</span>
+                      <Input v-model="idVerification.longitude" readonly class="h-10 bg-slate-900/50 border-slate-700 text-slate-400" placeholder="0.000000" />
+                    </div>
+                  </div>
+                  <p class="text-xs text-red-400 mt-2" v-if="locationError">{{ locationError }}</p>
+                  <p class="text-xs text-slate-400 mt-2" v-else>Drag the pin to your exact location.</p>
+                </div>
+              </div>
+            </div>
+
+            <div v-show="currentStep === 1" class="animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 class="text-lg font-semibold text-white mb-1 text-center">Choose Your ID Type</h3>
               <p class="text-slate-400 text-sm text-center mb-6">Select the government-issued ID you want to use</p>
               
@@ -298,7 +360,7 @@
               </div>
             </div>
 
-            <div v-else-if="currentStep === 1" class="max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
+            <div v-show="currentStep === 2" class="max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 class="text-lg font-semibold text-white mb-1 text-center">Enter ID Details</h3>
               <p class="text-slate-400 text-sm text-center mb-6">Provide your {{ selectedIdTypeName }} information</p>
               
@@ -328,7 +390,7 @@
               </div>
             </div>
 
-            <div v-else-if="currentStep === 2" class="max-w-xl mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
+            <div v-show="currentStep === 3" class="max-w-xl mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 class="text-lg font-semibold text-white mb-1 text-center">Upload ID Photo</h3>
               <p class="text-slate-400 text-sm text-center mb-6">Take a clear photo of your {{ selectedIdTypeName }}</p>
 
@@ -383,7 +445,7 @@
               </div>
             </div>
 
-            <div v-else-if="currentStep === 3" class="max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
+            <div v-show="currentStep === 4" class="max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 class="text-lg font-semibold text-white mb-1 text-center">Review & Submit</h3>
               <p class="text-slate-400 text-sm text-center mb-6">Review your information before submission</p>
               
@@ -393,6 +455,10 @@
                   Summary
                 </div>
                 <div class="p-4 space-y-4">
+                  <div class="flex justify-between items-center py-2 border-b border-slate-700/30">
+                    <span class="text-slate-400 text-sm">Location</span>
+                    <span class="text-white font-medium text-right text-xs">{{ idVerification.city }}, {{ idVerification.province }}</span>
+                  </div>
                   <div class="flex justify-between items-center py-2 border-b border-slate-700/30">
                     <span class="text-slate-400 text-sm">ID Type</span>
                     <span class="text-white font-medium">{{ selectedIdTypeName }}</span>
@@ -417,7 +483,7 @@
               </div>
             </div>
 
-            <div v-else-if="currentStep === 4" class="max-w-md mx-auto text-center py-8 animate-in fade-in zoom-in-95 duration-300">
+            <div v-show="currentStep === 5" class="max-w-md mx-auto text-center py-8 animate-in fade-in zoom-in-95 duration-300">
               <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6"
                    :class="{
                      'bg-amber-500/10 text-amber-500': idVerification.status === 'pending',
@@ -463,10 +529,10 @@
               Previous
             </Button>
             
-            <div v-if="currentStep < 4" class="flex gap-1">
+            <div v-if="currentStep < 5" class="flex gap-1">
               <span class="text-indigo-400 font-bold">{{ currentStep + 1 }}</span>
               <span class="text-slate-600">/</span>
-              <span class="text-slate-500">5</span>
+              <span class="text-slate-500">6</span>
             </div>
 
             <Button 
@@ -488,7 +554,7 @@
             </Button>
             
             <Button 
-              v-else-if="currentStep === 4 && !['pending', 'approved', 'verified'].includes(idVerification.status)"
+              v-else-if="currentStep === 5 && !['pending', 'approved', 'verified'].includes(idVerification.status)"
               @click="restartVerification"
               variant="outline"
               class="border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10"
@@ -496,7 +562,8 @@
               Restart
             </Button>
             
-            <div v-else class="w-20"></div> </div>
+            <div v-else class="w-20"></div> 
+          </div>
         </CardContent>
       </Card>
 
@@ -509,6 +576,17 @@
 <script>
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
+
+// Leaflet
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+// @ts-ignore
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+// @ts-ignore
+import iconUrl from 'leaflet/dist/images/marker-icon.png'
+// @ts-ignore
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
+
 // Shadcn Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -517,7 +595,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'vue-sonner'
 
@@ -531,7 +609,7 @@ export default {
     Textarea,
     Badge,
     Progress,
-    Separator,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
     Toaster
   },
   data() {
@@ -573,85 +651,36 @@ export default {
       // Wizard Configuration
       currentStep: 0,
       wizardSteps: [
-        { title: 'Choose ID', completed: false, enabled: true },
+        { title: 'Location', completed: false, enabled: true },
+        { title: 'Choose ID', completed: false, enabled: false },
         { title: 'Details', completed: false, enabled: false },
         { title: 'Photo', completed: false, enabled: false },
         { title: 'Review', completed: false, enabled: false },
         { title: 'Status', completed: false, enabled: false }
       ],
       
-      // Available ID Types with icons
       availableIdTypes: [
-        { 
-          value: 'philid', 
-          name: 'Philippine National ID', 
-          description: 'PhilID or ePhilID',
-          icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-        },
-        { 
-          value: 'passport', 
-          name: 'Passport', 
-          description: 'International passport',
-          icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
-        },
-        { 
-          value: 'driver_license', 
-          name: 'Driver\'s License', 
-          description: 'LTO issued license',
-          icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-        },
-        { 
-          value: 'umid', 
-          name: 'UMID Card', 
-          description: 'SSS/GSIS unified ID',
-          icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-        },
-        { 
-          value: 'prc', 
-          name: 'PRC ID', 
-          description: 'Professional Regulation',
-          icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-        },
-        { 
-          value: 'voter', 
-          name: 'Voter\'s ID', 
-          description: 'Comelec issued ID',
-          icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-        },
-        { 
-          value: 'postal', 
-          name: 'Postal ID', 
-          description: 'Philippine Postal ID',
-          icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
-        },
-        { 
-          value: 'philhealth', 
-          name: 'PhilHealth ID', 
-          description: 'Health insurance card',
-          icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-        },
-        { 
-          value: 'nbi', 
-          name: 'NBI Clearance', 
-          description: 'National Bureau ID',
-          icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
-        },
-        { 
-          value: 'senior_citizen', 
-          name: 'Senior Citizen ID', 
-          description: 'OSCA issued ID',
-          icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-        },
-        { 
-          value: 'other', 
-          name: 'Other Government ID', 
-          description: 'Other valid government ID',
-          icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-        }
+        { value: 'philid', name: 'Philippine National ID', description: 'PhilID or ePhilID', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+        { value: 'passport', name: 'Passport', description: 'International passport', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+        { value: 'driver_license', name: 'Driver\'s License', description: 'LTO issued license', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { value: 'umid', name: 'UMID Card', description: 'SSS/GSIS unified ID', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+        { value: 'prc', name: 'PRC ID', description: 'Professional Regulation', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+        { value: 'voter', name: 'Voter\'s ID', description: 'Comelec issued ID', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { value: 'postal', name: 'Postal ID', description: 'Philippine Postal ID', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+        { value: 'philhealth', name: 'PhilHealth ID', description: 'Health insurance card', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { value: 'nbi', name: 'NBI Clearance', description: 'National Bureau ID', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+        { value: 'senior_citizen', name: 'Senior Citizen ID', description: 'OSCA issued ID', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { value: 'other', name: 'Other Government ID', description: 'Other valid government ID', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' }
       ],
       
       // ID Verification Data
       idVerification: {
+        province: 'Cavite',
+        city: '',
+        barangay: '',
+        block_address: '',
+        latitude: '',
+        longitude: '',
         idType: '',
         idNumber: '',
         idPhoto: null,
@@ -663,11 +692,23 @@ export default {
         isDragging: false,
         originalData: null,
         submittedAt: null
-      }
+      },
+
+      // Geolocation and Map
+      gettingLocation: false,
+      locationError: '',
+      map: null,
+      marker: null,
+      caviteCities: [
+        'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
+        'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
+        'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 
+        'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 
+        'Silang', 'Tagaytay', 'Tanza', 'Trece Martires'
+      ]
     }
   },
   computed: {
-    // Password related computed properties
     passwordStrength() {
       const password = this.password.new
       if (!password) return 'none'
@@ -681,33 +722,14 @@ export default {
     },
     
     passwordStrengthLabel() {
-      const labels = {
-        'none': '',
-        'weak': 'Weak',
-        'medium': 'Medium',
-        'strong': 'Strong',
-        'very-strong': 'Very Strong'
-      }
+      const labels = { 'none': '', 'weak': 'Weak', 'medium': 'Medium', 'strong': 'Strong', 'very-strong': 'Very Strong' }
       return labels[this.passwordStrength]
     },
     
-    passwordMismatch() {
-      return this.password.new && this.password.confirm && this.password.new !== this.password.confirm
-    },
+    passwordMismatch() { return this.password.new && this.password.confirm && this.password.new !== this.password.confirm },
+    canChangePassword() { return this.password.current && this.password.new && this.password.confirm && !this.passwordMismatch && this.password.new.length >= 8 },
     
-    canChangePassword() {
-      return this.password.current && 
-             this.password.new && 
-             this.password.confirm && 
-             !this.passwordMismatch &&
-             this.password.new.length >= 8
-    },
-    
-    // Wizard related computed properties
-    wizardProgress() {
-      // Calculate progress based on step index (0-4)
-      return (this.currentStep / (this.wizardSteps.length - 1)) * 100
-    },
+    wizardProgress() { return (this.currentStep / (this.wizardSteps.length - 1)) * 100 },
     
     selectedIdTypeName() {
       const selected = this.availableIdTypes.find(type => type.value === this.idVerification.idType)
@@ -717,13 +739,15 @@ export default {
     canProceedToNextStep() {
       switch(this.currentStep) {
         case 0:
-          return !!this.idVerification.idType
+          return !!(this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude)
         case 1:
-          return !!this.idVerification.idNumber && this.idVerification.idNumber.trim().length > 5
+          return !!this.idVerification.idType
         case 2:
-          return !!this.idVerification.idPhoto
+          return !!this.idVerification.idNumber && this.idVerification.idNumber.trim().length > 5
         case 3:
-          return true // Review step always accessible
+          return !!this.idVerification.idPhoto
+        case 4:
+          return true 
         default:
           return true
       }
@@ -733,67 +757,63 @@ export default {
       return this.idVerification.idType &&
             this.idVerification.idNumber &&
             this.idVerification.idPhoto &&
+            this.idVerification.city &&
+            this.idVerification.barangay &&
+            this.idVerification.block_address &&
+            this.idVerification.latitude &&
+            this.idVerification.longitude &&
             this.idVerification.status === 'not_submitted'
     }
   },
   watch: {
-    'idVerification.idType': function(newVal) {
-      if (newVal) {
-        this.wizardSteps[0].completed = true
-        this.wizardSteps[1].enabled = true
-      }
-    },
-    'idVerification.idNumber': function(newVal) {
-      if (newVal && newVal.trim().length > 5) {
-        this.wizardSteps[1].completed = true
-        this.wizardSteps[2].enabled = true
-      }
-    },
-    'idVerification.idPhoto': function(newVal) {
-      if (newVal) {
-        this.wizardSteps[2].completed = true
-        this.wizardSteps[3].enabled = true
-        this.wizardSteps[4].enabled = true
-      }
-    },
     currentStep: function(newStep) {
+      if (newStep === 0 && !['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
+        this.$nextTick(() => { 
+          if (!this.map) {
+            this.initMap(); 
+          } else {
+            // Leaflet requires this when a hidden map container becomes visible
+            this.map.invalidateSize(); 
+          }
+        });
+      } else if (newStep !== 0 && this.map && ['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
+        this.map.remove();
+        this.map = null;
+        this.marker = null;
+      }
+
       this.wizardSteps.forEach((step, index) => {
-        if (index < newStep) {
-          step.completed = true
-        }
+        if (index < newStep) step.completed = true
       })
-    }
+    },
+    'idVerification.city': function(newVal) { if (newVal) this.evaluateStep(0) },
+    'idVerification.idType': function(newVal) { if (newVal) this.evaluateStep(1) },
+    'idVerification.idNumber': function(newVal) { if (newVal && newVal.trim().length > 5) this.evaluateStep(2) },
+    'idVerification.idPhoto': function(newVal) { if (newVal) this.evaluateStep(3) }
   },
   created() {
     this.fetchUserProfile()
   },
   methods: {
-    // Styling Helpers
+    evaluateStep(stepIndex) {
+      if (this.canProceedToNextStep && this.currentStep === stepIndex) {
+        this.wizardSteps[stepIndex].completed = true
+        this.wizardSteps[stepIndex + 1].enabled = true
+      }
+    },
+    
     getStrengthColor(barIndex) {
       const strength = this.passwordStrength
-      const map = {
-        'weak': 2,
-        'medium': 3,
-        'strong': 4,
-        'very-strong': 5
-      }
+      const map = { 'weak': 2, 'medium': 3, 'strong': 4, 'very-strong': 5 }
       const score = map[strength] || 0
-      
       if (barIndex > score) return 'bg-slate-700'
-      
       if (score <= 2) return 'bg-red-500'
       if (score === 3) return 'bg-yellow-500'
       return 'bg-emerald-500'
     },
 
     formatVerificationStatus(status) {
-      const map = {
-        'verified': 'Verified',
-        'approved': 'Approved',
-        'pending': 'Pending Review',
-        'rejected': 'Rejected',
-        'not_submitted': 'Not Submitted'
-      }
+      const map = { 'verified': 'Verified', 'approved': 'Approved', 'pending': 'Pending Review', 'rejected': 'Rejected', 'not_submitted': 'Not Submitted' }
       return map[status] || status
     },
 
@@ -812,31 +832,24 @@ export default {
     },
 
     getStatusMessage(status) {
-      if (status === 'pending') return 'Your ID verification has been submitted and is under review.'
+      if (status === 'pending') return 'Your ID and Location verification has been submitted and is under review.'
       if (status === 'approved' || status === 'verified') return 'Your identity has been verified. You have full access.'
-      if (status === 'rejected') return 'Your verification was rejected. Please try again with a clearer photo.'
+      if (status === 'rejected') return 'Your verification was rejected. Please try again with accurate details.'
       return 'All information entered. Ready to submit.'
     },
 
-    // Wizard Navigation Methods
     goToStep(stepIndex) {
-      if (this.wizardSteps[stepIndex].enabled && 
-          this.idVerification.status !== 'pending' && 
-          this.idVerification.status !== 'approved') {
+      if (this.wizardSteps[stepIndex].enabled && !['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
         this.currentStep = stepIndex
       }
     },
     
     nextStep() {
-      if (this.canProceedToNextStep && this.currentStep < this.wizardSteps.length - 1) {
-        this.currentStep++
-      }
+      if (this.canProceedToNextStep && this.currentStep < this.wizardSteps.length - 1) this.currentStep++
     },
     
     previousStep() {
-      if (this.currentStep > 0) {
-        this.currentStep--
-      }
+      if (this.currentStep > 0) this.currentStep--
     },
     
     restartVerification() {
@@ -846,6 +859,11 @@ export default {
         this.idVerification.idNumber = ''
         this.idVerification.idPhoto = null
         this.idVerification.idPhotoPreview = ''
+        this.idVerification.city = ''
+        this.idVerification.barangay = ''
+        this.idVerification.block_address = ''
+        this.idVerification.latitude = ''
+        this.idVerification.longitude = ''
         this.idVerification.errors = {}
         this.idVerification.error = null
         this.idVerification.status = 'not_submitted'
@@ -855,25 +873,17 @@ export default {
           step.enabled = index === 0
         })
         
-        if (this.$refs.fileInput) {
-          this.$refs.fileInput.value = ''
-        }
-        
+        if (this.$refs.fileInput) this.$refs.fileInput.value = ''
+        this.$nextTick(() => { this.initMap(); });
         this.showNotification('Verification restarted', 'info')
       }
     },
     
     selectIdType(idType) {
-      if (this.idVerification.status === 'pending' || this.idVerification.status === 'approved') return
-      
+      if (['pending', 'approved', 'verified'].includes(this.idVerification.status)) return
       this.idVerification.idType = idType.value
       this.idVerification.errors.idType = null
-      
-      setTimeout(() => {
-        if (this.canProceedToNextStep) {
-          this.nextStep()
-        }
-      }, 300)
+      setTimeout(() => { if (this.canProceedToNextStep) this.nextStep() }, 300)
     },
     
     validateIdNumber() {
@@ -883,22 +893,12 @@ export default {
       }
     },
     
-    // Notification System (Replaced with Sonner)
     showNotification(message, type = 'info') {
-      const options = {
-        className: 'bg-slate-800 border-slate-700 text-white',
-        descriptionClass: 'text-slate-400'
-      }
-      
-      if (type === 'success') {
-        toast.success(message, { ...options, className: 'bg-emerald-900/90 border-emerald-700 text-emerald-50' })
-      } else if (type === 'error') {
-        toast.error(message, { ...options, className: 'bg-red-900/90 border-red-700 text-red-50' })
-      } else if (type === 'warning') {
-        toast.warning(message, { ...options, className: 'bg-amber-900/90 border-amber-700 text-amber-50' })
-      } else {
-        toast.info(message, { ...options })
-      }
+      const options = { className: 'bg-slate-800 border-slate-700 text-white', descriptionClass: 'text-slate-400' }
+      if (type === 'success') toast.success(message, { ...options, className: 'bg-emerald-900/90 border-emerald-700 text-emerald-50' })
+      else if (type === 'error') toast.error(message, { ...options, className: 'bg-red-900/90 border-red-700 text-red-50' })
+      else if (type === 'warning') toast.warning(message, { ...options, className: 'bg-amber-900/90 border-amber-700 text-amber-50' })
+      else toast.info(message, { ...options })
     },
     
     async fetchUserProfile() {
@@ -907,9 +907,7 @@ export default {
       try {
         const authUser = await getCurrentUser()
         if (!authUser) throw new Error('Please login to view your profile')
-
         const response = await axios.get('/auth/me')
-        
         if (response.data.status === 'success') {
           this.user = response.data.user
           this.originalUser = JSON.parse(JSON.stringify(this.user))
@@ -920,56 +918,165 @@ export default {
           throw new Error('Failed to load profile data')
         }
       } catch (error) {
-        console.error('Error fetching profile:', error)
         this.error = error.response?.data?.message || error.message || 'Failed to load profile data'
-        
         if (error.response?.status === 401) {
           clearAuthData()
           this.$router.push('/Landing/logIn')
           this.showNotification('Session expired. Please login again.', 'error')
-        } else {
-          this.showNotification(this.error, 'error')
-        }
+        } else this.showNotification(this.error, 'error')
       } finally {
         this.initialLoading = false
+        
+        // Fix: Wait for Vue to remove the loading screen and render the map div, THEN initialize
+        this.$nextTick(() => {
+          if (this.currentStep === 0 && !['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
+            this.initMap();
+          }
+        });
       }
     },
     
     async loadIdVerificationData() {
       try {
         const response = await axios.get('/client/requirements')
-        
-        if (response.data.status === 'success') {
-          if (response.data.id_verification) {
-            const data = response.data.id_verification
-            this.idVerification.idType = data.id_type || ''
-            this.idVerification.idNumber = data.id_number || ''
-            this.idVerification.status = data.status || 'not_submitted'
-            this.idVerification.submittedAt = data.submitted_at || null
-            
-            if (data.id_photo_url) {
-              this.idVerification.idPhotoPreview = data.id_photo_url
-            }
-            
-            this.updateWizardFromStatus()
+        if (response.data.status === 'success' && response.data.id_verification) {
+          const data = response.data.id_verification
+          this.idVerification.idType = data.id_type || ''
+          this.idVerification.idNumber = data.id_number || ''
+          this.idVerification.status = data.status || 'not_submitted'
+          this.idVerification.submittedAt = data.submitted_at || null
+          if (data.id_photo_url) this.idVerification.idPhotoPreview = data.id_photo_url
+          
+          if (data.address) {
+            this.idVerification.city = data.address.city || ''
+            this.idVerification.barangay = data.address.barangay || ''
+            this.idVerification.block_address = data.address.block_address || ''
+            this.idVerification.latitude = data.address.latitude || ''
+            this.idVerification.longitude = data.address.longitude || ''
           }
+          this.updateWizardFromStatus()
         }
+        // Removed the premature initMap from here since DOM isn't ready
       } catch (error) {
         console.error('Error loading ID verification data:', error)
-        this.showNotification('Failed to load verification data', 'error')
       }
     },
     
     updateWizardFromStatus() {
       if (['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
-        this.wizardSteps.forEach(step => {
-          step.completed = true
-          step.enabled = true
-        })
-        this.currentStep = 4
+        this.wizardSteps.forEach(step => { step.completed = true; step.enabled = true })
+        this.currentStep = 5
       } else if (this.idVerification.status === 'rejected') {
-        this.currentStep = 4
+        this.currentStep = 5
       }
+    },
+
+    // Map & Geolocation methods
+    fixLeafletIcons() {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
+    },
+
+    getAddressComponent(address, keys) {
+      if (!address) return '';
+      for (const key of keys) { if (address[key]) return address[key]; }
+      return '';
+    },
+
+    initMap() {
+      const mapContainer = document.getElementById('client-map');
+      if (!mapContainer || this.map) return; // If container still isn't there, abort
+      
+      const defaultLat = 14.45; // Adjusted closer to Cavite center
+      const defaultLng = 120.93;
+      const startLat = this.idVerification.latitude ? parseFloat(this.idVerification.latitude) : defaultLat;
+      const startLng = this.idVerification.longitude ? parseFloat(this.idVerification.longitude) : defaultLng;
+
+      this.fixLeafletIcons();
+      this.map = L.map('client-map').setView([startLat, startLng], 12);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(this.map);
+
+      this.marker = L.marker([startLat, startLng], { draggable: true }).addTo(this.map);
+      this.marker.on('dragend', async (e) => {
+        const latlng = e.target.getLatLng();
+        await this.updateLocationFromCoords(latlng.lat, latlng.lng);
+      });
+      this.map.on('click', async (e) => {
+        this.marker.setLatLng(e.latlng);
+        await this.updateLocationFromCoords(e.latlng.lat, e.latlng.lng);
+      });
+      
+      // Force map to recognize its container size
+      setTimeout(() => {
+        if (this.map) this.map.invalidateSize();
+      }, 100);
+    },
+
+    async updateLocationFromCoords(lat, lon) {
+      this.idVerification.latitude = lat.toString();
+      this.idVerification.longitude = lon.toString();
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+        if (!response.ok) throw new Error('Failed to fetch address');
+        const data = await response.json();
+        const addr = data.address;
+        if (addr) {
+          const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county']);
+          const matchedCity = this.caviteCities.find(c => rawCity.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(rawCity.toLowerCase()));
+          this.idVerification.city = matchedCity || rawCity;
+
+          const rawBarangay = this.getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district']);
+          this.idVerification.barangay = rawBarangay.replace('Barangay', '').trim();
+
+          const parts = [];
+          if (addr.house_number) parts.push(`No. ${addr.house_number}`);
+          if (addr.building) parts.push(addr.building);
+          const road = this.getAddressComponent(addr, ['road', 'pedestrian', 'highway', 'street']);
+          if (road) parts.push(road);
+          const subdivision = this.getAddressComponent(addr, ['residential', 'subdivision', 'village', 'allotments']);
+          if (subdivision && subdivision !== rawCity && subdivision !== rawBarangay) parts.push(subdivision);
+
+          this.idVerification.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map');
+          this.evaluateStep(0);
+        }
+      } catch (error) { console.error('Reverse geocoding error:', error); }
+    },
+
+    async getCurrentLocation() {
+      if (!navigator.geolocation) {
+        this.locationError = "Geolocation is not supported by your browser";
+        return;
+      }
+      this.gettingLocation = true;
+      this.locationError = "";
+      
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          this.idVerification.latitude = lat.toString();
+          this.idVerification.longitude = lon.toString();
+          if (this.map && this.marker) {
+            this.map.flyTo([lat, lon], 16);
+            this.marker.setLatLng([lat, lon]);
+          }
+          await this.updateLocationFromCoords(lat, lon);
+          this.gettingLocation = false;
+        },
+        (error) => {
+          this.gettingLocation = false;
+          switch(error.code) {
+            case error.PERMISSION_DENIED: this.locationError = "User denied the request for Geolocation."; break;
+            case error.POSITION_UNAVAILABLE: this.locationError = "Location information is unavailable."; break;
+            case error.TIMEOUT: this.locationError = "Request timed out."; break;
+            default: this.locationError = "An unknown error occurred."; break;
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
     },
     
     // File Upload Methods
@@ -977,66 +1084,48 @@ export default {
       event.preventDefault()
       this.idVerification.isDragging = true
     },
-    
     handleDragLeave(event) {
       event.preventDefault()
       this.idVerification.isDragging = false
     },
-    
     handleFileDrop(event) {
       this.idVerification.isDragging = false
       const files = event.dataTransfer.files
-      if (files.length > 0) {
-        this.validateAndSetFile(files[0])
-      }
+      if (files.length > 0) this.validateAndSetFile(files[0])
     },
-    
     triggerFileInput() {
-      if (this.idVerification.status === 'pending' || this.idVerification.status === 'approved') return
+      if (['pending', 'approved', 'verified'].includes(this.idVerification.status)) return
       this.$refs.fileInput.click()
     },
-    
     handleFileSelect(event) {
       const file = event.target.files[0]
-      if (file) {
-        this.validateAndSetFile(file)
-      }
+      if (file) this.validateAndSetFile(file)
     },
-    
     validateAndSetFile(file) {
       this.idVerification.errors.idPhoto = null
-      
-      const maxSize = 5 * 1024 * 1024
-      if (file.size > maxSize) {
+      if (file.size > 5 * 1024 * 1024) {
         this.idVerification.errors.idPhoto = 'File size must be less than 5MB'
         this.showNotification('File too large. Maximum size is 5MB.', 'error')
         return
       }
-      
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
-      if (!validTypes.includes(file.type)) {
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'].includes(file.type)) {
         this.idVerification.errors.idPhoto = 'File must be JPG, PNG, or PDF'
         this.showNotification('Invalid file type.', 'error')
         return
       }
       
       this.idVerification.idPhoto = file
-      
       if (file.type.startsWith('image/')) {
         const reader = new FileReader()
         reader.onload = (e) => {
           this.idVerification.idPhotoPreview = e.target.result
-          setTimeout(() => {
-            if (this.canProceedToNextStep) this.nextStep()
-          }, 300)
+          setTimeout(() => { if (this.canProceedToNextStep) this.nextStep() }, 300)
         }
         reader.readAsDataURL(file)
       } else {
-        // Generic preview for PDF
-        this.idVerification.idPhotoPreview = 'data:image/svg+xml;base64,...' // (truncated for brevity, keep your original string)
+        this.idVerification.idPhotoPreview = 'data:image/svg+xml;base64,...' 
         setTimeout(() => { if (this.canProceedToNextStep) this.nextStep() }, 300)
       }
-      
       this.showNotification('File uploaded successfully!', 'success')
     },
     
@@ -1045,14 +1134,12 @@ export default {
       this.idVerification.idPhotoPreview = ''
       this.idVerification.errors.idPhoto = null
       if (this.$refs.fileInput) this.$refs.fileInput.value = ''
-      
-      this.wizardSteps[2].completed = false
+      this.wizardSteps[3].completed = false
       this.showNotification('File removed', 'info')
     },
     
     async submitIdVerification() {
       if (!this.canSubmitId || this.idVerification.loading) return
-      
       this.idVerification.loading = true
       this.idVerification.error = null
       this.idVerification.errors = {}
@@ -1063,6 +1150,14 @@ export default {
         formData.append('id_number', this.idVerification.idNumber)
         formData.append('id_photo', this.idVerification.idPhoto)
         
+        // Address details
+        formData.append('province', 'Cavite')
+        formData.append('city', this.idVerification.city)
+        formData.append('barangay', this.idVerification.barangay)
+        formData.append('block_address', this.idVerification.block_address)
+        formData.append('latitude', this.idVerification.latitude)
+        formData.append('longitude', this.idVerification.longitude)
+        
         const response = await axios.post('/client/requirements', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
           timeout: 30000
@@ -1072,16 +1167,14 @@ export default {
           this.idVerification.status = response.data.id_verification.status
           this.idVerification.submittedAt = response.data.id_verification.submitted_at
           
-          this.wizardSteps[3].completed = true
           this.wizardSteps[4].completed = true
-          this.currentStep = 4
-          
+          this.wizardSteps[5].completed = true
+          this.currentStep = 5
           this.showNotification(response.data.message || 'ID verification submitted!', 'success')
         } else {
           throw new Error(response.data.message || 'Failed to submit')
         }
       } catch (error) {
-        console.error('Error submitting ID verification:', error)
         if (error.response?.status === 422) {
           this.idVerification.errors = error.response.data.errors || {}
           this.showNotification('Please fix validation errors', 'error')
@@ -1114,10 +1207,8 @@ export default {
     
     async saveProfile() {
       if (!this.hasChanges || this.loading) return
-      
       this.loading = true
       this.validationErrors = {}
-      
       try {
         const updateData = {
           first_name: this.user.first_name,
@@ -1126,28 +1217,19 @@ export default {
           phone: this.user.phone,
           address: this.user.address
         }
-        
         const response = await axios.put('/profile', updateData)
-        
         if (response.data.status === 'success') {
           Object.assign(this.user, updateData)
           this.originalUser = JSON.parse(JSON.stringify(this.user))
           this.hasChanges = false
           this.showNotification('Profile updated successfully!', 'success')
-        } else {
-          throw new Error('Update failed')
-        }
+        } else throw new Error('Update failed')
       } catch (error) {
-        console.error('Error updating profile:', error)
         if (error.response?.status === 422) {
           this.validationErrors = error.response.data.errors || {}
           this.showNotification('Please fix the validation errors', 'error')
-        } else {
-          this.showNotification('Failed to update profile', 'error')
-        }
-      } finally {
-        this.loading = false
-      }
+        } else this.showNotification('Failed to update profile', 'error')
+      } finally { this.loading = false }
     },
     
     resetPersonalAndContactInfo() {
@@ -1159,9 +1241,7 @@ export default {
       }
     },
     
-    updatePersonalAndContactInfo() {
-      this.saveProfile()
-    },
+    updatePersonalAndContactInfo() { this.saveProfile() },
     
     togglePasswordVisibility(type) {
       if (type === 'current') this.showCurrentPassword = !this.showCurrentPassword
@@ -1171,40 +1251,25 @@ export default {
     
     async changePassword() {
       if (!this.canChangePassword || this.passwordLoading) return
-      
       this.passwordLoading = true
       this.passwordError = null
-      
       try {
-        const passwordData = {
-          current_password: this.password.current,
-          password: this.password.new,
-          password_confirmation: this.password.confirm
-        }
-        
+        const passwordData = { current_password: this.password.current, password: this.password.new, password_confirmation: this.password.confirm }
         const response = await axios.put('/profile/password', passwordData)
-        
         if (response.data.status === 'success') {
           this.password = { current: '', new: '', confirm: '' }
           this.showNotification('Password changed successfully!', 'success')
-        } else {
-          throw new Error('Password change failed')
-        }
+        } else throw new Error('Password change failed')
       } catch (error) {
         this.passwordError = error.response?.data?.message || 'Failed to change password'
         this.showNotification(this.passwordError, 'error')
-      } finally {
-        this.passwordLoading = false
-      }
+      } finally { this.passwordLoading = false }
     },
     
     formatDate(dateString) {
       if (!dateString) return 'N/A'
-      try {
-        return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-      } catch (e) {
-        return 'N/A'
-      }
+      try { return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) } 
+      catch (e) { return 'N/A' }
     },
     
     formatDateTime(dateTime) {
@@ -1225,28 +1290,13 @@ export default {
 </script>
 
 <style scoped>
-/* Only keeping essential transitions that are hard to replicate purely with utility classes */
-.slide-in-from-right-4 {
-  animation: slideInRight 0.3s ease-out;
-}
-
+.slide-in-from-right-4 { animation: slideInRight 0.3s ease-out; }
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
-/* Custom scrollbar to match the theme */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.3);
-}
-::-webkit-scrollbar-thumb {
-  background: #4f46e5;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #4338ca;
-}
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); }
+::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #4338ca; }
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 import { 
@@ -79,6 +80,7 @@ interface Order {
 }
 
 // --- State ---
+const router = useRouter()
 const orders = ref<Order[]>([])
 const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
@@ -202,6 +204,9 @@ const confirmOrder = async () => {
       description: `Order ${orderToConfirm.value.request_code} is now being processed`,
       duration: 5000
     })
+
+    // Redirect to Process Orders page
+    router.push('/supplier/SupplierProcessOrders')
     
   } catch (err: any) {
     console.error('Failed to confirm', err)
@@ -260,7 +265,6 @@ onMounted(() => {
 <template>
   <div class="flex h-screen w-full flex-col bg-muted/20">
     
-    <!-- Alert Dialog for Confirmation -->
     <AlertDialog :open="showConfirmDialog" @update:open="showConfirmDialog = $event">
       <AlertDialogContent class="w-[95%] max-w-md mx-auto rounded-lg">
         <AlertDialogHeader>
@@ -301,9 +305,7 @@ onMounted(() => {
       </AlertDialogContent>
     </AlertDialog>
 
-    <!-- Desktop View (md and up) -->
     <div class="hidden md:flex h-full w-full">
-      <!-- Left Sidebar - Incoming Orders List (Filtered) -->
       <div class="w-80 lg:w-96 border-r bg-background flex flex-col h-full">
         <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10">
           <h2 class="font-semibold text-lg flex items-center gap-2">
@@ -358,7 +360,6 @@ onMounted(() => {
               </div>
             </button>
             
-            <!-- Show separator if there are processed orders -->
             <div v-if="orders.some(o => o.status.toLowerCase() !== 'ready')" class="mt-4 pt-4 border-t">
               <p class="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <Clock class="h-3 w-3" /> Processed ({{ orders.filter(o => o.status.toLowerCase() !== 'ready').length }})
@@ -386,7 +387,6 @@ onMounted(() => {
         </ScrollArea>
       </div>
 
-      <!-- Right Side - Order Details -->
       <div class="flex-1 flex flex-col h-full overflow-hidden">
         <header class="flex items-center justify-between border-b bg-background px-6 py-4">
           <div v-if="selectedOrder">
@@ -434,7 +434,6 @@ onMounted(() => {
         <ScrollArea class="flex-1 p-6">
           <div v-if="selectedOrder" :key="selectedOrder.id" class="mx-auto max-w-4xl space-y-6 pb-10">
             
-            <!-- Status Banner -->
             <div class="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm">
                <div class="flex items-center gap-4">
                   <div class="rounded-full bg-primary/10 p-2 text-primary">
@@ -453,7 +452,6 @@ onMounted(() => {
                </div>
             </div>
 
-            <!-- Distributor Info and Notes -->
             <div class="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader class="pb-3">
@@ -496,7 +494,6 @@ onMounted(() => {
               </Card>
             </div>
 
-            <!-- Order Items Table -->
             <Card>
               <CardHeader class="pb-3">
                  <CardTitle class="text-md">Order Items</CardTitle>
@@ -541,9 +538,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Mobile View (below md) -->
     <div class="flex md:hidden flex-col h-full w-full">
-      <!-- Mobile Header -->
       <header class="flex items-center justify-between border-b bg-background px-4 py-3 sticky top-0 z-20">
         <div class="flex items-center gap-3">
           <Sheet v-model:open="showMobileSheet">
@@ -553,7 +548,6 @@ onMounted(() => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" class="w-[85%] sm:w-80 p-0">
-              <!-- Mobile Orders List -->
               <div class="flex flex-col h-full">
                 <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10">
                   <h2 class="font-semibold text-lg flex items-center gap-2">
@@ -625,7 +619,6 @@ onMounted(() => {
         </div>
       </header>
 
-      <!-- Mobile Content -->
       <ScrollArea class="flex-1">
         <div v-if="error" class="p-4">
           <div class="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
@@ -637,7 +630,6 @@ onMounted(() => {
         </div>
 
         <div v-if="selectedOrder" class="p-4 space-y-4 pb-8">
-          <!-- Status Card -->
           <Card>
             <CardContent class="p-4">
               <div class="flex items-center justify-between">
@@ -658,7 +650,6 @@ onMounted(() => {
             </CardContent>
           </Card>
 
-          <!-- Action Button -->
           <div v-if="selectedOrder.status === 'ready'" class="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
             <Button 
               @click="openConfirmDialog(selectedOrder)" 
@@ -671,7 +662,6 @@ onMounted(() => {
             </Button>
           </div>
 
-          <!-- Distributor Info -->
           <Card>
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2">
@@ -699,7 +689,6 @@ onMounted(() => {
             </CardContent>
           </Card>
 
-          <!-- Notes -->
           <Card>
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2">
@@ -713,7 +702,6 @@ onMounted(() => {
             </CardContent>
           </Card>
 
-          <!-- Items -->
           <Card>
             <CardHeader class="pb-2">
               <CardTitle class="text-sm">Items</CardTitle>
@@ -744,7 +732,6 @@ onMounted(() => {
           </Card>
         </div>
 
-        <!-- No Order Selected -->
         <div v-else class="flex flex-col items-center justify-center text-muted-foreground py-20 px-4">
           <Package class="h-16 w-16 mb-4 opacity-20" />
           <p class="font-medium text-center">No order selected</p>

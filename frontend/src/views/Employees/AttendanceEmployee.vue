@@ -1,6 +1,37 @@
 <template>
   <div class="attendance-employee p-4 md:p-6">
-    <Toaster position="top-right" />
+    <Teleport to="body">
+  <Toaster
+    position="top-right"
+    :expand="false"
+    :rich-colors="false"
+    :close-button="true"
+    :theme="'light'"
+    :visible-toasts="1"
+    :container-style="{
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 9999999,
+      pointerEvents: 'none',
+    }"
+    :toast-options="{
+      style: {
+        background: 'white',
+        color: 'black',
+        border: 'none',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+        padding: '16px 20px',          // slightly smaller padding
+        fontSize: '15px',              // slightly smaller font
+        minWidth: '280px',             // smaller width
+        maxWidth: '400px',
+        borderRadius: '10px',          // slightly smaller rounding
+        pointerEvents: 'auto',
+      },
+    }"
+  />
+</Teleport>
     
     <AlertDialog :open="alertOpen">
       <AlertDialogContent>

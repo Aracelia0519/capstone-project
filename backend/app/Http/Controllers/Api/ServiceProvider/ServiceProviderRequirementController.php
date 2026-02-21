@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
+use App\Models\ServiceProvider\ServiceProviderAddress;
 use Illuminate\Support\Str;
 
 class ServiceProviderRequirementController extends Controller
@@ -26,7 +28,7 @@ class ServiceProviderRequirementController extends Controller
             ], 403);
         }
 
-        $requirement = ServiceProviderRequirement::where('user_id', $user->id)->first();
+        $requirement = ServiceProviderRequirement::with('address')->where('user_id', $user->id)->first();
 
         if (!$requirement) {
             return response()->json([
@@ -39,7 +41,8 @@ class ServiceProviderRequirementController extends Controller
                     'reviewed_at' => null,
                     'rejection_reason' => null,
                     'id_photo_url' => null,
-                    'selfie_photo_url' => null
+                    'selfie_photo_url' => null,
+                    'address' => null
                 ]
             ]);
         }
@@ -58,7 +61,8 @@ class ServiceProviderRequirementController extends Controller
                     : null,
                 'selfie_photo_url' => $requirement->selfie_with_id_photo 
                     ? asset('storage/' . $requirement->selfie_with_id_photo)
-                    : null
+                    : null,
+                'address' => $requirement->address
             ]
         ]);
     }
@@ -84,6 +88,13 @@ class ServiceProviderRequirementController extends Controller
             'id_number' => 'required|string|max:50',
             'id_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
             'selfie_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+            // Address validation
+            'province' => 'required|string|in:Cavite',
+            'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'block_address' => 'required|string|max:1000',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
         ], [
             'id_photo.max' => 'The ID photo must not exceed 5MB.',
             'selfie_photo.max' => 'The selfie photo must not exceed 5MB.',
@@ -109,6 +120,8 @@ class ServiceProviderRequirementController extends Controller
             ], 400);
         }
 
+        DB::beginTransaction();
+
         try {
             // Create folder paths
             $idPhotoFolder = 'SP/ID_photos';
@@ -119,8 +132,6 @@ class ServiceProviderRequirementController extends Controller
             if ($request->hasFile('id_photo')) {
                 $idPhoto = $request->file('id_photo');
                 $idPhotoName = 'sp_id_' . $user->id . '_' . time() . '_' . Str::random(10) . '.' . $idPhoto->getClientOriginalExtension();
-                
-                // Store in public disk (storage/app/public)
                 $idPhotoPath = Storage::disk('public')->putFileAs($idPhotoFolder, $idPhoto, $idPhotoName);
             }
 
@@ -129,8 +140,6 @@ class ServiceProviderRequirementController extends Controller
             if ($request->hasFile('selfie_photo')) {
                 $selfiePhoto = $request->file('selfie_photo');
                 $selfiePhotoName = 'sp_selfie_' . $user->id . '_' . time() . '_' . Str::random(10) . '.' . $selfiePhoto->getClientOriginalExtension();
-                
-                // Store in public disk (storage/app/public)
                 $selfiePhotoPath = Storage::disk('public')->putFileAs($selfiePhotoFolder, $selfiePhoto, $selfiePhotoName);
             }
 
@@ -149,6 +158,21 @@ class ServiceProviderRequirementController extends Controller
                 ]
             );
 
+            // Create or update address
+            ServiceProviderAddress::updateOrCreate(
+                ['service_provider_requirements_id' => $requirement->id],
+                [
+                    'province' => 'Cavite',
+                    'city' => $request->city,
+                    'barangay' => $request->barangay,
+                    'block_address' => $request->block_address,
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                ]
+            );
+
+            DB::commit();
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'ID verification submitted successfully!',
@@ -158,11 +182,13 @@ class ServiceProviderRequirementController extends Controller
                     'id_number' => $requirement->id_number,
                     'submitted_at' => $requirement->submitted_at,
                     'id_photo_url' => $idPhotoPath ? asset('storage/' . $idPhotoPath) : null,
-                    'selfie_photo_url' => $selfiePhotoPath ? asset('storage/' . $selfiePhotoPath) : null
+                    'selfie_photo_url' => $selfiePhotoPath ? asset('storage/' . $selfiePhotoPath) : null,
+                    'address' => $requirement->address
                 ]
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             // Clean up uploaded files if error occurs
             if (isset($idPhotoPath) && Storage::disk('public')->exists($idPhotoPath)) {
                 Storage::disk('public')->delete($idPhotoPath);
@@ -183,7 +209,6 @@ class ServiceProviderRequirementController extends Controller
      */
     public function pending(Request $request)
     {
-        // Check if user is admin
         if (!$request->user()->isAdmin()) {
             return response()->json([
                 'status' => 'error',
@@ -191,7 +216,7 @@ class ServiceProviderRequirementController extends Controller
             ], 403);
         }
 
-        $requirements = ServiceProviderRequirement::with('user:id,first_name,last_name,email,phone')
+        $requirements = ServiceProviderRequirement::with(['user:id,first_name,last_name,email,phone', 'address'])
             ->where('status', 'pending')
             ->orderBy('submitted_at', 'asc')
             ->get()
@@ -213,7 +238,8 @@ class ServiceProviderRequirementController extends Controller
                         : null,
                     'status' => $requirement->status,
                     'submitted_at' => $requirement->submitted_at,
-                    'reviewed_at' => $requirement->reviewed_at
+                    'reviewed_at' => $requirement->reviewed_at,
+                    'address' => $requirement->address
                 ];
             });
 
@@ -228,7 +254,6 @@ class ServiceProviderRequirementController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Check if user is admin
         if (!$request->user()->isAdmin()) {
             return response()->json([
                 'status' => 'error',
@@ -265,8 +290,7 @@ class ServiceProviderRequirementController extends Controller
                 $requirement->markAsRejected($request->rejection_reason);
             }
 
-            // Get user info for response
-            $requirement->load('user:id,first_name,last_name,email');
+            $requirement->load('user:id,first_name,last_name,email', 'address');
 
             return response()->json([
                 'status' => 'success',
@@ -282,6 +306,7 @@ class ServiceProviderRequirementController extends Controller
                     'rejection_reason' => $requirement->rejection_reason,
                     'submitted_at' => $requirement->submitted_at,
                     'reviewed_at' => $requirement->reviewed_at,
+                    'address' => $requirement->address,
                     'id_photo_url' => $requirement->valid_id_photo 
                         ? asset('storage/' . $requirement->valid_id_photo)
                         : null,
@@ -304,7 +329,6 @@ class ServiceProviderRequirementController extends Controller
      */
     public function statistics(Request $request)
     {
-        // Check if user is admin
         if (!$request->user()->isAdmin()) {
             return response()->json([
                 'status' => 'error',

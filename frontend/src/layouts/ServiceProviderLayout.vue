@@ -1,7 +1,22 @@
 <template>
   <SidebarProvider>
     <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-purple-500/30 overflow-hidden">
-      <sideBarServiceProvider @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
+      <Toaster position="top-right" />
+      
+      <VerificationModal 
+        v-if="showVerificationModal" 
+        @close="showVerificationModal = false"
+        :verification-status="verificationStatus"
+        redirect-route="/serviceProvider/ProfileSettingsSP" 
+        description-text="To access all service provider features like accepting service requests and managing your portfolio, please complete your professional verification."
+      />
+
+      <sideBarServiceProvider 
+        :verification-status="verificationStatus"
+        @open-verification-modal="showVerificationModal = true"
+        @logout-started="handleLogoutStart" 
+        @logout-finished="handleLogoutFinish" 
+      />
 
       <SidebarInset class="main-content-area bg-slate-900 border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
         
@@ -45,6 +60,7 @@
                 v-if="userData" 
                 :user="userData" 
                 :dashboard-data="dashboardData" 
+                :verification-status="verificationStatus"
               />
             </transition>
           </router-view>
@@ -57,15 +73,27 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Toaster } from '@/components/ui/sonner'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import sideBarServiceProvider from './sideBarServiceProvider.vue'
+import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
 import { LogOut } from 'lucide-vue-next'
 
+const route = useRoute()
+const router = useRouter()
 const userData = ref(null)
 const dashboardData = ref(null)
+const isLoading = ref(false)
+
+// Verification States
+const verificationStatus = ref(null)
+const showVerificationModal = ref(false)
+
+// Logout States
 const isLoggingOut = ref(false)
 const logoutProgress = ref(0)
 let progressInterval = null
@@ -89,10 +117,28 @@ const handleLogoutFinish = () => {
   }, 500)
 }
 
+// Watch for verification required query parameters
+watch(() => route.query, (newQuery) => {
+  if (newQuery.verification_required === 'true') {
+    verificationStatus.value = newQuery.status || 'none'
+    showVerificationModal.value = true
+  }
+}, { immediate: true })
+
 const fetchData = async () => {
+  isLoading.value = true
   try {
     const userResponse = await axios.get('/auth/me')
     userData.value = userResponse.data.user
+    
+    // Fetch verification status for Service Provider
+    if (userData.value.role === 'service_provider') {
+      // Note: Make sure this endpoint matches your actual Service Provider requirements route
+      const verificationResponse = await axios.get('/service-provider/requirements') 
+      if (verificationResponse.data.status === 'success') {
+        verificationStatus.value = verificationResponse.data.data?.status || 'none'
+      }
+    }
     
     const roleEndpoints = {
       service_provider: '/dashboard/service-provider',
@@ -105,11 +151,17 @@ const fetchData = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch data:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
 onMounted(() => {
   fetchData()
+})
+
+onUnmounted(() => {
+  if (progressInterval) clearInterval(progressInterval)
 })
 </script>
 

@@ -3,10 +3,22 @@
     <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-sky-500/30 overflow-hidden">
       <Toaster position="top-right" />
 
-      <SideBarClient @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
+      <VerificationModal 
+        v-if="showVerificationModal" 
+        @close="showVerificationModal = false"
+        :verification-status="verificationStatus"
+        redirect-route="/Clients/profileC"
+        description-text="To access all client features like color previews and service requests, please complete your identity verification."
+      />
+
+      <SideBarClient 
+        :verification-status="verificationStatus"
+        @open-verification-modal="showVerificationModal = true"
+        @logout-started="handleLogoutStart" 
+        @logout-finished="handleLogoutFinish" 
+      />
 
       <SidebarInset class="main-content-area bg-slate-900 border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
-        <!-- Logout Overlay with Progress -->
         <transition name="fade">
           <div 
             v-if="isLoggingOut" 
@@ -49,6 +61,7 @@
                     v-if="userData" 
                     :user="userData" 
                     :dashboard-data="dashboardData" 
+                    :verification-status="verificationStatus"
                   />
                 </transition>
               </router-view>
@@ -68,20 +81,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import SideBarClient from './sideBarClient.vue'
+import VerificationModal from './VerificationModal.vue' // Make sure you have this component created for Client
 import axios from '@/utils/axios'
 import { getCurrentUser } from '@/utils/auth'
 import { LogOut } from 'lucide-vue-next'
 
+const route = useRoute()
 const router = useRouter()
 const userData = ref(null)
 const dashboardData = ref(null)
 const isLoading = ref(false)
+const verificationStatus = ref(null)
+const showVerificationModal = ref(false)
+
 const isLoggingOut = ref(false)
 const logoutProgress = ref(0)
 let progressInterval = null
@@ -106,6 +124,25 @@ const handleLogoutFinish = () => {
     isLoggingOut.value = false
     logoutProgress.value = 0
   }, 500)
+}
+
+watch(() => route.query, (newQuery) => {
+  if (newQuery.verification_required === 'true') {
+    verificationStatus.value = newQuery.status || 'none'
+    showVerificationModal.value = true
+  }
+}, { immediate: true })
+
+const fetchVerificationStatus = async () => {
+  if (!userData.value || userData.value.role !== 'client') return
+  try {
+    const res = await axios.get('/client/requirements')
+    if (res.data.status === 'success') {
+      verificationStatus.value = res.data.id_verification?.status || 'none'
+    }
+  } catch (e) {
+    console.error('Failed to fetch verification status:', e)
+  }
 }
 
 const initializeUserData = () => {
@@ -148,8 +185,11 @@ onMounted(async () => {
       localStorage.setItem('user_data', JSON.stringify(userData.value))
     } catch {
       router.push('/Landing/logIn')
+      return // Exit early if redirecting
     }
   }
+  
+  await fetchVerificationStatus() // Fetch requirements/status
   fetchDashboardData()
 })
 
@@ -157,6 +197,10 @@ watch(() => router.currentRoute.value.path, (path, oldPath) => {
   if (path.includes('dashboard') && !oldPath.includes('dashboard')) {
     fetchDashboardData()
   }
+})
+
+onUnmounted(() => {
+  if (progressInterval) clearInterval(progressInterval)
 })
 </script>
 

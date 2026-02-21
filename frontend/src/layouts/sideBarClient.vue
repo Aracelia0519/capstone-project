@@ -1,18 +1,21 @@
 <template>
   <Sidebar collapsible="icon" class="border-r border-slate-800/50 bg-slate-900 transition-all duration-500 ease-in-out">
-    <SidebarHeader class="h-24 border-b border-slate-800/50 flex flex-row items-center px-4 overflow-hidden bg-slate-900">
+    <SidebarHeader class="h-auto py-6 border-b border-slate-800/50 flex flex-row items-center px-4 overflow-hidden bg-slate-900">
       <div class="flex items-center gap-3 w-full">
         <div class="relative shrink-0 flex items-center justify-center">
-          <Avatar class="w-10 h-10 ring-2 ring-sky-500/30 ring-offset-2 ring-offset-slate-900">
-            <div class="w-full h-full bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-400 flex items-center justify-center">
-              <User class="w-5 h-5 text-white" />
+          <Avatar class="w-12 h-12 ring-2 ring-sky-500/30 ring-offset-2 ring-offset-slate-900">
+            <div :class="['w-full h-full flex items-center justify-center bg-gradient-to-br', isVerified ? 'from-green-400 to-emerald-400' : 'from-blue-500 via-cyan-400 to-teal-400']">
+              <User class="w-6 h-6 text-white" />
             </div>
           </Avatar>
+          <div v-if="isVerified" class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900" />
         </div>
         
         <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 nav-text-clip flex-1">
           <h2 class="text-sm font-bold text-slate-100 truncate tracking-tight">{{ userName }}</h2>
-          <p class="text-[10px] font-semibold text-sky-400/80 uppercase tracking-widest">Client Portal</p>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-sky-400/80">
+            {{ isVerified ? 'Verified Client' : 'Verification Required' }}
+          </p>
         </div>
       </div>
     </SidebarHeader>
@@ -28,10 +31,11 @@
             <SidebarMenuButton 
               as-child 
               :tooltip="item.name" 
+              :disabled="item.requiresVerify && !isVerified"
               class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50 flex items-center"
               active-class="bg-gradient-to-r from-sky-500/20 to-cyan-500/10 !text-white ring-1 ring-sky-500/30"
             >
-              <router-link :to="item.path" class="flex items-center w-full px-2">
+              <router-link v-if="!item.requiresVerify || isVerified" :to="item.path" class="flex items-center w-full px-2">
                 <div class="shrink-0 flex items-center justify-center w-6 h-6">
                   <component :is="item.icon" class="w-5 h-5" :class="item.color" />
                 </div>
@@ -45,6 +49,13 @@
                   {{ item.badge }}
                 </Badge>
               </router-link>
+              <div v-else @click="emit('open-verification-modal')" class="flex items-center w-full px-2 opacity-50 cursor-not-allowed">
+                <div class="shrink-0 flex items-center justify-center w-6 h-6">
+                  <component :is="item.icon" class="w-5 h-5 text-slate-500" />
+                </div>
+                <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">Locked</span>
+                <Lock v-if="state === 'expanded' || isMobile" class="ml-auto w-3 h-3 text-slate-600" />
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -116,11 +127,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue'
+import { ref, computed, onMounted, defineEmits, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ClipboardList, Palette, History, 
-  Lightbulb, Users, User, LogOut, Loader2, UserCircle 
+  Lightbulb, Users, User, LogOut, Loader2, UserCircle, Lock
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -133,34 +144,37 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/utils/axios'
 
+const props = defineProps({ verificationStatus: String })
+const emit = defineEmits(['open-verification-modal', 'logout-started', 'logout-finished'])
 const { state, isMobile } = useSidebar()
 const router = useRouter()
-const emit = defineEmits(['logout-started', 'logout-finished'])
 
 const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Welcome Back!')
+const isVerified = computed(() => props.verificationStatus === 'approved')
 
+// Added requiresVerify: true to all navigation items so they are locked until approved.
 const navigation = [
   {
     title: 'Client Module',
     items: [
-      { name: 'Dashboard', path: '/Clients/dashboardC', icon: LayoutDashboard, color: 'text-sky-400', badge: 'Active' },
-      { name: 'Service Requests', path: '/Clients/myServiceRequest', icon: ClipboardList, color: 'text-emerald-400', badge: '2' }
+      { name: 'Dashboard', path: '/Clients/dashboardC', icon: LayoutDashboard, color: 'text-sky-400', badge: 'Active', requiresVerify: true },
+      { name: 'Service Requests', path: '/Clients/myServiceRequest', icon: ClipboardList, color: 'text-emerald-400', badge: '2', requiresVerify: true }
     ]
   },
   {
     title: 'Visualization',
     items: [
-      { name: 'Color Preview', path: '/Clients/colorPreview', icon: Palette, color: 'text-purple-400', badge: 'Unity' },
-      { name: 'Color History', path: '/Clients/ColorHistoryC', icon: History, color: 'text-indigo-400', badge: '5' }
+      { name: 'Color Preview', path: '/Clients/colorPreview', icon: Palette, color: 'text-purple-400', badge: 'Unity', requiresVerify: true },
+      { name: 'Color History', path: '/Clients/ColorHistoryC', icon: History, color: 'text-indigo-400', badge: '5', requiresVerify: true }
     ]
   },
   {
     title: 'Recommendations',
     items: [
-      { name: 'Suggestions', path: '/Clients/recommendation', icon: Lightbulb, color: 'text-amber-400' },
-      { name: 'Service Providers', path: '/Clients/serviceProviderC', icon: Users, color: 'text-teal-400' }
+      { name: 'Suggestions', path: '/Clients/recommendation', icon: Lightbulb, color: 'text-amber-400', requiresVerify: true },
+      { name: 'Service Providers', path: '/Clients/serviceProviderC', icon: Users, color: 'text-teal-400', requiresVerify: true }
     ]
   }
 ]

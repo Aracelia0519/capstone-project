@@ -86,7 +86,12 @@
     </div>
 
     <div class="max-w-[1400px] mx-auto">
-      <div v-if="filteredColors.length === 0" class="text-center py-16">
+      <div v-if="isLoading" class="text-center py-16">
+        <div class="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-slate-400">Loading your color history...</p>
+      </div>
+
+      <div v-else-if="filteredColors.length === 0" class="text-center py-16">
         <div class="w-20 h-20 mx-auto mb-6 bg-slate-900/80 rounded-full flex items-center justify-center text-slate-600">
           <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
         </div>
@@ -112,11 +117,10 @@
             <div class="flex justify-between items-start mb-6">
               <div class="flex items-center gap-3">
                 <Avatar class="bg-gradient-to-br from-blue-500 to-violet-500 text-white font-semibold">
-                  <AvatarFallback class="bg-transparent">{{ color.client.charAt(0).toUpperCase() }}</AvatarFallback>
+                  <AvatarFallback class="bg-transparent">{{ color.client ? color.client.charAt(0).toUpperCase() : 'P' }}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 class="font-semibold text-white leading-tight">{{ color.client }}</h3>
-                  <p class="text-xs text-slate-400">{{ color.name }}</p>
+                  <h3 class="font-semibold text-white leading-tight">{{ color.name }}</h3>
                 </div>
               </div>
               
@@ -231,6 +235,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import api from '@/utils/axios'
 
 export default {
   name: 'ColorHistory',
@@ -250,21 +255,8 @@ export default {
       itemsPerPage: 8,
       showNotification: false,
       notificationMessage: '',
-      
-      colors: [
-        { id: 1, client: 'John Smith', name: 'Ocean Breeze', hex: '#3B82F6', rgb: '59, 130, 246', created: '2024-01-15', timeAgo: '2 days ago' },
-        { id: 2, client: 'Sarah Johnson', name: 'Forest Green', hex: '#10B981', rgb: '16, 185, 129', created: '2024-01-14', timeAgo: '3 days ago' },
-        { id: 3, client: 'Mike Wilson', name: 'Sunset Orange', hex: '#F59E0B', rgb: '245, 158, 11', created: '2024-01-13', timeAgo: '4 days ago' },
-        { id: 4, client: 'Emma Davis', name: 'Royal Purple', hex: '#8B5CF6', rgb: '139, 92, 246', created: '2024-01-12', timeAgo: '5 days ago' },
-        { id: 5, client: 'Robert Brown', name: 'Crimson Red', hex: '#EF4444', rgb: '239, 68, 68', created: '2024-01-11', timeAgo: '6 days ago' },
-        { id: 6, client: 'Lisa Miller', name: 'Sky Blue', hex: '#0EA5E9', rgb: '14, 165, 233', created: '2024-01-10', timeAgo: '1 week ago' },
-        { id: 7, client: 'David Wilson', name: 'Emerald', hex: '#10B981', rgb: '16, 185, 129', created: '2024-01-09', timeAgo: '1 week ago' },
-        { id: 8, client: 'Anna Taylor', name: 'Golden Yellow', hex: '#FBBF24', rgb: '251, 191, 36', created: '2024-01-08', timeAgo: '1 week ago' },
-        { id: 9, client: 'John Smith', name: 'Midnight Blue', hex: '#1E40AF', rgb: '30, 64, 175', created: '2024-01-07', timeAgo: '2 weeks ago' },
-        { id: 10, client: 'Mike Wilson', name: 'Rose Pink', hex: '#F472B6', rgb: '244, 114, 182', created: '2024-01-06', timeAgo: '2 weeks ago' },
-        { id: 11, client: 'Sarah Johnson', name: 'Teal', hex: '#14B8A6', rgb: '20, 184, 166', created: '2024-01-05', timeAgo: '2 weeks ago' },
-        { id: 12, client: 'Emma Davis', name: 'Slate Gray', hex: '#64748B', rgb: '100, 116, 139', created: '2024-01-04', timeAgo: '2 weeks ago' }
-      ]
+      isLoading: false,
+      colors: [] // Now starts empty, fetched dynamically from DB
     }
   },
   computed: {
@@ -313,7 +305,7 @@ export default {
       return filtered
     },
     totalPages() {
-      return Math.ceil(this.filteredColors.length / this.itemsPerPage)
+      return Math.ceil(this.filteredColors.length / this.itemsPerPage) || 1
     },
     paginatedColors() {
       const start = (this.currentPage - 1) * this.itemsPerPage
@@ -341,7 +333,32 @@ export default {
     dateRange() { this.currentPage = 1 },
     clientFilter() { this.currentPage = 1 }
   },
+  async mounted() {
+    await this.fetchColors()
+  },
   methods: {
+    async fetchColors() {
+      try {
+        this.isLoading = true
+        const response = await api.get('/service-provider/color-history')
+        
+        // Map backend format to component's expected format
+        this.colors = response.data.data.map(c => ({
+          id: c.id,
+          client: c.client_name, 
+          name: c.name,
+          hex: c.hex_code,
+          rgb: c.rgb_values,
+          created: c.created_at, 
+          timeAgo: c.time_ago
+        }))
+      } catch (error) {
+        console.error("Failed to fetch colors:", error)
+        this.showNotificationMessage("Failed to load color history")
+      } finally {
+        this.isLoading = false
+      }
+    },
     toggleFilter() { this.showFilter = !this.showFilter },
     applyFilters() { this.showFilter = false },
     clearFilters() {
@@ -360,12 +377,20 @@ export default {
     editColor(color) { this.showNotificationMessage(`Editing ${color.name}...`) },
     duplicateColor(color) { this.showNotificationMessage(`Duplicating ${color.name}...`) },
     shareColor(color) { this.showNotificationMessage(`Sharing ${color.name}...`) },
-    deleteColor(color) {
+    async deleteColor(color) {
       if (confirm(`Are you sure you want to delete ${color.name}?`)) {
-        const index = this.colors.findIndex(c => c.id === color.id)
-        if (index > -1) {
-          this.colors.splice(index, 1)
-          this.showNotificationMessage(`Deleted ${color.name}`)
+        try {
+          // Utilizing the existing endpoint you created previously for delete
+          await api.delete(`/service-provider/colors/${color.id}`)
+          
+          const index = this.colors.findIndex(c => c.id === color.id)
+          if (index > -1) {
+            this.colors.splice(index, 1)
+            this.showNotificationMessage(`Deleted ${color.name}`)
+          }
+        } catch (error) {
+          console.error("Failed to delete color:", error)
+          this.showNotificationMessage(`Failed to delete ${color.name}`)
         }
       }
     },

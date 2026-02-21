@@ -198,20 +198,20 @@ const navigation = [
   {
     title: 'Analytics',
     items: [
-      { name: 'Color Demand Insights', path: '/distributor/ColorDemandInsights', icon: Lightbulb, color: 'text-purple-400', isAi: true, badge: 'ML', badgeColor: 'bg-purple-500/20 text-purple-300', requiresVerify: true },
+      { name: 'Color Demand Insights', path: '/distributor/ColorDemandInsights', icon: Lightbulb, color: 'text-purple-400', isAi: true, badgeColor: 'bg-purple-500/20 text-purple-300', requiresVerify: true },
       { name: 'Sales History', path: '/distributor/SalesHistory', icon: History, color: 'text-indigo-400', requiresVerify: true }
     ]
   },
   {
     title: 'Network',
     items: [
-      { name: 'Service Providers', path: '/distributor/ServiceProviders', icon: Users, color: 'text-teal-400', badge: '24', requiresVerify: true },
       { name: 'Operational Distributors', path: '/distributor/OperationalDistributorD', icon: Building2, color: 'text-indigo-400', requiresVerify: true },
       { name: 'HR Managers', path: '/distributor/HRmanagerD', icon: UserCog, color: 'text-green-400', requiresVerify: true },
       { name: 'Finance Managers', path: '/distributor/FinanceManagerD', icon: Wallet, color: 'text-purple-400', requiresVerify: true },
       { name: 'Working Hours', path: '/distributor/WorkingHours', icon: Clock, color: 'text-purple-400', requiresVerify: true },
       { name: 'Payroll Frequency', path: '/distributor/PayrollFrequency', icon: Calendar, color: 'text-orange-400', badge: 'New', requiresVerify: true },
-      { name: 'Partner Distributor', path: '/distributor/PartnerDistributorReq', icon: Handshake, color: 'text-blue-400', badge: 'req', requiresVerify: true }
+      { name: 'Service Providers', path: '/distributor/ServiceProviders', icon: Users, color: 'text-teal-400', badge: '24', requiresVerify: true },
+      { name: 'Partner Distributor', path: '/distributor/PartnerDistributorReq', icon: Handshake, color: 'text-blue-400', badge: 'req', requiresVerify: true },
     ]
   },
   {

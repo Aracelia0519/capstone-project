@@ -5,6 +5,7 @@ namespace App\Models\ServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Models\ServiceProvider\ServiceProviderAddress;
 
 class ServiceProviderRequirement extends Model
 {
@@ -43,6 +44,14 @@ class ServiceProviderRequirement extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the address record associated with the requirement.
+     */
+    public function address()
+    {
+        return $this->hasOne(ServiceProviderAddress::class, 'service_provider_requirements_id');
     }
 
     /**

@@ -1,6 +1,37 @@
 <template>
   <div class="leaves-employee p-4 md:p-6">
-    <Toaster position="top-center" />
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',          // slightly smaller padding
+            fontSize: '15px',              // slightly smaller font
+            minWidth: '280px',             // smaller width
+            maxWidth: '400px',
+            borderRadius: '10px',          // slightly smaller rounding
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
 
     <AlertDialog v-model:open="showConfirmDialog">
       <AlertDialogContent class="z-[200]">
@@ -96,7 +127,7 @@
               File Leave Request
             </Button>
           </DialogTrigger>
-          <DialogContent class="sm:max-w-[600px]">
+          <DialogContent class="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle class="text-xl font-semibold">File Leave Request</DialogTitle>
             </DialogHeader>
@@ -118,8 +149,40 @@
                 </div>
                 <div>
                   <Label class="text-sm font-medium text-gray-700 mb-2">Duration (Days)</Label>
-                  <Input type="number" step="0.5" v-model="form.duration" placeholder="Auto-calculated" readonly />
+                  <Input type="number" step="0.5" v-model="form.duration" placeholder="Auto-calculated" readonly class="bg-gray-100" />
                 </div>
+              </div>
+
+              <div v-if="form.type === 'maternity'" class="bg-purple-50 p-4 rounded-lg space-y-4 border border-purple-100">
+                  <h4 class="font-medium text-purple-800">Maternity Leave Details</h4>
+                  
+                  <div>
+                    <Label class="text-sm font-medium text-gray-700 mb-2">Event Type</Label>
+                    <Select v-model="maternity.event">
+                      <SelectTrigger class="w-full bg-white">
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="live_childbirth">Live Childbirth (105 days)</SelectItem>
+                        <SelectItem value="miscarriage">Miscarriage / Emergency Termination (60 days)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div v-if="maternity.event === 'live_childbirth'" class="space-y-3 pt-2">
+                     <div class="flex items-center space-x-2">
+                       <Checkbox id="solo_parent" :checked="maternity.solo_parent" @update:checked="v => maternity.solo_parent = v" />
+                       <Label for="solo_parent" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                         I am a Solo Parent (+15 days = 120 days total)
+                       </Label>
+                     </div>
+                     <div class="flex items-center space-x-2">
+                       <Checkbox id="extension" :checked="maternity.extension" @update:checked="v => maternity.extension = v" />
+                       <Label for="extension" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                         Request optional 30-day unpaid extension
+                       </Label>
+                     </div>
+                  </div>
               </div>
               
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -130,7 +193,8 @@
                 </div>
                 <div>
                   <Label class="text-sm font-medium text-gray-700 mb-2">End Date</Label>
-                  <Input type="date" v-model="form.end_date" :min="form.start_date || minDate" />
+                  <Input type="date" v-model="form.end_date" :min="form.start_date || minDate" :readonly="form.type === 'maternity'" :class="{ 'bg-gray-100': form.type === 'maternity' }" />
+                  <p v-if="form.type === 'maternity'" class="text-xs text-purple-600 mt-1">Auto-calculated based on maternity selection</p>
                 </div>
               </div>
               
@@ -139,8 +203,8 @@
                 <Textarea rows="4" v-model="form.reason" placeholder="Briefly describe the reason for leave" />
               </div>
 
-              <div v-if="errorMessage" class="text-red-500 text-sm p-2 bg-red-50 rounded">
-                {{ errorMessage }}
+              <div v-if="errorMessage" class="text-red-500 text-sm p-2 bg-red-50 rounded border border-red-100">
+                <i class="fas fa-exclamation-circle mr-1"></i> {{ errorMessage }}
               </div>
               
               <div class="flex justify-end space-x-4 pt-2">
@@ -269,8 +333,40 @@
                   </div>
                   <div>
                     <Label class="text-sm font-medium text-gray-700 mb-2">Duration (Days)</Label>
-                    <Input type="number" step="0.5" v-model="form.duration" placeholder="Auto-calculated" readonly />
+                    <Input type="number" step="0.5" v-model="form.duration" placeholder="Auto-calculated" readonly class="bg-gray-100" />
                   </div>
+                </div>
+
+                <div v-if="form.type === 'maternity'" class="bg-purple-50 p-4 rounded-lg space-y-4 border border-purple-100">
+                    <h4 class="font-medium text-purple-800">Maternity Leave Details</h4>
+                    
+                    <div>
+                      <Label class="text-sm font-medium text-gray-700 mb-2">Event Type</Label>
+                      <Select v-model="maternity.event">
+                        <SelectTrigger class="w-full bg-white">
+                          <SelectValue placeholder="Select event type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="live_childbirth">Live Childbirth (105 days)</SelectItem>
+                          <SelectItem value="miscarriage">Miscarriage / Emergency Termination (60 days)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div v-if="maternity.event === 'live_childbirth'" class="space-y-3 pt-2">
+                       <div class="flex items-center space-x-2">
+                         <Checkbox id="solo_parent_tab" :checked="maternity.solo_parent" @update:checked="v => maternity.solo_parent = v" />
+                         <Label for="solo_parent_tab" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                           I am a Solo Parent (+15 days = 120 days total)
+                         </Label>
+                       </div>
+                       <div class="flex items-center space-x-2">
+                         <Checkbox id="extension_tab" :checked="maternity.extension" @update:checked="v => maternity.extension = v" />
+                         <Label for="extension_tab" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                           Request optional 30-day unpaid extension
+                         </Label>
+                       </div>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -281,7 +377,8 @@
                   </div>
                   <div>
                     <Label class="text-sm font-medium text-gray-700 mb-2">End Date</Label>
-                    <Input type="date" v-model="form.end_date" :min="form.start_date || minDate" />
+                    <Input type="date" v-model="form.end_date" :min="form.start_date || minDate" :readonly="form.type === 'maternity'" :class="{ 'bg-gray-100': form.type === 'maternity' }" />
+                    <p v-if="form.type === 'maternity'" class="text-xs text-purple-600 mt-1">Auto-calculated based on maternity selection</p>
                   </div>
                 </div>
                 
@@ -290,8 +387,8 @@
                   <Textarea rows="4" v-model="form.reason" placeholder="Briefly describe the reason for leave" />
                 </div>
 
-                <div v-if="errorMessage" class="text-red-500 text-sm p-2 bg-red-50 rounded">
-                  {{ errorMessage }}
+                <div v-if="errorMessage" class="text-red-500 text-sm p-2 bg-red-50 rounded border border-red-100">
+                  <i class="fas fa-exclamation-circle mr-1"></i> {{ errorMessage }}
                 </div>
                 
                 <div class="flex justify-end space-x-4">
@@ -326,6 +423,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -339,13 +437,13 @@ import {
 
 // State
 const showRequestModal = ref(false)
-const showDetailsModal = ref(false) // NEW: State for details modal
+const showDetailsModal = ref(false) 
 const showConfirmDialog = ref(false)
 const activeTab = ref('history')
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const errorMessage = ref('')
-const selectedLeave = ref(null) // NEW: Store selected leave for details
+const selectedLeave = ref(null) 
 
 const tabs = [
   { id: 'history', label: 'Leave History', icon: 'fas fa-history' },
@@ -363,22 +461,22 @@ const form = reactive({
   reason: ''
 })
 
+// Specific state properties for Maternity options
+const maternity = reactive({
+  event: 'live_childbirth', // 'live_childbirth' or 'miscarriage'
+  solo_parent: false,
+  extension: false
+})
+
 // --- Date Validation Logic (Manila Time) ---
 const minDate = computed(() => {
-  // Create date object for current time
   const now = new Date();
-  
-  // Format it specifically to Manila time
   const options = { timeZone: 'Asia/Manila', year: 'numeric', month: 'numeric', day: 'numeric' };
   const manilaDateString = now.toLocaleDateString('en-US', options);
-  
-  // Create a new Date object from the Manila string to perform arithmetic
   const manilaDate = new Date(manilaDateString);
   
-  // Add 1 day
   manilaDate.setDate(manilaDate.getDate() + 1);
   
-  // Return in YYYY-MM-DD format for the HTML input
   const year = manilaDate.getFullYear();
   const month = String(manilaDate.getMonth() + 1).padStart(2, '0');
   const day = String(manilaDate.getDate()).padStart(2, '0');
@@ -386,18 +484,50 @@ const minDate = computed(() => {
   return `${year}-${month}-${day}`;
 });
 
-// --- Auto-fill Duration Logic ---
-watch([() => form.start_date, () => form.end_date], ([newStart, newEnd]) => {
-  if (newStart && newEnd) {
-    const start = new Date(newStart)
-    const end = new Date(newEnd)
-    
-    if (end >= start) {
-      const diffTime = Math.abs(end - start)
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 
-      form.duration = diffDays
+// --- Dynamic Duration & Date Assignment Logic ---
+watch([
+  () => form.type, 
+  () => form.start_date, 
+  () => form.end_date, 
+  () => maternity.event, 
+  () => maternity.solo_parent, 
+  () => maternity.extension
+], () => {
+  if (form.type === 'maternity') {
+    // 1. Calculate specific static days for maternity
+    let days = 0;
+    if (maternity.event === 'miscarriage') {
+      days = 60;
     } else {
-      form.duration = 0 
+      days = 105;
+      if (maternity.solo_parent) days = 120;
+      if (maternity.extension) days += 30; // Unpaid extension
+    }
+    form.duration = days;
+
+    // 2. Automatically compute End Date
+    if (form.start_date) {
+      const start = new Date(form.start_date);
+      start.setDate(start.getDate() + days - 1);
+      
+      const year = start.getFullYear();
+      const month = String(start.getMonth() + 1).padStart(2, '0');
+      const day = String(start.getDate()).padStart(2, '0');
+      form.end_date = `${year}-${month}-${day}`;
+    }
+  } else {
+    // Standard logic for non-maternity
+    if (form.start_date && form.end_date) {
+      const start = new Date(form.start_date)
+      const end = new Date(form.end_date)
+      
+      if (end >= start) {
+        const diffTime = Math.abs(end - start)
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 
+        form.duration = diffDays
+      } else {
+        form.duration = 0 
+      }
     }
   }
 })
@@ -430,7 +560,6 @@ const getStatusClass = (status) => {
   return 'bg-gray-100'
 }
 
-// NEW: Function to open details modal
 const viewDetails = (leave) => {
   selectedLeave.value = leave
   showDetailsModal.value = true
@@ -442,6 +571,9 @@ const resetForm = () => {
   form.start_date = ''
   form.end_date = ''
   form.reason = ''
+  maternity.event = 'live_childbirth'
+  maternity.solo_parent = false
+  maternity.extension = false
   errorMessage.value = ''
 }
 
@@ -469,7 +601,6 @@ const confirmSubmit = () => {
     return
   }
   
-  // Validate Manila Date Requirement
   if (form.start_date < minDate.value) {
     errorMessage.value = 'Start date must be tomorrow or later (Manila Time)'
     toast.error('Start date must be tomorrow or later')
@@ -482,7 +613,13 @@ const confirmSubmit = () => {
     return
   }
 
-  // Show dialog
+  // Prevent users from filing standard leaves for more than 30 days
+  if (form.type !== 'maternity' && form.duration > 30) {
+    errorMessage.value = 'Maximum leave duration is 30 days.'
+    toast.error('Maximum leave duration is 30 days.')
+    return
+  }
+
   showConfirmDialog.value = true
 }
 
@@ -492,7 +629,20 @@ const submitRequest = async () => {
 
   try {
     isSubmitting.value = true
-    await api.post('/employee/leaves', form)
+
+    // Make a copy of form payload
+    const payload = { ...form }
+
+    // If Maternity Leave, bundle the configuration into the reason for HR to see easily
+    if (payload.type === 'maternity') {
+      const eventText = maternity.event === 'live_childbirth' ? 'Live Childbirth' : 'Miscarriage / Emergency Termination'
+      const soloText = (maternity.solo_parent && maternity.event === 'live_childbirth') ? ' | Solo Parent' : ''
+      const extText = (maternity.extension && maternity.event === 'live_childbirth') ? ' | +30 Days Unpaid Extension' : ''
+      
+      payload.reason = `[Maternity Context: ${eventText}${soloText}${extText}]\n\n${payload.reason}`
+    }
+
+    await api.post('/employee/leaves', payload)
     
     toast.success('Leave request submitted successfully')
     await fetchData()
@@ -507,6 +657,10 @@ const submitRequest = async () => {
     
     if (error.response && error.response.data && error.response.data.message) {
         msg = error.response.data.message
+        
+        if (error.response.data.errors?.duration) {
+            msg = error.response.data.errors.duration[0]
+        }
     }
     
     errorMessage.value = msg

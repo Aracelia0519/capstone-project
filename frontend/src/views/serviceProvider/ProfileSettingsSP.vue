@@ -1,13 +1,44 @@
 <template>
   <div class="min-h-screen text-slate-50 pb-20">
-    <Toaster position="top-right" theme="dark" :richColors="true" />
+    <Teleport to="body">
+  <Toaster
+    position="top-right"
+    :expand="false"
+    :rich-colors="false"
+    :close-button="true"
+    :theme="'light'"
+    :visible-toasts="1"
+    :container-style="{
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 9999999,
+      pointerEvents: 'none',
+    }"
+    :toast-options="{
+      style: {
+        background: 'white',
+        color: 'black',
+        border: 'none',
+        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+        padding: '16px 20px',          
+        fontSize: '15px',              
+        minWidth: '280px',             
+        maxWidth: '400px',
+        borderRadius: '10px',          
+        pointerEvents: 'auto',
+      },
+    }"
+  />
+</Teleport>
 
     <header class="sticky top-0 z-40  backdrop-blur-md border-b border-gray-800 shadow-xl">
       <div class="px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-              <div class="p-2 bg-gradient-to-br from-gray-600 to-gray-500 rounded-xl shadow-xl">
+              <div class="p-2 bg-linear-to-br from-gray-600 to-gray-500 rounded-xl shadow-xl">
                 <UserCog class="w-6 h-6 text-white" />
               </div>
               Account Management
@@ -25,7 +56,7 @@
               size="lg"
               class="rounded-xl font-medium transition-all duration-300"
               :class="hasChanges && !isLoading 
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white shadow-lg hover:shadow-blue-500/25 border-0' 
+                ? 'bg-linear-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white shadow-lg hover:shadow-blue-500/25 border-0' 
                 : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-800'"
             >
               <Loader2 v-if="isLoading" class="w-5 h-5 animate-spin mr-2" />
@@ -49,7 +80,7 @@
       </div>
     </header>
 
-    <div v-if="loading" class="flex justify-center items-center min-h-[400px]">
+    <div v-if="loading" class="flex justify-center items-center min-h-100">
       <div class="text-center">
         <Loader2 class="animate-spin w-12 h-12 text-blue-500 mx-auto mb-4" />
         <p class="text-gray-400">Loading profile data...</p>
@@ -69,15 +100,16 @@
        </Card>
     </div>
 
-    <main v-else class="px-4 sm:px-6 lg:px-8 py-6">
+    <main v-else class="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+      
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div class="lg:col-span-1 space-y-6">
-          <Card class="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl overflow-hidden">
+        <div class="lg:col-span-1 flex flex-col gap-6">
+          <Card class="bg-linear-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl overflow-hidden shrink-0">
             <CardContent class="pt-8 pb-6 px-6 text-center">
               <div class="relative inline-block mb-4">
                 <Avatar class="w-32 h-32 border-4 border-gray-800 shadow-2xl">
-                  <AvatarImage src="" alt="User Avatar" /> <AvatarFallback class="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-4xl font-bold text-white">
+                  <AvatarImage src="" alt="User Avatar" /> <AvatarFallback class="bg-linear-to-br from-blue-500 via-purple-500 to-pink-500 text-4xl font-bold text-white">
                     {{ userInitials }}
                   </AvatarFallback>
                 </Avatar>
@@ -117,10 +149,10 @@
             </CardContent>
           </Card>
 
-          <Card class="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl">
+          <Card class="bg-linear-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl flex-1">
             <CardHeader class="pb-4">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-gradient-to-r from-yellow-500 to-amber-400 rounded-lg">
+                <div class="p-2 bg-linear-to-r from-yellow-500 to-amber-400 rounded-lg">
                   <Shield class="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -161,13 +193,12 @@
           </Card>
         </div>
 
-        <div class="lg:col-span-2 space-y-6">
-          
-          <Card class="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl">
+        <div class="lg:col-span-2 flex flex-col gap-6">
+          <Card class="bg-linear-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl flex-1">
             <CardHeader>
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="p-2 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-lg">
+                  <div class="p-2 bg-linear-to-r from-blue-500 to-cyan-400 rounded-lg">
                     <User class="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -232,11 +263,11 @@
                 </div>
 
                 <div class="md:col-span-2 space-y-2">
-                  <Label class="text-gray-300">Address</Label>
+                  <Label class="text-gray-300">Address Overview</Label>
                   <Textarea 
                     v-model="user.address" 
                     @input="markChanged"
-                    class="bg-gray-800 border-gray-700 text-white focus:border-blue-500 min-h-[80px]" 
+                    class="bg-gray-800 border-gray-700 text-white focus:border-blue-500 min-h-20" 
                     placeholder="Enter your address" 
                   />
                   <p v-if="validationErrors.address" class="text-xs text-red-400">{{ validationErrors.address[0] }}</p>
@@ -247,7 +278,7 @@
                   <Textarea 
                     v-model="user.bio" 
                     @input="markChanged"
-                    class="bg-gray-800 border-gray-700 text-white focus:border-blue-500 min-h-[100px]" 
+                    class="bg-gray-800 border-gray-700 text-white focus:border-blue-500 min-h-25" 
                     placeholder="Tell us about yourself..." 
                   />
                   <p class="text-xs text-gray-500">Note: Bio field is stored locally until saved.</p>
@@ -256,255 +287,11 @@
             </CardContent>
           </Card>
 
-          <Card class="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl overflow-hidden">
-             <CardHeader>
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="p-2 bg-gradient-to-r from-indigo-500 to-purple-400 rounded-lg">
-                    <FileBadge class="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 class="text-xl font-bold text-white">ID Verification</h2>
-                    <p class="text-gray-400 text-sm">Complete identity verification in 3 easy steps</p>
-                     <p v-if="idVerification.rejectionReason" class="text-xs text-red-400 mt-1">
-                      Reason: {{ idVerification.rejectionReason }}
-                    </p>
-                  </div>
-                </div>
-                <div class="text-sm" :class="idVerificationStatusClass">
-                   {{ idVerificationStatus }}
-                   <div v-if="idVerification.submittedAt" class="text-xs text-gray-500 text-right">
-                    {{ formatDate(idVerification.submittedAt) }}
-                   </div>
-                </div>
-              </div>
-             </CardHeader>
-             
-             <CardContent>
-              <div v-if="idVerification.status === 'verified'" class="bg-green-900/20 border border-green-800 rounded-xl p-4 mb-6">
-                <div class="flex items-center gap-3">
-                  <CheckCircle2 class="w-6 h-6 text-green-400" />
-                  <div>
-                    <h3 class="font-semibold text-green-400">ID Verified</h3>
-                    <p class="text-gray-300 text-sm">Your ID has been verified and approved.</p>
-                  </div>
-                </div>
-              </div>
-
-               <div v-if="idVerification.status !== 'verified'" class="mb-8 px-2">
-                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div class="flex items-center gap-4 w-full md:w-auto">
-                    <div class="flex flex-col items-center">
-                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
-                           :class="currentStep >= 1 ? 'bg-gradient-to-r from-indigo-500 to-purple-500 border-indigo-500' : 'bg-gray-800 border-gray-700'">
-                        <span class="font-bold text-white">1</span>
-                      </div>
-                      <span class="mt-2 text-sm" :class="currentStep >= 1 ? 'text-indigo-400 font-medium' : 'text-gray-500'">ID Details</span>
-                    </div>
-                    
-                    <div class="hidden md:block w-16 h-1 rounded-full" :class="currentStep >= 2 ? 'bg-gradient-to-r from-purple-500 to-purple-400' : 'bg-gray-700'"></div>
-                    
-                    <div class="flex flex-col items-center">
-                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
-                           :class="currentStep >= 2 ? 'bg-gradient-to-r from-purple-500 to-purple-400 border-purple-500' : 'bg-gray-800 border-gray-700'">
-                        <span class="font-bold text-white">2</span>
-                      </div>
-                      <span class="mt-2 text-sm" :class="currentStep >= 2 ? 'text-purple-400 font-medium' : 'text-gray-500'">ID Photo</span>
-                    </div>
-                    
-                    <div class="hidden md:block w-16 h-1 rounded-full" :class="currentStep >= 3 ? 'bg-gradient-to-r from-purple-400 to-purple-300' : 'bg-gray-700'"></div>
-                    
-                    <div class="flex flex-col items-center">
-                      <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300"
-                           :class="currentStep >= 3 ? 'bg-gradient-to-r from-purple-400 to-purple-300 border-purple-400' : 'bg-gray-800 border-gray-700'">
-                        <span class="font-bold text-white">3</span>
-                      </div>
-                      <span class="mt-2 text-sm" :class="currentStep >= 3 ? 'text-purple-300 font-medium' : 'text-gray-500'">Selfie</span>
-                    </div>
-                  </div>
-                  <div class="text-sm text-gray-400">Step {{ currentStep }} of 3</div>
-                </div>
-              </div>
-
-               <div v-if="idVerification.status !== 'verified'" class="space-y-6">
-                <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
-                  <div class="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-800/30 rounded-xl p-6">
-                    <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                       <CreditCard class="w-5 h-5 text-indigo-400" /> Step 1: ID Information
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                      <div class="space-y-2">
-                        <Label class="text-gray-300">Select ID Type <span class="text-red-400">*</span></Label>
-                         <Select v-model="idVerification.idType" :disabled="idVerification.status === 'pending'">
-                          <SelectTrigger class="w-full bg-gray-800 border-gray-700 text-white">
-                             <SelectValue placeholder="Select ID Type" />
-                          </SelectTrigger>
-                          <SelectContent class="bg-gray-800 border-gray-700 text-white">
-                            <SelectItem value="phil_id">Philippine National ID</SelectItem>
-                            <SelectItem value="passport">Passport</SelectItem>
-                            <SelectItem value="driver_license">Driver's License</SelectItem>
-                            <SelectItem value="umid">UMID (SSS/GSIS)</SelectItem>
-                            <SelectItem value="prc_id">PRC ID</SelectItem>
-                            <SelectItem value="voter_id">Voter's ID</SelectItem>
-                            <SelectItem value="other">Other Valid ID</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p v-if="idVerificationErrors.idType" class="text-xs text-red-400">{{ idVerificationErrors.idType }}</p>
-                      </div>
-                      
-                      <div class="space-y-2">
-                        <Label class="text-gray-300">ID Number <span class="text-red-400">*</span></Label>
-                        <Input 
-                          v-model="idVerification.idNumber"
-                          :disabled="idVerification.status === 'pending'"
-                          class="bg-gray-800 border-gray-700 text-white"
-                          placeholder="Enter ID number"
-                        />
-                         <p v-if="idVerificationErrors.idNumber" class="text-xs text-red-400">{{ idVerificationErrors.idNumber }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-show="currentStep === 2" class="space-y-6 animate-fade-in">
-                   <div class="bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-800/30 rounded-xl p-6">
-                     <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                       <Image class="w-5 h-5 text-purple-400" /> Step 2: ID Photo Upload
-                     </h3>
-                     
-                     <div 
-                        @dragover.prevent="handleDragOver"
-                        @dragleave="handleDragLeave"
-                        @drop.prevent="handleIdDrop"
-                        @click="idVerification.status !== 'pending' ? triggerIdUpload() : null"
-                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
-                        :class="[
-                          idUploadClasses,
-                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-purple-900/10'
-                        ]"
-                      >
-                        <input type="file" ref="idFileInput" @change="handleIdUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
-                        
-                        <div v-if="!idVerification.idPhotoPreview && !idVerification.idPhotoUrl" class="space-y-4">
-                          <UploadCloud class="w-16 h-16 text-gray-500 mx-auto" />
-                          <div>
-                            <p class="text-gray-300 font-medium">Drop your ID photo here or click to browse</p>
-                            <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
-                          </div>
-                        </div>
-
-                        <div v-else class="space-y-4">
-                          <div class="relative inline-block">
-                             <img :src="idVerification.idPhotoPreview || idVerification.idPhotoUrl" alt="ID Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
-                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeIdPhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
-                               <X class="w-4 h-4" />
-                             </button>
-                          </div>
-                          <p class="text-green-400 text-sm flex justify-center items-center gap-2"><Check class="w-4 h-4"/> ID photo uploaded</p>
-                        </div>
-                        
-                        <div v-if="idUploadProgress > 0 && idUploadProgress < 100" class="mt-4 max-w-xs mx-auto">
-                            <Progress :model-value="idUploadProgress" class="h-2 bg-gray-700" />
-                            <p class="text-gray-400 text-xs mt-2">{{ idUploadProgress }}% uploaded</p>
-                         </div>
-                      </div>
-                      <p v-if="idVerificationErrors.idPhoto" class="text-xs text-red-400 mt-2">{{ idVerificationErrors.idPhoto }}</p>
-                   </div>
-                </div>
-
-                <div v-show="currentStep === 3" class="space-y-6 animate-fade-in">
-                  <div class="bg-gradient-to-br from-pink-900/20 to-rose-900/20 border border-pink-800/30 rounded-xl p-6">
-                     <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                       <Camera class="w-5 h-5 text-pink-400" /> Step 3: Selfie with ID
-                     </h3>
-
-                     <div 
-                        @dragover.prevent="handleSelfieDragOver"
-                        @dragleave="handleSelfieDragLeave"
-                        @drop.prevent="handleSelfieDrop"
-                        @click="idVerification.status !== 'pending' ? triggerSelfieUpload() : null"
-                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
-                        :class="[
-                          selfieUploadClasses,
-                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-pink-900/10'
-                        ]"
-                      >
-                        <input type="file" ref="selfieFileInput" @change="handleSelfieUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
-                        
-                        <div v-if="!idVerification.selfiePhotoPreview && !idVerification.selfiePhotoUrl" class="space-y-4">
-                          <User class="w-16 h-16 text-gray-500 mx-auto" />
-                          <div>
-                            <p class="text-gray-300 font-medium">Drop selfie here or click to browse</p>
-                            <p class="text-gray-500 text-sm">Hold ID next to face</p>
-                          </div>
-                        </div>
-
-                        <div v-else class="space-y-4">
-                          <div class="relative inline-block">
-                             <img :src="idVerification.selfiePhotoPreview || idVerification.selfiePhotoUrl" alt="Selfie Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
-                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeSelfiePhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
-                               <X class="w-4 h-4" />
-                             </button>
-                          </div>
-                          <p class="text-green-400 text-sm flex justify-center items-center gap-2"><Check class="w-4 h-4"/> Selfie uploaded</p>
-                        </div>
-                      </div>
-                      <p v-if="idVerificationErrors.selfiePhoto" class="text-xs text-red-400 mt-2">{{ idVerificationErrors.selfiePhoto }}</p>
-                  </div>
-                </div>
-
-                <div v-if="idVerification.status === 'pending'" class="md:col-span-2">
-                  <div class="bg-yellow-900/20 border border-yellow-800 rounded-xl p-6 flex items-start gap-4">
-                    <Loader2 class="w-8 h-8 text-yellow-400 animate-spin flex-shrink-0" />
-                    <div>
-                      <h3 class="font-semibold text-yellow-400 mb-1">Verification Under Review</h3>
-                      <p class="text-gray-300 text-sm">Your ID verification is being reviewed. This usually takes 1-2 business days.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="idVerification.status !== 'pending' && idVerification.status !== 'verified'" class="flex justify-between pt-6 border-t border-gray-800">
-                  <Button 
-                    @click="prevStep" 
-                    v-show="currentStep > 1" 
-                    variant="secondary"
-                    class="bg-gray-800 hover:bg-gray-700 text-gray-300"
-                  >
-                    <ChevronLeft class="w-4 h-4 mr-2" /> Previous
-                  </Button>
-                  
-                  <div class="ml-auto flex gap-4">
-                     <Button 
-                        v-if="currentStep < 3" 
-                        @click="nextStep" 
-                        :disabled="!canProceedToNextStep"
-                        class="bg-gradient-to-r from-indigo-600 to-purple-500 hover:from-indigo-700 hover:to-purple-600 text-white border-0"
-                      >
-                        Next Step <ChevronRight class="w-4 h-4 ml-2" />
-                      </Button>
-
-                      <Button 
-                        v-if="currentStep === 3" 
-                        @click="submitIdVerification" 
-                        :disabled="!canSubmitIdVerification || idVerificationLoading"
-                        class="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white border-0"
-                      >
-                         <Loader2 v-if="idVerificationLoading" class="w-4 h-4 animate-spin mr-2" />
-                         <Check v-else class="w-4 h-4 mr-2" />
-                         {{ idVerificationLoading ? 'Submitting...' : 'Submit Verification' }}
-                      </Button>
-                  </div>
-                </div>
-              </div>
-             </CardContent>
-          </Card>
-
-          <Card v-if="showChangePassword" class="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl transition-all duration-300">
+          <Card v-if="showChangePassword" class="bg-linear-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl transition-all duration-300 shrink-0">
             <CardHeader>
                <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="p-2 bg-gradient-to-r from-green-500 to-emerald-400 rounded-lg">
+                  <div class="p-2 bg-linear-to-r from-green-500 to-emerald-400 rounded-lg">
                     <Lock class="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -578,7 +365,7 @@
                 <Button 
                   @click="changePassword" 
                   :disabled="!canChangePassword || passwordLoading"
-                  class="w-full mt-2 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white border-0"
+                  class="w-full mt-2 bg-linear-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white border-0"
                 >
                    <Loader2 v-if="passwordLoading" class="w-4 h-4 animate-spin mr-2" />
                    {{ passwordLoading ? 'Changing...' : 'Change Password' }}
@@ -586,8 +373,331 @@
               </div>
             </CardContent>
           </Card>
-
         </div>
+      </div>
+
+      <div class="w-full">
+        <Card id="sp-verification-wizard" class="bg-linear-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl overflow-hidden">
+             <CardHeader>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="p-2 bg-linear-to-r from-indigo-500 to-purple-400 rounded-lg">
+                    <FileBadge class="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 class="text-xl font-bold text-white">Identity & Location Verification</h2>
+                    <p class="text-gray-400 text-sm">Complete your profile setup in 4 easy steps</p>
+                     <p v-if="idVerification.rejectionReason" class="text-xs text-red-400 mt-1">
+                      Reason: {{ idVerification.rejectionReason }}
+                    </p>
+                  </div>
+                </div>
+                <div class="text-sm" :class="idVerificationStatusClass">
+                   {{ idVerificationStatus }}
+                   <div v-if="idVerification.submittedAt" class="text-xs text-gray-500 text-right">
+                    {{ formatDate(idVerification.submittedAt) }}
+                   </div>
+                </div>
+              </div>
+             </CardHeader>
+             
+             <CardContent>
+              <div v-if="idVerification.status === 'verified'" class="bg-green-900/20 border border-green-800 rounded-xl p-4 mb-6">
+                <div class="flex items-center gap-3">
+                  <CheckCircle2 class="w-6 h-6 text-green-400" />
+                  <div>
+                    <h3 class="font-semibold text-green-400">Account Verified</h3>
+                    <p class="text-gray-300 text-sm">Your identity and location have been verified and approved.</p>
+                  </div>
+                </div>
+              </div>
+
+               <div v-if="idVerification.status !== 'verified'" class="mb-8 px-2 overflow-x-auto">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 min-w-125">
+                  <div class="flex items-center gap-4 w-full md:w-auto">
+                    
+                    <div class="flex flex-col items-center">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer"
+                           @click="currentStep >= 1 ? currentStep = 1 : null"
+                           :class="currentStep >= 1 ? 'bg-linear-to-r from-blue-500 to-indigo-500 border-blue-500 shadow-lg' : 'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white"><Check v-if="currentStep > 1" class="w-5 h-5"/> <span v-else>1</span></span>
+                      </div>
+                      <span class="mt-2 text-xs md:text-sm whitespace-nowrap" :class="currentStep >= 1 ? 'text-blue-400 font-medium' : 'text-gray-500'">Location</span>
+                    </div>
+                    
+                    <div class="w-8 h-1 md:w-12 rounded-full" :class="currentStep >= 2 ? 'bg-linear-to-r from-indigo-500 to-purple-500' : 'bg-gray-700'"></div>
+                    
+                    <div class="flex flex-col items-center">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer"
+                           @click="currentStep >= 2 ? currentStep = 2 : null"
+                           :class="currentStep >= 2 ? 'bg-linear-to-r from-indigo-500 to-purple-500 border-indigo-500 shadow-lg' : 'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white"><Check v-if="currentStep > 2" class="w-5 h-5"/> <span v-else>2</span></span>
+                      </div>
+                      <span class="mt-2 text-xs md:text-sm whitespace-nowrap" :class="currentStep >= 2 ? 'text-indigo-400 font-medium' : 'text-gray-500'">ID Details</span>
+                    </div>
+                    
+                    <div class="w-8 h-1 md:w-12 rounded-full" :class="currentStep >= 3 ? 'bg-linear-to-r from-purple-500 to-pink-500' : 'bg-gray-700'"></div>
+                    
+                    <div class="flex flex-col items-center">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer"
+                           @click="currentStep >= 3 ? currentStep = 3 : null"
+                           :class="currentStep >= 3 ? 'bg-linear-to-r from-purple-500 to-pink-500 border-purple-500 shadow-lg' : 'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white"><Check v-if="currentStep > 3" class="w-5 h-5"/> <span v-else>3</span></span>
+                      </div>
+                      <span class="mt-2 text-xs md:text-sm whitespace-nowrap" :class="currentStep >= 3 ? 'text-purple-400 font-medium' : 'text-gray-500'">ID Photo</span>
+                    </div>
+                    
+                    <div class="w-8 h-1 md:w-12 rounded-full" :class="currentStep >= 4 ? 'bg-linear-to-r from-pink-500 to-rose-500' : 'bg-gray-700'"></div>
+                    
+                    <div class="flex flex-col items-center">
+                      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 cursor-pointer"
+                           @click="currentStep >= 4 ? currentStep = 4 : null"
+                           :class="currentStep >= 4 ? 'bg-linear-to-r from-pink-500 to-rose-500 border-pink-500 shadow-lg' : 'bg-gray-800 border-gray-700'">
+                        <span class="font-bold text-white">4</span>
+                      </div>
+                      <span class="mt-2 text-xs md:text-sm whitespace-nowrap" :class="currentStep >= 4 ? 'text-pink-400 font-medium' : 'text-gray-500'">Selfie</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+               <div v-if="idVerification.status !== 'verified'" class="space-y-6">
+                <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
+                    <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                       <MapPin class="w-5 h-5 text-blue-400" /> Step 1: Address & Location
+                    </h3>
+
+                    <div class="space-y-5">
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                          <Label class="text-gray-300">Province <span class="text-red-500">*</span></Label>
+                          <Input model-value="Cavite" readonly class="bg-gray-800 border-gray-700 text-gray-400 cursor-not-allowed" />
+                        </div>
+
+                        <div class="space-y-2">
+                          <Label class="text-gray-300">City/Municipality <span class="text-red-500">*</span></Label>
+                          <Select v-model="idVerification.city" :disabled="idVerification.status === 'pending'">
+                            <SelectTrigger class="w-full bg-gray-800 border-gray-700 text-white">
+                               <SelectValue placeholder="Select City/Municipality" />
+                            </SelectTrigger>
+                            <SelectContent class="bg-gray-800 border-gray-700 text-white max-h-56">
+                              <SelectItem v-for="city in caviteCities" :key="city" :value="city">{{ city }}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div class="space-y-2">
+                        <Label class="text-gray-300">Barangay <span class="text-red-500">*</span></Label>
+                        <Input v-model="idVerification.barangay" type="text" :disabled="idVerification.status === 'pending'" class="bg-gray-800 border-gray-700 text-white" placeholder="Enter Barangay" />
+                      </div>
+
+                      <div class="space-y-2">
+                        <Label class="text-gray-300">Block/Street/Subdivision <span class="text-red-500">*</span></Label>
+                        <Textarea v-model="idVerification.block_address" rows="2" :disabled="idVerification.status === 'pending'" class="bg-gray-800 border-gray-700 text-white resize-none" placeholder="Block No., Lot No., Street Name, Subdivision/Village" />
+                      </div>
+
+                      <div class="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                          <Label class="text-gray-300">Pin Location <span class="text-red-500">*</span></Label>
+                          <Button type="button" size="sm" @click="getCurrentLocation" :disabled="gettingLocation || idVerification.status === 'pending'" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1 text-xs w-full sm:w-auto flex justify-center">
+                            <Navigation v-if="!gettingLocation" class="w-3 h-3 mr-1.5" />
+                            <Loader2 v-else class="w-3 h-3 mr-1.5 animate-spin" />
+                            {{ gettingLocation ? 'Locating...' : 'Get My Location' }}
+                          </Button>
+                        </div>
+                        
+                        <div id="sp-map" class="h-80 sm:h-96 md:h-[450px] w-full rounded-xl border border-gray-600 shadow-md z-0 overflow-hidden relative"></div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <span class="text-xs text-gray-500 block mb-1">Latitude</span>
+                            <Input v-model="idVerification.latitude" readonly class="h-10 bg-gray-900 border-gray-700 text-gray-400" placeholder="0.000000" />
+                          </div>
+                          <div>
+                            <span class="text-xs text-gray-500 block mb-1">Longitude</span>
+                            <Input v-model="idVerification.longitude" readonly class="h-10 bg-gray-900 border-gray-700 text-gray-400" placeholder="0.000000" />
+                          </div>
+                        </div>
+                        <p class="text-xs text-red-400 mt-2" v-if="locationError">{{ locationError }}</p>
+                        <p class="text-xs text-gray-400 mt-2" v-else>Drag the blue pin to your exact location.</p>
+                      </div>
+                    </div>
+                </div>
+
+                <div v-show="currentStep === 2" class="space-y-6 animate-fade-in">
+                  <div class="bg-linear-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-800/30 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                       <CreditCard class="w-5 h-5 text-indigo-400" /> Step 2: ID Information
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div class="space-y-2">
+                        <Label class="text-gray-300">Select ID Type <span class="text-red-400">*</span></Label>
+                         <Select v-model="idVerification.idType" :disabled="idVerification.status === 'pending'">
+                          <SelectTrigger class="w-full bg-gray-800 border-gray-700 text-white">
+                             <SelectValue placeholder="Select ID Type" />
+                          </SelectTrigger>
+                          <SelectContent class="bg-gray-800 border-gray-700 text-white">
+                            <SelectItem value="phil_id">Philippine National ID</SelectItem>
+                            <SelectItem value="passport">Passport</SelectItem>
+                            <SelectItem value="driver_license">Driver's License</SelectItem>
+                            <SelectItem value="umid">UMID (SSS/GSIS)</SelectItem>
+                            <SelectItem value="prc_id">PRC ID</SelectItem>
+                            <SelectItem value="voter_id">Voter's ID</SelectItem>
+                            <SelectItem value="other">Other Valid ID</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p v-if="idVerificationErrors.idType" class="text-xs text-red-400">{{ idVerificationErrors.idType }}</p>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <Label class="text-gray-300">ID Number <span class="text-red-400">*</span></Label>
+                        <Input 
+                          v-model="idVerification.idNumber"
+                          :disabled="idVerification.status === 'pending'"
+                          class="bg-gray-800 border-gray-700 text-white"
+                          placeholder="Enter ID number"
+                        />
+                         <p v-if="idVerificationErrors.idNumber" class="text-xs text-red-400">{{ idVerificationErrors.idNumber }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-show="currentStep === 3" class="space-y-6 animate-fade-in">
+                   <div class="bg-linear-to-br from-purple-900/20 to-pink-900/20 border border-purple-800/30 rounded-xl p-6">
+                     <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                       <Image class="w-5 h-5 text-purple-400" /> Step 3: ID Photo Upload
+                     </h3>
+                     
+                     <div 
+                        @dragover.prevent="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop.prevent="handleIdDrop"
+                        @click="idVerification.status !== 'pending' ? triggerIdUpload() : null"
+                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
+                        :class="[
+                          idUploadClasses,
+                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-purple-900/10'
+                        ]"
+                      >
+                        <input type="file" ref="idFileInput" @change="handleIdUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
+                        
+                        <div v-if="!idVerification.idPhotoPreview && !idVerification.idPhotoUrl" class="space-y-4">
+                          <UploadCloud class="w-16 h-16 text-gray-500 mx-auto" />
+                          <div>
+                            <p class="text-gray-300 font-medium">Drop your ID photo here or click to browse</p>
+                            <p class="text-gray-500 text-sm">Supports JPG, PNG up to 5MB</p>
+                          </div>
+                        </div>
+
+                        <div v-else class="space-y-4">
+                          <div class="relative inline-block">
+                             <img :src="idVerification.idPhotoPreview || idVerification.idPhotoUrl" alt="ID Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
+                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeIdPhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
+                               <X class="w-4 h-4" />
+                             </button>
+                          </div>
+                          <p class="text-green-400 text-sm flex justify-center items-center gap-2"><Check class="w-4 h-4"/> ID photo uploaded</p>
+                        </div>
+                        
+                        <div v-if="idUploadProgress > 0 && idUploadProgress < 100" class="mt-4 max-w-xs mx-auto">
+                            <Progress :model-value="idUploadProgress" class="h-2 bg-gray-700" />
+                            <p class="text-gray-400 text-xs mt-2">{{ idUploadProgress }}% uploaded</p>
+                         </div>
+                      </div>
+                      <p v-if="idVerificationErrors.idPhoto" class="text-xs text-red-400 mt-2">{{ idVerificationErrors.idPhoto }}</p>
+                   </div>
+                </div>
+
+                <div v-show="currentStep === 4" class="space-y-6 animate-fade-in">
+                  <div class="bg-linear-to-br from-pink-900/20 to-rose-900/20 border border-pink-800/30 rounded-xl p-6">
+                     <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                       <Camera class="w-5 h-5 text-pink-400" /> Step 4: Selfie with ID
+                     </h3>
+
+                     <div 
+                        @dragover.prevent="handleSelfieDragOver"
+                        @dragleave="handleSelfieDragLeave"
+                        @drop.prevent="handleSelfieDrop"
+                        @click="idVerification.status !== 'pending' ? triggerSelfieUpload() : null"
+                        class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
+                        :class="[
+                          selfieUploadClasses,
+                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-pink-900/10'
+                        ]"
+                      >
+                        <input type="file" ref="selfieFileInput" @change="handleSelfieUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
+                        
+                        <div v-if="!idVerification.selfiePhotoPreview && !idVerification.selfiePhotoUrl" class="space-y-4">
+                          <User class="w-16 h-16 text-gray-500 mx-auto" />
+                          <div>
+                            <p class="text-gray-300 font-medium">Drop selfie here or click to browse</p>
+                            <p class="text-gray-500 text-sm">Hold ID next to face</p>
+                          </div>
+                        </div>
+
+                        <div v-else class="space-y-4">
+                          <div class="relative inline-block">
+                             <img :src="idVerification.selfiePhotoPreview || idVerification.selfiePhotoUrl" alt="Selfie Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
+                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeSelfiePhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
+                               <X class="w-4 h-4" />
+                             </button>
+                          </div>
+                          <p class="text-green-400 text-sm flex justify-center items-center gap-2"><Check class="w-4 h-4"/> Selfie uploaded</p>
+                        </div>
+                      </div>
+                      <p v-if="idVerificationErrors.selfiePhoto" class="text-xs text-red-400 mt-2">{{ idVerificationErrors.selfiePhoto }}</p>
+                  </div>
+                </div>
+
+                <div v-if="idVerification.status === 'pending'" class="md:col-span-2">
+                  <div class="bg-yellow-900/20 border border-yellow-800 rounded-xl p-6 flex items-start gap-4">
+                    <Loader2 class="w-8 h-8 text-yellow-400 animate-spin shrink-0" />
+                    <div>
+                      <h3 class="font-semibold text-yellow-400 mb-1">Verification Under Review</h3>
+                      <p class="text-gray-300 text-sm">Your ID and Location verification is being reviewed. This usually takes 1-2 business days.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="idVerification.status !== 'pending' && idVerification.status !== 'verified'" class="flex justify-between pt-6 border-t border-gray-800">
+                  <Button 
+                    @click="prevStep" 
+                    v-if="currentStep > 1" 
+                    variant="secondary"
+                    class="bg-gray-800 hover:bg-gray-700 text-gray-300"
+                  >
+                    <ChevronLeft class="w-4 h-4 mr-2" /> Previous
+                  </Button>
+                  <div v-else></div>
+                  
+                  <div class="flex gap-4">
+                     <Button 
+                        v-if="currentStep < 4" 
+                        @click="nextStep" 
+                        :disabled="!canProceedToNextStep"
+                        class="bg-linear-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white border-0"
+                      >
+                        Next Step <ChevronRight class="w-4 h-4 ml-2" />
+                      </Button>
+
+                      <Button 
+                        v-if="currentStep === 4" 
+                        @click="submitIdVerification" 
+                        :disabled="!canSubmitIdVerification || idVerificationLoading"
+                        class="bg-linear-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white border-0"
+                      >
+                         <Loader2 v-if="idVerificationLoading" class="w-4 h-4 animate-spin mr-2" />
+                         <Check v-else class="w-4 h-4 mr-2" />
+                         {{ idVerificationLoading ? 'Submitting...' : 'Submit Verification' }}
+                      </Button>
+                  </div>
+                </div>
+              </div>
+             </CardContent>
+          </Card>
       </div>
     </main>
   </div>
@@ -597,6 +707,18 @@
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
 import { Toaster, toast } from 'vue-sonner'
+
+// Leaflet
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Import Marker Images with TypeScript ignoring to bypass missing definition file error
+// @ts-ignore
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+// @ts-ignore
+import iconUrl from 'leaflet/dist/images/marker-icon.png'
+// @ts-ignore
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
 // Shadcn UI Components
 import { Button } from '@/components/ui/button'
@@ -621,7 +743,7 @@ import {
   UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle, 
   Camera, Shield, CheckCircle2, AlertTriangle, Key, User, 
   FileBadge, Check, X, CreditCard, Image, UploadCloud, 
-  ChevronLeft, ChevronRight, Lock, Eye, EyeOff
+  ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation
 } from 'lucide-vue-next'
 
 export default {
@@ -637,7 +759,7 @@ export default {
     UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle,
     Camera, Shield, CheckCircle2, AlertTriangle, Key, User,
     FileBadge, Check, X, CreditCard, Image, UploadCloud,
-    ChevronLeft, ChevronRight, Lock, Eye, EyeOff
+    ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation
   },
   data() {
     return {
@@ -685,6 +807,11 @@ export default {
       },
       // ID Verification
       idVerification: {
+        city: '',
+        barangay: '',
+        block_address: '',
+        latitude: '',
+        longitude: '',
         idType: '',
         idNumber: '',
         idPhoto: null,
@@ -702,7 +829,20 @@ export default {
       isDraggingId: false,
       isDraggingSelfie: false,
       idUploadProgress: 0,
-      currentStep: 1
+      currentStep: 1,
+
+      // Geolocation and Map
+      gettingLocation: false,
+      locationError: '',
+      map: null,
+      marker: null,
+      caviteCities: [
+        'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
+        'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
+        'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 
+        'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 
+        'Silang', 'Tagaytay', 'Tanza', 'Ternate', 'Trece Martires'
+      ]
     }
   },
   computed: {
@@ -788,15 +928,51 @@ export default {
              this.idVerification.idNumber && 
              (this.idVerification.idPhoto || this.idVerification.idPhotoUrl) && 
              (this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl) &&
+             this.idVerification.city &&
+             this.idVerification.barangay &&
+             this.idVerification.block_address &&
+             this.idVerification.latitude &&
+             this.idVerification.longitude &&
              this.idVerification.status !== 'pending' &&
              this.idVerification.status !== 'verified'
     },
     canProceedToNextStep() {
       switch (this.currentStep) {
-        case 1: return this.idVerification.idType && this.idVerification.idNumber.trim()
-        case 2: return this.idVerification.idPhoto || this.idVerification.idPhotoUrl
-        case 3: return this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl
+        case 1: 
+            return this.idVerification.city && 
+                   this.idVerification.barangay.trim() && 
+                   this.idVerification.block_address.trim() && 
+                   this.idVerification.latitude && 
+                   this.idVerification.longitude;
+        case 2: 
+            return this.idVerification.idType && this.idVerification.idNumber.trim();
+        case 3: 
+            return this.idVerification.idPhoto || this.idVerification.idPhotoUrl;
+        case 4: 
+            return this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl;
         default: return false
+      }
+    }
+  },
+  watch: {
+    currentStep(newStep) {
+      if (newStep === 1 && this.idVerification.status !== 'verified') {
+        this.$nextTick(() => {
+          if (!this.loading && !this.error) this.initMap();
+        });
+      } else {
+        if (this.map) {
+          this.map.remove();
+          this.map = null;
+          this.marker = null;
+        }
+      }
+    },
+    loading(isLoading) {
+      if (!isLoading && !this.error && this.currentStep === 1 && this.idVerification.status !== 'verified') {
+        this.$nextTick(() => {
+          this.initMap();
+        });
       }
     }
   },
@@ -804,8 +980,22 @@ export default {
     this.fetchUserProfile()
     this.loadIdVerificationStatus()
   },
+  mounted() {
+    // Retaining entrance animations
+    setTimeout(() => {
+      const cards = document.querySelectorAll('.bg-linear-to-br')
+      cards.forEach((card, index) => {
+        card.style.opacity = '0'
+        card.style.transform = 'translateY(20px)'
+        setTimeout(() => {
+          card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+          card.style.opacity = '1'
+          card.style.transform = 'translateY(0)'
+        }, index * 100)
+      })
+    }, 100)
+  },
   methods: {
-    // Replaced custom notification with Sonner
     showNotification(message, type = 'info') {
       if (type === 'success') toast.success(message)
       else if (type === 'error') toast.error(message)
@@ -1003,10 +1193,154 @@ export default {
 
     // Wizard Methods
     nextStep() {
-      if (this.currentStep < 3 && this.canProceedToNextStep) this.currentStep++
+      if (this.currentStep < 4 && this.canProceedToNextStep) this.currentStep++
     },
     prevStep() {
       if (this.currentStep > 1) this.currentStep--
+    },
+    
+    // Map & Geolocation methods
+    fixLeafletIcons() {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl,
+        iconUrl,
+        shadowUrl,
+      });
+    },
+
+    getAddressComponent(address, keys) {
+      if (!address) return '';
+      for (const key of keys) {
+        if (address[key]) return address[key];
+      }
+      return '';
+    },
+
+    initMap() {
+      const mapContainer = document.getElementById('sp-map');
+      if (!mapContainer) return; // Safeguard against missing DOM element
+
+      if (this.map) return;
+      
+      const defaultLat = 14.24;
+      const defaultLng = 120.88;
+      
+      const startLat = this.idVerification.latitude ? parseFloat(this.idVerification.latitude) : defaultLat;
+      const startLng = this.idVerification.longitude ? parseFloat(this.idVerification.longitude) : defaultLng;
+
+      this.fixLeafletIcons();
+
+      this.map = L.map('sp-map').setView([startLat, startLng], 12);
+
+      // Changed to standard openstreetmap light layout
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(this.map);
+
+      this.marker = L.marker([startLat, startLng], { draggable: true }).addTo(this.map);
+
+      this.marker.on('dragend', async (e) => {
+        const latlng = e.target.getLatLng();
+        await this.updateLocationFromCoords(latlng.lat, latlng.lng);
+      });
+
+      this.map.on('click', async (e) => {
+        this.marker.setLatLng(e.latlng);
+        await this.updateLocationFromCoords(e.latlng.lat, e.latlng.lng);
+      });
+    },
+
+    async updateLocationFromCoords(lat, lon) {
+      this.idVerification.latitude = lat.toString();
+      this.idVerification.longitude = lon.toString();
+      
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
+        );
+        
+        if (!response.ok) throw new Error('Failed to fetch address');
+        
+        const data = await response.json();
+        const addr = data.address;
+        
+        if (addr) {
+          const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county']);
+          const matchedCity = this.caviteCities.find(c => 
+            rawCity.toLowerCase().includes(c.toLowerCase()) || 
+            c.toLowerCase().includes(rawCity.toLowerCase())
+          );
+          this.idVerification.city = matchedCity || rawCity;
+
+          const rawBarangay = this.getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district']);
+          this.idVerification.barangay = rawBarangay.replace('Barangay', '').trim();
+
+          const parts = [];
+          if (addr.house_number) parts.push(`No. ${addr.house_number}`);
+          if (addr.building) parts.push(addr.building);
+          
+          const road = this.getAddressComponent(addr, ['road', 'pedestrian', 'highway', 'street']);
+          if (road) parts.push(road);
+          
+          const subdivision = this.getAddressComponent(addr, ['residential', 'subdivision', 'village', 'allotments']);
+          if (subdivision && subdivision !== rawCity && subdivision !== rawBarangay) {
+              parts.push(subdivision);
+          }
+
+          this.idVerification.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map');
+        }
+      } catch (error) {
+        console.error('Reverse geocoding error:', error);
+      }
+    },
+
+    async getCurrentLocation() {
+      if (!navigator.geolocation) {
+        this.locationError = "Geolocation is not supported by your browser";
+        return;
+      }
+      
+      this.gettingLocation = true;
+      this.locationError = "";
+      
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          
+          this.idVerification.latitude = lat.toString();
+          this.idVerification.longitude = lon.toString();
+          
+          if (this.map && this.marker) {
+            this.map.flyTo([lat, lon], 16);
+            this.marker.setLatLng([lat, lon]);
+            await this.updateLocationFromCoords(lat, lon);
+          } else {
+            await this.updateLocationFromCoords(lat, lon);
+          }
+          
+          this.gettingLocation = false;
+        },
+        (error) => {
+          this.gettingLocation = false;
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              this.locationError = "User denied the request for Geolocation.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              this.locationError = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              this.locationError = "Request timed out.";
+              break;
+            default:
+              this.locationError = "An unknown error occurred.";
+              break;
+          }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
     },
 
     async loadIdVerificationStatus() {
@@ -1026,10 +1360,22 @@ export default {
             status: data.status || 'not_submitted',
             submittedAt: data.submitted_at || null,
             reviewedAt: data.reviewed_at || null,
-            rejectionReason: data.rejection_reason || null
+            rejectionReason: data.rejection_reason || null,
+            
+            // Assigning Address mapping
+            city: data.address?.city || '',
+            barangay: data.address?.barangay || '',
+            block_address: data.address?.block_address || '',
+            latitude: data.address?.latitude || '',
+            longitude: data.address?.longitude || '',
           }
           if (this.idVerification.status === 'pending' || this.idVerification.status === 'verified') {
             this.currentStep = 1
+          } else {
+            // Setup map layout next tick if we start on step 1 naturally
+            if (!this.loading && !this.error) {
+              this.$nextTick(() => { this.initMap(); });
+            }
           }
         }
       } catch (error) {
@@ -1156,6 +1502,14 @@ export default {
         formData.append('id_number', this.idVerification.idNumber)
         formData.append('id_photo', this.idVerification.idPhoto)
         formData.append('selfie_photo', this.idVerification.selfiePhoto)
+        
+        // Address Details
+        formData.append('province', 'Cavite')
+        formData.append('city', this.idVerification.city)
+        formData.append('barangay', this.idVerification.barangay)
+        formData.append('block_address', this.idVerification.block_address)
+        formData.append('latitude', this.idVerification.latitude)
+        formData.append('longitude', this.idVerification.longitude)
 
         const response = await axios.post('/service-provider/requirements', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
@@ -1169,7 +1523,7 @@ export default {
           this.idVerification.idPhoto = null
           this.idVerification.selfiePhoto = null
           this.currentStep = 1
-          this.showNotification('ID verification submitted successfully!', 'success')
+          this.showNotification('Verification submitted successfully!', 'success')
         }
       } catch (error) {
         console.error('Error submitting ID verification:', error)
@@ -1183,21 +1537,6 @@ export default {
         this.idVerificationLoading = false
       }
     }
-  },
-  mounted() {
-    // Retaining entrance animations
-    setTimeout(() => {
-      const cards = document.querySelectorAll('.bg-gradient-to-br')
-      cards.forEach((card, index) => {
-        card.style.opacity = '0'
-        card.style.transform = 'translateY(20px)'
-        setTimeout(() => {
-          card.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-          card.style.opacity = '1'
-          card.style.transform = 'translateY(0)'
-        }, index * 100)
-      })
-    }, 100)
   }
 }
 </script>
@@ -1212,7 +1551,7 @@ export default {
   animation: fade-in 0.3s ease-out forwards;
 }
 
-/* Custom scrollbar to match original */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

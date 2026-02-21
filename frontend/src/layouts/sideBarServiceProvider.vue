@@ -1,27 +1,27 @@
 <template>
   <Sidebar collapsible="icon" class="border-r border-slate-800/50 bg-slate-900 transition-all duration-500 ease-in-out">
-    <SidebarHeader class="h-24 border-b border-slate-800/50 flex flex-row items-center px-4 overflow-hidden bg-slate-900">
+    <SidebarHeader class="h-auto py-6 border-b border-slate-800/50 flex flex-col px-4 bg-slate-900">
       <div class="flex items-center gap-3 w-full">
         <div class="relative shrink-0 flex items-center justify-center">
           <Avatar class="w-12 h-12 ring-2 ring-purple-500/30 ring-offset-2 ring-offset-slate-900">
-            <div class="w-full h-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center relative">
+            <div :class="['w-full h-full flex items-center justify-center relative bg-gradient-to-br', isVerified ? 'from-green-400 to-emerald-400' : 'from-blue-500 via-purple-500 to-pink-500']">
               <Paintbrush class="w-6 h-6 text-white" />
-              <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-900"></div>
             </div>
           </Avatar>
+          <div v-if="isVerified" class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900" />
         </div>
         
-        <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 flex-1">
+        <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 flex-1 nav-text-clip">
           <h2 class="text-sm font-bold text-slate-100 truncate tracking-tight bg-gradient-to-r from-blue-400 to-pink-400 bg-clip-text text-transparent">
             {{ userName }}
           </h2>
-          <p class="text-[10px] font-semibold text-purple-400/80 uppercase tracking-widest">Service Provider</p>
+          <p :class="['text-[10px] font-semibold uppercase tracking-widest', isVerified ? 'text-green-400' : 'text-purple-400/80']">
+            {{ isVerified ? 'Verified Provider' : 'Verification Required' }}
+          </p>
         </div>
       </div>
-    </SidebarHeader>
 
-    <SidebarContent class="px-3 py-4 space-y-6 bg-slate-900 overflow-x-hidden">
-      <div v-if="state === 'expanded' || isMobile" class="px-2 mb-4 grid grid-cols-3 gap-2">
+      <div v-if="(state === 'expanded' || isMobile) && isVerified" class="mt-4 px-2 grid grid-cols-3 gap-2 nav-text-clip">
         <div class="text-center p-2 rounded-xl bg-slate-800/40 border border-slate-700/50">
           <div class="text-xs font-bold text-blue-400">12</div>
           <div class="text-[8px] text-slate-500 uppercase tracking-tighter">Jobs</div>
@@ -35,9 +35,11 @@
           <div class="text-[8px] text-slate-500 uppercase tracking-tighter">Done</div>
         </div>
       </div>
+    </SidebarHeader>
 
+    <SidebarContent class="px-3 py-4 space-y-4 bg-slate-900 overflow-x-hidden">
       <SidebarGroup v-for="section in navigation" :key="section.title" class="p-0">
-        <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">
+        <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 nav-text-clip">
           {{ section.title }}
         </SidebarGroupLabel>
         
@@ -46,14 +48,15 @@
             <SidebarMenuButton 
               as-child 
               :tooltip="item.name" 
+              :disabled="item.requiresVerify && !isVerified"
               class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50 flex items-center"
               active-class="bg-gradient-to-r from-purple-500/20 to-pink-500/10 !text-white ring-1 ring-purple-500/30"
             >
-              <router-link :to="item.path" class="flex items-center w-full px-2">
+              <router-link v-if="!item.requiresVerify || isVerified" :to="item.path" class="flex items-center w-full px-2">
                 <div class="shrink-0 flex items-center justify-center w-6 h-6">
                   <component :is="item.icon" class="w-5 h-5" :class="item.color" />
                 </div>
-                <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium">{{ item.name }}</span>
+                <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">{{ item.name }}</span>
                 
                 <Badge 
                   v-if="(state === 'expanded' || isMobile) && item.badge" 
@@ -63,6 +66,13 @@
                   {{ item.badge }}
                 </Badge>
               </router-link>
+              <div v-else @click="emit('open-verification-modal')" class="flex items-center w-full px-2 opacity-50 cursor-not-allowed">
+                <div class="shrink-0 flex items-center justify-center w-6 h-6">
+                  <component :is="item.icon" class="w-5 h-5 text-slate-500" />
+                </div>
+                <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">Locked</span>
+                <Lock v-if="state === 'expanded' || isMobile" class="ml-auto w-3 h-3 text-slate-600" />
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -77,7 +87,7 @@
               <div class="shrink-0 flex items-center justify-center w-6 h-6">
                 <Settings class="w-5 h-5 text-slate-400" />
               </div>
-              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium">Settings</span>
+              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">Settings</span>
             </router-link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -98,7 +108,7 @@
                 <LogOut v-if="!isLoggingOut" class="w-5 h-5" />
                 <Loader2 v-else class="w-5 h-5 animate-spin" />
               </div>
-              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium">
+              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">
                 {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
               </span>
             </Button>
@@ -122,8 +132,9 @@
           <p class="text-slate-400 mt-2">Are you sure you want to end your session?</p>
           <div class="flex w-full gap-3 mt-8">
             <Button variant="outline" class="flex-1 rounded-xl border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-white" @click="showLogoutModal = false">Cancel</Button>
-            <Button class="flex-1 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:opacity-90 transition-opacity" @click="confirmLogout">
-              Yes, Logout
+            <Button class="flex-1 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:opacity-90 transition-opacity" @click="confirmLogout" :disabled="isLoggingOut">
+              <Loader2 v-if="isLoggingOut" class="mr-2 h-4 w-4 animate-spin" />
+              {{ isLoggingOut ? 'Logging out...' : 'Yes, Logout' }}
             </Button>
           </div>
         </div>
@@ -133,11 +144,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue'
+import { ref, computed, onMounted, defineEmits, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ClipboardCheck, Paintbrush, 
-  History, Package, Building, FileText, Settings, LogOut, Loader2 
+  History, Package, Building, FileText, Settings, LogOut, Lock, Loader2 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -150,21 +161,26 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/utils/axios'
 
+const props = defineProps({ verificationStatus: String })
+const emit = defineEmits(['open-verification-modal', 'logout-started', 'logout-finished'])
+
 const { state, isMobile } = useSidebar()
 const router = useRouter()
-const emit = defineEmits(['logout-started', 'logout-finished'])
 
 const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Paint Pro')
 
+// Compute verification status (Based on ServiceProviderRequirementController, the status string is 'verified')
+const isVerified = computed(() => props.verificationStatus === 'verified')
+
 const navigation = [
   {
     title: 'Dashboard',
     items: [
-      { name: 'Dashboard', path: '/serviceProvider/dashboardSP', icon: LayoutDashboard, color: 'text-cyan-400', badge: 'New' },
-      { name: 'Clients', path: '/serviceProvider/Clients', icon: Users, color: 'text-emerald-400', badge: '24' },
-      { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12' }
+      { name: 'Dashboard', path: '/serviceProvider/dashboardSP', icon: LayoutDashboard, color: 'text-cyan-400', badge: 'New', requiresVerify: true },
+      { name: 'Clients', path: '/serviceProvider/Clients', icon: Users, color: 'text-emerald-400', badge: '24', requiresVerify: true },
+      { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12', requiresVerify: true }
     ]
   },
   {
@@ -175,18 +191,18 @@ const navigation = [
         path: '/serviceProvider/VirtualPaintColor', 
         icon: Paintbrush, 
         color: 'text-purple-400', 
-        badge: 'UNITY',
-        badgeClass: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-none'
+        badgeClass: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-none',
+        requiresVerify: true
       },
-      { name: 'Color History', path: '/serviceProvider/ColorHistory', icon: History, color: 'text-violet-400' }
+      { name: 'Color History', path: '/serviceProvider/ColorHistory', icon: History, color: 'text-violet-400', requiresVerify: true }
     ]
   },
   {
     title: 'Resources',
     items: [
-      { name: 'Paint Products', path: '/serviceProvider/PaintProductsSP', icon: Package, color: 'text-blue-400', badge: 'Read Only' },
-      { name: 'Distributors', path: '/serviceProvider/Distributors', icon: Building, color: 'text-teal-400' },
-      { name: 'Reports', path: '/serviceProvider/ReportsSP', icon: FileText, color: 'text-rose-400' }
+      { name: 'Paint Products', path: '/serviceProvider/PaintProductsSP', icon: Package, color: 'text-blue-400', badge: 'Read Only', requiresVerify: true },
+      { name: 'Distributors', path: '/serviceProvider/Distributors', icon: Building, color: 'text-teal-400', requiresVerify: true },
+      { name: 'Reports', path: '/serviceProvider/ReportsSP', icon: FileText, color: 'text-rose-400', requiresVerify: true }
     ]
   }
 ]
@@ -224,3 +240,12 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.nav-text-clip {
+  white-space: nowrap;
+  overflow: hidden;
+  display: inline-block;
+  transition: opacity 0.2s ease;
+}
+</style>

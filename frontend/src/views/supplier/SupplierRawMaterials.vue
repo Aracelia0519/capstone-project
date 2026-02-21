@@ -7,9 +7,9 @@
             <div class="p-2 bg-blue-600 rounded-lg text-white">
               <Package2 class="w-6 h-6" />
             </div>
-            <h1 class="text-xl font-bold tracking-tight text-slate-800">{{ distributorName }}</h1>
+            <h1 class="text-xl font-bold tracking-tight text-slate-800">{{ supplierName }}</h1>
           </div>
-          <p class="text-sm text-slate-500 mt-0.5 ml-11">Available Products Catalog</p>
+          <p class="text-sm text-slate-500 mt-0.5 ml-11">Raw Materials & Products Catalog</p>
         </div>
         
         <div class="flex items-center gap-6">
@@ -18,14 +18,14 @@
             <Input 
               type="text" 
               v-model="searchQuery"
-              placeholder="Search products..." 
+              placeholder="Search materials..." 
               class="pl-10 bg-slate-50 border-slate-200 focus-visible:ring-blue-500"
             />
           </div>
           
           <div class="hidden lg:flex items-center gap-6 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
             <div class="flex flex-col items-center">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Products</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Items</span>
               <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
             </div>
             <Separator orientation="vertical" class="h-8 bg-slate-200" />
@@ -143,7 +143,7 @@
               class="w-full bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-sm border-none"
               @click="openAddModal"
             >
-              Add New Product
+              Add New Material
             </Button>
             <Button 
               variant="ghost" 
@@ -174,7 +174,7 @@
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            Available Products 
+            Available Materials 
             <Badge variant="secondary" class="ml-1">{{ filteredProducts.length }}</Badge>
           </h2>
           <div class="flex items-center gap-2">
@@ -193,7 +193,11 @@
           </div>
         </div>
         
-        <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div v-if="isLoading" class="flex justify-center items-center py-20">
+            <Loader2 class="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+
+        <div v-else-if="filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div 
             v-for="product in sortedProducts" 
             :key="product.id"
@@ -213,10 +217,10 @@
                 :style="{ backgroundColor: product.color_code ? `${product.color_code}20` : '#f1f5f9' }"
               >
                 <div 
-                  class="w-16 h-16 rounded-lg flex items-center justify-center"
+                  class="w-16 h-16 rounded-lg flex items-center justify-center shadow-inner border"
                   :style="{ backgroundColor: product.color_code || '#cbd5e1' }"
                 >
-                  <Package class="w-8 h-8 text-white/80" />
+                  <Package class="w-8 h-8 text-white/80 drop-shadow-md" />
                 </div>
               </div>
               
@@ -251,14 +255,6 @@
               </p>
               
               <div class="grid grid-cols-1 gap-y-1.5 bg-slate-50 p-3 rounded-lg text-xs mb-4">
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500">Ref Stock:</span>
-                  <span class="font-medium text-slate-700">{{ product.min_stock_level }} - {{ product.max_stock_level }}</span>
-                </div>
-                <div v-if="product.cost" class="flex justify-between items-center">
-                  <span class="text-slate-500">Cost:</span>
-                  <span class="font-medium text-slate-700">₱{{ formatPrice(product.cost) }}</span>
-                </div>
                 <div v-if="product.sku_code" class="flex justify-between items-center">
                   <span class="text-slate-500">SKU:</span>
                   <span class="font-medium text-slate-700 font-mono">{{ product.sku_code }}</span>
@@ -294,8 +290,8 @@
           <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
             <SearchX class="w-10 h-10 text-slate-400" />
           </div>
-          <h3 class="text-xl font-bold text-slate-800 mb-2">No products found</h3>
-          <p class="text-slate-500 max-w-sm mb-6">We couldn't find any products matching your filters. Try adjusting your search or filters.</p>
+          <h3 class="text-xl font-bold text-slate-800 mb-2">No materials found</h3>
+          <p class="text-slate-500 max-w-sm mb-6">We couldn't find any materials matching your filters. Try adjusting your search or filters.</p>
           <Button @click="clearFilters">Clear All Filters</Button>
         </div>
       </div>
@@ -309,7 +305,7 @@
               <PackagePlus v-if="!isEditing" class="w-5 h-5" />
               <Pencil v-else class="w-5 h-5" />
             </div>
-            {{ isEditing ? 'Edit Product' : 'Add New Product' }}
+            {{ isEditing ? 'Edit Material' : 'Add New Material' }}
           </DialogTitle>
         </DialogHeader>
         
@@ -387,7 +383,7 @@
               </div>
 
               <div class="space-y-2">
-                <Label for="name" class="text-slate-700">Product Name <span class="text-red-500">*</span></Label>
+                <Label for="name" class="text-slate-700">Material Name <span class="text-red-500">*</span></Label>
                 <Input 
                   id="name" 
                   v-model="newProduct.name" 
@@ -436,7 +432,7 @@
             </div>
 
             <div v-else-if="currentStep === 2" class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4">
                 <div class="space-y-2">
                   <Label for="price" class="text-slate-700">Selling Price (₱) <span class="text-red-500">*</span></Label>
                   <Input 
@@ -449,36 +445,15 @@
                     :class="{'border-red-300': !newProduct.price && showValidation}"
                   />
                 </div>
-                <div class="space-y-2">
-                  <Label for="cost" class="text-slate-700">Cost Price (₱)</Label>
-                  <Input 
-                    id="cost" 
-                    type="number" 
-                    v-model="newProduct.cost" 
-                    placeholder="0.00" 
-                    min="0" 
-                    step="0.01"
-                  />
-                </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                  <Label for="min_stock" class="text-slate-700">Min Stock Level</Label>
-                  <Input id="min_stock" type="number" v-model="newProduct.min_stock_level" />
-                </div>
-                <div class="space-y-2">
-                  <Label for="max_stock" class="text-slate-700">Max Stock Level</Label>
-                  <Input id="max_stock" type="number" v-model="newProduct.max_stock_level" />
-                </div>
-              </div>
 
               <div class="space-y-2">
                 <Label for="description" class="text-slate-700">Description</Label>
                 <Textarea 
                   id="description" 
                   v-model="newProduct.description" 
-                  placeholder="Describe the product details..." 
+                  placeholder="Describe the material details..." 
                   class="resize-none h-32" 
                 />
               </div>
@@ -486,7 +461,7 @@
 
             <div v-else-if="currentStep === 3" class="space-y-6">
               <div class="space-y-2">
-                <Label class="text-slate-700">Product Image</Label>
+                <Label class="text-slate-700">Material Image</Label>
                 <div 
                   @click="triggerFileInput"
                   @dragover.prevent 
@@ -526,7 +501,7 @@
               <div class="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
                 <Info class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <p class="text-sm text-blue-700 leading-relaxed">
-                  Images help your dealers identify products quickly. If you don't upload one, we'll generate a placeholder based on the product's color or category.
+                  Images help identify materials quickly. If you don't upload one, we'll generate a placeholder based on the material's color or category.
                 </p>
               </div>
             </div>
@@ -535,7 +510,7 @@
               <div class="bg-slate-50 rounded-lg p-5 border border-slate-100 space-y-4">
                 <h4 class="font-semibold text-slate-800 flex items-center gap-2 border-b border-slate-200 pb-2">
                   <ClipboardCheck class="w-4 h-4 text-slate-500" />
-                  Product Summary
+                  Material Summary
                 </h4>
                 
                 <div class="grid grid-cols-2 gap-y-4 text-sm">
@@ -546,7 +521,6 @@
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Size</span> <span class="font-medium text-slate-800">{{ newProduct.size }}</span></div>
                    
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Selling Price</span> <span class="font-bold text-green-600">₱{{ formatPrice(newProduct.price) }}</span></div>
-                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Stock Limits</span> <span class="font-medium text-slate-800">{{ newProduct.min_stock_level }} / {{ newProduct.max_stock_level }}</span></div>
 
                    <div v-if="newProduct.color_code" class="col-span-2">
                      <span class="text-slate-500 block text-xs uppercase tracking-wide mb-1">Color</span> 
@@ -561,7 +535,7 @@
               <div class="p-4 rounded-lg bg-blue-50 border border-blue-100">
                 <p class="text-sm text-blue-800 text-center">
                   Almost done! Please verify the information above before clicking 
-                  <strong>{{ isEditing ? 'Update Product' : 'Add Product' }}</strong>.
+                  <strong>{{ isEditing ? 'Update Material' : 'Add Material' }}</strong>.
                 </p>
               </div>
             </div>
@@ -596,7 +570,7 @@
             class="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
           >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
-            {{ isEditing ? 'Update Product' : 'Add Product' }}
+            {{ isEditing ? 'Update Material' : 'Add Material' }}
           </Button>
         </div>
       </DialogContent>
@@ -652,12 +626,13 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import { toast } from 'vue-sonner';
+// Use your custom axios instance
+import api from '@/utils/axios';
 import { 
   Package2, Search, Filter, Settings, Package, Pencil, Trash2, 
   SearchX, PackagePlus, Check, ChevronLeft, ChevronRight, 
   Loader2, UploadCloud, X, Info, ClipboardCheck 
 } from 'lucide-vue-next';
-import api from '@/utils/axios'; // Make sure this path exists in your project
 
 // Shadcn Components
 import { Button } from '@/components/ui/button';
@@ -672,7 +647,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 // State
-const distributorName = ref('CaviteGo Distributor');
+const supplierName = ref('Supplier Catalog');
 const searchQuery = ref('');
 const selectedCategories = ref([]);
 const selectedType = ref('all');
@@ -680,6 +655,7 @@ const selectedSizes = ref([]);
 const selectedColor = ref('');
 const sortOption = ref('newest');
 const products = ref([]);
+const isLoading = ref(false);
 
 const showAddModal = ref(false);
 const showMobileFilters = ref(false);
@@ -695,7 +671,7 @@ const fileInput = ref(null);
 
 // Wizard Steps
 const wizardSteps = [
-  { label: 'Product Basics' },
+  { label: 'Basic Info' },
   { label: 'Pricing & Inventory' },
   { label: 'Image Upload' },
   { label: 'Review & Submit' }
@@ -710,9 +686,6 @@ const newProduct = reactive({
   size: '',
   color_code: '',
   price: '',
-  cost: '',
-  min_stock_level: 10,
-  max_stock_level: 100,
   description: '',
   image_url: ''
 });
@@ -843,7 +816,6 @@ const sortedProducts = computed(() => {
   if (sortOption.value === 'name') return res.sort((a,b) => a.name.localeCompare(b.name));
   if (sortOption.value === 'price_low') return res.sort((a,b) => (a.price || 0) - (b.price || 0));
   if (sortOption.value === 'price_high') return res.sort((a,b) => (b.price || 0) - (a.price || 0));
-  // newest (by ID desc)
   return res.sort((a,b) => (b.id || 0) - (a.id || 0));
 });
 
@@ -875,28 +847,18 @@ const hasColorCategorySelected = computed(() => {
 
 // Logic
 const loadProducts = async () => {
+  isLoading.value = true;
   try {
-    const response = await api.get('/distributor/products');
-    if (response.data && response.data.success) {
-      products.value = Array.isArray(response.data.data) ? response.data.data : [];
-    } else {
-      products.value = [];
-    }
+    // Note: removed `/api` prefix here to utilize the custom axios configuration accurately
+    const response = await api.get('/supplier/raw-materials');
+    products.value = response.data;
     updateCategoryCounts();
   } catch (error) {
-    // Fallback to sample data for demo purposes or error state
-    loadSampleData();
+    toast.error('Failed to load raw materials');
+    console.error(error);
+  } finally {
+    isLoading.value = false;
   }
-};
-
-const loadSampleData = () => {
-  products.value = [
-    { id: 1, name: 'Premium Latex Paint - White', category: 'Interior Paints', type: 'Latex / Acrylic', sku_code: 'PLP-WH-001', size: '4 Liters', color_code: '#FFFFFF', price: 1250.00, cost: 850.00, min_stock_level: 10, max_stock_level: 100, description: 'High-quality interior latex paint, perfect for walls and ceilings.' },
-    { id: 2, name: 'Weather-Resistant Exterior', category: 'Exterior Paints', type: 'Weather-resistant', sku_code: 'WREP-BL-001', size: '20 Liters', color_code: '#0000FF', price: 3200.00, cost: 2200.00, min_stock_level: 5, max_stock_level: 50, description: 'Professional-grade waterproof coating for roofs and walls.' },
-    { id: 3, name: 'Professional Paint Brush Set', category: 'Application Tools', type: 'Paint Brushes', sku_code: 'PBS-001', size: 'Set of 5', price: 450.00, cost: 250.00, min_stock_level: 20, max_stock_level: 200, description: 'Set of 5 professional paint brushes.' },
-    { id: 4, name: 'Paint Thinner', category: 'Solvents & Thinners', type: 'Paint thinner', sku_code: 'PT-001', size: '1 Liter', price: 150.00, cost: 80.00, min_stock_level: 30, max_stock_level: 300, description: 'High-quality paint thinner.' }
-  ];
-  updateCategoryCounts();
 };
 
 const updateCategoryCounts = () => {
@@ -946,8 +908,7 @@ const closeModal = (val) => {
 const resetForm = () => {
   Object.assign(newProduct, {
     category: '', type: '', name: '', sku_code: '', size: '', 
-    color_code: '', price: '', cost: '', min_stock_level: 10, 
-    max_stock_level: 100, description: '', image_url: ''
+    color_code: '', price: '', description: '', image_url: ''
   });
   imagePreview.value = '';
   uploadedImage.value = null;
@@ -969,7 +930,6 @@ const validateStep = () => {
   if (currentStep.value === 2) {
     if (!newProduct.price || parseFloat(newProduct.price) <= 0) return false;
   }
-  // Step 3 (Image) is optional
   showValidation.value = false;
   return true;
 };
@@ -1016,53 +976,45 @@ const removeImage = () => {
   if (fileInput.value) fileInput.value.value = '';
 };
 
-// CRUD Operations
+// API Integration
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
   
   try {
     const formData = new FormData();
+    
+    // Append all string/number fields
     Object.keys(newProduct).forEach(key => {
-      if (newProduct[key] !== null && newProduct[key] !== undefined) {
-         formData.append(key, newProduct[key]);
+      if (newProduct[key] !== null && newProduct[key] !== '' && key !== 'image_url') {
+        formData.append(key, newProduct[key]);
       }
     });
 
+    // Append file if it exists
     if (uploadedImage.value) {
       formData.append('image', uploadedImage.value);
     }
-    
+
     if (isEditing.value) {
-      const response = await api.put(`/distributor/products/${editingId.value}`, formData, {
+      // Laravel needs PUT mapping for multipart form data edits
+      formData.append('_method', 'PUT');
+      await api.post(`/supplier/raw-materials/${editingId.value}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      if (response.data && response.data.success) {
-        const index = products.value.findIndex(p => p.id === editingId.value);
-        if (index !== -1) {
-          products.value[index] = response.data.data;
-          toast.success('Product updated successfully');
-        }
-      } else {
-         throw new Error('Failed to update');
-      }
+      toast.success('Material updated successfully');
     } else {
-      const response = await api.post('/distributor/products', formData, {
+      await api.post('/supplier/raw-materials', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      if (response.data && response.data.success) {
-        products.value.unshift(response.data.data);
-        toast.success('Product added successfully');
-      } else {
-         throw new Error('Failed to add');
-      }
+      toast.success('Material added successfully');
     }
-    updateCategoryCounts();
+    
+    await loadProducts();
     closeModal(false);
   } catch (error) {
-    let msg = 'Something went wrong';
-    if(error.response?.data?.message) msg = error.response.data.message;
-    toast.error(msg);
+    toast.error(error.response?.data?.message || 'Something went wrong');
+    console.error(error);
   } finally {
     isSubmitting.value = false;
   }
@@ -1072,30 +1024,31 @@ const editProduct = (product) => {
   Object.assign(newProduct, product);
   isEditing.value = true;
   editingId.value = product.id;
-  imagePreview.value = product.image_url || '';
+  imagePreview.value = product.image_url ? getFullImageUrl(product.image_url) : '';
   currentStep.value = 1;
   showAddModal.value = true;
 };
 
 const deleteProduct = async (id) => {
-  if (!confirm('Are you sure you want to delete this product?')) return;
+  if (!confirm('Are you sure you want to delete this material?')) return;
   
   try {
-    const response = await api.delete(`/distributor/products/${id}`);
-    if (response.data && response.data.success) {
-      products.value = products.value.filter(p => p.id !== id);
-      updateCategoryCounts();
-      toast.success('Product deleted');
-    } else {
-      toast.error('Failed to delete product');
-    }
-  } catch (e) {
-    toast.error('Error deleting product');
+    await api.delete(`/supplier/raw-materials/${id}`);
+    toast.success('Material deleted');
+    await loadProducts();
+  } catch (error) {
+    toast.error('Failed to delete material');
+    console.error(error);
   }
 };
 
 // Helpers
-const getFullImageUrl = (url) => url; 
+// Using Laravel storage URL format
+const getFullImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    return `http://localhost:8000/storage/${path}`; // Ensuring the exact base matches your local environment optionally, otherwise fallback to '/storage/${path}'
+}; 
 const handleImageError = (e) => e.target.style.display = 'none';
 
 const formatPrice = (p) => {
@@ -1136,13 +1089,13 @@ const getCategoryShortName = (cat) => {
 };
 
 const exportCatalog = () => {
-  if (!products.value.length) return toast.warning('No products to export');
+  if (!products.value.length) return toast.warning('No materials to export');
   
-  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Cost Price', 'Description'];
+  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Description'];
   const csv = [
     headers.join(','),
     ...products.value.map(p => 
-      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.cost || ''}","${p.description || ''}"`
+      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.description || ''}"`
     )
   ].join('\n');
   
