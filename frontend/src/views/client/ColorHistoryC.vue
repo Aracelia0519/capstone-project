@@ -1,5 +1,5 @@
 <template>
-  <div class="color-history-container bg-gradient-to-br from-slate-900 via-gray-900 to-gray-950 min-h-screen p-4 md:p-8">
+  <div class="color-history-container min-h-screen p-4 md:p-8">
     <div class="mb-8">
       <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-violet-400 bg-clip-text text-transparent mb-2">
         My Saved Colors

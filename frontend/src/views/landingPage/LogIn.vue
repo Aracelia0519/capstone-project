@@ -318,6 +318,56 @@
         </div>
       </div>
     </transition>
+
+    <transition
+      enter-active-class="transition-all duration-500 ease-out"
+      leave-active-class="transition-all duration-300 ease-in"
+      enter-from-class="opacity-0 scale-95"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="showClientOptions" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4">
+        <div class="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-fade-in-up">
+          <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+          
+          <h3 class="text-2xl font-bold text-white text-center mb-2">Welcome, Client!</h3>
+          <p class="text-gray-400 text-center mb-8">Where would you like to go?</p>
+          
+          <div class="grid grid-cols-1 gap-4">
+            <button 
+              @click="navigateToClientRoute('/ECommerceClient/EccommerceShop')"
+              class="relative p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-all duration-300 group overflow-hidden flex items-center justify-between"
+            >
+              <div class="flex items-center space-x-4">
+                <div class="p-3 bg-blue-500/20 rounded-lg text-blue-400 group-hover:scale-110 transition-transform">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                </div>
+                <div class="text-left">
+                  <h4 class="text-white font-semibold">E-Commerce</h4>
+                  <p class="text-sm text-gray-400">Shop for products</p>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-gray-500 group-hover:text-white transition-colors group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+
+            <button 
+              @click="navigateToClientRoute('/Clients/dashboardC')"
+              class="relative p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-300 group overflow-hidden flex items-center justify-between"
+            >
+              <div class="flex items-center space-x-4">
+                <div class="p-3 bg-purple-500/20 rounded-lg text-purple-400 group-hover:scale-110 transition-transform">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div class="text-left">
+                  <h4 class="text-white font-semibold">Management</h4>
+                  <p class="text-sm text-gray-400">Manage your account</p>
+                </div>
+              </div>
+              <svg class="w-5 h-5 text-gray-500 group-hover:text-white transition-colors group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -328,6 +378,9 @@ import axios from '@/utils/axios'
 
 const router = useRouter()
 const particleCanvas = ref(null)
+
+// Client modal state
+const showClientOptions = ref(false)
 
 // Feature data
 const features = [
@@ -408,7 +461,10 @@ const getRedirectRoute = (user) => {
     finance_manager: '/finance/financeDashboard',
     hr_manager: '/HR/HRdashboard', 
     employee: '/employee/dashboard', 
-    supplier: '/Supplier/SupplierDashboard' // Added Supplier route here
+    supplier: '/Supplier/SupplierDashboard', 
+    personnel_officer: '/Supplier/SupplierDashboard',
+    supplier_employee: '/Supplier/SupplierDashboard', 
+    personnel_employee: '/Supplier/SupplierDashboard' 
   };
   
   return roleRoutes[role] || '/';
@@ -523,6 +579,12 @@ const showNotification = (title, message, type = 'success') => {
   }, 5000)
 }
 
+// Client routing function
+const navigateToClientRoute = (route) => {
+  showClientOptions.value = false
+  router.push(route)
+}
+
 // Handle login
 const handleLogin = async () => {
   if (!validateForm()) {
@@ -544,20 +606,30 @@ const handleLogin = async () => {
       localStorage.setItem('auth_token', response.data.token)
       localStorage.setItem('user_data', JSON.stringify(response.data.user))
       
-      showNotification('Success!', 'Redirecting to dashboard...', 'success')
+      const user = response.data.user
       
-      setTimeout(() => {
-        const user = response.data.user
-        const redirectRoute = getRedirectRoute(user)
+      if (user.role === 'client') {
+        showNotification('Success!', 'Login successful. Please choose your destination.', 'success')
         
-        // Handle unknown roles or departments
-        if (!redirectRoute) {
-          showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
-          return
-        }
+        // Trigger modal for client
+        setTimeout(() => {
+          showClientOptions.value = true
+        }, 1000)
+      } else {
+        showNotification('Success!', 'Redirecting to dashboard...', 'success')
         
-        router.push(redirectRoute)
-      }, 1500)
+        setTimeout(() => {
+          const redirectRoute = getRedirectRoute(user)
+          
+          // Handle unknown roles or departments
+          if (!redirectRoute) {
+            showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
+            return
+          }
+          
+          router.push(redirectRoute)
+        }, 1500)
+      }
     } else {
       showNotification('Login Failed', response.data.message || 'Login failed', 'error')
     }

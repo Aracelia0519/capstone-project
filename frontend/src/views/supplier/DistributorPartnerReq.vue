@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 p-8 bg-slate-50/50 min-h-screen">
+  <div class="flex flex-col gap-6 p-8 min-h-screen">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Distributor Partnerships</h1>

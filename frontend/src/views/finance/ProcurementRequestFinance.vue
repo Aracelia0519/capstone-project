@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-4 md:p-6">
+  <div class="min-h-screen p-4 md:p-6">
     <header class="mb-8">
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center">

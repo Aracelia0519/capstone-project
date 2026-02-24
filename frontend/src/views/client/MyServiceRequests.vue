@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-slate-950 p-3 sm:p-4 md:p-6 text-slate-200">
+  <div class="min-h-screen bg-gradient-to-br  p-3 sm:p-4 md:p-6 text-slate-200">
     <div class="mb-6 sm:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="max-w-full overflow-hidden">

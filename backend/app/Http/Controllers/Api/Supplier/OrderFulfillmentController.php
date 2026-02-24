@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Models\OperationDistributor;
-
 namespace App\Http\Controllers\Api\Supplier;
 
 use App\Http\Controllers\Controller;
@@ -18,10 +16,25 @@ class OrderFulfillmentController extends Controller
     {
         $user = $request->user();
 
+        // Determine the relevant supplier ID based on the logged-in user's role
+        $supplierId = $user->id; // Default assumption for 'supplier' role
+
+        if ($user->role === 'supplier_employee') {
+            $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+            if ($personnel) {
+                $supplierId = $personnel->supplier_id;
+            }
+        } elseif ($user->role === 'personnel_officer') {
+            $officer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+            if ($officer) {
+                $supplierId = $officer->supplier_id;
+            }
+        }
+
         // Fetch requests where 'supplier_id' column matches the authenticated user's ID
         // And status is 'ready' (for supplier to process)
         $orders = ProcurementRequest::with(['distributor', 'product'])
-            ->where('supplier_id', $user->id)
+            ->where('supplier_id', $supplierId)
             ->whereIn('status', ['ready'])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -62,10 +75,25 @@ class OrderFulfillmentController extends Controller
     {
         $order = ProcurementRequest::findOrFail($id);
 
-        // Validate that this order actually belongs to this supplier using ID
         $user = $request->user();
 
-        if ($order->supplier_id !== $user->id) {
+        // Determine the relevant supplier ID based on the logged-in user's role
+        $supplierId = $user->id; // Default assumption for 'supplier' role
+
+        if ($user->role === 'supplier_employee') {
+            $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+            if ($personnel) {
+                $supplierId = $personnel->supplier_id;
+            }
+        } elseif ($user->role === 'personnel_officer') {
+            $officer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+            if ($officer) {
+                $supplierId = $officer->supplier_id;
+            }
+        }
+
+        // Validate that this order actually belongs to this supplier
+        if ($order->supplier_id !== $supplierId) {
             return response()->json(['message' => 'Unauthorized access to this order.'], 403);
         }
 

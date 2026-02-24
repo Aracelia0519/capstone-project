@@ -19,6 +19,7 @@ import DistributorDashboard from '@/views/distributor/Dashboard.vue'
 import PartneredSupplier from '@/views/distributor/PartneredSupplier.vue'
 import PaintInventory from '@/views/distributor/PaintInventory.vue'
 import ProductAvailable from '@/views/distributor/ProductAvailable.vue'
+import ProductDeployment from '@/views/distributor/ProductDeployment.vue'
 import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
 import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
 import SalesHistory from '@/views/distributor/SalesHistory.vue'
@@ -110,6 +111,8 @@ import ECPartnerSupplier from '@/views/E-commerce/ECPartnerSupplier.vue'
 import ECServiceProvider from '@/views/E-commerce/ECServiceProvider.vue'
 import ECommercePromotions from '@/views/E-commerce/ECommercePromotions.vue'
 import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
+import ECArrivedItem from '@/views/E-commerce/ECArrivedItem.vue'
+import ECInventory from '@/views/E-commerce/ECInventory.vue'
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
@@ -137,6 +140,10 @@ import SupplierOrderRequest from '@/views/supplier/SupplierOrderRequest.vue'
 import SupplierProcessOrders from '@/views/supplier/SupplierProcessOrders.vue'
 import SupplierShipments from '@/views/supplier/SupplierShipments.vue'
 import SupplierRawMaterials from '@/views/supplier/SupplierRawMaterials.vue'
+import PersonnelOfficer from '@/views/supplier/PersonnelOfficer.vue'
+import AddPersonnel from '@/views/supplier/AddPersonnel.vue'
+import RoleActivation from '@/views/supplier/RoleActivation.vue'
+import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
 
 
 const routes = [
@@ -217,6 +224,12 @@ const routes = [
         path: 'paintInventory',
         name: 'paintInventory',
         component: PaintInventory,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ProductDeployment',
+        name: 'ProductDeployment',
+        component: ProductDeployment,
         meta: { requiresVerification: true }
       },
       {
@@ -634,13 +647,23 @@ const routes = [
         name: 'ECreports',
         component: ECommerceReports
       },
+      {
+        path: 'ECArrivedItem',
+        name: 'ECArrivedItem',
+        component: ECArrivedItem
+      },
+      {
+        path: 'ECInventory',
+        name: 'ECInventory',
+        component: ECInventory
+      },
     ]
   },
 
   {
     path: '/Supplier',
     component: SupplierLayout,
-    meta: { requiresAuth: true, role: 'supplier', requiresVerification: true },
+    meta: { requiresAuth: true, allowedRoles: ['supplier', 'personnel_officer'], requiresVerification: true },
     children: [
       {
         path: 'SupplierDashboard',
@@ -676,6 +699,26 @@ const routes = [
         path: 'SupplierRawMaterials',
         name: 'SupplierRawMaterials',
         component: SupplierRawMaterials
+      },
+      {
+        path: 'PersonnelOfficer',
+        name: 'PersonnelOfficer',
+        component: PersonnelOfficer
+      },
+      {
+        path: 'AddPersonnel',
+        name: 'AddPersonnel',
+        component: AddPersonnel
+      },
+      {
+        path: 'RoleActivation',
+        name: 'RoleActivation',
+        component: RoleActivation
+      },
+      {
+        path: 'SupplierDelivery',
+        name: 'SupplierDelivery',
+        component: SupplierDelivery
       },
     ]
   },
@@ -724,11 +767,11 @@ const routes = [
     ]
   },
   
-  // Client E-Commerce routes (keeping as is, no authentication required for now)
+  // Client E-Commerce routes (keeping as is, no authentication required for now bitch)
   {
     path: '/ECommerceClient',
     component: ECommerceClientLayout,
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true },
     children: [
       {
         path: 'EccommerceShop',

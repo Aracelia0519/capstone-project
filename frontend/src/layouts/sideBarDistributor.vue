@@ -136,7 +136,8 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Package, ClipboardList, TrendingUp, Users, Clock, 
   Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, Calendar, 
-  History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2, Handshake 
+  History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2, 
+  Handshake, ClipboardCheck 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -185,8 +186,31 @@ const navigation = [
   {
     title: 'Inventory',
     items: [
-      { name: 'Product Available', path: '/distributor/ProductAvailable', icon: Box, color: 'text-teal-400', badge: 'New', badgeColor: 'bg-teal-500/20 text-teal-300', requiresVerify: true },
-      { name: 'Paint Inventory', path: '/distributor/PaintInventory', icon: Package, color: 'text-emerald-400', badge: '3 Low', badgeColor: 'bg-red-500/20 text-red-300', requiresVerify: true }
+      { 
+        name: 'Product Available', 
+        path: '/distributor/ProductAvailable', 
+        icon: Box, 
+        color: 'text-teal-400', 
+        badge: 'New', 
+        badgeColor: 'bg-teal-500/20 text-teal-300', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Paint Inventory', 
+        path: '/distributor/PaintInventory', 
+        icon: Package, 
+        color: 'text-emerald-400', 
+        badgeColor: 'bg-red-500/20 text-red-300', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Product Deployment', 
+        path: '/distributor/ProductDeployment', 
+        icon: ClipboardCheck, 
+        color: 'text-blue-400',
+        badgeColor: 'bg-yellow-500/20 text-yellow-300',
+        requiresVerify: true 
+      }
     ]
   },
   {

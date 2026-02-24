@@ -2,7 +2,7 @@
   <div class="p-6 space-y-6">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">Supplier Shipments</h1>
-      <p class="text-muted-foreground">Manage prepared orders and update delivery status.</p>
+      <p class="text-muted-foreground">Manage prepared orders and assign delivery personnel.</p>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">
@@ -17,7 +17,7 @@
       </Card>
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Shipped History</CardTitle>
+          <CardTitle class="text-sm font-medium">Delivery History</CardTitle>
           <Truck class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -29,7 +29,7 @@
     <Tabs default-value="prepared" class="w-full">
       <TabsList>
         <TabsTrigger value="prepared">Prepared ({{ preparedOrders.length }})</TabsTrigger>
-        <TabsTrigger value="shipped">Shipped History</TabsTrigger>
+        <TabsTrigger value="shipped">Delivery History</TabsTrigger>
       </TabsList>
 
       <TabsContent value="prepared" class="space-y-4">
@@ -72,6 +72,19 @@
                 </div>
 
                 <div class="mt-4 pt-4 border-t">
+                  <Label class="mb-2 block">Assign Delivery Personnel</Label>
+                  <select 
+                    v-model="order.selectedPersonnelId" 
+                    class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="" disabled selected>Select Delivery Man</option>
+                    <option v-for="person in deliveryPersonnelList" :key="person.id" :value="person.id">
+                      {{ person.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="mt-4 pt-4 border-t">
                   <Label class="mb-2 block">Proof of Readiness (Image)</Label>
                   
                   <div v-if="!order.previewImage" class="flex items-center justify-center w-full">
@@ -109,19 +122,20 @@
                 <AlertDialogTrigger as-child>
                   <Button 
                     class="w-full" 
-                    :disabled="!order.fileObject || isSubmitting" 
+                    :disabled="!order.fileObject || !order.selectedPersonnelId || isSubmitting" 
                   >
                     <Truck class="mr-2 h-4 w-4" />
-                    {{ isSubmitting ? 'Processing...' : (order.fileObject ? 'Start Delivery' : 'Upload Proof to Ship') }}
+                    {{ isSubmitting ? 'Processing...' : (order.fileObject && order.selectedPersonnelId ? 'Set Delivery' : 'Assign & Upload Proof') }}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Confirm Shipment</AlertDialogTitle>
+                    <AlertDialogTitle>Confirm Assignment & Shipment</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to mark order <strong>{{ order.display_id }}</strong> as shipped? 
+                      Are you sure you want to assign 
+                      <strong>{{ getPersonnelName(order.selectedPersonnelId) }}</strong> to deliver order <strong>{{ order.display_id }}</strong>?
                       <br><br>
-                      This will notify the distributor and cannot be undone.
+                      This will notify the distributor and mark the order as in transit.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -138,18 +152,23 @@
       <TabsContent value="shipped">
         <Card>
           <CardHeader>
-            <CardTitle>Shipped Orders</CardTitle>
-            <CardDescription>Recent shipments managed by you.</CardDescription>
+            <CardTitle>Delivery History</CardTitle>
+            <CardDescription>Recent shipments and their transit status.</CardDescription>
           </CardHeader>
           <CardContent>
             <div v-if="shippedOrders.length === 0" class="text-center py-4 text-muted-foreground">
-                No shipped orders yet.
+                No delivery history yet.
             </div>
             <div v-else class="space-y-4">
               <div v-for="order in shippedOrders" :key="order.id" class="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
                 <div class="flex items-center gap-4">
-                  <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <Check class="h-5 w-5 text-green-600" />
+                  <div :class="[
+                      'h-10 w-10 rounded-full flex items-center justify-center', 
+                      order.status === 'Delivered' ? 'bg-emerald-100' : 'bg-blue-100'
+                    ]"
+                  >
+                    <Check v-if="order.status === 'Delivered'" class="h-5 w-5 text-emerald-600" />
+                    <Truck v-else class="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
                     <p class="font-medium">{{ order.display_id }}</p>
@@ -157,11 +176,15 @@
                     <p class="text-xs text-muted-foreground">Items: {{ order.items }}</p>
                   </div>
                 </div>
-                <div class="text-right">
-                    <Badge variant="secondary" class="bg-green-100 text-green-800 hover:bg-green-100 mb-1">
-                    {{ order.status }}
+                <div class="text-right flex flex-col items-end">
+                    <Badge 
+                      variant="secondary" 
+                      class="mb-1"
+                      :class="order.status === 'Delivered' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : 'bg-blue-100 text-blue-800 hover:bg-blue-100'"
+                    >
+                      {{ order.status }}
                     </Badge>
-                    <p class="text-xs text-muted-foreground">{{ order.shipped_at }}</p>
+                    <p class="text-xs text-muted-foreground whitespace-nowrap">{{ order.shipped_at }}</p>
                 </div>
               </div>
             </div>
@@ -175,7 +198,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from '@/utils/axios' 
-import { toast } from 'vue-sonner' // Sonner Toast
+import { toast } from 'vue-sonner' 
 import { 
   Package, 
   Truck, 
@@ -185,13 +208,11 @@ import {
   PackageOpen 
 } from 'lucide-vue-next'
 
-// Import Shadcn UI components 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
-// Import Alert Dialog Components
 import {
   AlertDialog,
   AlertDialogAction,
@@ -206,8 +227,15 @@ import {
 
 const preparedOrders = ref([])
 const shippedOrders = ref([])
+const deliveryPersonnelList = ref([]) 
 const loading = ref(true)
 const isSubmitting = ref(false)
+
+// Helper to get name for the confirmation dialog
+const getPersonnelName = (id) => {
+  const person = deliveryPersonnelList.value.find(p => p.id === id)
+  return person ? person.name : 'Unknown Personnel'
+}
 
 // Fetch Data from Backend
 const fetchShipments = async () => {
@@ -217,9 +245,11 @@ const fetchShipments = async () => {
     preparedOrders.value = response.data.prepared_orders.map(order => ({
         ...order,
         previewImage: null,
-        fileObject: null
+        fileObject: null,
+        selectedPersonnelId: '' 
     }))
     shippedOrders.value = response.data.shipped_orders
+    deliveryPersonnelList.value = response.data.delivery_personnel 
   } catch (error) {
     console.error("Error fetching shipments:", error)
     toast.error('Failed to load shipments. Please try again.')
@@ -238,19 +268,16 @@ const handleImageSelect = (event, orderId) => {
   const file = event.target.files[0]
   if (!file) return
 
-  // Validate File Type
   if (!file.type.match('image.*')) {
     toast.error("Please upload an image file (PNG, JPG).")
     return
   }
   
-  // Validate File Size (e.g., 5MB)
   if (file.size > 5 * 1024 * 1024) {
     toast.error("File size too large. Max 5MB allowed.")
     return
   }
 
-  // Create preview URL
   const imageUrl = URL.createObjectURL(file)
   
   const orderIndex = preparedOrders.value.findIndex(o => o.id === orderId)
@@ -274,17 +301,23 @@ const removeImage = (orderId) => {
 // Send to Backend
 const submitShipment = async (orderId) => {
   const order = preparedOrders.value.find(o => o.id === orderId)
+  
   if (!order || !order.fileObject) {
     toast.error("Please upload a proof image before shipping.")
     return
   }
 
+  if (!order.selectedPersonnelId) {
+    toast.error("Please assign a delivery personnel first.")
+    return
+  }
+
   isSubmitting.value = true
-  // Show loading toast and get its ID to update later
-  const toastId = toast.loading('Processing shipment...')
+  const toastId = toast.loading('Assigning personnel and dispatching shipment...')
 
   const formData = new FormData()
   formData.append('image', order.fileObject)
+  formData.append('delivery_personnel_id', order.selectedPersonnelId) 
   formData.append('_method', 'POST') 
 
   try {
@@ -294,17 +327,14 @@ const submitShipment = async (orderId) => {
         }
     })
     
-    // Refresh list and Show Success
     await fetchShipments()
     
-    // Update loading toast to success
-    toast.success(`Order ${order.display_id} marked as shipped!`, {
+    toast.success(`Order ${order.display_id} is now In Transit!`, {
       id: toastId
     })
 
   } catch (error) {
     console.error("Error submitting shipment:", error)
-    // Update loading toast to error
     toast.error("Failed to update shipment status.", {
       id: toastId
     })

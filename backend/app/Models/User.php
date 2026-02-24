@@ -131,6 +131,14 @@ class User extends Authenticatable
     {
         return $this->role === 'employee';
     }
+    
+    /**
+     * Check if user is a supplier employee
+     */
+    public function isSupplierEmployee(): bool
+    {
+        return $this->role === 'supplier_employee';
+    }
 
     /**
      * Check if user is an HR manager
@@ -146,6 +154,14 @@ class User extends Authenticatable
     public function isFinanceManager(): bool
     {
         return $this->role === 'finance_manager';
+    }
+    
+    /**
+     * Check if user is a personnel officer
+     */
+    public function isPersonnelOfficer(): bool
+    {
+        return $this->role === 'personnel_officer';
     }
 
     /**
@@ -210,6 +226,14 @@ class User extends Authenticatable
     public function employee()
     {
         return $this->hasOne(HR\Employee::class, 'user_id');
+    }
+
+    /**
+     * Get the personnel officer record (if this user is a personnel officer)
+     */
+    public function personnelOfficer()
+    {
+        return $this->hasOne(Supplier\PersonnelOfficer::class, 'user_id');
     }
 
     /**

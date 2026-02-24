@@ -1,8 +1,39 @@
 <template>
-  <div class="min-h-screen bg-white font-sans text-slate-900 selection:bg-blue-500/30">
+  <div class="min-h-screen bg-white font-sans text-slate-900 selection:bg-blue-500/30 relative">
     <Toaster position="top-right" />
 
-    <TopBar />
+    <transition name="fade">
+      <div 
+        v-if="isLoggingOut" 
+        class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center"
+      >
+        <div class="w-full max-w-md p-8 text-center">
+          <div class="relative mb-8">
+            <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 flex items-center justify-center mb-4">
+              <LogOut class="w-12 h-12 text-blue-500" />
+            </div>
+            <div class="absolute -inset-4 bg-blue-500/10 rounded-full animate-pulse" />
+          </div>
+          
+          <h3 class="text-2xl font-bold text-white mb-2">Logging Out</h3>
+          <p class="text-slate-400 mb-8">Please wait while we end your session...</p>
+          
+          <div class="space-y-4">
+            <Progress 
+              :model-value="logoutProgress" 
+              class="h-2 bg-slate-800"
+            />
+            <p class="text-sm text-slate-400">{{ logoutProgress }}%</p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <TopBar 
+      :user="userData"
+      @logout-started="handleLogoutStart" 
+      @logout-finished="handleLogoutFinish" 
+    />
 
     <main class="flex-1 w-full bg-white relative min-h-[calc(100vh-64px)]">
       <div class="container mx-auto">
@@ -12,6 +43,8 @@
               <transition name="page-slide" mode="out-in">
                 <component 
                   :is="Component" 
+                  v-if="userData"
+                  :user="userData"
                 />
               </transition>
             </router-view>
@@ -62,9 +95,63 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
+import { Progress } from '@/components/ui/progress'
 import TopBar from '../layouts/topBarECommerceClient.vue'
-import { Loader2, Paintbrush } from 'lucide-vue-next'
+import { Loader2, Paintbrush, LogOut } from 'lucide-vue-next'
+import { getCurrentUser } from '@/utils/auth'
+
+const router = useRouter()
+const userData = ref(null)
+
+const isLoggingOut = ref(false)
+const logoutProgress = ref(0)
+let progressInterval = null
+
+const handleLogoutStart = () => {
+  isLoggingOut.value = true
+  logoutProgress.value = 0
+  
+  progressInterval = setInterval(() => {
+    if (logoutProgress.value < 90) {
+      logoutProgress.value += 10
+    }
+  }, 300)
+}
+
+const handleLogoutFinish = () => {
+  logoutProgress.value = 100
+  setTimeout(() => {
+    if (progressInterval) clearInterval(progressInterval)
+    isLoggingOut.value = false
+    logoutProgress.value = 0
+  }, 500)
+}
+
+const initializeUserData = () => {
+  const stored = localStorage.getItem('user_data')
+  if (stored) userData.value = JSON.parse(stored)
+}
+
+onMounted(async () => {
+  initializeUserData()
+  if (!userData.value) {
+    try {
+      userData.value = await getCurrentUser()
+      if (!userData.value) throw new Error("Not authenticated")
+      localStorage.setItem('user_data', JSON.stringify(userData.value))
+    } catch {
+      router.push('/Landing/logIn')
+      return 
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (progressInterval) clearInterval(progressInterval)
+})
 
 const footerLinks = [
   {
@@ -86,4 +173,7 @@ const footerLinks = [
 .page-slide-enter-active, .page-slide-leave-active { transition: all 0.4s ease; }
 .page-slide-enter-from { opacity: 0; transform: translateY(10px); }
 .page-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+
+.fade-enter-active, .fade-leave-active { transition: all 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

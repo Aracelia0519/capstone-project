@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-gray-950 p-6 md:p-8 overflow-x-hidden">
+  <div class="min-h-screen  p-6 md:p-8 overflow-x-hidden">
     <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
       <div class="flex-1 min-w-[300px]">
         <h1 class="flex items-center gap-3 text-3xl font-bold bg-gradient-to-r from-sky-400 to-cyan-400 bg-clip-text text-transparent mb-2">

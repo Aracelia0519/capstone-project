@@ -1,5 +1,5 @@
 <template>
-  <div class="service-providers-container bg-gradient-to-br from-slate-900 via-gray-900 to-gray-950 min-h-screen p-4 md:p-8">
+  <div class="service-providers-container min-h-screen p-4 md:p-8">
     <div class="mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>

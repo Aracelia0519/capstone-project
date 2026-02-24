@@ -1,5 +1,5 @@
 <template>
-  <div class="profile-container bg-gradient-to-br from-slate-900 via-gray-900 to-gray-950 min-h-screen p-4 md:p-8">
+  <div class="profile-container bg-gradient-to-br  min-h-screen p-4 md:p-8">
     
     <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
       <div class="flex-1">

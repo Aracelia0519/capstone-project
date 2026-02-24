@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-slate-950 p-4 sm:p-6 text-slate-200">
+  <div class="min-h-screen bg-gradient-to-br p-4 sm:p-6 text-slate-200">
     <header class="text-center mb-8 sm:mb-12">
       <div class="inline-flex items-center gap-3 mb-4">
         <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.4)]">

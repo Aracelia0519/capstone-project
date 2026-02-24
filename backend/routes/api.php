@@ -14,8 +14,8 @@ use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Distributor\ProductController;
 use App\Http\Controllers\Api\Employee\AttendanceRequestController;
 use App\Http\Controllers\Api\Employee\PayrollController;
-
-
+use App\Http\Controllers\Api\Supplier\PersonnelOfficerController;
+use App\Http\Controllers\Api\PersonnelOfficer\PersonnelController;
 
 // Public routes
 Route::prefix('auth')->group(function () {
@@ -57,7 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/password', [UserController::class, 'updatePassword']);
     });
 
-    // Client Requirements - ID Verification
+    // Client Requirements - ID Verification & Ecommerce Shop
     Route::prefix('client')->group(function () {
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ClientRequirementController::class, 'index']);
@@ -73,6 +73,19 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('/pending', [ClientRequirementController::class, 'pending']);
             });
         });
+
+        // E-Commerce Client Shop Routes
+        Route::prefix('shop')->group(function () {
+            Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
+            Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
+        });
+
+        Route::post('/save-color', [\App\Http\Controllers\Api\Client\ColorController::class, 'saveColor']);
+        Route::get('/colors', [\App\Http\Controllers\Api\Client\ColorController::class, 'getSavedColors']);
+        Route::get('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColor']);
+        Route::delete('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'deleteColor']);
+        Route::post('/colors/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ColorController::class, 'toggleFavorite']);
+        Route::get('/color-stats', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColorStats']);
     });
 
     // Service Provider Requirements - ID Verification
@@ -206,6 +219,14 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::get('/service-providers', [\App\Http\Controllers\Api\Distributor\ServiceProviderController::class, 'index']);
+
+
+        //for products deployment to cuz
+        Route::prefix('deployments')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'index']);
+            Route::post('/{id}/deploy', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'deploy']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'reject']);
+        });
     });
 
     // Admin User Management Routes
@@ -276,16 +297,6 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Color Management Routes
-    Route::prefix('client')->group(function () {
-        Route::post('/save-color', [\App\Http\Controllers\Api\Client\ColorController::class, 'saveColor']);
-        Route::get('/colors', [\App\Http\Controllers\Api\Client\ColorController::class, 'getSavedColors']);
-        Route::get('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColor']);
-        Route::delete('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'deleteColor']);
-        Route::post('/colors/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ColorController::class, 'toggleFavorite']);
-        Route::get('/color-stats', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColorStats']);
-    });
-
     // Procurement Requests Routes
     Route::prefix('procurement')->group(function () {
         Route::get('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'index']);
@@ -346,6 +357,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('supplier')->group(function () {
+
+        Route::get('/sidebar-access', [\App\Http\Controllers\Api\Supplier\SupplierSidebarController::class, 'getSidebarAccess']);
+
+        Route::prefix('personnel-officers')->group(function () {
+            Route::post('/', [PersonnelOfficerController::class, 'store']);
+        });
+
         Route::prefix('requirements')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'index']);
             
@@ -383,13 +401,27 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('raw-materials')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'store']);
-            Route::post('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'update']); // Use POST with _method=PUT for FormData uploads in Laravel
+            Route::post('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'update']); 
             Route::delete('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'destroy']);
+        });
+
+        Route::prefix('personnel-officer')->group(function () {
+            Route::post('/personnel', [PersonnelController::class, 'store']);
+
+            Route::get('/role-activation', [\App\Http\Controllers\Api\PersonnelOfficer\RoleActivationController::class, 'index']);
+            Route::post('/role-activation/{id}/activate', [\App\Http\Controllers\Api\PersonnelOfficer\RoleActivationController::class, 'activate']);
         });
     });
 
-    Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
+    // Delivery Personnel Routing
+    Route::prefix('supplier-delivery')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'index']);
+        Route::post('/{id}/start', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'startDelivery']);
+        Route::post('/{id}/arrive', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'arrive']);
+        Route::post('/{id}/remit', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'remit']); // Added this
+    });
 
+    Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
 
     Route::prefix('partners')->group(function () {
         Route::get('/suppliers', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'index']);
@@ -405,12 +437,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'reject']);
         });
+
+        Route::get('/arrived-items', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'index']);
+        Route::post('/arrived-items/{id}/move-to-inventory', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'moveToInventory']);
+
+        // EC Inventory Routes to bitch
+        Route::get('/ec-inventory', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'index']);
+        Route::post('/ec-inventory/{id}/request-deployment', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'requestDeployment']);
     });
-
-    
-
-    
-
-
     
 });

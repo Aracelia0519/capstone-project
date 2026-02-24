@@ -27,7 +27,7 @@
     </SidebarHeader>
 
     <SidebarContent class="px-3 py-4 space-y-4 bg-slate-900 overflow-x-hidden">
-      <SidebarGroup v-for="section in navigation" :key="section.title" class="p-0">
+      <SidebarGroup v-for="section in filteredNavigation" :key="section.title" class="p-0">
         <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 nav-text-clip">
           {{ section.title }}
         </SidebarGroupLabel>
@@ -129,12 +129,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineEmits } from 'vue'
+import { ref, computed, onMounted, defineEmits, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Package, ShoppingCart, Truck, Factory,
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
-  Loader2, ScrollText, Container, Handshake, ClipboardList, PackageCheck  
+  Loader2, ScrollText, Container, Handshake, ClipboardList, 
+  PackageCheck, Users, UserPlus, ShieldCheck  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -147,7 +148,18 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/utils/axios'
 
-const props = defineProps({ verificationStatus: String })
+// Added fullAccess and accessibilities props
+const props = defineProps({ 
+  verificationStatus: String,
+  fullAccess: {
+    type: Boolean,
+    default: false
+  },
+  accessibilities: {
+    type: Array,
+    default: () => []
+  }
+})
 const emit = defineEmits(['open-verification-modal', 'logout-started', 'logout-finished'])
 const { state, isMobile } = useSidebar()
 const router = useRouter()
@@ -157,7 +169,7 @@ const showLogoutModal = ref(false)
 const supplierName = ref('Supplier Portal')
 const isVerified = computed(() => props.verificationStatus === 'approved')
 
-// Navigation Menu with Validation Locks applied
+// Base Navigation Tree
 const navigation = [
   {
     title: 'Overview',
@@ -169,27 +181,42 @@ const navigation = [
     title: 'Network',
     items: [
       { 
-        name: 'Distributor Partner', path: '/supplier/DistributorPartnerReq', 
+        name: 'Distributor Partner',
+        path: '/supplier/DistributorPartnerReq', 
         icon: Handshake, 
         color: 'text-indigo-400', 
         badge: 'req',
         badgeColor: 'bg-amber-500/20 text-amber-300',
         requiresVerify: true 
+      },
+      { 
+        name: 'Personnel Officer',
+        path: '/supplier/PersonnelOfficer',
+        icon: Users,
+        color: 'text-emerald-400',
+        badgeColor: 'bg-emerald-500/20 text-emerald-300'
+      },
+      { 
+        name: 'Add Personnel',
+        path: '/supplier/AddPersonnel',
+        icon: UserPlus,
+        color: 'text-cyan-400',
+        badge: 'new',
+        badgeColor: 'bg-cyan-500/20 text-cyan-300'
+      },
+      { 
+        name: 'Role Activation',
+        path: '/supplier/RoleActivation',
+        icon: ShieldCheck,
+        color: 'text-purple-400',
+        badge: 'pending',
+        badgeColor: 'bg-purple-500/20 text-purple-300'
       }
     ]
   },
   {
     title: 'Order Management',
     items: [
-      { 
-        name: 'Purchase Orders', 
-        path: '/supplier/PurchaseOrders', 
-        icon: ShoppingCart, 
-        color: 'text-blue-400', 
-        badge: '5 New', 
-        badgeColor: 'bg-blue-500/20 text-blue-300', 
-        requiresVerify: true 
-      },
       { 
         name: 'Order Request', 
         path: '/supplier/SupplierOrderRequest', 
@@ -220,13 +247,25 @@ const navigation = [
     title: 'Inventory & Materials',
     items: [
       { name: 'Raw Materials', path: '/supplier/SupplierRawMaterials', icon: Container, color: 'text-amber-400', requiresVerify: true },
-      { name: 'Stock Levels', path: '/supplier/StockLevels', icon: Package, color: 'text-teal-400', badge: 'Low', badgeColor: 'bg-red-500/20 text-red-300', requiresVerify: true }
     ]
   },
   {
     title: 'Logistics',
     items: [
-      { name: 'Shipments', path: '/supplier/SupplierShipments', icon: Truck, color: 'text-purple-400', requiresVerify: true },
+      { 
+        name: 'Shipments', 
+        path: '/supplier/SupplierShipments', 
+        icon: Package, 
+        color: 'text-purple-400', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Delivery', 
+        path: '/supplier/SupplierDelivery', 
+        icon: Truck,
+        color: 'text-green-400', 
+        requiresVerify: true 
+      },
     ]
   },
   {
@@ -237,6 +276,32 @@ const navigation = [
     ]
   },
 ]
+
+// Filter logic: Grant everything if fullAccess is true. Otherwise filter by paths matching.
+const filteredNavigation = computed(() => {
+  if (props.fullAccess) {
+    return navigation;
+  }
+
+  return navigation.map(section => {
+    const filteredItems = section.items.filter(item => {
+      // Clean string formatting to ensure matching works properly
+      const itemPath = item.path.toLowerCase().replace(/^\/|\/$/g, '');
+      const itemName = item.name.toLowerCase();
+
+      return props.accessibilities.some(acc => {
+        // Match string similarity for DB values that are slightly different
+        const dbPath = acc.path ? acc.path.toLowerCase().replace(/^\/|\/$/g, '') : '';
+        const dbName = acc.name ? acc.name.toLowerCase() : '';
+
+        // If paths match closely or names match closely, allow access
+        return itemPath.includes(dbPath) || dbPath.includes(itemPath) || itemName === dbName;
+      });
+    });
+
+    return { ...section, items: filteredItems };
+  }).filter(section => section.items.length > 0);
+});
 
 const confirmLogout = async () => {
   isLoggingOut.value = true

@@ -12,19 +12,29 @@ use Illuminate\Support\Facades\Storage;
 class SupplierOrderProcessingController extends Controller
 {
     /**
-     * Display a listing of the processing orders for the logged-in supplier.
+     * Display a listing of the processing orders for the logged-in user.
      */
     public function index(Request $request)
     {
         $user = $request->user();
 
-        // Ensure user is a supplier
-        if (!$user->isSupplier()) {
-            return response()->json(['message' => 'Unauthorized. Supplier access required.'], 403);
+        // Determine the relevant supplier ID based on the logged-in user's role
+        $supplierId = $user->id; // Default assumption for 'supplier' role
+
+        if ($user->role === 'supplier_employee') {
+            $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+            if ($personnel) {
+                $supplierId = $personnel->supplier_id;
+            }
+        } elseif ($user->role === 'personnel_officer') {
+            $officer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+            if ($officer) {
+                $supplierId = $officer->supplier_id;
+            }
         }
 
         // Fetch requests assigned to this supplier with status 'processing'
-        $orders = ProcurementRequest::where('supplier_id', $user->id)
+        $orders = ProcurementRequest::where('supplier_id', $supplierId)
             ->where('status', 'processing')
             ->with(['distributor', 'distributor.distributorRequirement', 'product'])
             ->orderBy('request_date', 'asc')
@@ -78,9 +88,24 @@ class SupplierOrderProcessingController extends Controller
 
         $user = $request->user();
 
-        // Find the order
+        // Determine the relevant supplier ID based on the logged-in user's role
+        $supplierId = $user->id; // Default assumption for 'supplier' role
+
+        if ($user->role === 'supplier_employee') {
+            $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+            if ($personnel) {
+                $supplierId = $personnel->supplier_id;
+            }
+        } elseif ($user->role === 'personnel_officer') {
+            $officer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+            if ($officer) {
+                $supplierId = $officer->supplier_id;
+            }
+        }
+
+        // Find the order using the resolved parent supplier ID
         $order = ProcurementRequest::where('id', $id)
-            ->where('supplier_id', $user->id)
+            ->where('supplier_id', $supplierId)
             ->where('status', 'processing')
             ->first();
 

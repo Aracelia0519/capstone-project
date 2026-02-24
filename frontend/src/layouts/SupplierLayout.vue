@@ -7,10 +7,14 @@
         v-if="showVerificationModal" 
         @close="showVerificationModal = false"
         :verification-status="verificationStatus"
+        redirect-route="/Supplier/SupplierSettings"
+        description-text="To access all client features like color previews and service requests, please complete your identity verification."
       />
 
       <SideBarSupplier 
         :verification-status="verificationStatus"
+        :full-access="hasFullAccess"
+        :accessibilities="userAccessibilities"
         @open-verification-modal="showVerificationModal = true"
         @logout-started="handleLogoutStart" 
         @logout-finished="handleLogoutFinish"
@@ -75,7 +79,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import SideBarSupplier from './sideBarSupplier.vue'
-import VerificationModal from './VerificationModal.vue' // Ensure this file exists
+import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
 import { LogOut } from 'lucide-vue-next'
 
@@ -86,6 +90,10 @@ const dashboardData = ref(null)
 const isLoading = ref(false)
 const verificationStatus = ref(null)
 const showVerificationModal = ref(false)
+
+// Role-based Access State variables
+const hasFullAccess = ref(false)
+const userAccessibilities = ref([])
 
 // Logout States
 const isLoggingOut = ref(false)
@@ -124,23 +132,28 @@ const fetchData = async () => {
     const userResponse = await axios.get('/auth/me')
     userData.value = userResponse.data.user
     
+    // Fetch Sidebar Accessibilities specifically for this user's role
+    const accessResponse = await axios.get('/supplier/sidebar-access')
+    if (accessResponse.data.status === 'success') {
+      hasFullAccess.value = accessResponse.data.full_access
+      userAccessibilities.value = accessResponse.data.accessibilities
+    }
+
     // Check role and fetch specific requirements
     if (userData.value.role === 'supplier') {
       const verificationResponse = await axios.get('/supplier/requirements')
       if (verificationResponse.data.status === 'success') {
-        // According to your SupplierRequirementController, it returns 'data' which contains 'status'
         verificationStatus.value = verificationResponse.data.data?.status || 'none'
       }
     }
-    
-    // Fetch Dashboard Data if applicable
-    // Assuming you might have a supplier dashboard endpoint similar to distributor
-    /* const roleEndpoints = { supplier: '/dashboard/supplier' }
-    if (roleEndpoints[userData.value.role]) {
-      const res = await axios.get(roleEndpoints[userData.value.role])
-      dashboardData.value = res.data.data
-    } 
-    */
+    else if (userData.value.role === 'personnel_officer') {
+      verificationStatus.value = 'approved'
+    }
+    else if (userData.value.role === 'supplier_employee') {
+      // Typically supplier employees bypass requirement locks because the parent supplier is already verified
+      verificationStatus.value = 'approved' 
+    }
+
   } catch (error) {
     console.error('Failed to fetch data:', error)
   } finally {

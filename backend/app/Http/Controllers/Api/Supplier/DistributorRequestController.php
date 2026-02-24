@@ -13,7 +13,24 @@ use App\Models\User; // Import the User model
 class DistributorRequestController extends Controller
 {
     /**
-     * Fetch all pending requests for the logged-in Supplier.
+     * Resolve the supplier ID for the current logged-in user.
+     * This allows both direct Suppliers and their Personnel Officers to access data.
+     */
+    private function resolveSupplierId($user)
+    {
+        $supplierId = $user->id;
+        
+        // Check if the user is a personnel officer and get their parent supplier ID
+        $personnelOfficer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+        if ($personnelOfficer) {
+            $supplierId = $personnelOfficer->supplier_id;
+        }
+
+        return $supplierId;
+    }
+
+    /**
+     * Fetch all pending requests for the logged-in Supplier or their staff.
      */
     public function index()
     {
@@ -21,13 +38,16 @@ class DistributorRequestController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            // validation check
-            if (!$user || !$user->isSupplier()) {
+            // Validation check (Accessible to any logged-in user now)
+            if (!$user) {
                 return response()->json(['message' => 'Unauthorized access.'], 403);
             }
 
-            // Fetch requests where supplier_id = current user AND status = pending_supplier
-            $requests = DistributorSupplier::where('supplier_id', $user->id)
+            // Resolve correct Supplier ID
+            $supplierId = $this->resolveSupplierId($user);
+
+            // Fetch requests where supplier_id = resolved ID AND status = pending_supplier
+            $requests = DistributorSupplier::where('supplier_id', $supplierId)
                 ->where('status', 'pending_supplier')
                 ->with([
                     'distributor', // User model of distributor
@@ -39,7 +59,7 @@ class DistributorRequestController extends Controller
 
             // Transform data for frontend
             $formattedData = $requests->map(function ($req) {
-                $distReq = $req->distributor->distributorRequirement;
+                $distReq = $req->distributor->distributorRequirement ?? null;
                 $address = $distReq ? $distReq->address : null;
 
                 // Format Address
@@ -49,16 +69,18 @@ class DistributorRequestController extends Controller
                 }
 
                 // Format Name (Company or Person)
-                $companyName = $distReq ? $distReq->company_name : $req->distributor->full_name;
-                $contactPerson = $req->distributor->full_name;
+                $companyName = $distReq ? $distReq->company_name : ($req->distributor ? $req->distributor->full_name : 'N/A');
+                $contactPerson = $req->distributor ? $req->distributor->full_name : 'N/A';
+                $email = $req->distributor ? $req->distributor->email : 'N/A';
+                $phone = $req->distributor ? ($req->distributor->phone ?? 'N/A') : 'N/A';
 
                 return [
                     'id' => $req->id,
                     'distributor_id' => $req->distributor_id,
                     'company_name' => $companyName,
                     'contact_person' => $contactPerson,
-                    'email' => $req->distributor->email,
-                    'phone' => $req->distributor->phone ?? 'N/A',
+                    'email' => $email,
+                    'phone' => $phone,
                     'reg_number' => $distReq ? $distReq->business_registration_number : 'N/A',
                     'city' => $address ? $address->city : 'N/A',
                     'province' => $address ? $address->province : 'N/A',
@@ -93,9 +115,15 @@ class DistributorRequestController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            // 1. Find the request
+            if (!$user) {
+                return response()->json(['message' => 'Unauthorized access.'], 403);
+            }
+
+            $supplierId = $this->resolveSupplierId($user);
+
+            // 1. Find the request using the resolved supplier ID
             $request = DistributorSupplier::where('id', $id)
-                ->where('supplier_id', $user->id)
+                ->where('supplier_id', $supplierId)
                 ->where('status', 'pending_supplier')
                 ->first();
 
@@ -111,7 +139,7 @@ class DistributorRequestController extends Controller
 
             // 3. Create Official Partnership Record in new table
             SupplierPartner::create([
-                'supplier_id' => $user->id,
+                'supplier_id' => $supplierId,
                 'distributor_id' => $request->distributor_id,
                 'request_id' => $request->id,
                 'status' => 'active',
@@ -143,8 +171,14 @@ class DistributorRequestController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
+            if (!$user) {
+                return response()->json(['message' => 'Unauthorized access.'], 403);
+            }
+
+            $supplierId = $this->resolveSupplierId($user);
+
             $distRequest = DistributorSupplier::where('id', $id)
-                ->where('supplier_id', $user->id)
+                ->where('supplier_id', $supplierId)
                 ->where('status', 'pending_supplier')
                 ->first();
 

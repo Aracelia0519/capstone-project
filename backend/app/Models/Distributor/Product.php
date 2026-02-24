@@ -26,7 +26,7 @@ class Product extends Model
         'max_stock_level',
         'description',
         'image_url',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [

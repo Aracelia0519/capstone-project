@@ -121,7 +121,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
   Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2, Handshake,
-  UserCircle, PackageSearch, Briefcase
+  UserCircle, PackageSearch, Briefcase, PackageCheck, Boxes
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -155,7 +155,9 @@ const navigation = [
       { name: 'Procurement', path: '/ECommerce/ECProcurement', icon: PackageSearch, color: 'text-blue-400', badge: 'Req' },
       { name: 'Categories', path: '/ECommerce/ECCategories', icon: Tag, color: 'text-emerald-400' },
       { name: 'Process Request', path: '/ECommerce/ECProcessProcurement', icon: ClipboardList, color: 'text-emerald-400', badge: 'Head' },
-      { name: 'Track Procurement', path: '/ECommerce/ECPTrackProcurement', icon: ClipboardList, color: 'text-emerald-400' }
+      { name: 'Track Procurement', path: '/ECommerce/ECPTrackProcurement', icon: ClipboardList, color: 'text-emerald-400' },
+      { name: 'Arrived Item', path: '/ECommerce/ECArrivedItem', icon: PackageCheck, color: 'text-green-400' },
+      { name: 'Inventory', path: '/ECommerce/ECInventory', icon: Boxes, color: 'text-purple-400' },
     ]
   },
   {

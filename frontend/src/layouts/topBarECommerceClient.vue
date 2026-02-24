@@ -44,8 +44,8 @@
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-56 mt-2 rounded-xl p-2">
             <div class="px-2 py-1.5 mb-2">
-              <p class="text-sm font-bold text-slate-900">{{ userName }}</p>
-              <p class="text-xs text-slate-500 truncate">{{ userEmail }}</p>
+              <p class="text-sm font-bold text-slate-900">{{ displayUserName }}</p>
+              <p class="text-xs text-slate-500 truncate">{{ displayUserEmail }}</p>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem v-for="p in profileMenuItems" :key="p.id" as-child class="rounded-lg">
@@ -55,7 +55,7 @@
               </router-link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @click="showLogoutModal = true" class="text-red-600 focus:text-red-600 rounded-lg">
+            <DropdownMenuItem @click="showLogoutModal = true" class="text-red-600 focus:text-red-600 rounded-lg cursor-pointer">
               <LogOut class="mr-2 h-4 w-4" />
               Logout
             </DropdownMenuItem>
@@ -89,14 +89,15 @@
       <DialogContent class="sm:max-w-[400px] rounded-3xl">
         <div class="flex flex-col items-center py-4">
           <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
-            <LogOut class="w-8 h-8 text-red-500" />
+            <LogOut v-if="!isLoggingOut" class="w-8 h-8 text-red-500" />
+            <Loader2 v-else class="w-8 h-8 text-red-500 animate-spin" />
           </div>
           <DialogTitle class="text-xl font-bold">End Session?</DialogTitle>
           <p class="text-slate-500 text-center mt-2">Are you sure you want to sign out of your account?</p>
           <div class="grid grid-cols-2 gap-3 w-full mt-8">
-            <Button variant="outline" @click="showLogoutModal = false" class="rounded-xl">Cancel</Button>
-            <Button @click="handleLogout" variant="destructive" class="rounded-xl bg-red-600 hover:bg-red-700">
-              Logout
+            <Button variant="outline" @click="showLogoutModal = false" class="rounded-xl" :disabled="isLoggingOut">Cancel</Button>
+            <Button @click="handleLogout" variant="destructive" class="rounded-xl bg-red-600 hover:bg-red-700" :disabled="isLoggingOut">
+               {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
             </Button>
           </div>
         </div>
@@ -106,12 +107,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, defineProps, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/utils/axios'
 import { 
   ShoppingBag, Store, Wrench, ShoppingCart, 
   Package, User, UserCircle, Settings, 
-  HelpCircle, LogOut, Menu, X 
+  HelpCircle, LogOut, Menu, X, Loader2 
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -126,9 +128,27 @@ const router = useRouter()
 const activeItem = ref('shop')
 const mobileMenuOpen = ref(false)
 const showLogoutModal = ref(false)
+const isLoggingOut = ref(false)
 const cartCount = ref(3)
-const userName = ref('Julian Namoc')
-const userEmail = ref('IspyMILK@gmail.com')
+
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
+
+const emit = defineEmits(['logout-started', 'logout-finished'])
+
+// Computed properties to show real user data while defaulting to previous values if null
+const displayUserName = computed(() => {
+  if (!props.user) return 'Julian Namoc'
+  return props.user.name || `${props.user.first_name} ${props.user.last_name}`
+})
+
+const displayUserEmail = computed(() => {
+  return props.user?.email || 'IspyMILK@gmail.com'
+})
 
 const navItems = [
   { id: 'shop', label: 'Shop', route: '/ECommerceClient/EccommerceShop', icon: Store },
@@ -143,10 +163,32 @@ const profileMenuItems = [
   { id: 'help', label: 'Support', route: '/ECommerceClient/EccommerceProfile?tab=account', icon: HelpCircle }
 ]
 
-const handleLogout = () => {
-  localStorage.clear()
-  router.push('/Landing/logIn')
+const handleLogout = async () => {
+  isLoggingOut.value = true
+  showLogoutModal.value = false
+  
+  emit('logout-started')
+  
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    const response = await api.post('/auth/logout')
+    
+    if (response.data.status === 'success') {
+      emit('logout-finished')
+      
+      setTimeout(() => {
+        localStorage.clear()
+        router.push('/Landing/logIn')
+      }, 1000)
+    }
+  } catch (error) {
+    emit('logout-finished')
+    
+    setTimeout(() => {
+      localStorage.clear()
+      router.push('/Landing/logIn')
+    }, 1000)
+  }
 }
-
-
 </script>
