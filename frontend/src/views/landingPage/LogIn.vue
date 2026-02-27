@@ -242,12 +242,12 @@
               </div>
             </button>
 
-            <div class="relative animate-expand-width-delay flex justify-center">
+            <div class="relative flex text-center">
               <div class="w-full max-w-md">
                 <div class="absolute inset-0 flex items-center">
                   <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
                 </div>
-                <div class="relative flex justify-center">
+                <div class="relative flex justify-center text-center">
                   <span class="px-4 bg-gray-800/80 text-gray-400/80 text-sm animate-bounce-soft">Don't have an account?</span>
                 </div>
               </div>
@@ -441,11 +441,12 @@ const getRedirectRoute = (user) => {
     else if (department.includes('finance') || department.includes('accounting')) {
       return '/finance/financeDashboard';
     }
-    else if (department.includes('distributor') || position.includes('distributor assistant')) {
-      return '/distributor/distributordashboard';
-    }
+    // Check Operational BEFORE general Distributor since Operational Distributor contains "distributor"
     else if (department.includes('operational') || position.includes('operational distributor')) {
       return '/ECommerce/ECDashboard';
+    }
+    else if (department.includes('distributor') || position.includes('distributor assistant')) {
+      return '/distributor/distributordashboard';
     }
     // Default employee route
     return '/employee/dashboard';

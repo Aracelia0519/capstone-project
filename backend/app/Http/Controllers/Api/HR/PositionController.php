@@ -146,73 +146,73 @@ class PositionController extends Controller
     }
 
     // Get employee accessibility by employee ID (for sidebar)
-public function getEmployeeSidebarAccessibility($id)
-{
-    try {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-        
-        // Only allow employee to access their own accessibility or HR Manager
-        if ($user->id != $id && !$user->isHRManager()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized to access this information.'
-            ], 403);
-        }
-        
-        $employee = Employee::where('user_id', $id)->first();
-        
-        if (!$employee) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Employee not found.'
-            ], 404);
-        }
-        
-        // Find position by employee's position name and distributor
-        $position = Position::where('distributor_id', $employee->parent_distributor_id)
-            ->where('title', $employee->position)
-            ->where('status', 'active')
-            ->with('accessibilitySettings')
-            ->first();
-        
-        $accessibility = [];
-        
-        if ($position) {
-            // Get accessibility from position_accessibilities table
-            if ($position->accessibilitySettings && $position->accessibilitySettings->count() > 0) {
-                $accessibility = $position->accessibilitySettings
-                    ->where('is_granted', true)
-                    ->pluck('permission_key')
-                    ->toArray();
-            } 
-            // Fallback to requirements JSON field
-            elseif ($position->requirements && isset($position->requirements['accessibility'])) {
-                $accessibility = $position->requirements['accessibility'];
+    public function getEmployeeSidebarAccessibility($id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            
+            // Only allow employee to access their own accessibility or HR Manager
+            if ($user->id != $id && !$user->isHRManager()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized to access this information.'
+                ], 403);
             }
+            
+            $employee = Employee::where('user_id', $id)->first();
+            
+            if (!$employee) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Employee not found.'
+                ], 404);
+            }
+            
+            // Find position by employee's position name and distributor
+            $position = Position::where('distributor_id', $employee->parent_distributor_id)
+                ->where('title', $employee->position)
+                ->where('status', 'active')
+                ->with('accessibilitySettings')
+                ->first();
+            
+            $accessibility = [];
+            
+            if ($position) {
+                // Get accessibility from position_accessibilities table
+                if ($position->accessibilitySettings && $position->accessibilitySettings->count() > 0) {
+                    $accessibility = $position->accessibilitySettings
+                        ->where('is_granted', true)
+                        ->pluck('permission_key')
+                        ->toArray();
+                } 
+                // Fallback to requirements JSON field
+                elseif ($position->requirements && isset($position->requirements['accessibility'])) {
+                    $accessibility = $position->requirements['accessibility'];
+                }
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'employee_id' => $employee->id,
+                    'employee_name' => $employee->full_name,
+                    'position' => $employee->position,
+                    'department' => $employee->department,
+                    'accessibility_keys' => $accessibility,
+                    'has_full_access' => $user->isHRManager(),
+                    'position_found' => $position ? true : false
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch employee accessibility',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'employee_id' => $employee->id,
-                'employee_name' => $employee->full_name,
-                'position' => $employee->position,
-                'department' => $employee->department,
-                'accessibility_keys' => $accessibility,
-                'has_full_access' => $user->isHRManager(),
-                'position_found' => $position ? true : false
-            ]
-        ]);
-        
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Failed to fetch employee accessibility',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     
 
@@ -259,26 +259,7 @@ public function getEmployeeSidebarAccessibility($id)
                 }
                 
                 // Map to human-readable module names
-                $moduleMap = [
-                    'dashboard' => 'Dashboard',
-                    'employee_list' => 'Employee List',
-                    'positions_roles' => 'Positions & Roles',
-                    'departments' => 'Departments',
-                    'employment_status' => 'Employment Status',
-                    'recruitment' => 'Recruitment Application',
-                    'payroll_management' => 'Payroll Management',
-                    'reports' => 'HR Reports',
-                    'settings' => 'HR Settings'
-                ];
-                
-                foreach ($accessibility as $key) {
-                    if (isset($moduleMap[$key])) {
-                        $accessibleModules[] = [
-                            'key' => $key,
-                            'name' => $moduleMap[$key]
-                        ];
-                    }
-                }
+                $accessibleModules = $this->getAccessibleModules($accessibility);
             }
             
             return response()->json([
@@ -310,17 +291,12 @@ public function getEmployeeSidebarAccessibility($id)
      */
     private function getAccessibleModules($permissionKeys)
     {
-        $moduleMap = [
-            'dashboard' => 'Dashboard',
-            'employee_list' => 'Employee List',
-            'positions_roles' => 'Positions & Roles',
-            'departments' => 'Departments',
-            'employment_status' => 'Employment Status',
-            'recruitment' => 'Recruitment Application',
-            'payroll_management' => 'Payroll Management',
-            'reports' => 'HR Reports',
-            'settings' => 'HR Settings'
-        ];
+        $moduleMap = [];
+        // Pull direct labels from the static model definition
+        $options = \App\Models\HR\PositionAccessibility::getPermissionOptions();
+        foreach($options as $option) {
+            $moduleMap[$option['key']] = $option['label'];
+        }
 
         $accessibleModules = [];
         foreach ($permissionKeys as $key) {
@@ -517,15 +493,15 @@ public function getEmployeeSidebarAccessibility($id)
                 'updated_by' => $user->id
             ];
 
-            // Add requirements if provided (including accessibility for HR)
+            // Add requirements if provided
             if ($request->has('requirements') && is_array($request->requirements)) {
                 $positionData['requirements'] = $request->requirements;
             }
 
             $position = Position::create($positionData);
 
-            // Handle accessibility for HR department - only store selected items
-            if ($position->department === 'Human Resources') {
+            // Handle accessibility for specific departments
+            if (in_array($position->department, ['Human Resources', 'Operational Distributor'])) {
                 $accessibilityData = $request->has('accessibility') 
                     ? $request->accessibility 
                     : ($request->has('requirements.accessibility') 
@@ -535,7 +511,6 @@ public function getEmployeeSidebarAccessibility($id)
                 if (!empty($accessibilityData)) {
                     $position->updateAccessibility($accessibilityData);
                 }
-                // If no accessibility selected, don't store anything in position_accessibilities table
             }
 
             DB::commit();
@@ -543,7 +518,7 @@ public function getEmployeeSidebarAccessibility($id)
             Log::info('Position created successfully', [
                 'position_id' => $position->id,
                 'distributor_id' => $distributorId,
-                'has_accessibility' => $position->department === 'Human Resources' && !empty($accessibilityData)
+                'has_accessibility' => in_array($position->department, ['Human Resources', 'Operational Distributor']) && !empty($accessibilityData)
             ]);
 
             return response()->json([
@@ -680,23 +655,30 @@ public function getEmployeeSidebarAccessibility($id)
                 ['updated_by' => $user->id]
             );
 
-            // Handle requirements (including accessibility for HR)
+            // Handle requirements 
             $requirements = $position->requirements ?? [];
             
             if ($request->has('requirements') && is_array($request->requirements)) {
                 $requirements = array_merge($requirements, $request->requirements);
             }
 
-            // Handle accessibility specifically for HR department
+            // Handle accessibility specifically for appropriate departments
+            $accessibilityData = null;
             if ($request->has('accessibility')) {
-                if ($position->department === 'Human Resources' || 
-                    ($request->has('department') && $request->department === 'Human Resources')) {
+                $accessibilityData = $request->accessibility;
+            } elseif ($request->has('requirements.accessibility')) {
+                $accessibilityData = $request->input('requirements.accessibility');
+            }
+
+            if ($accessibilityData !== null) {
+                if (in_array($position->department, ['Human Resources', 'Operational Distributor']) || 
+                    ($request->has('department') && in_array($request->department, ['Human Resources', 'Operational Distributor']))) {
                     
-                    $requirements['accessibility'] = $request->accessibility;
-                    $position->updateAccessibility($request->accessibility);
+                    $requirements['accessibility'] = $accessibilityData;
+                    $position->updateAccessibility($accessibilityData);
                 }
-            } elseif ($request->has('department') && $request->department !== 'Human Resources') {
-                // If changing from HR to non-HR department, remove accessibility
+            } elseif ($request->has('department') && !in_array($request->department, ['Human Resources', 'Operational Distributor'])) {
+                // If changing from supported to non-supported department, remove accessibility
                 unset($requirements['accessibility']);
                 $position->accessibilitySettings()->delete();
             }
@@ -709,7 +691,7 @@ public function getEmployeeSidebarAccessibility($id)
             
             Log::info('Position updated successfully', [
                 'position_id' => $id,
-                'has_accessibility' => $position->department === 'Human Resources' && isset($requirements['accessibility'])
+                'has_accessibility' => in_array($position->department, ['Human Resources', 'Operational Distributor']) && isset($requirements['accessibility'])
             ]);
 
             return response()->json([

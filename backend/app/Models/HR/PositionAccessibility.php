@@ -50,6 +50,7 @@ class PositionAccessibility extends Model
     public static function getPermissionOptions(): array
     {
         return [
+            // Human Resources Options
             [
                 'key' => 'dashboard',
                 'label' => 'Dashboard',
@@ -84,6 +85,93 @@ class PositionAccessibility extends Model
                 'key' => 'payroll_management',
                 'label' => 'Payroll Management',
                 'description' => 'Access to payroll and compensation management'
+            ],
+            
+            // Operational Distributor Options
+            [
+                'key' => 'ec_dashboard',
+                'label' => 'Dashboard',
+                'description' => 'Access to Operational Distributor Dashboard'
+            ],
+            [
+                'key' => 'ec_procurement',
+                'label' => 'Procurement',
+                'description' => 'Access to Catalog & Inventory Procurement'
+            ],
+            [
+                'key' => 'ec_categories',
+                'label' => 'Categories',
+                'description' => 'Access to Catalog & Inventory Categories'
+            ],
+            [
+                'key' => 'ec_process_procurement',
+                'label' => 'Process Request',
+                'description' => 'Access to Process Request'
+            ],
+            [
+                'key' => 'ec_track_procurement',
+                'label' => 'Track Procurement',
+                'description' => 'Access to Track Procurement'
+            ],
+            [
+                'key' => 'ec_arrived_item',
+                'label' => 'Arrived Item',
+                'description' => 'Access to Arrived Item'
+            ],
+            [
+                'key' => 'ec_inventory',
+                'label' => 'Inventory',
+                'description' => 'Access to Inventory'
+            ],
+            [
+                'key' => 'ec_orders',
+                'label' => 'Orders',
+                'description' => 'Access to Orders'
+            ],
+            [
+                'key' => 'ec_prepare_order',
+                'label' => 'Prepare Order',
+                'description' => 'Access to Prepare Order'
+            ],
+            [
+                'key' => 'ec_payment',
+                'label' => 'Payments',
+                'description' => 'Access to Payments'
+            ],
+            [
+                'key' => 'ec_delivery',
+                'label' => 'Delivery',
+                'description' => 'Access to Delivery'
+            ],
+            [
+                'key' => 'ec_returns',
+                'label' => 'Returns',
+                'description' => 'Access to Returns'
+            ],
+            [
+                'key' => 'ec_partner_supplier',
+                'label' => 'Partner Supplier',
+                'description' => 'Access to Partner Supplier'
+            ],
+            [
+                'key' => 'ec_service_provider',
+                'label' => 'Service Provider',
+                'description' => 'Access to Service Provider'
+            ],
+            [
+                'key' => 'ec_reviews',
+                'label' => 'Reviews',
+                'description' => 'Access to Reviews'
+            ],
+            [
+                'key' => 'ec_promotions',
+                'label' => 'Promotions',
+                'description' => 'Access to Promotions'
+            ],
+            [
+                'key' => 'ec_reports',
+                'label' => 'Reports',
+                'description' => 'Access to Reports'
             ]
         ];
     }
@@ -96,8 +184,8 @@ class PositionAccessibility extends Model
         // Delete existing accessibility for this position
         self::where('position_id', $position->id)->delete();
 
-        // Only create for HR department positions
-        if ($position->department !== 'Human Resources' || empty($accessibilityData)) {
+        // Only create for specific departments
+        if (!in_array($position->department, ['Human Resources', 'Operational Distributor']) || empty($accessibilityData)) {
             return;
         }
 
@@ -126,7 +214,7 @@ class PositionAccessibility extends Model
      */
     public static function getForPosition(Position $position): array
     {
-        if ($position->department !== 'Human Resources') {
+        if (!in_array($position->department, ['Human Resources', 'Operational Distributor'])) {
             return [];
         }
 
@@ -141,7 +229,7 @@ class PositionAccessibility extends Model
      */
     public static function hasPermission(Position $position, string $permissionKey): bool
     {
-        if ($position->department !== 'Human Resources') {
+        if (!in_array($position->department, ['Human Resources', 'Operational Distributor'])) {
             return false;
         }
 

@@ -97,7 +97,7 @@ class Position extends Model
             'Human Resources' => ['bg' => 'bg-green-100', 'text' => 'text-green-600', 'badge' => 'bg-green-100 text-green-800'],
             'Finance' => ['bg' => 'bg-purple-100', 'text' => 'text-purple-600', 'badge' => 'bg-purple-100 text-purple-800'],
             'Distributor Assistant' => ['bg' => 'bg-indigo-100', 'text' => 'text-indigo-600', 'badge' => 'bg-indigo-100 text-indigo-800'],
-            'Operations' => ['bg' => 'bg-red-100', 'text' => 'text-red-600', 'badge' => 'bg-red-100 text-red-800'],
+            'Operational Distributor' => ['bg' => 'bg-red-100', 'text' => 'text-red-600', 'badge' => 'bg-red-100 text-red-800'],
             'Logistics' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-600', 'badge' => 'bg-yellow-100 text-yellow-800'],
             'IT' => ['bg' => 'bg-teal-100', 'text' => 'text-teal-600', 'badge' => 'bg-teal-100 text-teal-800'],
             'Sales' => ['bg' => 'bg-pink-100', 'text' => 'text-pink-600', 'badge' => 'bg-pink-100 text-pink-800'],
@@ -133,7 +133,7 @@ class Position extends Model
      */
     public function getAccessibilityAttribute(): array
     {
-        if ($this->department !== 'Human Resources') {
+        if (!in_array($this->department, ['Human Resources', 'Operational Distributor'])) {
             return [];
         }
 
@@ -154,7 +154,7 @@ class Position extends Model
      */
     public function hasPermission(string $permissionKey): bool
     {
-        if ($this->department !== 'Human Resources') {
+        if (!in_array($this->department, ['Human Resources', 'Operational Distributor'])) {
             return false;
         }
 

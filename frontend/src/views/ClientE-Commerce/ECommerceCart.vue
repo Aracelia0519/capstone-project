@@ -1,127 +1,118 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-b">
+  <div class="min-h-screen relative">
     <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="container mx-auto px-4 py-8">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Shopping Cart</h1>
-        <p class="text-gray-600 mt-2">Review your selected items</p>
+      <div class="container mx-auto px-4 py-6 md:py-8 flex justify-between items-center">
+        <div>
+          <h1 class="text-3xl font-black text-gray-900 tracking-tight">Shopping Cart</h1>
+          <p class="text-gray-500 mt-1 font-medium">Review your selected items</p>
+        </div>
       </div>
     </div>
 
     <div class="container mx-auto px-4 py-8">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-gray-500 font-medium">Loading your cart...</p>
+      </div>
+
+      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div class="lg:col-span-2">
-          <Card v-if="cartItems.length === 0" class="p-8 text-center border-gray-200 shadow-lg rounded-2xl">
-            <div class="w-24 h-24 mx-auto mb-4 text-gray-300">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          
+          <Card v-if="cartItems.length === 0" class="p-12 text-center border-0 shadow-lg rounded-3xl bg-white flex flex-col items-center justify-center min-h-[400px]">
+            <div class="w-24 h-24 mb-6 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 shadow-inner">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-700 mb-2">Your cart is empty</h3>
-            <p class="text-gray-500 mb-6">Add some paint products or services to get started</p>
-            <router-link to="/ecommerce/shop">
-              <Button class="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold h-12 px-6">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-                </svg>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h3>
+            <p class="text-gray-500 mb-8 font-medium">Looks like you haven't added any paints to your cart yet.</p>
+            <router-link to="/ECommerceClient/EccommerceShop">
+              <Button class="w-full sm:w-auto bg-gray-900 hover:bg-black text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-gray-900/20 transition-all">
                 Start Shopping
               </Button>
             </router-link>
           </Card>
 
           <div v-else class="space-y-6">
-            <Card v-if="productItems.length > 0" class="border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader class="p-4 md:p-6 border-b border-gray-200 bg-white">
-                <CardTitle class="text-xl font-bold text-gray-900 flex items-center">
-                  <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <Card v-if="productItems.length > 0" class="border-gray-100 shadow-xl rounded-3xl overflow-hidden bg-white ring-1 ring-black/5">
+              <CardHeader class="p-5 md:p-6 border-b border-gray-50 bg-white/50 backdrop-blur-md flex flex-row items-center justify-between">
+                <CardTitle class="text-lg font-black text-gray-900 flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
                   </svg>
                   Paint Products
                 </CardTitle>
+                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">{{ productItems.length }} items</span>
               </CardHeader>
               
               <CardContent class="p-0">
-                <div class="divide-y divide-gray-100">
+                <div class="divide-y divide-gray-50">
                   <div
                     v-for="item in productItems"
                     :key="item.id"
-                    class="p-4 md:p-6 hover:bg-gray-50 transition-colors bg-white"
+                    class="p-5 md:p-6 hover:bg-gray-50/80 transition-colors bg-white group"
                   >
-                    <div class="flex flex-col sm:flex-row items-start">
-                      <div class="w-full sm:w-24 h-48 sm:h-24 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center mb-4 sm:mb-0 sm:mr-4 shrink-0">
-                        <div class="w-24 h-24 sm:w-16 sm:h-16 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                    <div class="flex flex-col sm:flex-row items-start gap-5">
+                      <div class="w-full sm:w-28 h-48 sm:h-28 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 shadow-sm overflow-hidden" :style="item.image_url ? {} : { backgroundColor: item.color }">
+                        <img v-if="item.image_url" :src="item.image_url" alt="Product" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
                       
-                      <div class="flex-1 w-full">
+                      <div class="flex-1 w-full flex flex-col justify-between h-full">
                         <div class="flex flex-col sm:flex-row justify-between">
-                          <div class="mb-4 sm:mb-0">
-                            <h3 class="font-semibold text-gray-900 text-lg sm:text-base">{{ item.name }}</h3>
-                            <p class="text-sm text-gray-500 mt-1">{{ item.brand }} • {{ item.type }} • {{ item.finish }}</p>
-                            <div class="flex items-center mt-2">
-                              <span class="text-sm font-medium text-gray-900">₱{{ item.price.toLocaleString() }}</span>
-                              <span class="mx-2 text-gray-300">•</span>
-                              <span class="text-sm text-gray-500">per {{ item.unit }}</span>
-                            </div>
+                          <div>
+                            <p class="text-xs font-bold tracking-wider text-blue-600 uppercase mb-1">{{ item.brand }}</p>
+                            <h3 class="font-bold text-gray-900 text-lg leading-tight">{{ item.name }}</h3>
+                            <p class="text-sm text-gray-500 mt-1 font-medium">{{ item.typeDesc }} • {{ item.finish }}</p>
                           </div>
                           
-                          <div class="flex flex-row sm:flex-col justify-between items-center sm:items-end sm:text-right">
-                            <div class="text-lg font-bold text-gray-900">₱{{ (item.price * item.quantity).toLocaleString() }}</div>
-                            
-                            <div class="flex items-center mt-0 sm:mt-3">
-                              <div class="flex items-center border border-gray-300 rounded-lg bg-white">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  @click="updateQuantity(item.id, item.quantity - 1)"
-                                  class="h-8 w-8 rounded-none text-gray-600 hover:text-gray-900"
-                                  :disabled="item.quantity <= 1"
-                                >
-                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                                  </svg>
-                                </Button>
-                                <span class="px-3 py-1 text-gray-900 font-medium min-w-[2rem] text-center">{{ item.quantity }}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  @click="updateQuantity(item.id, item.quantity + 1)"
-                                  class="h-8 w-8 rounded-none text-gray-600 hover:text-gray-900"
-                                  :disabled="item.quantity >= 10"
-                                >
-                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                  </svg>
-                                </Button>
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                @click="removeItem(item.id)"
-                                class="ml-4 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                              >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                              </Button>
-                            </div>
+                          <div class="flex flex-row sm:flex-col justify-between items-center sm:items-end sm:text-right mt-4 sm:mt-0">
+                            <div class="text-xl font-black text-gray-900">₱{{ (item.price * item.quantity).toLocaleString() }}</div>
+                            <div class="text-xs font-medium text-gray-400 mt-1">₱{{ item.price.toLocaleString() }} / {{ item.unit }}</div>
                           </div>
                         </div>
                         
-                        <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
-                          <div class="flex items-center">
-                            <svg :class="[
-                              'w-4 h-4 mr-2',
-                              item.stock > 10 ? 'text-green-500' : 'text-yellow-500'
-                            ]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            <span class="text-sm" :class="item.stock > 10 ? 'text-green-600' : 'text-yellow-600'">
-                              {{ item.stock > 10 ? `${item.stock} available` : `Only ${item.stock} left` }}
-                            </span>
+                        <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
+                          
+                          <div class="flex items-center p-1 bg-gray-50 border border-gray-200 rounded-xl shadow-inner w-max">
+                            <button
+                              @click="updateQuantity(item.id, item.quantity - 1, item.stock)"
+                              class="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-50 transition-colors font-bold"
+                              :disabled="item.quantity <= 1 || isUpdating"
+                            >
+                              -
+                            </button>
+                            <span class="w-10 text-center font-bold text-gray-900">{{ item.quantity }}</span>
+                            <button
+                              @click="updateQuantity(item.id, item.quantity + 1, item.stock)"
+                              class="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-50 transition-colors font-bold"
+                              :disabled="item.quantity >= item.stock || isUpdating"
+                            >
+                              +
+                            </button>
                           </div>
-                          <div class="text-sm text-gray-500 hidden sm:block">
-                            Subtotal: <span class="font-semibold text-gray-900">₱{{ (item.price * item.quantity).toLocaleString() }}</span>
+
+                          <div class="flex items-center gap-4">
+                            <div class="flex items-center">
+                              <svg :class="['w-4 h-4 mr-1.5', item.stock > 10 ? 'text-green-500' : 'text-amber-500']" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                              <span :class="['text-xs font-bold', item.stock > 10 ? 'text-green-600' : 'text-amber-600']">
+                                {{ item.stock > 10 ? `${item.stock} available` : `Only ${item.stock} left` }}
+                              </span>
+                            </div>
+
+                            <button
+                              @click="removeItem(item.id)"
+                              :disabled="isUpdating"
+                              class="text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                              </svg>
+                            </button>
                           </div>
+
                         </div>
                       </div>
                     </div>
@@ -130,92 +121,9 @@
               </CardContent>
             </Card>
 
-            <Card v-if="serviceItems.length > 0" class="border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader class="p-4 md:p-6 border-b border-gray-200 bg-white">
-                <CardTitle class="text-xl font-bold text-gray-900 flex items-center">
-                  <svg class="w-6 h-6 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                  </svg>
-                  Services
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent class="p-0">
-                <div class="divide-y divide-gray-100">
-                  <div
-                    v-for="item in serviceItems"
-                    :key="item.id"
-                    class="p-4 md:p-6 hover:bg-gray-50 transition-colors bg-white"
-                  >
-                    <div class="flex flex-col sm:flex-row items-start">
-                      <div class="w-full sm:w-16 h-24 sm:h-16 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center mb-4 sm:mb-0 sm:mr-4">
-                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"></path>
-                        </svg>
-                      </div>
-                      
-                      <div class="flex-1 w-full">
-                        <div class="flex flex-col sm:flex-row justify-between">
-                          <div class="mb-2 sm:mb-0">
-                            <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
-                            <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
-                            <div class="flex flex-wrap items-center mt-2 gap-4">
-                              <div class="flex items-center text-sm text-gray-600">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                {{ item.duration }}
-                              </div>
-                              <div class="flex items-center text-sm text-gray-600">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                                {{ item.scheduledDate }}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div class="flex flex-row sm:flex-col justify-between items-center sm:items-end sm:text-right mt-2 sm:mt-0">
-                            <div class="text-lg font-bold text-gray-900">₱{{ item.price.toLocaleString() }}</div>
-                            
-                            <div class="mt-0 sm:mt-3">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                @click="removeItem(item.id)"
-                                class="text-red-600 hover:text-red-800 hover:bg-red-50 p-0 sm:p-2 h-auto sm:h-9"
-                              >
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                                <span class="sm:inline">Remove</span>
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                              <span class="text-xs text-gray-500">Location</span>
-                              <p class="text-sm text-gray-900 break-words">{{ item.location }}</p>
-                            </div>
-                            <div>
-                              <span class="text-xs text-gray-500">Contact</span>
-                              <p class="text-sm text-gray-900">{{ item.contact }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4">
+            <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 mt-8">
               <router-link to="/ecommerce/shop" class="w-full sm:w-auto">
-                <Button variant="link" class="text-blue-600 hover:text-blue-800 p-0 h-auto w-full sm:w-auto justify-center sm:justify-start">
+                <Button variant="outline" class="w-full sm:w-auto h-12 rounded-xl font-bold border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                   </svg>
@@ -226,7 +134,8 @@
               <Button
                 variant="ghost"
                 @click="clearCart"
-                class="text-red-600 hover:text-red-800 hover:bg-red-50 w-full sm:w-auto"
+                :disabled="isUpdating"
+                class="text-red-600 hover:text-red-700 hover:bg-red-50 font-bold h-12 px-6 rounded-xl w-full sm:w-auto transition-colors"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -239,87 +148,66 @@
 
         <div class="lg:col-span-1">
           <div class="sticky top-24">
-            <Card class="border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader class="p-6 border-b border-gray-200 bg-white">
-                <CardTitle class="text-xl font-bold text-gray-900">Order Summary</CardTitle>
+            <Card class="border-0 shadow-2xl rounded-3xl overflow-hidden bg-gray-900 text-white relative">
+              <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
+              <CardHeader class="p-6 border-b border-gray-700/50 relative z-10">
+                <CardTitle class="text-lg font-bold text-white uppercase tracking-widest">Order Summary</CardTitle>
               </CardHeader>
               
-              <CardContent class="p-6 bg-white">
-                <div class="space-y-4">
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">Subtotal ({{ totalItems }} items)</span>
-                    <span class="font-medium text-gray-900">₱{{ subtotal.toLocaleString() }}</span>
+              <CardContent class="p-6 relative z-10">
+                <div class="space-y-4 font-medium">
+                  <div class="flex justify-between items-center text-gray-300 text-sm">
+                    <span>Subtotal ({{ totalItems }} items)</span>
+                    <span class="text-white">₱{{ subtotal.toLocaleString() }}</span>
                   </div>
                   
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">Services Total</span>
-                    <span class="font-medium text-gray-900">₱{{ servicesTotal.toLocaleString() }}</span>
+                  <div v-if="servicesTotal > 0" class="flex justify-between items-center text-gray-300 text-sm">
+                    <span>Services Total</span>
+                    <span class="text-white">₱{{ servicesTotal.toLocaleString() }}</span>
                   </div>
                   
-                  <div v-if="deliveryFee > 0" class="flex justify-between">
-                    <span class="text-gray-600">Delivery Fee</span>
-                    <span class="font-medium text-gray-900">₱{{ deliveryFee.toLocaleString() }}</span>
+                  <div class="flex justify-between items-center text-gray-300 text-sm">
+                    <span>Est. Delivery Fee</span>
+                    <span>
+                      <span v-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
+                      <span v-else-if="shippingFeeEst === 0" class="text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">FREE</span>
+                      <span v-else class="text-white">₱{{ shippingFeeEst.toLocaleString() }}</span>
+                    </span>
                   </div>
                   
-                  <Separator class="my-4" />
-                  
-                  <div>
-                    <div class="flex justify-between">
-                      <span class="text-lg font-semibold text-gray-900">Total</span>
-                      <span class="text-2xl font-bold text-gray-900">₱{{ totalAmount.toLocaleString() }}</span>
+                  <div class="my-6 border-t border-gray-700/50 pt-6">
+                    <div class="flex justify-between items-end">
+                      <span class="text-sm text-gray-400 font-medium">Total Cost</span>
+                      <span class="text-3xl font-black text-white">₱{{ totalAmount.toLocaleString() }}</span>
                     </div>
-                    <p class="text-sm text-gray-500 mt-1">Inclusive of VAT</p>
+                    <p class="text-xs text-gray-500 mt-2 text-right">Taxes included if applicable</p>
                   </div>
                 </div>
                 
                 <Button
-                  @click="proceedToCheckout"
-                  :disabled="cartItems.length === 0"
-                  class="w-full h-14 mt-6 rounded-lg font-semibold text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md hover:shadow-xl transition-all duration-300"
+                  @click="openCheckoutModal"
+                  :disabled="cartItems.length === 0 || isUpdating || isCalculatingShipping"
+                  class="w-full h-14 mt-6 rounded-xl font-bold text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 border-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                  </svg>
                   Proceed to Checkout
+                  <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                  </svg>
                 </Button>
                 
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                  <h3 class="text-sm font-medium text-gray-700 mb-3">We Accept</h3>
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="h-10 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <span class="text-xs font-semibold text-gray-700">COD</span>
+                <div class="mt-8 pt-6 border-t border-gray-700/50">
+                  <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
+                  <div class="grid grid-cols-3 gap-3">
+                    <div class="h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
+                      <span class="text-xs font-bold text-white">COD</span>
                     </div>
-                    <div class="h-10 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <span class="text-xs font-semibold text-gray-700">GCash</span>
+                    <div class="h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
+                      <span class="text-xs font-bold text-white">GCash</span>
                     </div>
-                    <div class="h-10 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                      <span class="text-xs font-semibold text-gray-700">Card</span>
+                    <div class="h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
+                      <span class="text-xs font-bold text-white">Card</span>
                     </div>
-                  </div>
-                </div>
-                
-                <div class="mt-4 pt-4 border-t border-gray-200">
-                  <div class="flex items-center text-sm text-gray-600">
-                    <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                    </svg>
-                    <span>Secure SSL Encryption</span>
-                  </div>
-                  <p class="text-xs text-gray-500 mt-2">Your payment information is securely processed</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card class="mt-4 bg-blue-50 border-0 rounded-2xl">
-              <CardContent class="p-4">
-                <div class="flex items-start">
-                  <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div>
-                    <h4 class="font-medium text-gray-900">Need help?</h4>
-                    <p class="text-sm text-gray-600 mt-1">Call us at <span class="font-medium">+63 912 345 6789</span></p>
-                    <p class="text-xs text-gray-500 mt-1">Available 8AM-8PM daily</p>
                   </div>
                 </div>
               </CardContent>
@@ -328,146 +216,376 @@
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isCheckoutModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
+            <div v-if="isCheckoutModalOpen" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5">
+              <div class="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white z-10">
+                <h2 class="text-2xl font-black text-gray-900 tracking-tight">Checkout</h2>
+                <button @click="closeModals" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              
+              <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar">
+                
+                <div class="flex items-center gap-4 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div class="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 border border-blue-200 shadow-sm">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-bold text-gray-900 text-lg">Your Cart ({{ totalItems }} items)</h3>
+                    <p class="text-blue-600 font-black">₱{{ subtotal.toLocaleString() }}</p>
+                  </div>
+                </div>
+
+                <div class="mb-8">
+                  <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
+                  <div class="border border-green-200 bg-green-50 p-3 rounded-2xl flex items-center gap-3 shadow-sm h-12">
+                    <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                      <div class="w-2 h-2 rounded-full bg-white"></div>
+                    </div>
+                    <span class="font-bold text-green-800 text-sm">Cash on Delivery (COD)</span>
+                  </div>
+                </div>
+
+                <div class="mb-8">
+                  <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Delivery Address</Label>
+                  <div class="space-y-3">
+                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'default' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
+                      <input type="radio" v-model="addressMode" value="default" class="hidden" />
+                      
+                      <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'default' ? 'border-blue-500' : 'border-gray-300'">
+                        <div v-if="addressMode === 'default'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                      </div>
+                      <div>
+                        <span class="block font-bold text-gray-900 mb-0.5">Profile Default Address</span>
+                        <span class="text-sm text-gray-500 font-medium">Use the saved address from your account settings.</span>
+                      </div>
+                    </label>
+
+                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'custom' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
+                      <input type="radio" v-model="addressMode" value="custom" class="hidden" />
+                      
+                      <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'custom' ? 'border-blue-500' : 'border-gray-300'">
+                        <div v-if="addressMode === 'custom'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                      </div>
+                      <div class="w-full">
+                        <span class="block font-bold text-gray-900 mb-1">Custom Address</span>
+                        <transition enter-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 max-h-0" enter-to-class="opacity-100 max-h-32">
+                          <textarea 
+                            v-if="addressMode === 'custom'" 
+                            v-model="customAddress" 
+                            @click.stop
+                            placeholder="Enter complete block, street, barangay, city, province..." 
+                            class="mt-2 w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-inner resize-none"
+                            rows="2"
+                          ></textarea>
+                        </transition>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="bg-gray-900 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden">
+                  <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                  <h4 class="font-bold text-gray-200 mb-4 border-b border-gray-700/50 pb-3 text-sm uppercase tracking-wider">Final Summary</h4>
+                  <div class="space-y-3 relative z-10">
+                    <div class="flex justify-between text-sm text-gray-300 font-medium">
+                      <span>Items Subtotal</span>
+                      <span>₱{{ subtotal.toLocaleString() }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-gray-300 font-medium pb-4 border-b border-gray-700/50">
+                      <span>Estimated Shipping</span>
+                      <span>
+                        <span v-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
+                        <span v-else-if="shippingFeeEst === 0" class="text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">FREE</span>
+                        <span v-else>₱{{ shippingFeeEst.toLocaleString() }}</span>
+                      </span>
+                    </div>
+                    <div class="flex justify-between items-end pt-2">
+                      <span class="text-sm font-medium text-gray-400">Total to Pay</span>
+                      <span class="text-3xl font-black text-white">₱{{ totalAmount.toLocaleString() }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-6 bg-white border-t border-gray-50 flex gap-3 z-10">
+                <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-14 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-base">Cancel</Button>
+                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim())" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 border-0 transition-all">
+                  Confirm Purchase
+                </Button>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isCheckoutAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+      </transition>
+
+      <AlertDialog :open="isCheckoutAlertOpen" @update:open="isCheckoutAlertOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Confirm Cart Checkout
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
+              You are placing a bulk order for <strong class="text-gray-900">{{ totalItems }} items</strong>.
+              <br/><br/>
+              The total amount of <strong class="text-gray-900 text-lg">₱{{ totalAmount.toLocaleString() }}</strong> will be collected upon delivery via Cash on Delivery. Do you want to finalize this purchase?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Go Back</AlertDialogCancel>
+            <AlertDialogAction @click="confirmCheckout" :disabled="isProcessing" class="rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white h-11 px-6 shadow-md shadow-green-600/20">
+              {{ isProcessing ? 'Processing...' : 'Place Order' }}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/utils/axios'
+import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
+import { Label } from '@/components/ui/label'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const router = useRouter()
 
-// Mock Cart Data
-const cartItems = ref([
-  {
-    id: 1,
-    type: 'product',
-    name: 'Premium Interior White',
-    brand: 'CaviteGo',
-    typeDesc: 'Interior',
-    finish: 'Matte',
-    price: 1250,
-    quantity: 2,
-    unit: 'gallon',
-    stock: 45,
-    color: '#ffffff'
-  },
-  {
-    id: 2,
-    type: 'product',
-    name: 'WeatherGuard Exterior',
-    brand: 'CaviteGo',
-    typeDesc: 'Exterior',
-    finish: 'Gloss',
-    price: 1850,
-    quantity: 1,
-    unit: 'gallon',
-    stock: 8,
-    color: '#4a90e2'
-  },
-  {
-    id: 3,
-    type: 'service',
-    name: 'Interior Painting Service',
-    description: 'Living room painting - 20 sqm',
-    price: 5000,
-    duration: '3-5 days',
-    scheduledDate: 'Dec 15, 2024',
-    location: '123 Main St, Cavite',
-    contact: '+63 912 345 6789',
-    icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-  },
-  {
-    id: 4,
-    type: 'service',
-    name: 'Color Consultation',
-    description: 'House color scheme planning',
-    price: 2500,
-    duration: '2 hours',
-    scheduledDate: 'Dec 20, 2024',
-    location: '123 Main St, Cavite',
-    contact: '+63 912 345 6789',
-    icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01'
-  }
-])
+// State
+const cartItems = ref([])
+const isLoading = ref(true)
+const isUpdating = ref(false) 
+const isProcessing = ref(false)
+
+// Modal & Form States
+const isCheckoutModalOpen = ref(false)
+const isCheckoutAlertOpen = ref(false)
+const addressMode = ref('default')
+const customAddress = ref('')
+
+// Shipping States
+const shippingFeeEst = ref(0)
+const isCalculatingShipping = ref(false)
+let shippingCalcTimeout = null
 
 // Computed Values
 const productItems = computed(() => cartItems.value.filter(item => item.type === 'product'))
 const serviceItems = computed(() => cartItems.value.filter(item => item.type === 'service'))
+
 const totalItems = computed(() => cartItems.value.reduce((sum, item) => sum + (item.quantity || 1), 0))
 const subtotal = computed(() => productItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0))
 const servicesTotal = computed(() => serviceItems.value.reduce((sum, item) => sum + item.price, 0))
-const deliveryFee = computed(() => {
-  const totalProducts = productItems.value.reduce((sum, item) => sum + item.quantity, 0)
-  return totalProducts >= 5 ? 0 : 250 // Free delivery for 5+ gallons
-})
-const totalAmount = computed(() => subtotal.value + servicesTotal.value + deliveryFee.value)
 
-// Methods
-const updateQuantity = (itemId, newQuantity) => {
-  if (newQuantity < 1) newQuantity = 1
-  if (newQuantity > 10) newQuantity = 10
-  
-  const item = cartItems.value.find(item => item.id === itemId)
-  if (item && item.type === 'product') {
-    item.quantity = newQuantity
-  }
-}
+const totalAmount = computed(() => subtotal.value + servicesTotal.value + shippingFeeEst.value)
 
-const removeItem = (itemId) => {
-  cartItems.value = cartItems.value.filter(item => item.id !== itemId)
-}
-
-const clearCart = () => {
-  if (confirm('Are you sure you want to clear your cart?')) {
-    cartItems.value = []
-  }
-}
-
-const proceedToCheckout = () => {
+// Dynamic Live Shipping Calculator
+const calculateLiveShipping = () => {
   if (cartItems.value.length === 0) {
-    alert('Your cart is empty. Add some items to proceed.')
+    shippingFeeEst.value = 0
     return
   }
   
-  // Store cart data for checkout page
-  localStorage.setItem('cartCheckoutData', JSON.stringify({
-    items: cartItems.value,
-    subtotal: subtotal.value,
-    servicesTotal: servicesTotal.value,
-    deliveryFee: deliveryFee.value,
-    totalAmount: totalAmount.value
-  }))
-  
-  router.push('/EcommerceClient/EccommerceCheckOut')
+  clearTimeout(shippingCalcTimeout)
+  isCalculatingShipping.value = true
+
+  shippingCalcTimeout = setTimeout(async () => {
+    try {
+      const payloadItems = cartItems.value.map(item => ({
+        price: item.price,
+        quantity: item.quantity,
+        distributor_lat: item.distributor_lat,
+        distributor_lng: item.distributor_lng
+      }))
+
+      const response = await api.post('/client/shop/shipping-fee', {
+        cart_items: payloadItems
+      })
+
+      if (response.data.success) {
+        shippingFeeEst.value = response.data.data.calculated_shipping_fee
+      }
+    } catch (error) {
+      console.error('Error calculating shipping', error)
+      shippingFeeEst.value = 0 
+    } finally {
+      isCalculatingShipping.value = false
+    }
+  }, 500)
 }
+
+watch(cartItems, () => {
+  calculateLiveShipping()
+}, { deep: true })
+
+// Data Fetching
+const fetchCartItems = async () => {
+  try {
+    isLoading.value = true
+    const response = await api.get('/client/shop/cart-items')
+    if (response.data.success) {
+      cartItems.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Error fetching cart:', error)
+    toast.error('Failed to load cart items')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Item Adjustments
+const updateQuantity = async (itemId, newQuantity, maxStock) => {
+  if (newQuantity < 1) return
+  if (newQuantity > maxStock) {
+    toast.warning(`Only ${maxStock} items available in stock`)
+    return
+  }
+  
+  isUpdating.value = true
+  const item = cartItems.value.find(i => i.id === itemId)
+  const oldQuantity = item.quantity
+  if (item) item.quantity = newQuantity
+
+  try {
+    const response = await api.put(`/client/shop/cart-items/${itemId}`, { quantity: newQuantity })
+    if (!response.data.success) throw new Error()
+  } catch (error) {
+    if (item) item.quantity = oldQuantity
+    toast.error('Failed to update quantity')
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const removeItem = async (itemId) => {
+  isUpdating.value = true
+  try {
+    const response = await api.delete(`/client/shop/cart-items/${itemId}`)
+    if (response.data.success) {
+      cartItems.value = cartItems.value.filter(item => item.id !== itemId)
+      toast.success('Item removed from cart')
+    }
+  } catch (error) {
+    toast.error('Failed to remove item')
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const clearCart = async () => {
+  if (!confirm('Are you sure you want to completely empty your cart?')) return
+
+  isUpdating.value = true
+  try {
+    const response = await api.delete('/client/shop/cart-items')
+    if (response.data.success) {
+      cartItems.value = []
+      toast.success('Cart cleared successfully')
+    }
+  } catch (error) {
+    toast.error('Failed to clear cart')
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+// Checkout Flow
+const openCheckoutModal = () => {
+  if (cartItems.value.length === 0) {
+    toast.error('Your cart is empty. Add some items to proceed.')
+    return
+  }
+  addressMode.value = 'default'
+  customAddress.value = ''
+  isCheckoutModalOpen.value = true
+}
+
+const closeModals = () => {
+  isCheckoutModalOpen.value = false
+}
+
+const handleOrderSubmit = () => {
+  isCheckoutAlertOpen.value = true
+}
+
+const confirmCheckout = async () => {
+  try {
+    isProcessing.value = true
+    
+    const payload = {}
+    if (addressMode.value === 'custom') {
+      payload.custom_address = customAddress.value
+    }
+
+    const response = await api.post('/client/shop/cart-items/checkout', payload)
+
+    if (response.data.success) {
+      toast.success('Cart checked out successfully! (Cash on Delivery)')
+      isCheckoutAlertOpen.value = false
+      closeModals()
+      cartItems.value = [] // Clear frontend
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to place order. Ensure your profile address is configured and stock is available.')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+onMounted(() => {
+  fetchCartItems()
+})
 </script>
 
 <style scoped>
-/* Smooth transitions for hover effects */
-.hover\:shadow-xl {
-  transition: box-shadow 0.3s ease;
-}
-
-/* Custom scrollbar for cart items */
-.overflow-y-auto::-webkit-scrollbar {
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
-
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
-
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+input[type=number] {
+  -moz-appearance: textfield;
 }
 </style>

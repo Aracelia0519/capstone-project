@@ -319,14 +319,14 @@
                   </label>
                   <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                     <button v-for="dept in allDepartments.slice(0, 9)" :key="dept"
-                      @click="positionForm.department = dept"
+                      @click="if(positionForm.department !== dept) { positionForm.accessibility = []; positionForm.department = dept }"
                       :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium', 
                       positionForm.department === dept 
                         ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
                         : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
                       {{ dept }}
                     </button>
-                    <button @click="positionForm.department = 'other'; showCustomDept = true"
+                    <button @click="if(positionForm.department !== 'other') { positionForm.accessibility = []; positionForm.department = 'other'; showCustomDept = true }"
                       :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium col-span-2 md:col-span-1', 
                       positionForm.department === 'other' 
                         ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
@@ -408,12 +408,12 @@
                   </div>
                 </div>
 
-                <div v-if="positionForm.department === 'Human Resources'" class="mt-6 pt-6 border-t border-gray-200">
+                <div v-if="['Human Resources', 'Operational Distributor'].includes(positionForm.department)" class="mt-6 pt-6 border-t border-gray-200">
                   <h4 class="text-lg font-semibold text-gray-800 mb-4">Accessibility Settings</h4>
                   <p class="text-gray-600 mb-4 text-sm md:text-base">Select which sidebar items this position can access:</p>
                   
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                    <div v-for="item in accessibilityOptions" :key="item.id"
+                    <div v-for="item in (positionForm.department === 'Human Resources' ? accessibilityOptions : operationalDistributorAccessibilityOptions)" :key="item.id"
                       class="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                       @click="toggleAccessibilityItem(item.id)">
                       <div class="flex items-center h-5">
@@ -430,7 +430,7 @@
                     </div>
                   </div>
                   <p class="text-xs text-gray-500 mt-2">
-                    Note: These settings determine which HR sidebar items will be accessible to users assigned to this position.
+                    Note: These settings determine which sidebar items will be accessible to users assigned to this position.
                   </p>
                 </div>
               </div>
@@ -483,12 +483,12 @@
                   </div>
                 </div>
                 
-                <div v-if="positionForm.department === 'Human Resources'" class="flex flex-col md:flex-row md:items-start">
+                <div v-if="['Human Resources', 'Operational Distributor'].includes(positionForm.department)" class="flex flex-col md:flex-row md:items-start">
                   <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Accessibility:</div>
                   <div class="flex-1">
                     <div v-if="positionForm.accessibility.length > 0" class="space-y-2">
                       <div class="flex flex-wrap gap-2">
-                        <div v-for="item in accessibilityOptions.filter(opt => positionForm.accessibility.includes(opt.id))" :key="item.id"
+                        <div v-for="item in (positionForm.department === 'Human Resources' ? accessibilityOptions : operationalDistributorAccessibilityOptions).filter(opt => positionForm.accessibility.includes(opt.id))" :key="item.id"
                           class="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-full text-sm font-medium">
                           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -599,6 +599,32 @@ const accessibilityOptions = [
   { id: 'employee_status', label: 'Employee Status' },
   { id: 'recruitment_application', label: 'Recruitment Application' },
   { id: 'payroll_management', label: 'Payroll Management' }
+]
+
+// Accessibility options for Operational Distributor
+const operationalDistributorAccessibilityOptions = [
+  // Overview
+  { id: 'ec_dashboard', label: 'Dashboard' },
+  // Catalog & Inventory
+  { id: 'ec_procurement', label: 'Procurement' },
+  { id: 'ec_categories', label: 'Categories' },
+  { id: 'ec_process_procurement', label: 'Process Request' },
+  { id: 'ec_track_procurement', label: 'Track Procurement' },
+  { id: 'ec_arrived_item', label: 'Arrived Item' },
+  { id: 'ec_inventory', label: 'Inventory' },
+  // Sales Operations
+  { id: 'ec_orders', label: 'Orders' },
+  { id: 'ec_prepare_order', label: 'Prepare Order' },
+  { id: 'ec_payment', label: 'Payments' },
+  { id: 'ec_delivery', label: 'Delivery' },
+  { id: 'ec_returns', label: 'Returns' },
+  // Network
+  { id: 'ec_partner_supplier', label: 'Partner Supplier' },
+  { id: 'ec_service_provider', label: 'Service Provider' },
+  // Analytics & UX
+  { id: 'ec_reviews', label: 'Reviews' },
+  { id: 'ec_promotions', label: 'Promotions' },
+  { id: 'ec_reports', label: 'Reports' }
 ]
 
 const positions = ref([])
@@ -835,13 +861,17 @@ const savePosition = async () => {
       ? positionForm.value.custom_department 
       : positionForm.value.department
 
-    // Prepare requirements with accessibility for HR department
+    // Prepare requirements with accessibility for authorized departments
     let requirements = null
-    if (department === 'Human Resources') {
+    if (department === 'Human Resources' || department === 'Operational Distributor') {
+      const currentOptions = department === 'Human Resources' 
+        ? accessibilityOptions 
+        : operationalDistributorAccessibilityOptions;
+        
       requirements = {
         accessibility: positionForm.value.accessibility,
         permissions: positionForm.value.accessibility.map(item => {
-          const option = accessibilityOptions.find(opt => opt.id === item)
+          const option = currentOptions.find(opt => opt.id === item)
           return option ? option.label : item
         })
       }
@@ -853,9 +883,8 @@ const savePosition = async () => {
       requirements: requirements
     }
 
-    // Remove custom_department and accessibility from payload
+    // Remove custom_department (keeping accessibility so backend receives it easily in the payload)
     delete payload.custom_department
-    delete payload.accessibility
 
     // Convert empty strings to null for salary fields
     if (payload.min_salary === '') payload.min_salary = null

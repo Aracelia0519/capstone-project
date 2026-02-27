@@ -74,10 +74,20 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
 
-        // E-Commerce Client Shop Routes
+        // E-Commerce Client Shop & Cart Routes
         Route::prefix('shop')->group(function () {
+            // Shop Endpoints
             Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
             Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
+            Route::post('/cart', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'addToCart']);
+            Route::post('/order-now', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'orderNow']);
+
+            // Cart Management Endpoints
+            Route::get('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'index']);
+            Route::put('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'update']);
+            Route::delete('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'destroy']);
+            Route::delete('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'clear']);
+            Route::post('/cart-items/checkout', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'checkout']);
         });
 
         Route::post('/save-color', [\App\Http\Controllers\Api\Client\ColorController::class, 'saveColor']);
@@ -428,7 +438,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/request', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'store']);
     });
 
+    // ==========================================
+    // E-Commerce Delivery Routes for Personnel
+    // ==========================================
+    Route::prefix('distributor-delivery')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'index']);
+        Route::post('/{id}/start', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'startDelivery']);
+        Route::post('/{id}/arrive', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'arrive']);
+    });
+
     Route::prefix('operation-distributor')->group(function () {
+        Route::get('/sidebar-access', [\App\Http\Controllers\Api\OperationDistributor\OperationDistributorSidebarController::class, 'getSidebarAccess']);
+
         Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);
         Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);
 
@@ -444,6 +465,17 @@ Route::middleware('auth:sanctum')->group(function () {
         // EC Inventory Routes to bitch
         Route::get('/ec-inventory', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'index']);
         Route::post('/ec-inventory/{id}/request-deployment', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'requestDeployment']);
+
+        Route::prefix('ecommerce-orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECOrderController::class, 'index']);
+            Route::post('/{id}/confirm', [\App\Http\Controllers\Api\OperationDistributor\ECOrderController::class, 'confirmOrder']);
+        });
+
+        Route::prefix('prepare-orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'index']);
+            Route::get('/personnel', [\App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'deliveryPersonnel']);
+            Route::post('/{id}/dispatch', [\App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'dispatchOrder']);
+        });
     });
     
 });

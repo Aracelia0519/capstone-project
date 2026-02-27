@@ -113,6 +113,8 @@ import ECommercePromotions from '@/views/E-commerce/ECommercePromotions.vue'
 import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
 import ECArrivedItem from '@/views/E-commerce/ECArrivedItem.vue'
 import ECInventory from '@/views/E-commerce/ECInventory.vue'
+import ECPrepareOrder from '@/views/E-commerce/ECPrepareOrder.vue'
+
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
@@ -575,7 +577,8 @@ const routes = [
   {
     path: '/ECommerce',
     component: ECommerceLayout,
-    meta: { requiresAuth: true, role: 'operational_distributor' },
+    meta: { requiresAuth: true,
+    allowedRoles: ['operational_distributor', 'employee']},
     children: [
       {
         path: 'ECDashboard',
@@ -656,6 +659,11 @@ const routes = [
         path: 'ECInventory',
         name: 'ECInventory',
         component: ECInventory
+      },
+      {
+        path: 'ECPrepareOrder',
+        name: 'ECPrepareOrder',
+        component: ECPrepareOrder
       },
     ]
   },

@@ -18,37 +18,43 @@
     </SidebarHeader>
 
     <SidebarContent class="px-3 py-4 space-y-6 bg-slate-900 overflow-x-hidden">
-      <SidebarGroup v-for="section in navigation" :key="section.title" class="p-0">
-        <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 nav-text-clip">
-          {{ section.title }}
-        </SidebarGroupLabel>
-        
-        <SidebarMenu>
-          <SidebarMenuItem v-for="item in section.items" :key="item.path">
-            <SidebarMenuButton 
-              as-child 
-              :tooltip="item.name" 
-              class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50 flex items-center"
-              active-class="bg-gradient-to-r from-indigo-500/20 to-purple-500/10 !text-white ring-1 ring-indigo-500/30"
-            >
-              <router-link :to="item.path" class="flex items-center w-full px-2">
-                <div class="shrink-0 flex items-center justify-center w-6 h-6">
-                  <component :is="item.icon" class="w-5 h-5" :class="item.color" />
-                </div>
-                <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">{{ item.name }}</span>
-                
-                <Badge 
-                  v-if="(state === 'expanded' || isMobile) && item.badge" 
-                  variant="outline" 
-                  class="ml-auto text-[9px] bg-indigo-500/20 text-indigo-300 border-indigo-500/30 font-bold px-1.5 h-4"
-                >
-                  {{ item.badge }}
-                </Badge>
-              </router-link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
+      <div v-if="isLoadingAccess" class="flex justify-center p-4">
+        <Loader2 class="w-6 h-6 animate-spin text-indigo-400" />
+      </div>
+
+      <template v-else>
+        <SidebarGroup v-for="section in filteredNavigation" :key="section.title" class="p-0">
+          <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 nav-text-clip">
+            {{ section.title }}
+          </SidebarGroupLabel>
+          
+          <SidebarMenu>
+            <SidebarMenuItem v-for="item in section.items" :key="item.path">
+              <SidebarMenuButton 
+                as-child 
+                :tooltip="item.name" 
+                class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50 flex items-center"
+                active-class="bg-gradient-to-r from-indigo-500/20 to-purple-500/10 !text-white ring-1 ring-indigo-500/30"
+              >
+                <router-link :to="item.path" class="flex items-center w-full px-2">
+                  <div class="shrink-0 flex items-center justify-center w-6 h-6">
+                    <component :is="item.icon" class="w-5 h-5" :class="item.color" />
+                  </div>
+                  <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">{{ item.name }}</span>
+                  
+                  <Badge 
+                    v-if="(state === 'expanded' || isMobile) && item.badge" 
+                    variant="outline" 
+                    class="ml-auto text-[9px] bg-indigo-500/20 text-indigo-300 border-indigo-500/30 font-bold px-1.5 h-4"
+                  >
+                    {{ item.badge }}
+                  </Badge>
+                </router-link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </template>
     </SidebarContent>
 
     <SidebarFooter class="px-3 py-4 border-t border-slate-800/50 bg-slate-900 space-y-1">
@@ -116,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue'
+import { ref, computed, onMounted, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
@@ -142,45 +148,53 @@ const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Distributor')
 
+// Navigation Roles State
+const isLoadingAccess = ref(true)
+const hasFullAccess = ref(false)
+const accessKeys = ref([])
+
+// Ensure IDs match `permission_key` from position_accessibilities exactly
 const navigation = [
   {
     title: 'Overview',
     items: [
-      { name: 'Dashboard', path: '/ECommerce/ECDashboard', icon: LayoutDashboard, color: 'text-indigo-400', badge: 'Live' }
+      { id: 'ec_dashboard', name: 'Dashboard', path: '/ECommerce/ECDashboard', icon: LayoutDashboard, color: 'text-indigo-400', badge: 'Live' }
     ]
   },
   {
     title: 'Catalog & Inventory',
     items: [
-      { name: 'Procurement', path: '/ECommerce/ECProcurement', icon: PackageSearch, color: 'text-blue-400', badge: 'Req' },
-      { name: 'Categories', path: '/ECommerce/ECCategories', icon: Tag, color: 'text-emerald-400' },
-      { name: 'Process Request', path: '/ECommerce/ECProcessProcurement', icon: ClipboardList, color: 'text-emerald-400', badge: 'Head' },
-      { name: 'Track Procurement', path: '/ECommerce/ECPTrackProcurement', icon: ClipboardList, color: 'text-emerald-400' },
-      { name: 'Arrived Item', path: '/ECommerce/ECArrivedItem', icon: PackageCheck, color: 'text-green-400' },
-      { name: 'Inventory', path: '/ECommerce/ECInventory', icon: Boxes, color: 'text-purple-400' },
+      { id: 'ec_procurement', name: 'Procurement', path: '/ECommerce/ECProcurement', icon: PackageSearch, color: 'text-blue-400', badge: 'Req' },
+      { id: 'ec_categories', name: 'Categories', path: '/ECommerce/ECCategories', icon: Tag, color: 'text-emerald-400' },
+      { id: 'ec_process_procurement', name: 'Process Request', path: '/ECommerce/ECProcessProcurement', icon: ClipboardList, color: 'text-emerald-400', badge: 'Head' },
+      { id: 'ec_track_procurement', name: 'Track Procurement', path: '/ECommerce/ECPTrackProcurement', icon: ClipboardList, color: 'text-emerald-400' },
+      { id: 'ec_arrived_item', name: 'Arrived Item', path: '/ECommerce/ECArrivedItem', icon: PackageCheck, color: 'text-green-400' },
+      { id: 'ec_inventory', name: 'Inventory', path: '/ECommerce/ECInventory', icon: Boxes, color: 'text-purple-400' },
     ]
   },
   {
     title: 'Sales Operations',
     items: [
-      { name: 'Orders', path: '/ECommerce/ECOrders', icon: ClipboardList, color: 'text-amber-400' },
-      { name: 'Payments', path: '/ECommerce/ECPayment', icon: CreditCard, color: 'text-green-400' },
-      { name: 'Delivery', path: '/ECommerce/ECDelivery', icon: Truck, color: 'text-cyan-400' },
-      { name: 'Returns', path: '/ECommerce/ECReturns', icon: Undo2, color: 'text-red-400' },
+      { id: 'ec_orders', name: 'Orders', path: '/ECommerce/ECOrders', icon: ClipboardList, color: 'text-amber-400' },
+      { id: 'ec_prepare_order', name: 'Prepare Order', path: '/ECommerce/ECPrepareOrder', icon: PackageCheck, color: 'text-blue-400' },
+      { id: 'ec_payment', name: 'Payments', path: '/ECommerce/ECPayment', icon: CreditCard, color: 'text-green-400' },
+      { id: 'ec_delivery', name: 'Delivery', path: '/ECommerce/ECDelivery', icon: Truck, color: 'text-cyan-400' },
+      { id: 'ec_returns', name: 'Returns', path: '/ECommerce/ECReturns', icon: Undo2, color: 'text-red-400' },
     ]
   },
   {
     title: 'Network',
     items: [
       { 
+        id: 'ec_partner_supplier',
         name: 'Partner Supplier', 
         path: '/ECommerce/ECPartnerSupplier', 
         icon: Handshake, 
         color: 'text-indigo-400', 
         badge: 'New' 
       },
-
       { 
+        id: 'ec_service_provider',
         name: 'Service Provider', 
         path: '/ECommerce/ECServiceProvider', 
         icon: Briefcase,
@@ -191,12 +205,38 @@ const navigation = [
   {
     title: 'Analytics & UX',
     items: [
-      { name: 'Reviews', path: '/ECommerce/ECReviews', icon: Star, color: 'text-violet-400' },
-      { name: 'Promotions', path: '/ECommerce/ECPromotions', icon: Percent, color: 'text-orange-400' },
-      { name: 'Reports', path: '/ECommerce/ECreports', icon: BarChart3, color: 'text-sky-400' }
+      { id: 'ec_reviews', name: 'Reviews', path: '/ECommerce/ECReviews', icon: Star, color: 'text-violet-400' },
+      { id: 'ec_promotions', name: 'Promotions', path: '/ECommerce/ECPromotions', icon: Percent, color: 'text-orange-400' },
+      { id: 'ec_reports', name: 'Reports', path: '/ECommerce/ECreports', icon: BarChart3, color: 'text-sky-400' }
     ]
   }
 ]
+
+// Computed property to filter navigations automatically
+const filteredNavigation = computed(() => {
+  if (hasFullAccess.value) return navigation
+
+  return navigation.map(section => {
+    return {
+      ...section,
+      items: section.items.filter(item => accessKeys.value.includes(item.id))
+    }
+  }).filter(section => section.items.length > 0)
+})
+
+const fetchSidebarAccess = async () => {
+  try {
+    const response = await api.get('/operation-distributor/sidebar-access')
+    if (response.data.status === 'success') {
+      hasFullAccess.value = response.data.has_full_access
+      accessKeys.value = response.data.access_keys || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch sidebar access rules:', error)
+  } finally {
+    isLoadingAccess.value = false
+  }
+}
 
 const confirmLogout = async () => {
   isLoggingOut.value = true
@@ -218,6 +258,8 @@ const confirmLogout = async () => {
 }
 
 onMounted(() => {
+  fetchSidebarAccess()
+  
   const data = localStorage.getItem('user_data')
   if (data) {
     const user = JSON.parse(data)
