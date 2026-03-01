@@ -419,8 +419,8 @@
                       <div class="flex items-center h-5">
                         <Checkbox 
                           :id="`accessibility-${item.id}`" 
-                          :checked="positionForm.accessibility.includes(item.id)"
-                          @update:checked="toggleAccessibilityItem(item.id)"
+                          :modelValue="positionForm.accessibility.includes(item.id)"
+                          @update:modelValue="toggleAccessibilityItem(item.id)"
                         />
                       </div>
                       <label :for="`accessibility-${item.id}`" 
@@ -602,6 +602,7 @@ const accessibilityOptions = [
 ]
 
 // Accessibility options for Operational Distributor
+// Accessibility options for Operational Distributor
 const operationalDistributorAccessibilityOptions = [
   // Overview
   { id: 'ec_dashboard', label: 'Dashboard' },
@@ -618,13 +619,16 @@ const operationalDistributorAccessibilityOptions = [
   { id: 'ec_payment', label: 'Payments' },
   { id: 'ec_delivery', label: 'Delivery' },
   { id: 'ec_returns', label: 'Returns' },
+  { id: 'ec_promo_approval', label: 'Promo Approval' },
   // Network
   { id: 'ec_partner_supplier', label: 'Partner Supplier' },
   { id: 'ec_service_provider', label: 'Service Provider' },
   // Analytics & UX
   { id: 'ec_reviews', label: 'Reviews' },
   { id: 'ec_promotions', label: 'Promotions' },
-  { id: 'ec_reports', label: 'Reports' }
+  { id: 'ec_reports', label: 'Reports' },
+  // Communication
+  { id: 'ec_messages', label: 'Messages' }
 ]
 
 const positions = ref([])

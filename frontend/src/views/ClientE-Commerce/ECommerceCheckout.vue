@@ -363,29 +363,41 @@
         <div class="lg:col-span-1">
           <div class="sticky top-24">
             <Card class="border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader class="p-6 border-b border-gray-200 bg-white">
+              <CardHeader class="p-6 border-b border-gray-200 bg-white flex justify-between items-center flex-row">
                 <CardTitle class="text-xl font-bold text-gray-900">Order Summary</CardTitle>
+                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">{{ orderItems.length }} items</span>
               </CardHeader>
               
               <ScrollArea class="h-96">
                 <div class="p-4 space-y-4">
+                  <div v-if="orderItems.length === 0" class="text-center py-10 text-gray-500">
+                    Your cart is empty.
+                  </div>
                    <div v-for="item in orderItems" :key="item.id" class="flex items-start pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                    <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center mr-3 shrink-0">
-                      <div v-if="item.type === 'product'" class="w-8 h-8 rounded-full" :style="{ backgroundColor: item.color }"></div>
+                    <div class="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center mr-3 shrink-0" :style="item.image_url ? {} : { backgroundColor: item.color || '#e5e7eb' }">
+                      <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover" />
+                      <div v-else-if="item.type === 'product'" class="w-8 h-8 rounded-full" :style="{ backgroundColor: item.color }"></div>
                       <svg v-else class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon || 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10'"></path>
                       </svg>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <h4 class="text-sm font-medium text-gray-900 truncate">{{ item.name }}</h4>
-                      <div class="flex justify-between items-center mt-1">
-                        <p class="text-xs text-gray-500">
-                          <span v-if="item.type === 'product'">Qty: {{ item.quantity }}</span>
-                          <span v-else>{{ item.date }}</span>
-                        </p>
-                        <p class="text-sm font-medium text-gray-900">
-                          ₱{{ (item.price * (item.quantity || 1)).toLocaleString() }}
-                        </p>
+                      <h4 class="text-sm font-bold text-gray-900 truncate">{{ item.name }}</h4>
+                      <div class="flex justify-between items-end mt-1">
+                        <div class="flex flex-col">
+                          <p class="text-xs text-gray-500 font-medium mb-0.5">
+                            <span v-if="item.type === 'product' || !item.type">Qty: {{ item.quantity }}</span>
+                            <span v-else>{{ item.date }}</span>
+                          </p>
+                          <span v-if="item.promotion && item.promotion.type === 'percentage_discount'" class="text-[10px] text-red-600 font-bold bg-red-50 px-1 py-0.5 rounded border border-red-100 w-max">-{{ item.promotion.discount_value }}% OFF</span>
+                          <span v-else-if="item.promotion && (item.promotion.type === 'fixed_discount' || item.promotion.type === 'fixed_amount')" class="text-[10px] text-red-600 font-bold bg-red-50 px-1 py-0.5 rounded border border-red-100 w-max">-₱{{ item.promotion.discount_value }} OFF</span>
+                        </div>
+                        <div class="text-right">
+                          <p v-if="item.promotion && item.original_price > item.price" class="text-[10px] text-gray-400 line-through">₱{{ (item.original_price * (item.quantity || 1)).toLocaleString() }}</p>
+                          <p class="text-sm font-black text-blue-600">
+                            ₱{{ (item.price * (item.quantity || 1)).toLocaleString() }}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -394,32 +406,36 @@
               
               <CardContent class="p-6 bg-white border-t border-gray-100">
                 <div class="space-y-3">
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">Subtotal</span>
-                    <span class="font-medium text-gray-900">₱{{ subtotal.toLocaleString() }}</span>
+                  <div class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">Subtotal</span>
+                    <span class="font-bold text-gray-900">₱{{ subtotal.toLocaleString() }}</span>
                   </div>
                   
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">Services</span>
-                    <span class="font-medium text-gray-900">₱{{ servicesTotal.toLocaleString() }}</span>
+                  <div v-if="servicesTotal > 0" class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">Services</span>
+                    <span class="font-bold text-gray-900">₱{{ servicesTotal.toLocaleString() }}</span>
                   </div>
                   
-                  <div class="flex justify-between">
-                    <span class="text-gray-600">Delivery Fee</span>
-                    <span class="font-medium text-gray-900">₱{{ deliveryFee.toLocaleString() }}</span>
+                  <div class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">Est. Delivery Fee</span>
+                    <span>
+                      <span v-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
+                      <span v-else-if="deliveryFee === 0" class="text-green-600 font-black bg-green-50 border border-green-200 px-2 py-0.5 rounded text-xs tracking-wider">FREE</span>
+                      <span v-else class="font-bold text-gray-900">₱{{ deliveryFee.toLocaleString() }}</span>
+                    </span>
                   </div>
                   
-                  <div v-if="paymentMethod === 'cod'" class="flex justify-between">
-                    <span class="text-gray-600">COD Fee</span>
-                    <span class="font-medium text-gray-900">₱{{ codFee.toLocaleString() }}</span>
+                  <div v-if="codFee > 0" class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">COD Fee</span>
+                    <span class="font-bold text-gray-900">₱{{ codFee.toLocaleString() }}</span>
                   </div>
                   
-                  <Separator class="my-3" />
+                  <Separator class="my-4" />
                   
                   <div>
-                    <div class="flex justify-between">
-                      <span class="text-lg font-semibold text-gray-900">Total</span>
-                      <span class="text-2xl font-bold text-gray-900">₱{{ totalAmount.toLocaleString() }}</span>
+                    <div class="flex justify-between items-end">
+                      <span class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Total</span>
+                      <span class="text-3xl font-black text-gray-900">₱{{ totalAmount.toLocaleString() }}</span>
                     </div>
                   </div>
                 </div>
@@ -429,25 +445,31 @@
                     <Checkbox id="acceptTerms" :checked="acceptTerms" @update:checked="val => acceptTerms = val" class="mt-1" />
                     <Label for="acceptTerms" class="text-sm text-gray-700 font-normal leading-normal">
                       I agree to the 
-                      <a href="#" class="text-blue-600 hover:text-blue-800">Terms of Service</a>
+                      <a href="#" class="text-blue-600 hover:text-blue-800 font-medium">Terms of Service</a>
                       and 
-                      <a href="#" class="text-blue-600 hover:text-blue-800">Privacy Policy</a>
+                      <a href="#" class="text-blue-600 hover:text-blue-800 font-medium">Privacy Policy</a>
                     </Label>
                   </div>
                   
-                  <div class="mt-4">
+                  <div class="mt-5">
                     <Button
                       @click="placeOrder"
-                      :disabled="!acceptTerms || !isFormValid"
-                      class="w-full h-14 rounded-lg font-semibold text-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      :disabled="!acceptTerms || !isFormValid || isCalculatingShipping || isProcessing"
+                      class="w-full h-14 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-600/20 border-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      Place Order
+                      <span v-if="isProcessing" class="flex items-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Processing...
+                      </span>
+                      <span v-else class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Confirm Purchase
+                      </span>
                     </Button>
                     
-                    <p class="text-xs text-gray-500 text-center mt-3">
+                    <p class="text-xs text-gray-500 text-center mt-3 font-medium">
                       By placing your order, you agree to our terms
                     </p>
                   </div>
@@ -455,16 +477,16 @@
               </CardContent>
             </Card>
             
-            <Card class="mt-4 bg-blue-50 border-0 rounded-2xl">
+            <Card class="mt-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
               <CardContent class="p-4">
                 <div class="flex items-start">
-                  <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg class="w-6 h-6 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
                   </svg>
                   <div>
-                    <h4 class="font-medium text-gray-900">Need help with checkout?</h4>
-                    <p class="text-sm text-gray-600 mt-1">Call us at <span class="font-medium">+63 912 345 6789</span></p>
-                    <p class="text-xs text-gray-500 mt-1">or email <span class="font-medium">support@cavitegopaint.com</span></p>
+                    <h4 class="font-bold text-blue-900">Need help with checkout?</h4>
+                    <p class="text-sm text-blue-800 mt-1">Call us at <span class="font-bold">+63 912 345 6789</span></p>
+                    <p class="text-xs text-blue-700 mt-1 font-medium">or email support@cavitegopaint.com</p>
                   </div>
                 </div>
               </CardContent>
@@ -479,6 +501,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/utils/axios'
+import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -491,29 +515,30 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 const router = useRouter()
 
-// Order Data
+// Order & View States
 const orderId = ref(`ORD${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`)
 const orderItems = ref([])
+const isLoading = ref(true)
+const isCalculatingShipping = ref(false)
+const isProcessing = ref(false)
 
-// Shipping Information
+// Shipping Information Form
 const shippingInfo = ref({
-  firstName: 'Juan',
-  lastName: 'Dela Cruz',
-  email: 'juan.delacruz@email.com',
-  phone: '+63 912 345 6789',
-  address: '123 Main Street',
-  city: 'dasmarinas',
-  barangay: 'San Miguel',
-  zipCode: '4114',
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  barangay: '',
+  zipCode: '',
   instructions: '',
   saveAddress: true
 })
 
-// Payment Method
+// Payment & Terms States
 const paymentMethod = ref('cod')
 const acceptTerms = ref(false)
-
-// Card Information
 const cardInfo = ref({
   number: '',
   expiry: '',
@@ -522,26 +547,41 @@ const cardInfo = ref({
   saveCard: false
 })
 
-// Load cart data from localStorage
-onMounted(() => {
+// API logic to fetch cart data incorporating promo values setup in backend
+const fetchCartItems = async () => {
+  try {
+    isLoading.value = true
+    const response = await api.get('/client/shop/cart-items')
+    if (response.data.success && response.data.data.length > 0) {
+      orderItems.value = response.data.data
+      calculateLiveShipping() // Calculate shipping using API to catch free_shipping promo
+    } else {
+      // Fallback to localStorage if no items found in API (for backward compatibility/testing)
+      loadFromLocalStorage()
+    }
+  } catch (error) {
+    console.error('Error fetching cart items:', error)
+    loadFromLocalStorage()
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const loadFromLocalStorage = () => {
   const cartData = localStorage.getItem('cartCheckoutData')
   if (cartData) {
     const parsedData = JSON.parse(cartData)
     orderItems.value = parsedData.items || []
-    
-    // Set computed values
-    subtotal.value = parsedData.subtotal || 0
     servicesTotal.value = parsedData.servicesTotal || 0
-    deliveryFee.value = parsedData.deliveryFee || 0
-    totalAmount.value = parsedData.totalAmount || 0
+    calculateLiveShipping()
   }
-})
+}
 
-// Computed Values
-const subtotal = ref(0)
+// Compute dynamic values
+const subtotal = computed(() => orderItems.value.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0))
 const servicesTotal = ref(0)
 const deliveryFee = ref(0)
-const codFee = computed(() => paymentMethod.value === 'cod' ? 50 : 0)
+const codFee = computed(() => paymentMethod.value === 'cod' ? 50 : 0) // Standard 50 fee for COD, adjustable
 const totalAmount = computed(() => subtotal.value + servicesTotal.value + deliveryFee.value + codFee.value)
 
 const isFormValid = computed(() => {
@@ -549,44 +589,106 @@ const isFormValid = computed(() => {
   return firstName && lastName && email && phone && address && city && barangay && zipCode
 })
 
-// Methods
-const placeOrder = () => {
+// Live shipping calculator tied to backend rules and promos
+const calculateLiveShipping = async () => {
+  if (orderItems.value.length === 0) {
+    deliveryFee.value = 0
+    return
+  }
+  
+  isCalculatingShipping.value = true
+  try {
+    // Standard payload expected by the shipping-fee endpoint
+    const payloadItems = orderItems.value.map(item => ({
+      product_id: item.product_id || item.product?.id || item.id, // Ensure product_id exists to verify promotion
+      distributor_id: item.distributor_id,
+      price: item.price,
+      quantity: item.quantity || 1,
+      distributor_lat: item.distributor_lat,
+      distributor_lng: item.distributor_lng
+    }))
+
+    const response = await api.post('/client/shop/shipping-fee', {
+      cart_items: payloadItems
+    })
+
+    if (response.data.success) {
+      deliveryFee.value = response.data.data.calculated_shipping_fee
+    }
+  } catch (error) {
+    console.error('Error calculating shipping', error)
+    // Fallback logic if API isn't reachable
+    deliveryFee.value = 0 
+  } finally {
+    isCalculatingShipping.value = false
+  }
+}
+
+// Handle Order Placement
+const placeOrder = async () => {
   if (!acceptTerms.value) {
-    alert('Please accept the terms and conditions')
+    toast.error('Please accept the terms and conditions')
     return
   }
   
   if (!isFormValid.value) {
-    alert('Please fill in all required shipping information')
+    toast.error('Please fill in all required shipping information')
     return
   }
   
-  const orderData = {
-    orderId: orderId.value,
-    items: orderItems.value,
-    shipping: shippingInfo.value,
-    payment: {
-      method: paymentMethod.value,
-      details: paymentMethod.value === 'card' ? cardInfo.value : null
-    },
-    totalAmount: totalAmount.value,
-    date: new Date().toISOString()
+  isProcessing.value = true
+  
+  try {
+    // Format full custom address string based on the input
+    const fullCustomAddress = `${shippingInfo.value.address}, ${shippingInfo.value.barangay}, ${shippingInfo.value.city}, ${shippingInfo.value.zipCode}`
+    
+    // Construct payload routing to Cart Checkout
+    const payload = {
+      custom_address: fullCustomAddress,
+      payment_method: paymentMethod.value
+    }
+    
+    const response = await api.post('/client/shop/cart-items/checkout', payload)
+
+    if (response.data.success) {
+      // Clear cart data
+      localStorage.removeItem('cartCheckoutData')
+      
+      // Store order data for confirmation page if needed
+      const orderData = {
+        orderId: response.data.data?.order_number || orderId.value,
+        totalAmount: totalAmount.value,
+        paymentMethod: paymentMethod.value,
+        date: new Date().toISOString()
+      }
+      localStorage.setItem('lastOrder', JSON.stringify(orderData))
+      
+      toast.success('Order placed successfully!')
+      router.push('/ecommerce/orders')
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to place order. Please try again.')
+    console.error(error)
+  } finally {
+    isProcessing.value = false
   }
-  
-  console.log('Order placed:', orderData)
-  
-  // Clear cart data
-  localStorage.removeItem('cartCheckoutData')
-  
-  // Store order data for confirmation page
-  localStorage.setItem('lastOrder', JSON.stringify(orderData))
-  
-  // Redirect to confirmation page (or orders page)
-  router.push('/ecommerce/orders')
-  
-  // In real app, this would send data to backend
-  alert(`Order #${orderId.value} placed successfully!`)
 }
+
+onMounted(() => {
+  fetchCartItems()
+  
+  // Optional: Pre-fill demo data to avoid typing while testing
+  if (!shippingInfo.value.firstName) {
+    shippingInfo.value.firstName = 'Juan'
+    shippingInfo.value.lastName = 'Dela Cruz'
+    shippingInfo.value.email = 'juan.delacruz@email.com'
+    shippingInfo.value.phone = '+63 912 345 6789'
+    shippingInfo.value.address = '123 Main Street'
+    shippingInfo.value.city = 'dasmarinas'
+    shippingInfo.value.barangay = 'San Miguel'
+    shippingInfo.value.zipCode = '4114'
+  }
+})
 </script>
 
 <style scoped>

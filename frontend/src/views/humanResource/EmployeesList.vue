@@ -95,22 +95,37 @@
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <select v-model="departmentFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline min-w-[150px]">
-            <option value="">All Departments</option>
-            <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
-          </select>
-          <select v-model="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline min-w-[150px]">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="on_leave">On Leave</option>
-          </select>
-          <select v-model="employmentStatusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline min-w-[150px]">
-            <option value="">All Employment Status</option>
-            <option value="probationary">Probationary</option>
-            <option value="regular">Regular</option>
-            <option value="contractual">Contractual</option>
-          </select>
+          <div class="relative min-w-[150px]">
+            <select v-model="departmentFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+              <option value="">All Departments</option>
+              <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+          <div class="relative min-w-[150px]">
+            <select v-model="statusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="on_leave">On Leave</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+          <div class="relative min-w-[150px]">
+            <select v-model="employmentStatusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+              <option value="">All Employment Status</option>
+              <option value="probationary">Probationary</option>
+              <option value="regular">Regular</option>
+              <option value="contractual">Contractual</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -503,34 +518,44 @@
                       <label class="block text-sm font-medium text-gray-700">
                         Gender <span class="text-red-500">*</span>
                       </label>
-                      <select 
-                        v-model="newEmployee.gender" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        :class="{'border-red-500': errors.gender, 'border-gray-300': !errors.gender}"
-                      >
-                        <option value="">Select Gender</option>
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
+                      <div class="relative">
+                        <select 
+                          v-model="newEmployee.gender" 
+                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          :class="{'border-red-500': errors.gender, 'border-gray-300': !errors.gender}"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
                       <p v-if="errors.gender" class="text-red-500 text-xs mt-1">{{ errors.gender[0] }}</p>
                     </div>
                     <div class="space-y-2">
                       <label class="block text-sm font-medium text-gray-700">
                         Marital Status <span class="text-red-500">*</span>
                       </label>
-                      <select 
-                        v-model="newEmployee.marital_status" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                        :class="{'border-red-500': errors.marital_status, 'border-gray-300': !errors.marital_status}"
-                      >
-                        <option value="">Select Status</option>
-                        <option value="single">Single</option>
-                        <option value="married">Married</option>
-                        <option value="widowed">Widowed</option>
-                        <option value="separated">Separated</option>
-                        <option value="divorced">Divorced</option>
-                      </select>
+                      <div class="relative">
+                        <select 
+                          v-model="newEmployee.marital_status" 
+                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          :class="{'border-red-500': errors.marital_status, 'border-gray-300': !errors.marital_status}"
+                        >
+                          <option value="">Select Status</option>
+                          <option value="single">Single</option>
+                          <option value="married">Married</option>
+                          <option value="widowed">Widowed</option>
+                          <option value="separated">Separated</option>
+                          <option value="divorced">Divorced</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
                       <p v-if="errors.marital_status" class="text-red-500 text-xs mt-1">{{ errors.marital_status[0] }}</p>
                     </div>
                     <div class="space-y-2">
@@ -590,34 +615,44 @@
                     <label class="block text-sm font-medium text-gray-700">
                       Department <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.department" 
-                      @change="loadPositionsForDepartment"
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      :class="{'border-red-500': errors.department, 'border-gray-300': !errors.department}"
-                    >
-                      <option value="">Select Department</option>
-                      <option v-for="dept in availableDepartments" :key="dept" :value="dept">
-                        {{ dept }}
-                      </option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.department" 
+                        @change="loadPositionsForDepartment"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.department, 'border-gray-300': !errors.department}"
+                      >
+                        <option value="">Select Department</option>
+                        <option v-for="dept in availableDepartments" :key="dept" :value="dept">
+                          {{ dept }}
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.department" class="text-red-500 text-xs mt-1">{{ errors.department[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
                       Position <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.position" 
-                      :disabled="!newEmployee.department || availablePositions.length === 0"
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
-                      :class="{'border-red-500': errors.position, 'border-gray-300': !errors.position}"
-                    >
-                      <option value="">Select Position</option>
-                      <option v-for="position in availablePositions" :key="position.id" :value="position.title">
-                        {{ position.title }}
-                      </option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.position" 
+                        :disabled="!newEmployee.department || availablePositions.length === 0"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="{'border-red-500': errors.position, 'border-gray-300': !errors.position}"
+                      >
+                        <option value="">Select Position</option>
+                        <option v-for="position in availablePositions" :key="position.id" :value="position.title">
+                          {{ position.title }}
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.position" class="text-red-500 text-xs mt-1">{{ errors.position[0] }}</p>
                     <p v-if="!newEmployee.department" class="text-xs text-gray-500">
                       Please select a department first
@@ -630,36 +665,46 @@
                     <label class="block text-sm font-medium text-gray-700">
                       Employment Type <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.employment_type" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      :class="{'border-red-500': errors.employment_type, 'border-gray-300': !errors.employment_type}"
-                    >
-                      <option value="">Select Type</option>
-                      <option value="full_time">Full Time</option>
-                      <option value="part_time">Part Time</option>
-                      <option value="contract">Contract</option>
-                      <option value="probationary">Probationary</option>
-                      <option value="intern">Intern</option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.employment_type" 
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.employment_type, 'border-gray-300': !errors.employment_type}"
+                      >
+                        <option value="">Select Type</option>
+                        <option value="full_time">Full Time</option>
+                        <option value="part_time">Part Time</option>
+                        <option value="contract">Contract</option>
+                        <option value="probationary">Probationary</option>
+                        <option value="intern">Intern</option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.employment_type" class="text-red-500 text-xs mt-1">{{ errors.employment_type[0] }}</p>
                   </div>
                   <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
                       Employment Status <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.employment_status" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      :class="{'border-red-500': errors.employment_status, 'border-gray-300': !errors.employment_status}"
-                    >
-                      <option value="probationary">Probationary</option>
-                      <option value="regular">Regular</option>
-                      <option value="contractual">Contractual</option>
-                      <option value="resigned">Resigned</option>
-                      <option value="terminated">Terminated</option>
-                      <option value="retired">Retired</option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.employment_status" 
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.employment_status, 'border-gray-300': !errors.employment_status}"
+                      >
+                        <option value="probationary">Probationary</option>
+                        <option value="regular">Regular</option>
+                        <option value="contractual">Contractual</option>
+                        <option value="resigned">Resigned</option>
+                        <option value="terminated">Terminated</option>
+                        <option value="retired">Retired</option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.employment_status" class="text-red-500 text-xs mt-1">{{ errors.employment_status[0] }}</p>
                   </div>
                   <div class="space-y-2">
@@ -702,14 +747,19 @@
                       Salary <span class="text-red-500">*</span>
                     </label>
                     <div class="flex space-x-2">
-                      <select 
-                        v-model="newEmployee.salary_currency" 
-                        class="px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      >
-                        <option value="PHP">PHP</option>
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                      </select>
+                      <div class="relative w-28">
+                        <select 
+                          v-model="newEmployee.salary_currency" 
+                          class="w-full appearance-none !bg-none px-3 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        >
+                          <option value="PHP">PHP</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
                       <input 
                         v-model="newEmployee.salary" 
                         type="number"
@@ -885,24 +935,29 @@
                     <label class="block text-sm font-medium text-gray-700">
                       Valid ID Type <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.valid_id_type" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      :class="{'border-red-500': errors.valid_id_type, 'border-gray-300': !errors.valid_id_type}"
-                    >
-                      <option value="">Select ID Type</option>
-                      <option value="passport">Passport</option>
-                      <option value="driver_license">Driver's License</option>
-                      <option value="sss">SSS ID</option>
-                      <option value="philhealth">PhilHealth ID</option>
-                      <option value="pagibig">Pag-IBIG ID</option>
-                      <option value="umid">UMID</option>
-                      <option value="voter_id">Voter's ID</option>
-                      <option value="prc">PRC ID</option>
-                      <option value="postal">Postal ID</option>
-                      <option value="tin">TIN ID</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.valid_id_type" 
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.valid_id_type, 'border-gray-300': !errors.valid_id_type}"
+                      >
+                        <option value="">Select ID Type</option>
+                        <option value="passport">Passport</option>
+                        <option value="driver_license">Driver's License</option>
+                        <option value="sss">SSS ID</option>
+                        <option value="philhealth">PhilHealth ID</option>
+                        <option value="pagibig">Pag-IBIG ID</option>
+                        <option value="umid">UMID</option>
+                        <option value="voter_id">Voter's ID</option>
+                        <option value="prc">PRC ID</option>
+                        <option value="postal">Postal ID</option>
+                        <option value="tin">TIN ID</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.valid_id_type" class="text-red-500 text-xs mt-1">{{ errors.valid_id_type[0] }}</p>
                   </div>
                   <div class="space-y-2">
@@ -960,19 +1015,24 @@
                     <label class="block text-sm font-medium text-gray-700">
                       Educational Attainment <span class="text-red-500">*</span>
                     </label>
-                    <select 
-                      v-model="newEmployee.educational_attainment" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
-                      :class="{'border-red-500': errors.educational_attainment, 'border-gray-300': !errors.educational_attainment}"
-                    >
-                      <option value="">Select Attainment</option>
-                      <option value="elementary">Elementary</option>
-                      <option value="high_school">High School</option>
-                      <option value="vocational">Vocational</option>
-                      <option value="college">College</option>
-                      <option value="post_graduate">Post Graduate</option>
-                      <option value="doctorate">Doctorate</option>
-                    </select>
+                    <div class="relative">
+                      <select 
+                        v-model="newEmployee.educational_attainment" 
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        :class="{'border-red-500': errors.educational_attainment, 'border-gray-300': !errors.educational_attainment}"
+                      >
+                        <option value="">Select Attainment</option>
+                        <option value="elementary">Elementary</option>
+                        <option value="high_school">High School</option>
+                        <option value="vocational">Vocational</option>
+                        <option value="college">College</option>
+                        <option value="post_graduate">Post Graduate</option>
+                        <option value="doctorate">Doctorate</option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </div>
                     <p v-if="errors.educational_attainment" class="text-red-500 text-xs mt-1">{{ errors.educational_attainment[0] }}</p>
                   </div>
                   <div class="space-y-2">
@@ -1254,7 +1314,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 import { getCurrentUser } from '@/utils/auth'
-import { toast } from 'vue-sonner' // Added Sonner toast
+import { toast } from 'vue-sonner' 
 
 const router = useRouter()
 
@@ -1266,12 +1326,12 @@ const employmentStatusFilter = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 10
 const showAddModal = ref(false)
-const showConfirmDialog = ref(false) // Added for Confirmation Dialog
+const showConfirmDialog = ref(false) 
 const loading = ref(false)
 const saving = ref(false)
 const error = ref(null)
 const formError = ref(null)
-const errors = ref({}) // State for form validation errors
+const errors = ref({}) 
 const employees = ref([])
 const departments = ref([])
 const statistics = ref(null)
@@ -1280,7 +1340,7 @@ const userInfo = ref(null)
 const currentStep = ref(1)
 const availableDepartments = ref([])
 const availablePositions = ref([])
-const showPassword = ref(false) // State for password visibility
+const showPassword = ref(false) 
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 const currentYear = new Date().getFullYear()
@@ -1300,7 +1360,7 @@ onMounted(async () => {
     userInfo.value = await getCurrentUser()
     fetchEmployees()
     fetchDepartments()
-    fetchPayrollSettings() // Fetch payroll settings when component mounts
+    fetchPayrollSettings() 
   } catch (err) {
     console.error('Failed to get user info:', err)
   }
@@ -1339,7 +1399,7 @@ const newEmployee = reactive({
   regularization_date: '',
   salary: 0,
   salary_currency: 'PHP',
-  payment_frequency: '', // Will be set by API
+  payment_frequency: '', 
   
   // Bank Details
   bank_name: '',
@@ -1362,7 +1422,7 @@ const newEmployee = reactive({
   year_graduated: currentYear,
   course: '',
   
-  // Files (will be handled separately)
+  // Files 
   valid_id_photo: null,
   resume: null,
   employment_contract: null,
@@ -1375,11 +1435,10 @@ const newEmployee = reactive({
 
 // Frontend Validation Logic Per Step
 const validateStep = (step) => {
-    errors.value = {} // Clear errors
+    errors.value = {} 
     formError.value = null
     let isValid = true
 
-    // Helper to add error
     const addError = (field, message) => {
         errors.value[field] = [message]
         isValid = false
@@ -1390,10 +1449,8 @@ const validateStep = (step) => {
         if (!newEmployee.last_name) addError('last_name', 'Last name is required')
         if (!newEmployee.email) addError('email', 'Email is required')
         if (!newEmployee.phone) addError('phone', 'Phone number is required')
-        // Validate phone: 11 digits
         else if (!/^\d{11}$/.test(newEmployee.phone)) addError('phone', 'Phone must be exactly 11 digits')
         
-        // Validate emergency contact if present: 11 digits
         if (newEmployee.emergency_contact && !/^\d{11}$/.test(newEmployee.emergency_contact)) {
             addError('emergency_contact', 'Emergency contact must be exactly 11 digits')
         }
@@ -1415,8 +1472,6 @@ const validateStep = (step) => {
         if (!newEmployee.salary && newEmployee.salary !== 0) addError('salary', 'Salary is required')
         if (!newEmployee.payment_frequency) addError('payment_frequency', 'Payment frequency is not set. Please check distributor settings.')
     }
-
-    // Step 3 (Financial) usually has optional fields, but if you have required ones, add here.
     
     if (step === 4) {
         if (!newEmployee.valid_id_type) addError('valid_id_type', 'ID Type is required')
@@ -1428,7 +1483,6 @@ const validateStep = (step) => {
         if (!newEmployee.course) addError('course', 'Course is required')
     }
     
-    // Step 5 - Final Review and Document Check (ensure all docs are present)
     if (step === 5) {
         if (!newEmployee.resume) addError('resume', 'Resume is required')
         if (!newEmployee.employment_contract) addError('employment_contract', 'Employment contract is required')
@@ -1439,13 +1493,12 @@ const validateStep = (step) => {
 
     if (!isValid) {
         formError.value = "Please fix the errors in the form before proceeding."
-        toast.error("Please fix the errors in the form before proceeding.") // Added sonner
+        toast.error("Please fix the errors in the form before proceeding.") 
     }
 
     return isValid
 }
 
-// Handler to prevent mathematical characters in salary input
 const preventInvalidMathChars = (e) => {
   const invalidChars = ['e', 'E', '+', '-'];
   if (invalidChars.includes(e.key)) {
@@ -1453,7 +1506,6 @@ const preventInvalidMathChars = (e) => {
   }
 }
 
-// Wizard navigation
 const nextStep = () => {
   if (validateStep(currentStep.value)) {
     if (currentStep.value < steps.length) {
@@ -1465,20 +1517,17 @@ const nextStep = () => {
 const prevStep = () => {
   if (currentStep.value > 1) {
     currentStep.value--
-    formError.value = null // Clear errors when going back
+    formError.value = null 
     errors.value = {}
   }
 }
 
 const goToStep = (step) => {
-  // Only allow jumping to steps if previous steps are valid (optional strictness)
-  // For now, allow navigation but clear errors
   if (step >= 1 && step <= steps.length) {
     currentStep.value = step
   }
 }
 
-// Helper function to format currency
 const formatCurrency = (amount) => {
   if (!amount) return '0.00'
   return parseFloat(amount).toLocaleString('en-PH', {
@@ -1487,32 +1536,27 @@ const formatCurrency = (amount) => {
   })
 }
 
-// Helper to format frequency for display
 const formatFrequency = (freq) => {
     if (!freq) return 'Loading...';
-    // Handle specific cases or capitalize
     const map = {
         'daily': 'Daily',
         'weekly': 'Weekly',
         'bi-monthly': 'Bi-Monthly',
-        'bi_monthly': 'Bi-Monthly', // Handle potential db/frontend mismatch
+        'bi_monthly': 'Bi-Monthly', 
         'monthly': 'Monthly'
     };
     return map[freq] || freq.charAt(0).toUpperCase() + freq.slice(1);
 }
 
-// File upload handling
 const handleFileUpload = (event, field) => {
   const file = event.target.files[0]
   if (file) {
-    // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds 5MB limit') // Changed to Sonner
+      toast.error('File size exceeds 5MB limit') 
       event.target.value = ''
       return
     }
     newEmployee[field] = file
-    // Clear any previous error for this field
     if (errors.value[field]) delete errors.value[field]
   }
 }
@@ -1521,7 +1565,6 @@ const removeFile = (field) => {
     newEmployee[field] = null
 }
 
-// Fetch departments from positions
 const fetchDepartments = async () => {
   try {
     const response = await axios.get('/hr/positions/departments')
@@ -1530,14 +1573,12 @@ const fetchDepartments = async () => {
     }
   } catch (err) {
     console.error('Failed to fetch departments:', err)
-    // Fallback to departments from employees if positions API fails
     if (departments.value.length > 0) {
       availableDepartments.value = departments.value
     }
   }
 }
 
-// Load positions for selected department
 const loadPositionsForDepartment = async () => {
   if (!newEmployee.department) {
     availablePositions.value = []
@@ -1545,15 +1586,13 @@ const loadPositionsForDepartment = async () => {
   }
   
   try {
-    // Clear position when department changes
     newEmployee.position = ''
     
-    // Fetch positions for the selected department
     const response = await axios.get('/hr/positions', {
       params: {
         department: newEmployee.department,
         status: 'active',
-        per_page: 100 // Get all positions for this department
+        per_page: 100 
       }
     })
     
@@ -1568,19 +1607,12 @@ const loadPositionsForDepartment = async () => {
   }
 }
 
-// Fetch Payroll Settings for the Distributor
 const fetchPayrollSettings = async () => {
     try {
         const response = await axios.get('/distributor/payroll-settings')
         if (response.data) {
-            // Map the DB value to the frontend value if needed
-            // DB might return 'bi-monthly', frontend select usually expects 'bi_monthly' or vice versa
-            // We'll trust the DB value but ensure it matches valid enum values if the backend validates it strictly
             let freq = response.data.frequency;
-            
-            // Normalize if needed (e.g., ensuring consistency with backend expected enum)
             if (freq === 'bi-monthly') freq = 'bi_monthly'; 
-            
             newEmployee.payment_frequency = freq;
         }
     } catch (err) {
@@ -1589,7 +1621,6 @@ const fetchPayrollSettings = async () => {
     }
 }
 
-// Computed properties
 const filteredEmployees = computed(() => {
   let filtered = employees.value
   
@@ -1626,7 +1657,6 @@ const paginatedEmployees = computed(() => {
   return filteredEmployees.value.slice(start, end)
 })
 
-// Helper functions
 const getInitials = (name) => {
   if (!name) return '??'
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -1667,20 +1697,17 @@ const getStatusClass = (status) => {
   return classes[status] || 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-800'
 }
 
-// API functions
 const fetchEmployees = async () => {
   loading.value = true
   error.value = null
   
   try {
-    // Fetch employees
     const response = await axios.get('/hr/employees')
     if (response.data.status === 'success') {
       employees.value = response.data.data.employees
       departments.value = response.data.data.departments
     }
     
-    // Fetch statistics
     const statsResponse = await axios.get('/hr/employees/statistics')
     if (statsResponse.data.status === 'success') {
       statistics.value = statsResponse.data.data.statistics
@@ -1691,24 +1718,20 @@ const fetchEmployees = async () => {
   } catch (err) {
     console.error('Failed to fetch employees:', err)
     error.value = err.response?.data?.message || 'Failed to load employees'
-    toast.error('Failed to load employees') // Added Sonner
+    toast.error('Failed to load employees') 
   } finally {
     loading.value = false
   }
 }
 
-// Logic Step 1: Check validation and open dialog
 const checkAndOpenConfirmDialog = () => {
   if (!validateStep(currentStep.value)) {
     return;
   }
-  // Open confirmation dialog instead of saving immediately
   showConfirmDialog.value = true;
 }
 
-// Logic Step 2: Finalize creation after confirmation
 const finalizeEmployeeCreation = async () => {
-  // Close the dialog first
   showConfirmDialog.value = false;
 
   saving.value = true
@@ -1716,19 +1739,15 @@ const finalizeEmployeeCreation = async () => {
   errors.value = {}
   
   try {
-    // Create FormData for file uploads
     const formData = new FormData()
     
-    // Add all employee data to FormData
     Object.keys(newEmployee).forEach(key => {
       if (key === 'valid_id_photo' || key === 'resume' || key === 'employment_contract' || 
           key === 'medical_certificate' || key === 'nbi_clearance' || key === 'police_clearance') {
-        // Handle files separately
         if (newEmployee[key] instanceof File) {
           formData.append(key, newEmployee[key])
         }
       } else {
-        // Handle regular fields
         if (newEmployee[key] !== null && newEmployee[key] !== undefined) {
           formData.append(key, newEmployee[key])
         }
@@ -1742,11 +1761,8 @@ const finalizeEmployeeCreation = async () => {
     })
     
     if (response.data.status === 'success') {
-      // Show success message
-      toast.success('Employee created successfully!') // Changed to Sonner
+      toast.success('Employee created successfully!') 
       
-      // Reset form and wizard
-      // We need to re-fetch payroll settings to ensure the default is correct for next entry
       const currentFreq = newEmployee.payment_frequency;
       
       Object.keys(newEmployee).forEach(key => {
@@ -1757,32 +1773,25 @@ const finalizeEmployeeCreation = async () => {
         else if (key === 'employment_status') newEmployee[key] = 'probationary'
         else if (key === 'hire_date') newEmployee[key] = today.value
         else if (key === 'salary_currency') newEmployee[key] = 'PHP'
-        else if (key === 'payment_frequency') newEmployee[key] = currentFreq // Keep the fetched frequency
+        else if (key === 'payment_frequency') newEmployee[key] = currentFreq 
         else if (key === 'year_graduated') newEmployee[key] = currentYear
         else if (key === 'salary') newEmployee[key] = 0
         else newEmployee[key] = ''
       })
       
-      // Reset position dropdowns
       availablePositions.value = []
-      
-      // Reset wizard to first step
       currentStep.value = 1
-      
-      // Close modal and refresh data
       showAddModal.value = false
       fetchEmployees()
     }
   } catch (err) {
     console.error('Failed to create employee:', err)
     
-    // Check if it's a validation error (422)
     if (err.response && err.response.status === 422) {
-        errors.value = err.response.data.errors // Capture specific field errors
+        errors.value = err.response.data.errors 
         formError.value = err.response.data.message || 'Please fix the errors in the form.'
-        toast.error(formError.value) // Added Sonner
+        toast.error(formError.value) 
         
-        // Find which step the error belongs to and jump there
         const errorFields = Object.keys(errors.value)
         if (errorFields.some(f => ['first_name', 'last_name', 'email', 'phone', 'password', 'date_of_birth'].includes(f))) {
             currentStep.value = 1
@@ -1794,9 +1803,8 @@ const finalizeEmployeeCreation = async () => {
             currentStep.value = 4
         }
     } else {
-        // Here we handle the 500 error message properly now!
         const serverMessage = err.response?.data?.message || err.message;
-        toast.error(`Failed to create employee: ${serverMessage}`); // Changed to Sonner
+        toast.error(`Failed to create employee: ${serverMessage}`); 
     }
   } finally {
     saving.value = false
@@ -1808,10 +1816,9 @@ const viewEmployee = (id) => {
 }
 
 const editEmployee = (id) => {
-  // For now, just show a message
   const employee = employees.value.find(emp => emp.id === id)
   if (employee) {
-    toast.info(`Edit employee: ${employee.full_name} (ID: ${employee.employee_code})`) // Changed to Sonner
+    toast.info(`Edit employee: ${employee.full_name} (ID: ${employee.employee_code})`) 
   }
 }
 
@@ -1820,12 +1827,12 @@ const regularizeEmployee = async (id) => {
     try {
       const response = await axios.post(`/hr/employees/${id}/regularize`)
       if (response.data.status === 'success') {
-        toast.success('Employee regularized successfully!') // Changed to Sonner
+        toast.success('Employee regularized successfully!') 
         fetchEmployees()
       }
     } catch (err) {
       console.error('Failed to regularize employee:', err)
-      toast.error(err.response?.data?.message || 'Failed to regularize employee') // Changed to Sonner
+      toast.error(err.response?.data?.message || 'Failed to regularize employee') 
     }
   }
 }
@@ -1833,7 +1840,7 @@ const regularizeEmployee = async (id) => {
 const uploadDocument = (id) => {
   const employee = employees.value.find(emp => emp.id === id)
   if (employee) {
-    toast.info(`Upload document for: ${employee.full_name}`) // Changed to Sonner
+    toast.info(`Upload document for: ${employee.full_name}`) 
   }
 }
 
@@ -1847,12 +1854,11 @@ const nextPage = () => {
 
 const closeAddModal = () => {
   showAddModal.value = false
-  showConfirmDialog.value = false // Ensure confirm dialog is also closed
+  showConfirmDialog.value = false 
   currentStep.value = 1
   formError.value = null
   errors.value = {}
   
-  // Reset form
   const currentFreq = newEmployee.payment_frequency;
   Object.keys(newEmployee).forEach(key => {
     if (key === 'gender') newEmployee[key] = 'male'
@@ -1862,25 +1868,21 @@ const closeAddModal = () => {
     else if (key === 'employment_status') newEmployee[key] = 'probationary'
     else if (key === 'hire_date') newEmployee[key] = today.value
     else if (key === 'salary_currency') newEmployee[key] = 'PHP'
-    else if (key === 'payment_frequency') newEmployee[key] = currentFreq // Keep fetched settings
+    else if (key === 'payment_frequency') newEmployee[key] = currentFreq 
     else if (key === 'year_graduated') newEmployee[key] = currentYear
     else if (key === 'salary') newEmployee[key] = 0
-    // Don't reset password fields - let them be empty
     else if (key !== 'password' && key !== 'password_confirmation') {
       newEmployee[key] = ''
     }
   })
   
-  // Reset password fields separately
   newEmployee.password = ''
   newEmployee.password_confirmation = ''
   
-  // Reset position dropdowns
   availablePositions.value = []
 }
 
 const exportToCSV = () => {
-  // Basic CSV export
   const headers = ['Employee ID', 'Name', 'Email', 'Phone', 'Department', 'Position', 'Employment Status', 'Status', 'Hire Date']
   const data = filteredEmployees.value.map(emp => [
     emp.employee_code,
@@ -1905,7 +1907,7 @@ const exportToCSV = () => {
   link.download = `employees_${new Date().toISOString().split('T')[0]}.csv`
   link.click()
   
-  toast.success('CSV exported successfully!') // Changed to Sonner
+  toast.success('CSV exported successfully!') 
 }
 </script>
 

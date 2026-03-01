@@ -26,6 +26,15 @@ class CartController extends Controller
             ->where('client_id', $user->id)
             ->get();
 
+        // Fetch active promotions
+        $currentDate = now()->toDateString();
+        $promotions = DB::table('crm_promotions')
+            ->whereIn('status', ['approved', 'active', 'pending'])
+            ->whereDate('start_date', '<=', $currentDate)
+            ->whereDate('end_date', '>=', $currentDate)
+            ->whereRaw('used_count < usage_limit')
+            ->get();
+
         $formattedItems = [];
 
         foreach ($cartItems as $item) {
@@ -46,6 +55,31 @@ class CartController extends Controller
                 ->select('latitude', 'longitude')
                 ->first();
 
+            // Promotion verification
+            $originalPrice = (float) $item->product->price;
+            $discountedPrice = $originalPrice;
+            $promoData = null;
+
+            $productPromo = $promotions->where('distributor_id', $item->distributor_id)
+                ->filter(function($promo) use ($item) {
+                    return $promo->product_id == $item->product_id || is_null($promo->product_id);
+                })->first();
+
+            if ($productPromo) {
+                $promoData = [
+                    'id' => $productPromo->id,
+                    'name' => $productPromo->name,
+                    'type' => $productPromo->type,
+                    'discount_value' => (float) $productPromo->discount_value,
+                ];
+
+                if ($productPromo->type === 'percentage_discount') {
+                    $discountedPrice = $originalPrice - ($originalPrice * ((float)$productPromo->discount_value / 100));
+                } elseif ($productPromo->type === 'fixed_discount' || $productPromo->type === 'fixed_amount') {
+                    $discountedPrice = max(0, $originalPrice - (float)$productPromo->discount_value);
+                }
+            }
+
             $formattedItems[] = [
                 'id' => $item->id, // Cart item ID
                 'product_id' => $item->product_id,
@@ -55,7 +89,9 @@ class CartController extends Controller
                 'brand' => 'Distributor Brand', 
                 'typeDesc' => $item->product->type,
                 'finish' => 'Standard',
-                'price' => (float) $item->product->price,
+                'original_price' => $originalPrice,
+                'price' => $discountedPrice,
+                'promotion' => $promoData,
                 'quantity' => (int) $item->quantity,
                 'unit' => $item->product->size ?? 'unit',
                 'stock' => (int) $stock,
@@ -178,18 +214,53 @@ class CartController extends Controller
             }
         }
 
-        // 3. Calculate Shipping
+        // 3. Setup Shipping Rules and Promotions
         $shippingRule = ShippingRule::first() ?? new ShippingRule([
             'base_rate_per_km' => 15.00,
             'rate_per_item' => 5.00,
             'free_shipping_threshold' => 5000.00
         ]);
 
+        $currentDate = now()->toDateString();
+        $promotions = DB::table('crm_promotions')
+            ->whereIn('status', ['approved', 'active', 'pending'])
+            ->whereDate('start_date', '<=', $currentDate)
+            ->whereDate('end_date', '>=', $currentDate)
+            ->whereRaw('used_count < usage_limit')
+            ->get();
+
         $totalOrderAmount = 0;
         $totalShippingFee = 0;
+        $appliedPromotions = [];
 
         foreach ($cartItems as $item) {
-            $totalOrderAmount += ($item->product->price * $item->quantity);
+            $originalPrice = (float) $item->product->price;
+            $discountedPrice = $originalPrice;
+            $hasFreeShipping = false;
+
+            // Check if product qualifies for any active promotions
+            $productPromo = $promotions->where('distributor_id', $item->distributor_id)
+                ->filter(function($promo) use ($item) {
+                    return $promo->product_id == $item->product_id || is_null($promo->product_id);
+                })->first();
+
+            if ($productPromo) {
+                if ($productPromo->type === 'percentage_discount') {
+                    $discountedPrice = $originalPrice - ($originalPrice * ((float)$productPromo->discount_value / 100));
+                } elseif ($productPromo->type === 'fixed_discount' || $productPromo->type === 'fixed_amount') {
+                    $discountedPrice = max(0, $originalPrice - (float)$productPromo->discount_value);
+                } elseif ($productPromo->type === 'free_shipping') {
+                    $hasFreeShipping = true;
+                }
+
+                // Track applied promo IDs to increment their usage counters later
+                if (!isset($appliedPromotions[$productPromo->id])) {
+                    $appliedPromotions[$productPromo->id] = true;
+                }
+            }
+
+            $totalOrderAmount += ($discountedPrice * $item->quantity);
+            $item->discounted_price = $discountedPrice; // Attach for row insertion later
             
             $distAddress = DB::table('distributor_addresses')
                 ->join('distributor_requirements', 'distributor_addresses.distributor_requirements_id', '=', 'distributor_requirements.id')
@@ -204,9 +275,17 @@ class CartController extends Controller
 
             $distanceFee = $distance * $shippingRule->base_rate_per_km;
             $quantityFee = $item->quantity * $shippingRule->rate_per_item;
-            $totalShippingFee += ($distanceFee + $quantityFee);
+            $itemShippingFee = $distanceFee + $quantityFee;
+
+            // Nullify item shipping fee if a free shipping promo was applied
+            if ($hasFreeShipping) {
+                $itemShippingFee = 0;
+            }
+
+            $totalShippingFee += $itemShippingFee;
         }
 
+        // Apply global threshold rules if it's hit
         if ($shippingRule->free_shipping_threshold && $totalOrderAmount >= $shippingRule->free_shipping_threshold) {
             $totalShippingFee = 0;
         }
@@ -234,7 +313,7 @@ class CartController extends Controller
                     'distributor_id' => $item->distributor_id,
                     'product_id' => $item->product_id,
                     'quantity' => $item->quantity,
-                    'price' => $item->product->price
+                    'price' => $item->discounted_price // Ensure we insert discounted price into items table
                 ]);
 
                 $remainingToDeduct = $item->quantity;
@@ -264,6 +343,11 @@ class CartController extends Controller
                 if ($remainingToDeduct > 0) {
                     throw new \Exception("Not enough stock remaining for {$item->product->name}.");
                 }
+            }
+
+            // Increment usage count of applied promotions
+            foreach (array_keys($appliedPromotions) as $promoId) {
+                DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
             }
             
             // 6. Clear Cart

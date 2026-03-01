@@ -16,6 +16,11 @@ use App\Http\Controllers\Api\Employee\AttendanceRequestController;
 use App\Http\Controllers\Api\Employee\PayrollController;
 use App\Http\Controllers\Api\Supplier\PersonnelOfficerController;
 use App\Http\Controllers\Api\PersonnelOfficer\PersonnelController;
+use App\Http\Controllers\Api\EcommerceClient\ECommerceOrderController;
+use App\Http\Controllers\Api\OperationDistributor\ECommerceDashboardController;
+use App\Http\Controllers\Api\OperationDistributor\PaymentManagementController;
+use App\Http\Controllers\Api\OperationDistributor\ReviewManagementController;
+use App\Http\Controllers\Api\ServiceProvider\ServiceOfferingController;
 
 // Public routes
 Route::prefix('auth')->group(function () {
@@ -74,6 +79,14 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
 
+        // -----------------------------------------------------
+        // ECOMMERCE SERVICES: galing sa Ecommerce ng Client
+        // -----------------------------------------------------
+        Route::prefix('services')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'getServices']);
+            Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
+        });
+
         // E-Commerce Client Shop & Cart Routes
         Route::prefix('shop')->group(function () {
             // Shop Endpoints
@@ -115,6 +128,14 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::put('/{id}', [ServiceProviderRequirementController::class, 'update']);
                 Route::get('/statistics', [ServiceProviderRequirementController::class, 'statistics']);
             });
+        });
+
+        Route::prefix('services')->group(function () {
+            Route::get('/', [ServiceOfferingController::class, 'index']);
+            Route::post('/', [ServiceOfferingController::class, 'store']);
+            Route::post('/{id}', [ServiceOfferingController::class, 'update']); // Using POST for file-uploads in forms
+            Route::delete('/{id}', [ServiceOfferingController::class, 'destroy']);
+            Route::patch('/{id}/toggle', [ServiceOfferingController::class, 'toggleStatus']);
         });
 
         Route::post('/save-color', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'saveColor']);
@@ -237,6 +258,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/deploy', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'deploy']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'reject']);
         });
+
+        
     });
 
     // Admin User Management Routes
@@ -445,6 +468,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'index']);
         Route::post('/{id}/start', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'arrive']);
+        Route::post('/{id}/remit', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'remit']); // ADDED THIS
     });
 
     Route::prefix('operation-distributor')->group(function () {
@@ -452,6 +476,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);
         Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);
+
+        // -----------------------------------------------------
+        //  ECOMMERCE PAYMENTS(operational distributor part men)
+        // -----------------------------------------------------
+        Route::prefix('payments')->group(function () {
+            Route::get('/', [PaymentManagementController::class, 'index']);
+        });
+
+        // -------------------------------------------------------------
+        // E-Commerce Reviews Management (Operational bitch)
+        // -------------------------------------------------------------
+        Route::prefix('reviews')->group(function () {
+            Route::get('/', [ReviewManagementController::class, 'index']);
+            Route::put('/{id}/status', [ReviewManagementController::class, 'updateStatus']);
+            Route::post('/{id}/respond', [ReviewManagementController::class, 'respond']);
+        });
 
         Route::prefix('service-provider-requests')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'index']);
@@ -476,6 +516,25 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/personnel', [\App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'deliveryPersonnel']);
             Route::post('/{id}/dispatch', [\App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'dispatchOrder']);
         });
+
+        Route::get('/ecommerce-dashboard', [ECommerceDashboardController::class, 'index']);
+
     });
+
+    Route::get('/client/orders', [ECommerceOrderController::class, 'index']);
+    Route::post('/client/orders/reviews', [ECommerceOrderController::class, 'submitReview']);
+
+    Route::prefix('crm')->group(function () {
+        Route::get('/promotions', [\App\Http\Controllers\Api\CRM\PromotionController::class, 'index']);
+        Route::post('/promotions', [\App\Http\Controllers\Api\CRM\PromotionController::class, 'store']);
+        Route::get('/promotions/products', [\App\Http\Controllers\Api\CRM\PromotionController::class, 'getProducts']);
+    });
+
+    Route::prefix('crm/promotions-approval')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'index']);
+        Route::post('/{id}/approve', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'approve']);
+        Route::post('/{id}/reject', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'reject']);
+    });
+
     
 });

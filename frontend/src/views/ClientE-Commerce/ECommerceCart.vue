@@ -397,7 +397,7 @@ const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
 // Computed Values
-const productItems = computed(() => cartItems.value.filter(item => item.type === 'product'))
+const productItems = computed(() => cartItems.value.filter(item => item.type === 'product' || !item.type)) // fallback for missing type
 const serviceItems = computed(() => cartItems.value.filter(item => item.type === 'service'))
 
 const totalItems = computed(() => cartItems.value.reduce((sum, item) => sum + (item.quantity || 1), 0))
@@ -419,6 +419,8 @@ const calculateLiveShipping = () => {
   shippingCalcTimeout = setTimeout(async () => {
     try {
       const payloadItems = cartItems.value.map(item => ({
+        product_id: item.product_id || item.product?.id || item.id, // Included product_id for promotion verification
+        distributor_id: item.distributor_id,
         price: item.price,
         quantity: item.quantity,
         distributor_lat: item.distributor_lat,

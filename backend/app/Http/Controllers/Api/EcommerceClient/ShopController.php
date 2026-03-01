@@ -8,6 +8,7 @@ use App\Models\EcommerceClient\ShippingRule;
 use App\Models\EcommerceClient\ClientCart;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\EcommerceClient\ClientOrderItem;
+use App\Models\EcommerceClient\ProductReview; // Imported ProductReview
 use App\Models\Distributor\Product; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,21 @@ class ShopController extends Controller
     {
         $inventories = DistributorInventory::with(['product'])
             ->where('ecommerce_status', 'deployed')
+            ->get()
+            ->groupBy('product_id');
+
+        // Fetch active promotions
+        $currentDate = now()->toDateString();
+        $promotions = DB::table('crm_promotions')
+            ->whereIn('status', ['approved', 'active', 'pending'])
+            ->whereDate('start_date', '<=', $currentDate)
+            ->whereDate('end_date', '>=', $currentDate)
+            ->whereRaw('used_count < usage_limit')
+            ->get();
+
+        // Fetch published reviews to attach to products
+        $publishedReviews = ProductReview::with('client')
+            ->where('status', 'published') // Only fetch approved/published reviews
             ->get()
             ->groupBy('product_id');
 
@@ -40,6 +56,54 @@ class ShopController extends Controller
                 ->select('latitude', 'longitude')
                 ->first();
 
+            $originalPrice = (float) $productModel->price;
+            $discountedPrice = $originalPrice;
+            $promoData = null;
+
+            // Check if there is an active promotion for this product & distributor
+            $productPromo = $promotions->where('distributor_id', $firstItem->distributor_id)
+                ->filter(function($promo) use ($productModel) {
+                    return $promo->product_id == $productModel->id || is_null($promo->product_id);
+                })->first();
+
+            if ($productPromo) {
+                $promoData = [
+                    'id' => $productPromo->id,
+                    'name' => $productPromo->name,
+                    'type' => $productPromo->type,
+                    'discount_value' => (float) $productPromo->discount_value,
+                ];
+
+                if ($productPromo->type === 'percentage_discount') {
+                    $discountedPrice = $originalPrice - ($originalPrice * ((float)$productPromo->discount_value / 100));
+                } elseif ($productPromo->type === 'fixed_discount' || $productPromo->type === 'fixed_amount') {
+                    $discountedPrice = max(0, $originalPrice - (float)$productPromo->discount_value);
+                }
+            }
+
+            // Process Reviews & Ratings for this product
+            $productReviews = $publishedReviews->get($productModel->id, collect());
+            $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
+            $reviewCount = $productReviews->count();
+            
+            $formattedReviews = $productReviews->map(function($rev) {
+                $clientName = 'Customer';
+                if ($rev->client) {
+                    $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
+                    if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
+                }
+                return [
+                    'id' => $rev->id,
+                    'client' => $clientName,
+                    'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                    'rating' => (int)$rev->rating,
+                    'comment' => $rev->comment,
+                    'response' => $rev->response,
+                    'response_date' => $rev->response_date ? \Carbon\Carbon::parse($rev->response_date)->format('M d, Y') : null,
+                    'date' => \Carbon\Carbon::parse($rev->created_at)->format('M d, Y')
+                ];
+            })->values()->toArray();
+
             $products[] = [
                 'id' => $productModel->id,
                 'distributor_id' => $firstItem->distributor_id,
@@ -48,9 +112,13 @@ class ShopController extends Controller
                 'type' => $productModel->type,
                 'category' => $productModel->category,
                 'finish' => 'Standard', 
-                'price' => (float) $productModel->price,
+                'original_price' => $originalPrice,
+                'price' => $discountedPrice,
+                'promotion' => $promoData,
                 'stock' => $totalQuantity, 
-                'rating' => 4.5, 
+                'rating' => $avgRating,
+                'review_count' => $reviewCount,
+                'reviews' => $formattedReviews,
                 'color' => $productModel->color_code ?? '#ffffff',
                 'image_url' => $productModel->image_url ? asset('storage/' . ltrim($productModel->image_url, '/')) : null,
                 'distributor_lat' => $distAddress->latitude ?? null,
@@ -106,7 +174,7 @@ class ShopController extends Controller
             'quantity' => 'required|integer|min:1',
             'distributor_lat' => 'required|numeric',
             'distributor_lng' => 'required|numeric',
-            'custom_address' => 'nullable|string' // Accept custom address
+            'custom_address' => 'nullable|string' 
         ]);
 
         $user = Auth::user();
@@ -126,8 +194,6 @@ class ShopController extends Controller
         }
 
         $defaultAddress = "{$clientAddress->block_address}, {$clientAddress->barangay}, {$clientAddress->city}, {$clientAddress->province}";
-        
-        // Use custom address if provided, otherwise fallback to default
         $fullAddress = $request->filled('custom_address') ? $request->custom_address : $defaultAddress;
 
         // 2. Verify Product and Total Available Stock for this specific distributor
@@ -145,15 +211,42 @@ class ShopController extends Controller
             ], 400);
         }
 
-        // 3. Calculate Shipping (using default lat/lng for distance)
+        // 3. Apply Promotions to Price & Shipping
+        $currentDate = now()->toDateString();
+        $promotion = DB::table('crm_promotions')
+            ->where('distributor_id', $request->distributor_id)
+            ->where(function($q) use ($product) {
+                $q->where('product_id', $product->id)->orWhereNull('product_id');
+            })
+            ->whereIn('status', ['approved', 'active', 'pending'])
+            ->whereDate('start_date', '<=', $currentDate)
+            ->whereDate('end_date', '>=', $currentDate)
+            ->whereRaw('used_count < usage_limit')
+            ->first();
+
+        $originalPrice = (float) $product->price;
+        $discountedPrice = $originalPrice;
+        $hasFreeShipping = false;
+
+        if ($promotion) {
+            if ($promotion->type === 'percentage_discount') {
+                $discountedPrice = $originalPrice - ($originalPrice * ((float)$promotion->discount_value / 100));
+            } elseif ($promotion->type === 'fixed_discount' || $promotion->type === 'fixed_amount') {
+                $discountedPrice = max(0, $originalPrice - (float)$promotion->discount_value);
+            } elseif ($promotion->type === 'free_shipping') {
+                $hasFreeShipping = true;
+            }
+        }
+
+        $totalOrderAmount = $discountedPrice * $request->quantity;
+
+        // Calculate Distance and Shipping
         $shippingRule = ShippingRule::first() ?? new ShippingRule([
             'base_rate_per_km' => 15.00,
             'rate_per_item' => 5.00,
             'free_shipping_threshold' => 5000.00
         ]);
 
-        $totalOrderAmount = $product->price * $request->quantity;
-        
         $distance = $this->calculateDistance(
             $clientAddress->latitude,
             $clientAddress->longitude,
@@ -163,7 +256,7 @@ class ShopController extends Controller
 
         $shippingFee = ($distance * $shippingRule->base_rate_per_km) + ($request->quantity * $shippingRule->rate_per_item);
 
-        if ($shippingRule->free_shipping_threshold && $totalOrderAmount >= $shippingRule->free_shipping_threshold) {
+        if ($hasFreeShipping || ($shippingRule->free_shipping_threshold && $totalOrderAmount >= $shippingRule->free_shipping_threshold)) {
             $shippingFee = 0;
         }
 
@@ -189,13 +282,17 @@ class ShopController extends Controller
                 'distributor_id' => $request->distributor_id,
                 'product_id' => $product->id,
                 'quantity' => $request->quantity,
-                'price' => $product->price
+                'price' => $discountedPrice // Use discounted price
             ]);
+
+            // Increment promo usage if applied
+            if ($promotion) {
+                DB::table('crm_promotions')->where('id', $promotion->id)->increment('used_count');
+            }
 
             // 6. Deduct Stock from DistributorInventory (FIFO method)
             $remainingToDeduct = $request->quantity;
             
-            // Lock the rows to prevent race conditions when multiple users order simultaneously
             $inventories = DistributorInventory::where('product_id', $product->id)
                 ->where('distributor_id', $request->distributor_id)
                 ->where('ecommerce_status', 'deployed')
@@ -220,7 +317,6 @@ class ShopController extends Controller
                 }
             }
 
-            // Safety check: Ensure all quantities were deducted
             if ($remainingToDeduct > 0) {
                 throw new \Exception('Not enough active stock across inventory records.');
             }
@@ -246,6 +342,8 @@ class ShopController extends Controller
     {
         $request->validate([
             'cart_items' => 'required|array',
+            'cart_items.*.product_id' => 'required|integer', 
+            'cart_items.*.distributor_id' => 'required|integer',
             'cart_items.*.quantity' => 'required|integer|min:1',
             'cart_items.*.price' => 'required|numeric',
             'cart_items.*.distributor_lat' => 'required|numeric',
@@ -276,6 +374,7 @@ class ShopController extends Controller
         $totalShippingFee = 0;
         $totalOrderAmount = 0;
         $totalQuantity = 0;
+        $currentDate = now()->toDateString();
 
         foreach ($request->cart_items as $item) {
             $totalOrderAmount += ($item['price'] * $item['quantity']);
@@ -290,7 +389,26 @@ class ShopController extends Controller
 
             $distanceFee = $distance * $shippingRule->base_rate_per_km;
             $quantityFee = $item['quantity'] * $shippingRule->rate_per_item;
-            $totalShippingFee += ($distanceFee + $quantityFee);
+            $itemShippingFee = $distanceFee + $quantityFee;
+
+            // Check if this specific item triggers a free shipping promo
+            $hasFreeShippingPromo = DB::table('crm_promotions')
+                ->where('distributor_id', $item['distributor_id'])
+                ->where(function($q) use ($item) {
+                    $q->where('product_id', $item['product_id'])->orWhereNull('product_id');
+                })
+                ->whereIn('status', ['approved', 'active', 'pending'])
+                ->whereDate('start_date', '<=', $currentDate)
+                ->whereDate('end_date', '>=', $currentDate)
+                ->whereRaw('used_count < usage_limit')
+                ->where('type', 'free_shipping')
+                ->exists();
+
+            if ($hasFreeShippingPromo) {
+                $itemShippingFee = 0;
+            }
+
+            $totalShippingFee += $itemShippingFee;
         }
 
         if ($shippingRule->free_shipping_threshold && $totalOrderAmount >= $shippingRule->free_shipping_threshold) {

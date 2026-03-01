@@ -127,7 +127,8 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
   Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2, Handshake,
-  UserCircle, PackageSearch, Briefcase, PackageCheck, Boxes
+  UserCircle, PackageSearch, Briefcase, PackageCheck, Boxes, MessageCircle,
+  CheckCircle
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -180,6 +181,7 @@ const navigation = [
       { id: 'ec_payment', name: 'Payments', path: '/ECommerce/ECPayment', icon: CreditCard, color: 'text-green-400' },
       { id: 'ec_delivery', name: 'Delivery', path: '/ECommerce/ECDelivery', icon: Truck, color: 'text-cyan-400' },
       { id: 'ec_returns', name: 'Returns', path: '/ECommerce/ECReturns', icon: Undo2, color: 'text-red-400' },
+      { id: 'ec_promo_approval', name: 'Promo Approval', path: '/ECommerce/ECPromoApproval', badge: "head", icon: CheckCircle, color: 'text-purple-400' }
     ]
   },
   {
@@ -203,13 +205,14 @@ const navigation = [
     ]
   },
   {
-    title: 'Analytics & UX',
-    items: [
-      { id: 'ec_reviews', name: 'Reviews', path: '/ECommerce/ECReviews', icon: Star, color: 'text-violet-400' },
-      { id: 'ec_promotions', name: 'Promotions', path: '/ECommerce/ECPromotions', icon: Percent, color: 'text-orange-400' },
-      { id: 'ec_reports', name: 'Reports', path: '/ECommerce/ECreports', icon: BarChart3, color: 'text-sky-400' }
-    ]
-  }
+  title: 'Analytics & UX',
+  items: [
+    { id: 'ec_reviews', name: 'Reviews', path: '/ECommerce/ECReviews', icon: Star, color: 'text-violet-400' },
+    { id: 'ec_promotions', name: 'Promotions', path: '/ECommerce/ECPromotions', icon: Percent, color: 'text-orange-400' },
+    { id: 'ec_reports', name: 'Reports', path: '/ECommerce/ECreports', icon: BarChart3, color: 'text-sky-400' },
+    { id: 'ec_messages', name: 'Messages', path: '/ECommerce/ECMessages', icon: MessageCircle, color: 'text-green-400', badge: 'new' }
+  ]
+}
 ]
 
 // Computed property to filter navigations automatically

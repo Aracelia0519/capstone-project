@@ -149,6 +149,11 @@ class PositionAccessibility extends Model
                 'description' => 'Access to Returns'
             ],
             [
+                'key' => 'ec_promo_approval',
+                'label' => 'Promo Approval',
+                'description' => 'Access to Promo Approval'
+            ],
+            [
                 'key' => 'ec_partner_supplier',
                 'label' => 'Partner Supplier',
                 'description' => 'Access to Partner Supplier'
@@ -172,6 +177,11 @@ class PositionAccessibility extends Model
                 'key' => 'ec_reports',
                 'label' => 'Reports',
                 'description' => 'Access to Reports'
+            ],
+            [
+                'key' => 'ec_messages',
+                'label' => 'Messages',
+                'description' => 'Access to Messages'
             ]
         ];
     }

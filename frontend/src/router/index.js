@@ -44,6 +44,7 @@ import PaintProductsSP from '@/views/serviceProvider/PaintProductsSP.vue'
 import Distributors from '@/views/serviceProvider/Distributors.vue'
 import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
 import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
+import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -114,6 +115,8 @@ import ECommerceReports from '@/views/E-commerce/ECommerceReports.vue'
 import ECArrivedItem from '@/views/E-commerce/ECArrivedItem.vue'
 import ECInventory from '@/views/E-commerce/ECInventory.vue'
 import ECPrepareOrder from '@/views/E-commerce/ECPrepareOrder.vue'
+import ECMessages from '@/views/E-commerce/ECMessages.vue'
+import ECPromoApproval from '@/views/E-commerce/ECPromoApproval.vue'
 
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
@@ -340,6 +343,11 @@ const routes = [
         path: 'ServiceRequestsJobs',
         name: 'ServiceRequestsJobs',
         component: ServiceRequestsJobs
+      },
+      {
+        path: 'OfferJobs',
+        name: 'OfferJobs',
+        component: OfferJobs
       },
       {
         path: 'VirtualPaintColor',
@@ -665,9 +673,18 @@ const routes = [
         name: 'ECPrepareOrder',
         component: ECPrepareOrder
       },
+      {
+        path: 'ECMessages',
+        name: 'ECMessages',
+        component: ECMessages
+      },
+      {
+        path: 'ECPromoApproval',
+        name: 'ECPromoApproval',
+        component: ECPromoApproval
+      },
     ]
   },
-
   {
     path: '/Supplier',
     component: SupplierLayout,

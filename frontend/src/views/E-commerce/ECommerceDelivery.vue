@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import L from 'leaflet'
@@ -14,7 +14,9 @@ import {
   Phone, 
   Image as ImageIcon,
   X,
-  Loader2
+  Loader2,
+  Banknote,
+  UploadCloud
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -37,6 +39,8 @@ interface Delivery {
   delivery_address: string
   target_lat: number | null
   target_lng: number | null
+  distributor_lat: number | null
+  distributor_lng: number | null
   total_amount: number
   payment_method: string
   items: DeliveryItem[]
@@ -50,10 +54,17 @@ const locationError = ref('')
 const currentPosition = ref<{ lat: number; lng: number } | null>(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
+const isDrawerOpen = ref(true)
 
-// Proof File State
+// Proof File States
 const proofFile = ref<File | null>(null)
 const proofPreview = ref<string | null>(null)
+
+const paymentFile = ref<File | null>(null)
+const paymentPreview = ref<string | null>(null)
+
+const remittanceFile = ref<File | null>(null)
+const remittancePreview = ref<string | null>(null)
 
 // Map Variables
 let leafletMap: L.Map | null = null
@@ -67,16 +78,32 @@ const activeDelivery = computed(() =>
 )
 
 const pendingDeliveries = computed(() => 
-  deliveries.value.filter(d => ['assigned', 'in_transit'].includes(d.status))
+  deliveries.value.filter(d => ['assigned', 'in_transit', 'remitting'].includes(d.status))
 )
+
+const currentCoordsDisplay = computed(() => {
+  if (!currentPosition.value) return 'Locating...'
+  return `${currentPosition.value.lat.toFixed(5)}, ${currentPosition.value.lng.toFixed(5)}`
+})
+
+const activeTargetLat = computed(() => {
+  if (!activeDelivery.value) return null;
+  return activeDelivery.value.status === 'remitting' ? activeDelivery.value.distributor_lat : activeDelivery.value.target_lat;
+})
+
+const activeTargetLng = computed(() => {
+  if (!activeDelivery.value) return null;
+  return activeDelivery.value.status === 'remitting' ? activeDelivery.value.distributor_lng : activeDelivery.value.target_lng;
+})
 
 // Calculate distance in meters
 const distanceToActive = computed(() => {
   if (!activeDelivery.value || !currentPosition.value) return null;
-  const targetLat = activeDelivery.value.target_lat;
-  const targetLng = activeDelivery.value.target_lng;
   
-  if (!targetLat || !targetLng) return null; // No coordinates set for target
+  const targetLat = activeTargetLat.value;
+  const targetLng = activeTargetLng.value;
+  
+  if (!targetLat || !targetLng) return null;
 
   return calculateDistance(
     currentPosition.value.lat, 
@@ -87,8 +114,8 @@ const distanceToActive = computed(() => {
 })
 
 const isWithinRange = computed(() => {
-  if (distanceToActive.value === null) return true; // If no coords, bypass distance strictly on frontend (backend still validates if it exists)
-  return distanceToActive.value <= 500; // within 500 meters
+  if (distanceToActive.value === null) return true; 
+  return distanceToActive.value <= 500; 
 })
 
 // Haversine formula (returns meters)
@@ -110,7 +137,6 @@ const initMap = () => {
 
   leafletMap = L.map('delivery-map', { zoomControl: false }).setView([currentPosition.value.lat, currentPosition.value.lng], 15)
   
-  // Normal Standard OpenStreetMap with performance fixes to stop lag
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
@@ -137,17 +163,30 @@ const updateMapMarkers = () => {
   targetMarkers.length = 0
 
   pendingDeliveries.value.forEach(delivery => {
-    if (delivery.target_lat && delivery.target_lng) {
-      const isTarget = activeDeliveryId.value === delivery.id
-      const iconHtml = isTarget 
-        ? `<div class="h-6 w-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.6)]"><svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>`
-        : `<div class="h-4 w-4 bg-red-500 rounded-full border-2 border-white shadow-md"></div>`
+    let tLat = delivery.target_lat;
+    let tLng = delivery.target_lng;
 
-      const marker = L.marker([delivery.target_lat, delivery.target_lng], {
+    if (delivery.status === 'remitting') {
+      tLat = delivery.distributor_lat;
+      tLng = delivery.distributor_lng;
+    }
+
+    if (tLat && tLng) {
+      const isTarget = activeDeliveryId.value === delivery.id
+      
+      let iconColor = 'bg-red-500';
+      if (delivery.status === 'remitting') iconColor = 'bg-purple-500';
+      if (isTarget) iconColor = 'bg-green-500';
+
+      const iconHtml = isTarget 
+        ? `<div class="h-6 w-6 ${iconColor} rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.6)]"><svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>`
+        : `<div class="h-4 w-4 ${iconColor} rounded-full border-2 border-white shadow-md"></div>`
+
+      const marker = L.marker([tLat, tLng], {
         icon: L.divIcon({ html: iconHtml, className: '', iconSize: isTarget ? [24,24] : [16,16], iconAnchor: isTarget ? [12,12] : [8,8] })
       }).addTo(leafletMap)
       
-      marker.bindPopup(`<b class="text-gray-900">${delivery.client_name}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
+      marker.bindPopup(`<b class="text-gray-900">${delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
       targetMarkers.push(marker)
     }
   })
@@ -167,7 +206,6 @@ const startTracking = () => {
       } else if (userMarker) {
         userMarker.setLatLng([newPos.lat, newPos.lng])
         
-        // ONLY center the map if it's the first time getting a location
         if (isFirstLoad && !activeDeliveryId.value) {
           leafletMap.setView([newPos.lat, newPos.lng], 15)
           isFirstLoad = false;
@@ -238,8 +276,13 @@ const startDelivery = async (id: number) => {
 
 const arriveAndComplete = async () => {
   if (!activeDelivery.value || !currentPosition.value) return
+  
   if (!proofFile.value) {
     toast.error('Proof of delivery is required.')
+    return
+  }
+  if (activeDelivery.value.payment_method.toLowerCase() === 'cod' && !paymentFile.value) {
+    toast.error('Proof of payment received is required for COD orders.')
     return
   }
 
@@ -248,15 +291,27 @@ const arriveAndComplete = async () => {
   formData.append('latitude', currentPosition.value.lat.toString())
   formData.append('longitude', currentPosition.value.lng.toString())
   formData.append('proof_file', proofFile.value)
+  
+  if (activeDelivery.value.payment_method.toLowerCase() === 'cod' && paymentFile.value) {
+    formData.append('payment_file', paymentFile.value)
+  }
 
   try {
     await api.post(`/distributor-delivery/${activeDelivery.value.id}/arrive`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    toast.success('Delivery Completed Successfully!')
+    
+    if (activeDelivery.value.payment_method.toLowerCase() === 'cod') {
+       toast.success('Delivered! Please return to HQ to remit collected funds.')
+    } else {
+       toast.success('Delivery Completed Successfully!')
+       activeDeliveryId.value = null
+    }
+
     removeProof()
-    activeDeliveryId.value = null
+    removePayment()
     await fetchDeliveries()
+    if (activeDeliveryId.value) focusDelivery(activeDeliveryId.value)
   } catch (error: any) {
     if(error.response && error.response.status === 400) {
        toast.error(error.response.data.message || 'Distance validation failed.')
@@ -268,45 +323,104 @@ const arriveAndComplete = async () => {
   }
 }
 
+const remitAndComplete = async () => {
+  if (!activeDelivery.value || !currentPosition.value) return
+  if (!remittanceFile.value) {
+    toast.error('Proof of remittance handover is required.')
+    return
+  }
+
+  isProcessing.value = true
+  const formData = new FormData()
+  formData.append('latitude', currentPosition.value.lat.toString())
+  formData.append('longitude', currentPosition.value.lng.toString())
+  formData.append('remittance_file', remittanceFile.value)
+
+  try {
+    await api.post(`/distributor-delivery/${activeDelivery.value.id}/remit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    
+    toast.success('Funds successfully remitted. Delivery cycle complete!')
+    removeRemittance()
+    activeDeliveryId.value = null
+    await fetchDeliveries()
+  } catch (error: any) {
+    if(error.response && error.response.status === 400) {
+       toast.error(error.response.data.message || 'Distance validation failed.')
+    } else {
+       toast.error('Failed to remit funds.')
+    }
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 // Helpers
 const focusDelivery = (id: number) => {
   activeDeliveryId.value = id
+  isDrawerOpen.value = true 
   updateMapMarkers()
   
-  const delivery = deliveries.value.find(d => d.id === id)
-  if (leafletMap && delivery && delivery.target_lat && delivery.target_lng) {
-    // Pan to bounds containing user and target
-    if (currentPosition.value) {
-      const bounds = L.latLngBounds(
-        [currentPosition.value.lat, currentPosition.value.lng],
-        [delivery.target_lat, delivery.target_lng]
-      )
-      leafletMap.fitBounds(bounds, { padding: [50, 50] })
-    } else {
-      leafletMap.setView([delivery.target_lat, delivery.target_lng], 15)
+  nextTick(() => {
+    const delivery = deliveries.value.find(d => d.id === id)
+    const tLat = delivery?.status === 'remitting' ? delivery.distributor_lat : delivery?.target_lat;
+    const tLng = delivery?.status === 'remitting' ? delivery.distributor_lng : delivery?.target_lng;
+
+    if (leafletMap && tLat && tLng) {
+      if (currentPosition.value) {
+        const bounds = L.latLngBounds(
+          [currentPosition.value.lat, currentPosition.value.lng],
+          [tLat, tLng]
+        )
+        leafletMap.fitBounds(bounds, { padding: [50, 50] })
+      } else {
+        leafletMap.setView([tLat, tLng], 15)
+      }
     }
-  }
+  })
 }
 
+// File Handlers
 const handleProofUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files[0]) {
-    const file = target.files[0]
-    proofFile.value = file
-    proofPreview.value = URL.createObjectURL(file)
+    proofFile.value = target.files[0]
+    proofPreview.value = URL.createObjectURL(target.files[0])
   }
 }
-
 const removeProof = () => {
   proofFile.value = null
-  if (proofPreview.value) {
-    URL.revokeObjectURL(proofPreview.value)
-    proofPreview.value = null
-  }
+  if (proofPreview.value) { URL.revokeObjectURL(proofPreview.value); proofPreview.value = null }
 }
 
+const handlePaymentUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    paymentFile.value = target.files[0]
+    paymentPreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+const removePayment = () => {
+  paymentFile.value = null
+  if (paymentPreview.value) { URL.revokeObjectURL(paymentPreview.value); paymentPreview.value = null }
+}
+
+const handleRemittanceUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    remittanceFile.value = target.files[0]
+    remittancePreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+const removeRemittance = () => {
+  remittanceFile.value = null
+  if (remittancePreview.value) { URL.revokeObjectURL(remittancePreview.value); remittancePreview.value = null }
+}
+
+
 onMounted(() => {
-  requestLocation() // Auto-request on load
+  requestLocation()
 })
 
 onUnmounted(() => {
@@ -352,14 +466,26 @@ onUnmounted(() => {
     
     <div v-if="locationGranted" class="relative z-10 flex flex-col h-full pointer-events-none">
       
-      <div class="p-4 md:p-6 flex justify-between items-start pointer-events-auto">
-        <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
-          <div class="bg-blue-500/20 p-2 rounded-lg">
-            <Truck class="h-5 w-5 text-blue-400" />
+      <div class="p-4 md:p-6 pt-24 md:pt-6 flex justify-between items-start">
+        
+        <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
+          
+          <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2">
+            <div class="relative flex h-2.5 w-2.5 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+            </div>
+            <span class="text-xs font-medium text-gray-200 truncate font-mono">{{ currentCoordsDisplay }}</span>
           </div>
-          <div>
-             <h1 class="font-bold text-white text-sm md:text-base">My Deliveries</h1>
-             <p class="text-xs text-gray-400">{{ pendingDeliveries.length }} Pending Stops</p>
+
+          <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
+            <div class="bg-blue-500/20 p-2 rounded-lg shrink-0">
+              <Truck class="h-5 w-5 text-blue-400" />
+            </div>
+            <div class="min-w-0">
+               <h1 class="font-bold text-white text-sm md:text-base truncate">My Deliveries</h1>
+               <p class="text-xs text-gray-400 truncate">{{ pendingDeliveries.length }} Pending Stops</p>
+            </div>
           </div>
         </div>
         
@@ -372,13 +498,19 @@ onUnmounted(() => {
 
       <div class="flex-1"></div>
 
-      <div class="bg-gray-900/90 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full max-h-[60vh] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transition-all flex flex-col">
+      <div 
+        class="bg-gray-900/90 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-all duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+        :class="isDrawerOpen ? 'max-h-[75vh] md:max-h-[60vh] pb-24 md:pb-6' : 'pb-24 md:pb-6'"
+      >
         
-        <div class="w-12 h-1.5 bg-gray-700 rounded-full mx-auto my-3"></div>
+        <div @click="isDrawerOpen = !isDrawerOpen" class="w-full py-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-800/30 rounded-t-3xl transition-colors shrink-0">
+          <div class="w-12 h-1.5 bg-gray-600 hover:bg-gray-500 rounded-full transition-colors"></div>
+          <span v-if="!isDrawerOpen" class="text-xs text-blue-400 mt-2 font-medium tracking-wide uppercase">Tap to view deliveries</span>
+        </div>
 
-        <ScrollArea class="flex-1 px-4 md:px-6 pb-6 w-full max-w-4xl mx-auto">
+        <ScrollArea v-show="isDrawerOpen" class="flex-1 min-h-0 px-4 md:px-6 w-full max-w-4xl mx-auto">
           
-          <div v-if="!activeDeliveryId" class="space-y-3 pb-6">
+          <div v-if="!activeDeliveryId" class="space-y-3 pb-24 md:pb-6">
             <h2 class="text-lg font-semibold text-white mb-4 px-1">Assigned Routes</h2>
             
             <div v-if="pendingDeliveries.length === 0" class="text-center py-8">
@@ -394,24 +526,29 @@ onUnmounted(() => {
             >
               <div class="flex justify-between items-start mb-2">
                 <div>
-                  <h3 class="font-semibold text-gray-200">{{ delivery.client_name }}</h3>
+                  <h3 class="font-semibold text-gray-200">{{ delivery.status === 'remitting' ? 'HQ Turn-over' : delivery.client_name }}</h3>
                   <p class="text-xs text-gray-500">{{ delivery.order_number }}</p>
                 </div>
-                <Badge :class="delivery.status === 'in_transit' ? 'bg-blue-500/20 text-blue-400 border-0' : 'bg-gray-700 text-gray-300 border-0'">
-                  {{ delivery.status === 'in_transit' ? 'In Transit' : 'Assigned' }}
+                <Badge :class="{
+                  'bg-purple-500/20 text-purple-400 border-0': delivery.status === 'remitting',
+                  'bg-blue-500/20 text-blue-400 border-0': delivery.status === 'in_transit',
+                  'bg-gray-700 text-gray-300 border-0': delivery.status === 'assigned'
+                }">
+                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'In Transit' : 'Assigned') }}
                 </Badge>
               </div>
               <p class="text-sm text-gray-400 truncate flex items-center gap-1.5">
-                <MapPin class="h-3.5 w-3.5" /> {{ delivery.delivery_address }}
+                <MapPin class="h-3.5 w-3.5" :class="delivery.status === 'remitting' ? 'text-purple-400' : ''" /> 
+                {{ delivery.status === 'remitting' ? 'Return collected funds to HQ' : delivery.delivery_address }}
               </p>
             </button>
           </div>
 
-          <div v-else-if="activeDelivery" class="space-y-6 pb-6">
+          <div v-else-if="activeDelivery" class="space-y-6 pb-24 md:pb-6">
             
             <div class="flex justify-between items-start">
                <div>
-                  <h2 class="text-xl font-bold text-white">{{ activeDelivery.client_name }}</h2>
+                  <h2 class="text-xl font-bold text-white">{{ activeDelivery.status === 'remitting' ? 'Return to HQ' : activeDelivery.client_name }}</h2>
                   <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.order_number }}</p>
                </div>
                <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0">
@@ -419,7 +556,7 @@ onUnmounted(() => {
                </Badge>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div v-if="activeDelivery.status !== 'remitting'" class="grid grid-cols-2 gap-3">
               <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
                 <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone class="h-3 w-3"/> Contact</p>
                 <p class="text-sm font-medium text-gray-200">{{ activeDelivery.client_phone }}</p>
@@ -431,8 +568,20 @@ onUnmounted(() => {
             </div>
 
             <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
-                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><MapPin class="h-3 w-3"/> Delivery Address</p>
-                <p class="text-sm font-medium text-gray-200 leading-relaxed">{{ activeDelivery.delivery_address }}</p>
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <MapPin class="h-3 w-3" :class="activeDelivery.status === 'remitting' ? 'text-purple-400' : ''"/> 
+                  {{ activeDelivery.status === 'remitting' ? 'Headquarters Address' : 'Delivery Address' }}
+                </p>
+                <p class="text-sm font-medium text-gray-200 leading-relaxed">
+                  {{ activeDelivery.status === 'remitting' ? 'Return to Distributor Base' : activeDelivery.delivery_address }}
+                </p>
+            </div>
+
+            <div v-if="activeDelivery.payment_method.toLowerCase() === 'cod' && activeDelivery.status !== 'remitting'" class="bg-green-900/20 rounded-lg p-3 border border-green-800/50">
+               <div class="flex justify-between items-center">
+                 <span class="text-sm font-semibold text-green-400 flex items-center gap-2"><Banknote class="h-4 w-4"/> Cash on Delivery</span>
+                 <span class="text-lg font-bold text-white">₱{{ Number(activeDelivery.total_amount).toLocaleString() }}</span>
+               </div>
             </div>
 
             <div v-if="activeDelivery.status === 'assigned'" class="pt-2">
@@ -450,19 +599,12 @@ onUnmounted(() => {
                 </Alert>
 
                 <div>
-                   <label class="text-xs font-semibold text-gray-400 mb-2 block">Upload Proof of Delivery *</label>
-                   <div 
-                      class="border border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center p-4 transition-colors relative"
-                      :class="proofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'"
-                   >
-                      <input 
-                         v-if="!proofPreview" type="file" accept="image/*" capture="environment"
-                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                         @change="handleProofUpload" 
-                      />
+                   <label class="text-xs font-semibold text-gray-400 mb-2 block">Upload Proof of Goods Delivered <span class="text-red-400">*</span></label>
+                   <div class="border border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="proofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'">
+                      <input v-if="!proofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleProofUpload" />
                       <div v-if="!proofPreview" class="text-center pointer-events-none">
                          <ImageIcon class="h-6 w-6 text-gray-500 mx-auto mb-2" />
-                         <p class="text-sm font-medium text-gray-300">Tap to open Camera</p>
+                         <p class="text-sm font-medium text-gray-300">Tap to snap Package</p>
                       </div>
                       <div v-else class="relative w-full flex justify-center">
                          <img :src="proofPreview" class="max-h-48 rounded-lg border border-gray-700 object-cover shadow-lg" />
@@ -473,14 +615,66 @@ onUnmounted(() => {
                    </div>
                 </div>
 
+                <div v-if="activeDelivery.payment_method.toLowerCase() === 'cod'">
+                   <label class="text-xs font-semibold text-green-400 mb-2 block">Upload Proof of Payment Received <span class="text-red-400">*</span></label>
+                   <div class="border border-dashed border-green-800/50 rounded-xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="paymentPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
+                      <input v-if="!paymentPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" />
+                      <div v-if="!paymentPreview" class="text-center pointer-events-none">
+                         <Banknote class="h-6 w-6 text-green-600/50 mx-auto mb-2" />
+                         <p class="text-sm font-medium text-green-400">Tap to snap Cash</p>
+                      </div>
+                      <div v-else class="relative w-full flex justify-center">
+                         <img :src="paymentPreview" class="max-h-48 rounded-lg border border-green-800/50 object-cover shadow-lg" />
+                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePayment">
+                            <X class="h-4 w-4" />
+                         </Button>
+                      </div>
+                   </div>
+                </div>
+
                 <Button 
                   @click="arriveAndComplete" 
-                  :disabled="!isWithinRange || !proofFile || isProcessing" 
-                  class="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20" 
+                  :disabled="!isWithinRange || !proofFile || (activeDelivery.payment_method.toLowerCase() === 'cod' && !paymentFile) || isProcessing" 
+                  class="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 mt-4" 
                   size="lg"
                 >
                     <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
-                    <CheckCircle2 v-else class="mr-2 h-5 w-5" /> Complete Delivery
+                    <CheckCircle2 v-else class="mr-2 h-5 w-5" /> 
+                    {{ activeDelivery.payment_method.toLowerCase() === 'cod' ? 'Confirm Arrival & Payment' : 'Complete Delivery' }}
+                </Button>
+            </div>
+
+            <div v-if="activeDelivery.status === 'remitting'" class="space-y-4 pt-2">
+                <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-2">
+                   <AlertTriangle class="h-4 w-4" />
+                   <AlertDescription class="text-xs ml-2">You are too far from the HQ to remit funds.</AlertDescription>
+                </Alert>
+
+                <div>
+                   <label class="text-xs font-semibold text-purple-400 mb-2 block">Upload Proof of HQ Handover <span class="text-red-400">*</span></label>
+                   <div class="border border-dashed border-purple-800/50 rounded-xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="remittancePreview ? 'bg-transparent' : 'bg-purple-900/10 hover:bg-purple-900/20'">
+                      <input v-if="!remittancePreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleRemittanceUpload" />
+                      <div v-if="!remittancePreview" class="text-center pointer-events-none">
+                         <UploadCloud class="h-6 w-6 text-purple-600/50 mx-auto mb-2" />
+                         <p class="text-sm font-medium text-purple-400">Tap to snap Turnover Receipt</p>
+                      </div>
+                      <div v-else class="relative w-full flex justify-center">
+                         <img :src="remittancePreview" class="max-h-48 rounded-lg border border-purple-800/50 object-cover shadow-lg" />
+                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removeRemittance">
+                            <X class="h-4 w-4" />
+                         </Button>
+                      </div>
+                   </div>
+                </div>
+
+                <Button 
+                  @click="remitAndComplete" 
+                  :disabled="!isWithinRange || !remittanceFile || isProcessing" 
+                  class="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20 mt-4" 
+                  size="lg"
+                >
+                    <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
+                    <Banknote v-else class="mr-2 h-5 w-5" /> Complete HQ Turnover
                 </Button>
             </div>
 
@@ -493,7 +687,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Remove Leaflet Zoom Controls for cleaner UI */
 :deep(.leaflet-control-container) {
   display: none; 
 }

@@ -11,7 +11,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-300">Total Orders</p>
-              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">156</h3>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">{{ stats.totalOrders }}</h3>
             </div>
             <div class="p-3 rounded-xl bg-indigo-500/30">
               <svg class="w-6 h-6 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,7 +20,7 @@
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
-            <p class="text-xs text-gray-400">↑ 12% from last month</p>
+            <p class="text-xs text-gray-400">All-time specific orders</p>
           </div>
         </CardContent>
       </Card>
@@ -30,7 +30,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-300">Total Revenue</p>
-              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">₱124,567</h3>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">₱{{ stats.totalRevenue }}</h3>
             </div>
             <div class="p-3 rounded-xl bg-emerald-500/30">
               <svg class="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +39,7 @@
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
-            <p class="text-xs text-gray-400">↑ 18% from last month</p>
+            <p class="text-xs text-gray-400">From completed deliveries</p>
           </div>
         </CardContent>
       </Card>
@@ -49,7 +49,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-300">Pending Orders</p>
-              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">24</h3>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">{{ stats.pendingOrders }}</h3>
             </div>
             <div class="p-3 rounded-xl bg-amber-500/30">
               <svg class="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -58,7 +58,7 @@
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
-            <p class="text-xs text-gray-400">↓ 5% from yesterday</p>
+            <p class="text-xs text-gray-400">Awaiting processing</p>
           </div>
         </CardContent>
       </Card>
@@ -68,7 +68,7 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-300">Completed Orders</p>
-              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">128</h3>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">{{ stats.completedOrders }}</h3>
             </div>
             <div class="p-3 rounded-xl bg-green-500/30">
               <svg class="w-6 h-6 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,7 @@
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
-            <p class="text-xs text-gray-400">↑ 22% from last month</p>
+            <p class="text-xs text-gray-400">Successfully delivered</p>
           </div>
         </CardContent>
       </Card>
@@ -104,15 +104,15 @@
               <div class="text-xs text-gray-400 mb-2">{{ day.day }}</div>
               <div 
                 class="w-8 md:w-10 bg-gradient-to-t from-indigo-500 to-purple-500 rounded-t-lg transition-all hover:opacity-80"
-                :style="{ height: day.value * 2 + 'px' }"
+                :style="{ height: (day.value * 1.5) + 'px' }"
                 :title="'₱' + day.amount"
               ></div>
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
             <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-300">Total Sales: ₱45,230</span>
-              <span class="text-sm text-green-400">+18% growth</span>
+              <span class="text-sm text-gray-300">Overview of recent activity</span>
+              <span class="text-sm text-green-400">Live Updates</span>
             </div>
           </div>
         </CardContent>
@@ -169,10 +169,10 @@
                     <div class="flex items-center">
                       <Avatar class="w-8 h-8 mr-3">
                         <AvatarFallback class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs">
-                          {{ transaction.client.charAt(0) }}
+                          {{ transaction.client ? transaction.client.charAt(0) : 'U' }}
                         </AvatarFallback>
                       </Avatar>
-                      <span class="text-gray-300">{{ transaction.client }}</span>
+                      <span class="text-gray-300">{{ transaction.client || 'Unknown Client' }}</span>
                     </div>
                   </TableCell>
                   <TableCell class="text-white py-4">₱{{ transaction.amount }}</TableCell>
@@ -208,7 +208,7 @@
                   </svg>
                 </div>
                 <div>
-                  <h4 class="text-white font-medium">{{ product.name }}</h4>
+                  <h4 class="text-white font-medium truncate w-32 md:w-48">{{ product.name }}</h4>
                   <p class="text-sm text-gray-400">{{ product.category }}</p>
                 </div>
               </div>
@@ -216,6 +216,10 @@
                 <div class="text-white font-medium">₱{{ product.sales }}</div>
                 <div class="text-sm text-gray-400">{{ product.sold }} sold</div>
               </div>
+            </div>
+            
+            <div v-if="bestSellingProducts.length === 0" class="text-center text-gray-400 py-6">
+               No products sold yet.
             </div>
           </div>
         </CardContent>
@@ -225,7 +229,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import api from '@/utils/axios'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -246,38 +251,42 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-const salesData = ref([
-  { day: 'Mon', value: 40, amount: '8,450' },
-  { day: 'Tue', value: 60, amount: '12,670' },
-  { day: 'Wed', value: 75, amount: '15,890' },
-  { day: 'Thu', value: 55, amount: '11,230' },
-  { day: 'Fri', value: 80, amount: '16,980' },
-  { day: 'Sat', value: 90, amount: '19,120' },
-  { day: 'Sun', value: 70, amount: '14,890' }
-])
+// Reactive state to hold data from the backend
+const stats = ref({
+  totalOrders: 0,
+  totalRevenue: '0.00',
+  pendingOrders: 0,
+  completedOrders: 0
+})
 
-const orderStatus = ref([
-  { name: 'Completed', count: 128, percentage: 82, color: 'bg-green-500' },
-  { name: 'Pending', count: 24, percentage: 15, color: 'bg-yellow-500' },
-  { name: 'Processing', count: 8, percentage: 5, color: 'bg-blue-500' },
-  { name: 'Cancelled', count: 4, percentage: 3, color: 'bg-red-500' }
-])
+const salesData = ref([])
+const orderStatus = ref([])
+const recentTransactions = ref([])
+const bestSellingProducts = ref([])
 
-const recentTransactions = ref([
-  { id: 1, orderId: 'ORD-7890', client: 'Juan Dela Cruz', amount: '4,567', status: 'Completed' },
-  { id: 2, orderId: 'ORD-7891', client: 'Maria Santos', amount: '2,890', status: 'Pending' },
-  { id: 3, orderId: 'ORD-7892', client: 'Pedro Reyes', amount: '6,123', status: 'Processing' },
-  { id: 4, orderId: 'ORD-7893', client: 'Ana Lopez', amount: '3,456', status: 'Completed' },
-  { id: 5, orderId: 'ORD-7894', client: 'Luis Garcia', amount: '5,789', status: 'Completed' }
-])
+// Fetch the Dashboard Data
+// Fetch the Dashboard Data
+const fetchDashboardData = async () => {
+  try {
+    // ADDED the /operation-distributor/ prefix back here!
+    const response = await api.get('/operation-distributor/ecommerce-dashboard')
+    
+    // Bind backend data directly to refs
+    stats.value = response.data.stats
+    salesData.value = response.data.salesData
+    orderStatus.value = response.data.orderStatus
+    recentTransactions.value = response.data.recentTransactions
+    bestSellingProducts.value = response.data.bestSellingProducts
 
-const bestSellingProducts = ref([
-  { id: 1, name: 'Premium White Paint', category: 'Interior', sales: '45,670', sold: 156 },
-  { id: 2, name: 'Weatherproof Exterior', category: 'Exterior', sales: '38,920', sold: 128 },
-  { id: 3, name: 'Quick Dry Primer', category: 'Primer', sales: '28,450', sold: 95 },
-  { id: 4, name: 'Gloss Finish Paint', category: 'Interior', sales: '22,180', sold: 74 },
-  { id: 5, name: 'Eco-Friendly Paint', category: 'Interior', sales: '18,950', sold: 63 }
-])
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error)
+  }
+}
+
+// Automatically load data when the component opens
+onMounted(() => {
+  fetchDashboardData()
+})
 </script>
 
 <style scoped>

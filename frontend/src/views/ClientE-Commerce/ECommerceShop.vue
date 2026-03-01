@@ -143,13 +143,23 @@
                    :class="['object-cover w-full h-full group-hover:scale-105 transition-transform duration-500', product.stock <= 0 ? 'grayscale opacity-60' : '']" />
               <div v-else class="w-32 h-32 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: product.color }"></div>
               
-              <div class="absolute top-3 left-3 flex gap-2">
+              <div class="absolute top-3 left-3 flex gap-2 flex-col items-start">
                 <Badge :class="[
                   'border-0 shadow-sm backdrop-blur-md bg-white/90',
                   product.stock > 10 ? 'text-green-700' : 
                   (product.stock > 0 ? 'text-amber-600' : 'text-red-600 bg-red-50/90 font-bold')
                 ]">
                   {{ product.stock > 10 ? 'In Stock' : (product.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
+                </Badge>
+
+                <Badge v-if="product.promotion && product.promotion.type === 'free_shipping'" class="border-0 shadow-sm backdrop-blur-md bg-blue-600/90 text-white font-bold">
+                  Free Shipping
+                </Badge>
+                <Badge v-else-if="product.promotion && product.promotion.type === 'percentage_discount'" class="border-0 shadow-sm backdrop-blur-md bg-red-600/90 text-white font-bold">
+                  -{{ product.promotion.discount_value }}% OFF
+                </Badge>
+                <Badge v-else-if="product.promotion && (product.promotion.type === 'fixed_discount' || product.promotion.type === 'fixed_amount')" class="border-0 shadow-sm backdrop-blur-md bg-red-600/90 text-white font-bold">
+                  ₱{{ product.promotion.discount_value }} OFF
                 </Badge>
               </div>
             </div>
@@ -163,14 +173,19 @@
 
               <div class="mt-4 flex justify-between items-end">
                 <div>
+                  <div v-if="product.promotion && product.original_price > product.price" class="text-xs text-gray-400 line-through mb-0.5">
+                    ₱{{ product.original_price.toLocaleString() }}
+                  </div>
                   <span :class="['text-2xl font-black tracking-tight', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">₱{{ product.price.toLocaleString() }}</span>
                   <span class="text-xs text-gray-400 font-medium ml-1">/unit</span>
                 </div>
-                <div class="flex items-center bg-gray-50 px-2 py-1 rounded-lg">
-                  <svg class="w-3.5 h-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                
+                <div @click.stop="openReviewsModal(product)" class="flex items-center bg-gray-50 px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
+                  <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                   </svg>
-                  <span class="ml-1 text-xs font-bold text-gray-700">{{ product.rating }}</span>
+                  <span class="ml-1.5 text-xs font-bold text-gray-700">{{ product.rating > 0 ? product.rating : 'New' }}</span>
+                  <span v-if="product.review_count > 0" class="ml-1 text-[10px] font-medium text-gray-400">({{ product.review_count }})</span>
                 </div>
               </div>
             </CardContent>
@@ -235,9 +250,85 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isCartModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+        <div v-if="isReviewsModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" @click="closeModals">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
-            <div v-if="isCartModalOpen" class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5">
+            <div v-if="isReviewsModalOpen" @click.stop class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] ring-1 ring-black/5">
+              
+              <div class="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white z-10">
+                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  Customer Reviews
+                  <span class="bg-gray-100 text-gray-600 text-xs py-0.5 px-2 rounded-full font-semibold">{{ selectedProduct?.review_count || 0 }}</span>
+                </h2>
+                <button @click="closeModals" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              
+              <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/50">
+                
+                <div class="flex items-center gap-5 mb-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
+                    <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-bold text-gray-900 text-lg leading-tight">{{ selectedProduct?.name }}</h3>
+                    <div class="flex items-center mt-1">
+                      <svg class="w-4 h-4 text-amber-400 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                      <span class="font-bold text-gray-800">{{ selectedProduct?.rating > 0 ? selectedProduct.rating : 'No ratings yet' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="!selectedProduct?.reviews || selectedProduct.reviews.length === 0" class="text-center py-12">
+                  <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 border border-gray-200">
+                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                  </div>
+                  <p class="text-gray-500 font-medium">There are no reviews for this product yet.</p>
+                </div>
+
+                <div v-else class="space-y-4">
+                  <div v-for="review in selectedProduct.reviews" :key="review.id" class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-inner">
+                          {{ review.clientInitials }}
+                        </div>
+                        <div>
+                          <p class="font-bold text-gray-900 text-sm">{{ review.client }}</p>
+                          <div class="flex items-center mt-0.5">
+                            <svg v-for="i in 5" :key="i" class="w-3.5 h-3.5" :class="i <= review.rating ? 'text-amber-400' : 'text-gray-200'" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                          </div>
+                        </div>
+                      </div>
+                      <span class="text-xs text-gray-400 font-medium">{{ review.date }}</span>
+                    </div>
+                    
+                    <p v-if="review.comment" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-2">
+                      {{ review.comment }}
+                    </p>
+
+                    <div v-if="review.response" class="mt-4 bg-gray-50 rounded-xl p-3.5 border border-gray-100">
+                      <div class="flex items-center text-xs font-bold text-blue-600 mb-1.5 uppercase tracking-wider">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                        Response from Store
+                        <span class="text-gray-400 font-medium ml-auto lowercase normal-case text-[10px]">{{ review.response_date }}</span>
+                      </div>
+                      <p class="text-sm text-gray-600 whitespace-pre-wrap break-words">{{ review.response }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isCartModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" @click="closeModals">
+          <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
+            <div v-if="isCartModalOpen" @click.stop class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5">
               <div class="p-6 border-b border-gray-50 flex justify-between items-center bg-white/50 backdrop-blur-md">
                 <h2 class="text-xl font-bold text-gray-900">Add to Cart</h2>
                 <button @click="closeModals" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
@@ -253,6 +344,7 @@
                   <div>
                     <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1">{{ selectedProduct?.name }}</h3>
                     <p class="text-blue-600 font-black text-xl">₱{{ selectedProduct?.price.toLocaleString() }}</p>
+                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ selectedProduct?.original_price.toLocaleString() }}</p>
                   </div>
                 </div>
 
@@ -283,9 +375,9 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isOrderModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+        <div v-if="isOrderModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" @click="closeModals">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
-            <div v-if="isOrderModalOpen" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5">
+            <div v-if="isOrderModalOpen" @click.stop class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5">
               <div class="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white z-10">
                 <h2 class="text-2xl font-black text-gray-900 tracking-tight">Checkout</h2>
                 <button @click="closeModals" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
@@ -301,6 +393,7 @@
                   <div class="flex-1">
                     <h3 class="font-bold text-gray-900 text-lg">{{ selectedProduct?.name }}</h3>
                     <p class="text-blue-600 font-black">₱{{ selectedProduct?.price.toLocaleString() }}</p>
+                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ selectedProduct?.original_price.toLocaleString() }}</p>
                   </div>
                 </div>
 
@@ -403,7 +496,6 @@
     </Teleport>
 
     <Teleport to="body">
-      
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartAlertOpen || isOrderAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
@@ -488,9 +580,10 @@ const isProcessing = ref(false)
 // Custom Modal States
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
+const isReviewsModalOpen = ref(false) // NEW: Reviews Modal State
 const selectedProduct = ref(null)
 
-// Alert Dialog States (Final step)
+// Alert Dialog States
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
 
@@ -538,18 +631,23 @@ const openOrderModal = (product) => {
   addressMode.value = 'default'
   customAddress.value = ''
   isOrderModalOpen.value = true
-  calculateLiveShipping() // Calculate initial shipping
+  calculateLiveShipping()
+}
+
+const openReviewsModal = (product) => {
+  selectedProduct.value = product
+  isReviewsModalOpen.value = true
 }
 
 const closeModals = () => {
   isCartModalOpen.value = false
   isOrderModalOpen.value = false
+  isReviewsModalOpen.value = false
   setTimeout(() => {
     selectedProduct.value = null
-  }, 300) // Clear after animation
+  }, 300)
 }
 
-// Intermediary Handlers (Trigger Alerts)
 const handleCartSubmit = () => {
   isCartAlertOpen.value = true
 }
@@ -558,7 +656,6 @@ const handleOrderSubmit = () => {
   isOrderAlertOpen.value = true
 }
 
-// Quantity Logic
 const incrementQuantity = () => {
   if (selectedProduct.value && orderQuantity.value < selectedProduct.value.stock) {
     orderQuantity.value++
@@ -572,14 +669,12 @@ const decrementQuantity = () => {
   }
 }
 
-// Watchers
 watch(orderQuantity, () => {
   if (isOrderModalOpen.value) {
     calculateLiveShipping()
   }
 })
 
-// Live Shipping Calculation
 const calculateLiveShipping = () => {
   if (!selectedProduct.value) return
   
@@ -590,6 +685,8 @@ const calculateLiveShipping = () => {
     try {
       const response = await api.post('/client/shop/shipping-fee', {
         cart_items: [{
+          product_id: selectedProduct.value.id,
+          distributor_id: selectedProduct.value.distributor_id,
           price: selectedProduct.value.price,
           quantity: orderQuantity.value,
           distributor_lat: selectedProduct.value.distributor_lat,
@@ -601,14 +698,13 @@ const calculateLiveShipping = () => {
       }
     } catch (error) {
       console.error('Error calculating shipping', error)
-      shippingFeeEst.value = 0 // fallback
+      shippingFeeEst.value = 0 
     } finally {
       isCalculatingShipping.value = false
     }
-  }, 500) // Debounce for 500ms
+  }, 500)
 }
 
-// Final Submissions
 const confirmAddToCart = async () => {
   try {
     isProcessing.value = true
@@ -620,8 +716,8 @@ const confirmAddToCart = async () => {
 
     if (response.data.success) {
       toast.success(`${orderQuantity.value}x ${selectedProduct.value.name} added to cart!`)
-      isCartAlertOpen.value = false // Close alert
-      closeModals() // Close main modal
+      isCartAlertOpen.value = false 
+      closeModals() 
     }
   } catch (error) {
     toast.error(error.response?.data?.message || 'Failed to add to cart')
@@ -650,9 +746,9 @@ const confirmOrderNow = async () => {
 
     if (response.data.success) {
       toast.success('Order placed successfully! (Cash on Delivery)')
-      isOrderAlertOpen.value = false // Close alert
-      closeModals() // Close main modal
-      await fetchProducts() // Refresh inventory
+      isOrderAlertOpen.value = false 
+      closeModals() 
+      await fetchProducts() 
     }
   } catch (error) {
     toast.error(error.response?.data?.message || 'Failed to place order. Ensure your profile address is configured.')
@@ -661,7 +757,6 @@ const confirmOrderNow = async () => {
   }
 }
 
-// Filters logic
 const quickFilters = ref([
   { id: 'interior', label: 'Interior', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
   { id: 'exterior', label: 'Exterior', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064' },
@@ -769,7 +864,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Custom scrollbar hiding utility for horizontal filters */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -778,7 +872,6 @@ onMounted(() => {
   scrollbar-width: none;
 }
 
-/* Custom vertical scrollbar for modals */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
