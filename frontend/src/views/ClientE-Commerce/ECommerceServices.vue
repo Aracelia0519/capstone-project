@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue' // Added computed
+import { useRouter } from 'vue-router' // <-- Added for routing
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import { 
@@ -11,7 +12,8 @@ import {
   Briefcase,
   Image as ImageIcon,
   DollarSign,
-  PaintRoller
+  PaintRoller,
+  ClipboardList // <-- Added for the manage button icon
 } from 'lucide-vue-next'
 
 // Shadcn Components
@@ -37,6 +39,7 @@ import {
 } from '@/components/ui/dialog'
 
 // State
+const router = useRouter() // <-- Initialize router
 const services = ref([])
 const isLoading = ref(true)
 const showServiceModal = ref(false)
@@ -139,7 +142,16 @@ const submitServiceRequest = async () => {
           <PaintRoller class="w-8 h-8 text-blue-600" />
         </div>
         <h1 class="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">Professional Painting Services</h1>
-        <p class="text-lg text-gray-500 font-medium">Browse and request verified service providers for your interior, exterior, and custom painting needs.</p>
+        <p class="text-lg text-gray-500 font-medium mb-8">Browse and request verified service providers for your interior, exterior, and custom painting needs.</p>
+        
+        <Button 
+          @click="router.push('/Clients/myServiceRequest')" 
+          variant="outline" 
+          class="border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl font-bold px-6 h-12 shadow-sm transition-all inline-flex items-center gap-2"
+        >
+          <ClipboardList class="w-5 h-5 text-blue-600" />
+          Manage Requested Services
+        </Button>
       </div>
     </div>
 

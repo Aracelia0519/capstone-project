@@ -131,7 +131,8 @@ import { ref, computed, onMounted, defineEmits, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ClipboardList, Palette, History, 
-  Lightbulb, Users, User, LogOut, Loader2, UserCircle, Lock
+  Lightbulb, Users, User, LogOut, Loader2, UserCircle, 
+  Lock, MessageCircle
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -160,7 +161,8 @@ const navigation = [
     title: 'Client Module',
     items: [
       { name: 'Dashboard', path: '/Clients/dashboardC', icon: LayoutDashboard, color: 'text-sky-400', badge: 'Active', requiresVerify: true },
-      { name: 'Service Requests', path: '/Clients/myServiceRequest', icon: ClipboardList, color: 'text-emerald-400', badge: '2', requiresVerify: true }
+      { name: 'Service Requests', path: '/Clients/myServiceRequest', icon: ClipboardList, color: 'text-emerald-400', badge: '2', requiresVerify: true },
+      { name: 'Chat Service Provider', path: '/Clients/ClientChat', icon: MessageCircle, color: 'text-blue-400', badge: '3', requiresVerify: true }
     ]
   },
   {

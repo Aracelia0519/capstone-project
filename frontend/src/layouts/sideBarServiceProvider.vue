@@ -149,7 +149,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ClipboardCheck, Paintbrush, 
   History, Package, Building, FileText, Settings, LogOut, Lock, 
-  Loader2, Briefcase 
+  Loader2, Briefcase, MessageCircle 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -182,7 +182,8 @@ const navigation = [
       { name: 'Dashboard', path: '/serviceProvider/dashboardSP', icon: LayoutDashboard, color: 'text-cyan-400', badge: 'New', requiresVerify: true },
       { name: 'Clients', path: '/serviceProvider/Clients', icon: Users, color: 'text-emerald-400', badge: '24', requiresVerify: true },
       { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12', requiresVerify: true },
-      { name: 'Offer Jobs', path: '/serviceProvider/OfferJobs', icon: Briefcase, color: 'text-purple-400', requiresVerify: true }
+      { name: 'Offer Jobs', path: '/serviceProvider/OfferJobs', icon: Briefcase, color: 'text-purple-400', requiresVerify: true },
+      { name: 'Chat Clients', path: '/serviceProvider/SPChat', icon: MessageCircle, color: 'text-blue-400', badge: '5', requiresVerify: true }
     ]
   },
   {

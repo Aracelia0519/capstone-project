@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br  p-3 sm:p-4 md:p-6 text-slate-200">
+  <div class="min-h-screen bg-gradient-to-br p-3 sm:p-4 md:p-6 text-slate-200">
     <div class="mb-6 sm:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="max-w-full overflow-hidden">
@@ -20,7 +20,8 @@
             <SelectContent class="bg-gray-800 border-gray-700 text-gray-300">
               <SelectItem value="all">All Requests</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="verifying">Verifying</SelectItem>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
@@ -44,7 +45,12 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:gap-6">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-cyan-500 mb-4"></div>
+      <p class="text-gray-400 text-sm">Fetching your service requests...</p>
+    </div>
+
+    <div v-else class="grid grid-cols-1 gap-4 sm:gap-6">
       <Card 
         v-for="request in filteredRequests"
         :key="request.id"
@@ -89,8 +95,9 @@
               </div>
             </div>
             
-            <div class="flex justify-end sm:justify-start mt-3 sm:mt-0 sm:self-center">
+            <div class="flex justify-end sm:justify-start mt-3 sm:mt-0 sm:self-center gap-2">
               <Button 
+                v-if="request.status === 'pending' || request.status === 'completed' || request.status === 'rejected'"
                 variant="outline" 
                 size="sm"
                 @click="viewDetails(request)"
@@ -98,6 +105,17 @@
               >
                 <Eye class="w-4 h-4" />
                 Details
+              </Button>
+              
+              <Button 
+                v-if="request.status === 'verifying' || request.status === 'ongoing'"
+                variant="default" 
+                size="sm"
+                @click="goToChat"
+                class="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2 shadow-lg shadow-blue-900/20"
+              >
+                <MessageSquare class="w-4 h-4" />
+                Messages
               </Button>
             </div>
           </div>
@@ -129,7 +147,7 @@
       </Card>
     </div>
 
-    <div v-if="filteredRequests.length === 0" class="text-center py-12 sm:py-24">
+    <div v-if="!isLoading && filteredRequests.length === 0" class="text-center py-12 sm:py-24">
       <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 bg-gray-800/50 rounded-3xl flex items-center justify-center border border-gray-700/50">
         <ClipboardList class="w-10 h-10 text-gray-600" />
       </div>
@@ -141,121 +159,183 @@
         }}
       </p>
     </div>
+
+    <Dialog v-model:open="isModalOpen">
+      <DialogContent class="bg-gray-900 border-gray-800 text-slate-200 sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
+        <div class="sticky top-0 z-10 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-5">
+          <DialogTitle class="text-xl font-bold text-white flex items-center gap-2">
+             <ClipboardList class="w-5 h-5 text-cyan-400" />
+             Service Request Details
+          </DialogTitle>
+        </div>
+        
+        <div v-if="selectedRequest" class="px-6 py-5 space-y-6">
+           
+           <div v-if="selectedRequest.raw.service_offering" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
+             <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+               <Briefcase class="w-4 h-4" />
+               Service Package Info
+             </h4>
+             <div class="space-y-4">
+               <div>
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Service Title</p>
+                 <p class="font-semibold text-base text-white">{{ selectedRequest.raw.service_offering.title }}</p>
+               </div>
+               
+               <div class="grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+                 <div>
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Category</p>
+                   <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.category }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
+                   <p class="text-xs text-emerald-400 font-bold">
+                     ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
+                     <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
+                   </p>
+                 </div>
+                 <div class="col-span-2 md:col-span-1">
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Duration</p>
+                   <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.duration }}</p>
+                 </div>
+               </div>
+
+               <div v-if="selectedRequest.raw.service_offering.description">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Package Description</p>
+                 <p class="text-xs text-gray-400 leading-relaxed">{{ selectedRequest.raw.service_offering.description }}</p>
+               </div>
+             </div>
+           </div>
+
+           <div v-else class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50">
+              <p class="text-sm text-gray-400 italic">Custom Service Request (No predefined package selected)</p>
+           </div>
+
+           <div class="space-y-5 px-1">
+             <h4 class="text-sm font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-2 uppercase tracking-wider">
+               <User class="w-4 h-4 text-blue-400" />
+               My Request Specifics
+             </h4>
+
+             <div class="space-y-1.5">
+               <p class="text-[10px] text-gray-500 uppercase tracking-wider">My Notes / Instructions</p>
+               <p class="text-sm bg-gray-950 border border-gray-800 p-4 rounded-xl text-gray-300 leading-relaxed italic">
+                 "{{ selectedRequest.description || 'No additional notes provided.' }}"
+               </p>
+             </div>
+
+             <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar class="w-3 h-3 text-gray-400"/> Preferred Date</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.requestedDate }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock class="w-3 h-3 text-gray-400"/> Arrival Time</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.time_preference || 'Flexible' }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Phone class="w-3 h-3 text-gray-400"/> Contact</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.contact_number || 'N/A' }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
+                 <Badge :class="getStatusClasses(selectedRequest.status)" class="mt-0.5">{{ selectedRequest.statusLabel }}</Badge>
+               </div>
+             </div>
+
+             <div class="space-y-1.5 pt-3 border-t border-gray-800">
+               <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin class="w-3 h-3 text-gray-400"/> Complete Address</p>
+               <p class="text-sm text-gray-300">{{ selectedRequest.raw.address || 'N/A' }}</p>
+             </div>
+           </div>
+           
+           <div class="h-2"></div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { 
-  Card, CardContent 
-} from '@/components/ui/card'
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from '@/components/ui/select'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import api from '@/utils/axios'
+
+import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye 
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone
 } from 'lucide-vue-next'
+
+const router = useRouter()
 
 // --- State Management ---
 const activeFilter = ref('all')
+const serviceRequests = ref([])
+const isLoading = ref(true)
 
-const serviceRequests = ref([
-  {
-    id: 1,
-    projectName: 'Living Room Wall Painting',
-    description: 'Complete wall painting with accent wall in blue',
-    serviceProvider: 'John PaintMaster',
-    color: '#3B82F6',
-    colorCode: '#3B82F6',
-    status: 'in-progress',
-    statusLabel: 'In Progress',
-    date: 'Oct 15, 2023',
-    requestedDate: 'Oct 10, 2023',
-    currentStageDate: 'Oct 20, 2023',
-    progress: 60
-  },
-  {
-    id: 2,
-    projectName: 'Bedroom Ceiling & Walls',
-    description: 'Full bedroom renovation with premium matte finish',
-    serviceProvider: 'Sarah ColorExpert',
-    color: '#10B981',
-    colorCode: '#10B981',
-    status: 'pending',
-    statusLabel: 'Pending',
-    date: 'Nov 5, 2023',
-    requestedDate: 'Nov 5, 2023',
-    currentStageDate: 'Nov 12, 2023',
-    progress: 20
-  },
-  {
-    id: 3,
-    projectName: 'Kitchen Cabinet Refinishing',
-    description: 'Cabinet refinishing with modern gray finish',
-    serviceProvider: 'Mike BrushPro',
-    color: '#6B7280',
-    colorCode: '#6B7280',
-    status: 'completed',
-    statusLabel: 'Completed',
-    date: 'Sep 28, 2023',
-    requestedDate: 'Sep 15, 2023',
-    currentStageDate: 'Sep 28, 2023',
-    progress: 100
-  },
-  {
-    id: 4,
-    projectName: 'Exterior House Painting',
-    description: 'Complete exterior painting with weather-resistant paint',
-    serviceProvider: 'Alex SurfacePro',
-    color: '#F59E0B',
-    colorCode: '#F59E0B',
-    status: 'in-progress',
-    statusLabel: 'In Progress',
-    date: 'Oct 25, 2023',
-    requestedDate: 'Oct 20, 2023',
-    currentStageDate: 'Oct 30, 2023',
-    progress: 40
-  },
-  {
-    id: 5,
-    projectName: 'Bathroom Wall Tiling',
-    description: 'Wall tiling with waterproof blue ceramic tiles',
-    serviceProvider: 'Emma TileMaster',
-    color: '#8B5CF6',
-    colorCode: '#8B5CF6',
-    status: 'pending',
-    statusLabel: 'Pending',
-    date: 'Nov 8, 2023',
-    requestedDate: 'Nov 8, 2023',
-    currentStageDate: 'Nov 15, 2023',
-    progress: 10
-  },
-  {
-    id: 6,
-    projectName: 'Office Space Painting',
-    description: 'Professional office space with calming green tones',
-    serviceProvider: 'David OfficePro',
-    color: '#059669',
-    colorCode: '#059669',
-    status: 'completed',
-    statusLabel: 'Completed',
-    date: 'Aug 15, 2023',
-    requestedDate: 'Aug 1, 2023',
-    currentStageDate: 'Aug 15, 2023',
-    progress: 100
+// Modal State
+const isModalOpen = ref(false)
+const selectedRequest = ref(null)
+
+// --- Data Fetching ---
+const fetchRequests = async () => {
+  isLoading.value = true
+  try {
+    const response = await api.get('/client/services/my-requests')
+    if (response.data.success) {
+      serviceRequests.value = response.data.data.map(req => {
+        
+        // Progress Logic Setup
+        let progress = 10;
+        if (req.status === 'verifying') progress = 30;
+        else if (req.status === 'approved') progress = 50;
+        else if (req.status === 'ongoing') progress = 70;
+        else if (req.status === 'completed' || req.status === 'rejected') progress = 100;
+
+        const cId = req.id
+        const generatedColor = ['#3B82F6', '#10B981', '#6B7280', '#F59E0B', '#8B5CF6', '#059669', '#ec4899'][cId % 7]
+
+        return {
+          id: req.id,
+          projectName: req.service_offering ? req.service_offering.title : 'Custom Service Request',
+          description: req.description,
+          serviceProvider: req.provider ? `${req.provider.first_name} ${req.provider.last_name}` : 'Pending Assignment',
+          color: generatedColor,
+          colorCode: generatedColor,
+          status: req.status,
+          statusLabel: req.status.charAt(0).toUpperCase() + req.status.slice(1).replace('-', ' '),
+          date: new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          requestedDate: req.preferred_date || 'N/A',
+          currentStageDate: new Date(req.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          progress: progress,
+          raw: req // Keep raw payload to dump in Modal
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Failed to load requests:', error)
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+onMounted(() => {
+  fetchRequests()
+})
 
 // --- Computeds ---
 const statusCounts = computed(() => {
   return serviceRequests.value.reduce((acc, request) => {
     acc[request.status] = (acc[request.status] || 0) + 1
     return acc
-  }, { pending: 0, 'in-progress': 0, completed: 0 })
+  }, {})
 })
 
 const filteredRequests = computed(() => {
@@ -274,15 +354,15 @@ const statsCards = computed(() => [
   },
   { 
     label: 'Active', 
-    value: statusCounts.value['in-progress'], 
+    value: statusCounts.value['ongoing'] || 0, 
     colorClass: 'text-cyan-300', 
     bgClass: 'bg-cyan-500/10', 
     iconClass: 'text-cyan-400', 
     icon: Zap 
   },
   { 
-    label: 'Pending', 
-    value: statusCounts.value.pending, 
+    label: 'Pending/Verifying', 
+    value: (statusCounts.value['pending'] || 0) + (statusCounts.value['verifying'] || 0), 
     colorClass: 'text-amber-300', 
     bgClass: 'bg-amber-500/10', 
     iconClass: 'text-amber-400', 
@@ -290,7 +370,7 @@ const statsCards = computed(() => [
   },
   { 
     label: 'Completed', 
-    value: statusCounts.value.completed, 
+    value: statusCounts.value['completed'] || 0, 
     colorClass: 'text-emerald-300', 
     bgClass: 'bg-emerald-500/10', 
     iconClass: 'text-emerald-400', 
@@ -302,42 +382,57 @@ const statsCards = computed(() => [
 const getStatusClasses = (status) => {
   const classes = {
     'pending': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    'in-progress': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-    'completed': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+    'verifying': 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    'ongoing': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    'completed': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    'rejected': 'bg-red-500/10 text-red-400 border-red-500/30'
   }
   return classes[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'
 }
 
 const getIndicatorColor = (status) => {
   if (status === 'pending') return 'bg-amber-500'
-  if (status === 'in-progress') return 'bg-cyan-500'
+  if (status === 'verifying') return 'bg-blue-500'
+  if (status === 'ongoing') return 'bg-cyan-500'
+  if (status === 'rejected') return 'bg-red-500'
   return 'bg-emerald-500'
 }
 
 const getStatusTextColor = (status) => {
   if (status === 'pending') return 'text-amber-400'
-  if (status === 'in-progress') return 'text-cyan-400'
+  if (status === 'verifying') return 'text-blue-400'
+  if (status === 'ongoing') return 'text-cyan-400'
+  if (status === 'rejected') return 'text-red-400'
   return 'text-emerald-400'
 }
 
 const getProgressBarTheme = (status) => {
-  // We use custom CSS variables for the Progress component indicator
   if (status === 'pending') return '[&>div]:bg-amber-500'
-  if (status === 'in-progress') return '[&>div]:bg-cyan-500'
+  if (status === 'verifying') return '[&>div]:bg-blue-500'
+  if (status === 'ongoing') return '[&>div]:bg-cyan-500'
+  if (status === 'rejected') return '[&>div]:bg-red-500'
   return '[&>div]:bg-emerald-500'
 }
 
 const getStatusMessage = (status) => {
   const messages = {
     'pending': 'Awaiting confirmation',
-    'in-progress': 'Work in progress',
-    'completed': 'Successfully completed'
+    'verifying': 'Awaiting official deal',
+    'ongoing': 'Ongoing project',
+    'completed': 'Successfully completed',
+    'rejected': 'Request declined'
   }
   return messages[status] || 'Status unknown'
 }
 
+// Actions
 const viewDetails = (request) => {
-  console.log('Viewing details for:', request)
+  selectedRequest.value = request
+  isModalOpen.value = true
+}
+
+const goToChat = () => {
+  router.push('/Clients/ClientChat')
 }
 </script>
 
@@ -348,15 +443,15 @@ const viewDetails = (request) => {
 }
 
 /* Re-applying your custom scrollbar */
-::-webkit-scrollbar {
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-::-webkit-scrollbar-track {
+.custom-scrollbar::-webkit-scrollbar-track {
   background: rgba(30, 41, 59, 0.3);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb {
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background: linear-gradient(to bottom, #38bdf8, #0ea5e9);
   border-radius: 3px;
 }

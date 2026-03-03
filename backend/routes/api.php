@@ -21,6 +21,10 @@ use App\Http\Controllers\Api\OperationDistributor\ECommerceDashboardController;
 use App\Http\Controllers\Api\OperationDistributor\PaymentManagementController;
 use App\Http\Controllers\Api\OperationDistributor\ReviewManagementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceOfferingController;
+use App\Http\Controllers\Api\ServiceProvider\ServiceJobController;
+use Illuminate\Support\Facades\Broadcast;
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Public routes
 Route::prefix('auth')->group(function () {
@@ -64,6 +68,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Client Requirements - ID Verification & Ecommerce Shop
     Route::prefix('client')->group(function () {
+        // -----------------------------------------------------
+        // CHATS: galing sa selected Servive Provider ng Client
+        // -----------------------------------------------------
+        Route::prefix('chat')->group(function () {
+            Route::get('/contacts', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'getContacts']);
+            Route::get('/messages/{providerId}', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'getMessages']);
+            Route::post('/send', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'sendMessage']);
+            
+            Route::post('/deals/{dealId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToDeal']);
+        });
+
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ClientRequirementController::class, 'index']);
             Route::post('/', [ClientRequirementController::class, 'store']);
@@ -85,6 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('services')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'getServices']);
             Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
+
+            Route::get('/my-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'index']);
         });
 
         // E-Commerce Client Shop & Cart Routes
@@ -113,6 +130,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
+
+        // -----------------------------------------------------
+        // Chat to between Client and Service Provider
+        // -----------------------------------------------------
+        Route::prefix('chat')->group(function () {
+            Route::get('/contacts', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getContacts']);
+            Route::get('/messages/{clientId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getMessages']);
+            Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
+        });
+
+        Route::get('/job-requests', [ServiceJobController::class, 'index']);
+        Route::post('/job-requests/{id}/approve', [ServiceJobController::class, 'approve']);
+        Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
+
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);
             Route::post('/', [ServiceProviderRequirementController::class, 'store']);

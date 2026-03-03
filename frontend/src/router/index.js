@@ -45,16 +45,17 @@ import Distributors from '@/views/serviceProvider/Distributors.vue'
 import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
 import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
 import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
+import SPChat from '@/views/serviceProvider/SPChat.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
 import MyServiceRequests from '@/views/client/MyServiceRequests.vue'
+import ClientChat from '@/views/client/ClientChat.vue'
 import ColorPreview from '@/views/client/ColorPreview.vue'
 import ColorHistoryC from '@/views/client/ColorHistoryC.vue'
 import Recommendations from '@/views/client/Recommendations.vue'
 import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
-
 
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
@@ -350,6 +351,11 @@ const routes = [
         component: OfferJobs
       },
       {
+        path: 'SPChat',
+        name: 'SPChat',
+        component: SPChat
+      },
+      {
         path: 'VirtualPaintColor',
         name: 'VirtualPaintColor',
         component: VirtualPaintColor
@@ -420,6 +426,11 @@ const routes = [
         path: 'profileC',
         name: 'profileC',
         component: ProfileC
+      },
+      {
+        path: 'ClientChat',
+        name: 'ClientChat',
+        component: ClientChat
       },
     ]
   },
