@@ -125,7 +125,7 @@
         <Card class="overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-lg font-semibold text-gray-800">Recently Processed</h2>
-            <p class="text-sm text-gray-500 mt-1">Requests approved or rejected in the last 7 days</p>
+            <p class="text-sm text-gray-500 mt-1">Requests approved or rejected by Finance in the last 7 days</p>
           </div>
           <div class="p-4">
             <div v-if="recentlyProcessed.length > 0" class="overflow-x-auto">
@@ -135,7 +135,8 @@
                     <TableHead>Request ID</TableHead>
                     <TableHead>Item</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Decision</TableHead>
+                    <TableHead>Current Status</TableHead>
                     <TableHead>Processed Date</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -145,20 +146,21 @@
                     <TableCell>{{ request.product_name }}</TableCell>
                     <TableCell>₱{{ formatCurrency(request.total_cost) }}</TableCell>
                     <TableCell>
-                      <Badge v-if="request.status === 'approved'" class="bg-green-100 text-green-800 hover:bg-green-100 border-0">
+                      <Badge v-if="request.finance_approved_at" class="bg-green-100 text-green-800 hover:bg-green-100 border-0">
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         Approved
                       </Badge>
-                       <Badge v-else class="bg-red-100 text-red-800 hover:bg-red-100 border-0">
+                       <Badge v-else-if="request.finance_rejected_at" class="bg-red-100 text-red-800 hover:bg-red-100 border-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         Rejected
                       </Badge>
                     </TableCell>
-                    <TableCell>{{ formatDate(request.updated_at) }}</TableCell>
+                    <TableCell class="capitalize text-xs text-gray-500">{{ request.status }}</TableCell>
+                    <TableCell>{{ formatDate(request.finance_approved_at || request.finance_rejected_at) }}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -445,7 +447,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import api from '@/utils/axios.js'; // Adjust the path to your axios.js file
+import api from '@/utils/axios.js'; 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

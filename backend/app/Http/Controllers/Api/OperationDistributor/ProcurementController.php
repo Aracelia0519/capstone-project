@@ -8,25 +8,22 @@ use App\Models\Distributor\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-// Import all necessary models
+use Illuminate\Support\Facades\DB;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\Distributor\DistributorRequirements;
 use App\Models\Distributor\OperationalDistributor; 
 use App\Models\Supplier\SupplierRequirements;
 use App\Models\Distributor\DistributorAddress; 
+use App\Models\Supplier\SupplierRawMaterial;
 
 class ProcurementController extends Controller
 {
-    /**
-     * Get all procurement requests for the authenticated user
-     */
     public function index(Request $request)
     {
         try {
             $user = Auth::user();
             $query = ProcurementRequest::query();
             
-            // Filter based on user role
             if ($user->role === 'distributor') {
                 $query->where('distributor_id', $user->id);
             } elseif (in_array($user->role, ['operational_distributor', 'employee', 'hr_manager', 'finance_manager'])) {
@@ -40,16 +37,18 @@ class ProcurementController extends Controller
                 ], 403);
             }
             
-            // Apply filters
-            if ($request->has('status')) {
+            // FIX: Changed from has() to filled()
+            if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
             
-            if ($request->has('priority')) {
+            // FIX: Changed from has() to filled()
+            if ($request->filled('priority')) {
                 $query->where('priority', $request->priority);
             }
             
-            if ($request->has('search')) {
+            // FIX: Changed from has() to filled()
+            if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
                     $q->where('request_code', 'like', "%{$search}%")
@@ -58,15 +57,12 @@ class ProcurementController extends Controller
                 });
             }
             
-            // Sort
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
             $query->orderBy($sortBy, $sortOrder);
             
-            // Paginate
             $perPage = $request->get('per_page', 15);
-            // Added selectedSupplier to with()
-            $requests = $query->with(['product', 'requester', 'distributor', 'selectedSupplier'])->paginate($perPage);
+            $requests = $query->with(['requester', 'distributor', 'selectedSupplier'])->paginate($perPage);
             
             return response()->json([
                 'success' => true,
@@ -81,87 +77,45 @@ class ProcurementController extends Controller
             ], 500);
         }
     }
-    
-    /**
-     * Get available products for procurement
-     */
-    public function availableProducts(Request $request)
+
+    public function supplierProducts(Request $request, $supplierId)
     {
         try {
-            $query = Product::with(['distributor'])->active();
-            
-            // Apply filters
-            if ($request->has('category')) {
-                $query->where('category', $request->category);
-            }
-            
-            if ($request->has('distributor_id')) {
-                $query->where('distributor_id', $request->distributor_id);
-            }
-            
-            if ($request->has('search')) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('sku_code', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
-                });
-            }
-            
-            $products = $query->paginate($request->get('per_page', 12));
-            
+            $products = SupplierRawMaterial::where('user_id', $supplierId)
+                ->where('is_active', true)
+                ->get();
+
             return response()->json([
                 'success' => true,
                 'data' => $products,
-                'message' => 'Available products retrieved successfully'
+                'message' => 'Supplier products retrieved successfully'
             ]);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve available products: ' . $e->getMessage()
+                'message' => 'Failed to fetch supplier products: ' . $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Get form options (suppliers and addresses)
-     */
     public function formOptions(Request $request)
     {
         try {
             $user = Auth::user();
-            $distributorId = $user->id;
+            $distributorId = $this->getDistributorId($user);
 
-            // Determine the distributor ID based on user role
-            if ($user->role === 'operational_distributor') {
-                $opDist = OperationalDistributor::where('user_id', $user->id)->first();
-                if ($opDist) {
-                    $distributorId = $opDist->parent_distributor_id;
-                }
-            }
-
-            // 1. Fetch Partnered Suppliers safely
-            // We use 'values()' to re-index array after filter
             $suppliers = SupplierPartner::where('distributor_id', $distributorId)
                 ->where('status', 'active')
                 ->with('supplier')
                 ->get()
                 ->map(function($partner) {
-                    // Safety check: if supplier user is deleted/null, skip
-                    if (!$partner->supplier) {
-                        return null;
-                    }
-
+                    if (!$partner->supplier) return null;
                     $supplierName = $partner->supplier->full_name ?? ($partner->supplier->first_name . ' ' . $partner->supplier->last_name);
                     
-                    // Try to fetch company name
                     $companyName = null;
                     try {
                         $companyName = SupplierRequirements::where('user_id', $partner->supplier_id)->value('company_name');
-                    } catch (\Exception $e) {
-                        // If table doesn't exist or error, ignore
-                    }
+                    } catch (\Exception $e) {}
                     
                     return [
                         'id' => $partner->supplier_id,
@@ -169,15 +123,12 @@ class ProcurementController extends Controller
                         'value' => $companyName ? $companyName : $supplierName
                     ];
                 })
-                ->filter() // Remove nulls
-                ->values(); // Reset keys
+                ->filter()
+                ->values(); 
 
-            // 2. Fetch Distributor Addresses using direct query to avoid relationship errors
             $addresses = [];
             $distributorReq = DistributorRequirements::where('user_id', $distributorId)->first();
-            
             if ($distributorReq) {
-                // Manually query addresses using the ID from requirements
                 $addresses = DistributorAddress::where('distributor_requirements_id', $distributorReq->id)->get();
             }
 
@@ -191,7 +142,6 @@ class ProcurementController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // Log the error for debugging (in a real app)
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve form options: ' . $e->getMessage()
@@ -199,20 +149,18 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Create a new procurement request
-     */
     public function store(Request $request)
     {
         try {
             $user = Auth::user();
+            $distributorId = $this->getDistributorId($user);
             
-            // Validate request
             $validator = Validator::make($request->all(), [
-                'product_id' => 'required|exists:distributor_products,id',
-                'quantity' => 'required|integer|min:1',
-                'supplier_id' => 'required|exists:users,id', // Added validation for supplier_id
+                'supplier_id' => 'required|exists:users,id',
                 'supplier' => 'required|string|max:255',
+                'items' => 'required|array|min:1',
+                'items.*.id' => 'required|exists:supplier_raw_materials,id',
+                'items.*.quantity' => 'required|integer|min:1|max:5000',
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
                 'shipping_method' => 'nullable|string|in:standard,express,pickup',
@@ -229,51 +177,48 @@ class ProcurementController extends Controller
                 ], 422);
             }
             
-            // Get the product
-            $product = Product::findOrFail($request->product_id);
-            
-            // Check quantity
-            if ($request->quantity > 1000) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Requested quantity is too high'
-                ], 400);
+            DB::beginTransaction();
+            $createdRequests = [];
+
+            foreach ($request->items as $item) {
+                $material = SupplierRawMaterial::findOrFail($item['id']);
+                $totalCost = $material->price * $item['quantity'];
+                
+                $procurementRequest = ProcurementRequest::create([
+                    'requester_id' => $user->id,
+                    'distributor_id' => $distributorId,
+                    'supplier_id' => $request->supplier_id,
+                    'product_id' => null, 
+                    'request_code' => ProcurementRequest::generateRequestCode(),
+                    'product_name' => $material->name,
+                    'category' => $material->category,
+                    'supplier' => $request->supplier,
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $material->price,
+                    'total_cost' => $totalCost,
+                    'priority' => $request->priority,
+                    'status' => 'pending',
+                    'shipping_method' => $request->shipping_method ?? 'standard',
+                    'payment_terms' => $request->payment_terms ?? 'net30',
+                    'delivery_address' => $request->delivery_address,
+                    'instructions' => $request->instructions,
+                    'required_by_date' => $request->required_by_date,
+                    'request_date' => now()->toDateString()
+                ]);
+
+                $createdRequests[] = $procurementRequest;
             }
             
-            // Calculate total cost
-            $unitCost = $product->cost ?? $product->price; 
-            $totalCost = $unitCost * $request->quantity;
-            
-            // Create the procurement request
-            $procurementRequest = ProcurementRequest::create([
-                'requester_id' => $user->id,
-                'distributor_id' => $product->distributor_id,
-                'product_id' => $product->id,
-                'supplier_id' => $request->supplier_id, // Saving supplier_id
-                'request_code' => ProcurementRequest::generateRequestCode(),
-                'product_name' => $product->name,
-                'category' => $product->category,
-                'supplier' => $request->supplier,
-                'quantity' => $request->quantity,
-                'unit_price' => $unitCost,
-                'total_cost' => $totalCost,
-                'priority' => $request->priority,
-                'status' => 'pending',
-                'shipping_method' => $request->shipping_method ?? 'standard',
-                'payment_terms' => $request->payment_terms ?? 'net30',
-                'delivery_address' => $request->delivery_address,
-                'instructions' => $request->instructions,
-                'required_by_date' => $request->required_by_date,
-                'request_date' => now()->toDateString()
-            ]);
-            
+            DB::commit();
+
             return response()->json([
                 'success' => true,
-                'data' => $procurementRequest->load(['product', 'distributor', 'selectedSupplier']),
-                'message' => 'Procurement request created successfully'
+                'data' => $createdRequests,
+                'message' => count($createdRequests) . ' Procurement requests generated successfully'
             ], 201);
             
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create procurement request: ' . $e->getMessage()
@@ -281,17 +226,12 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Get a single procurement request
-     */
     public function show($id)
     {
         try {
             $user = Auth::user();
-            // Added selectedSupplier to with()
-            $request = ProcurementRequest::with(['product', 'requester', 'distributor', 'selectedSupplier'])->findOrFail($id);
+            $request = ProcurementRequest::with(['requester', 'distributor', 'selectedSupplier'])->findOrFail($id);
             
-            // Check authorization
             if (!$this->canViewRequest($user, $request)) {
                 return response()->json([
                     'success' => false,
@@ -313,16 +253,12 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Update a procurement request (for status updates, etc.)
-     */
     public function update(Request $request, $id)
     {
         try {
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            // Check authorization
             if (!$this->canUpdateRequest($user, $procurementRequest)) {
                 return response()->json([
                     'success' => false,
@@ -330,26 +266,21 @@ class ProcurementController extends Controller
                 ], 403);
             }
             
-            // Only certain fields can be updated based on user role and request status
             $updatableFields = [];
             
             if ($user->id === $procurementRequest->requester_id && $procurementRequest->status === 'pending') {
-                // Requester can update certain fields if request is still pending
                 $updatableFields = ['delivery_address', 'instructions', 'required_by_date'];
             }
             
             if ($user->id === $procurementRequest->distributor_id) {
-                // Distributor can update status and rejection reason
                 if ($request->has('status')) {
                     $procurementRequest->updateStatus($request->status, $request->rejection_reason);
                 }
-                
                 if ($request->has('shipping_method')) {
                     $updatableFields[] = 'shipping_method';
                 }
             }
             
-            // Update allowed fields
             foreach ($updatableFields as $field) {
                 if ($request->has($field)) {
                     $procurementRequest->$field = $request->$field;
@@ -360,7 +291,7 @@ class ProcurementController extends Controller
             
             return response()->json([
                 'success' => true,
-                'data' => $procurementRequest->fresh(['product', 'requester', 'distributor']),
+                'data' => $procurementRequest->fresh(['requester', 'distributor']),
                 'message' => 'Procurement request updated successfully'
             ]);
             
@@ -372,16 +303,12 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Cancel a procurement request
-     */
     public function cancel(Request $request, $id)
     {
         try {
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            // Check if user can cancel this request
             if ($user->id !== $procurementRequest->requester_id) {
                 return response()->json([
                     'success' => false,
@@ -389,7 +316,6 @@ class ProcurementController extends Controller
                 ], 403);
             }
             
-            // Check if request can be cancelled
             if (!in_array($procurementRequest->status, ['pending', 'approved'])) {
                 return response()->json([
                     'success' => false,
@@ -412,27 +338,22 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Get procurement statistics
-     */
     public function statistics(Request $request)
     {
         try {
             $user = Auth::user();
             $query = ProcurementRequest::query();
-            
-            // Filter based on user role
+
             if ($user->role === 'distributor') {
                 $query->where('distributor_id', $user->id);
             } elseif (in_array($user->role, ['operational_distributor', 'employee', 'hr_manager', 'finance_manager'])) {
                 $query->where('requester_id', $user->id);
             }
             
-            // Time filter
-            if ($request->has('period')) {
+            // FIX: Changed from has() to filled()
+            if ($request->filled('period')) {
                 $period = $request->period;
                 $now = now();
-                
                 switch ($period) {
                     case 'today':
                         $query->whereDate('created_at', $now->toDateString());
@@ -449,7 +370,6 @@ class ProcurementController extends Controller
                 }
             }
             
-            // Calculate statistics
             $totalRequests = $query->count();
             $totalCost = $query->sum('total_cost');
             
@@ -461,7 +381,6 @@ class ProcurementController extends Controller
                 ->selectRaw('priority, count(*) as count')
                 ->pluck('count', 'priority');
             
-            // Recent requests
             $recentRequests = ProcurementRequest::query()
                 ->when($user->role === 'distributor', function($q) use ($user) {
                     $q->where('distributor_id', $user->id);
@@ -493,43 +412,40 @@ class ProcurementController extends Controller
         }
     }
     
-    /**
-     * Check if user can view a request
-     */
     private function canViewRequest($user, $request)
     {
-        if ($user->role === 'admin') {
-            return true;
-        }
-        
-        if ($user->id === $request->requester_id) {
-            return true;
-        }
-        
-        if ($user->id === $request->distributor_id) {
-            return true;
-        }
-        
+        if ($user->role === 'admin') return true;
+        if ($user->id === $request->requester_id) return true;
+        if ($user->id === $request->distributor_id) return true;
         return false;
     }
     
-    /**
-     * Check if user can update a request
-     */
     private function canUpdateRequest($user, $request)
     {
-        if ($user->role === 'admin') {
-            return true;
-        }
-        
-        if ($user->id === $request->requester_id && $request->status === 'pending') {
-            return true;
-        }
-        
-        if ($user->id === $request->distributor_id) {
-            return true;
-        }
-        
+        if ($user->role === 'admin') return true;
+        if ($user->id === $request->requester_id && $request->status === 'pending') return true;
+        if ($user->id === $request->distributor_id) return true;
         return false;
+    }
+
+    private function getDistributorId($user) {
+        if ($user->role === 'distributor') return $user->id;
+        if ($user->role === 'operational_distributor') {
+            $model = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'hr_manager') {
+            $model = DB::table('hr_managers')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'finance_manager') {
+            $model = DB::table('finance_managers')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'employee') {
+            $model = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        return $user->id;
     }
 }

@@ -25,34 +25,34 @@
       <Card class="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
           <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Total Active</div>
+          <div class="text-xs md:text-sm text-gray-300">Total Pipeline</div>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'Approved').length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Pending Prep</div>
+          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'approved').length }}</div>
+          <div class="text-xs md:text-sm text-gray-300">Pending Ops Action</div>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'Ready').length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Ready</div>
+          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => ['op-approved', 'd-approved', 'ready', 'processing'].includes(r.status)).length }}</div>
+          <div class="text-xs md:text-sm text-gray-300">Processing / Ready</div>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'Shipped').length }}</div>
+          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'shipped').length }}</div>
           <div class="text-xs md:text-sm text-gray-300">In Transit</div>
         </CardContent>
       </Card>
 
       <Card class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'Delivered').length }}</div>
+          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'delivered').length }}</div>
           <div class="text-xs md:text-sm text-gray-300">Delivered</div>
         </CardContent>
       </Card>
@@ -81,10 +81,13 @@
               </SelectTrigger>
               <SelectContent class="bg-gray-800 border-gray-700 text-white">
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Approved">Approved (Pending)</SelectItem>
-                <SelectItem value="Ready">Ready / Prepared</SelectItem>
-                <SelectItem value="Shipped">In Transit</SelectItem>
-                <SelectItem value="Delivered">Delivered</SelectItem>
+                <SelectItem value="approved">Pending Ops Action</SelectItem>
+                <SelectItem value="op-approved">Op. Approved</SelectItem>
+                <SelectItem value="d-approved">Dist. Approved</SelectItem>
+                <SelectItem value="ready">Ready (Budgeted)</SelectItem>
+                <SelectItem value="shipped">In Transit</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -148,12 +151,12 @@
                   {{ req.location }}
                 </div>
                 <div class="text-xs text-gray-500 mt-0.5">
-                  {{ req.items.length }} items to pack
+                  {{ req.items.length }} items
                 </div>
               </TableCell>
               <TableCell class="whitespace-nowrap">
-                <Badge :class="['rounded-full border-0 font-medium px-2 py-0.5', statusClasses[req.status]]">
-                  {{ req.status === 'Approved' ? 'Pending Ops' : req.status }}
+                <Badge :class="['rounded-full border-0 font-medium px-2 py-0.5 whitespace-nowrap', statusClasses[req.status]]">
+                  {{ formatStatus(req.status) }}
                 </Badge>
               </TableCell>
               <TableCell class="whitespace-nowrap">
@@ -190,7 +193,7 @@
             <span class="font-mono text-base text-gray-400 break-all" v-if="selectedRequest">{{ selectedRequest.id }}</span>
           </DialogTitle>
           <DialogDescription class="text-gray-400">
-            Review items and prepare for dispatch.
+            Review items and Operational approval dispatch.
           </DialogDescription>
         </DialogHeader>
 
@@ -220,7 +223,9 @@
                 <h4 class="text-xs uppercase tracking-wider text-gray-500 font-semibold">Logistics Status</h4>
                 <div class="flex justify-between items-center">
                   <span class="text-gray-400">Current Status</span>
-                  <Badge :class="statusClasses[selectedRequest.status]">{{ selectedRequest.status }}</Badge>
+                  <Badge :class="statusClasses[selectedRequest.status]">
+                    {{ formatStatus(selectedRequest.status) }}
+                  </Badge>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="text-gray-400">Priority</span>
@@ -280,14 +285,14 @@
                   Cancel
                 </Button>
                 
-                <div v-if="selectedRequest.status === 'Approved'" class="contents">
+                <div v-if="selectedRequest.status === 'approved'" class="contents">
                    <template v-if="!isRejecting">
                       <Button variant="destructive" @click="isRejecting = true" class="w-full sm:w-auto bg-red-900/50 text-red-200 hover:bg-red-900">
                          Reject
                       </Button>
-                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="initiateReady">
+                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="initiateOpApprove">
                          <Truck class="w-4 h-4 mr-2" />
-                         Mark Prepared
+                         Op. Approve
                       </Button>
                    </template>
                    
@@ -297,8 +302,8 @@
                 </div>
                 
                 <div v-else class="w-full sm:w-auto">
-                   <Button disabled class="w-full bg-gray-800 text-gray-500 border-0">
-                      {{ selectedRequest.status }}
+                   <Button disabled class="w-full bg-gray-800 text-gray-500 border-0 whitespace-nowrap">
+                      {{ formatStatus(selectedRequest.status) }}
                    </Button>
                 </div>
              </div>
@@ -333,7 +338,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
 import { 
   Download, RefreshCw, Search, MapPin, AlertCircle,
-  Building2, Truck, ArrowRight
+  Building2, Truck
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -355,7 +360,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-// State
 const loading = ref(false)
 const requests = ref([])
 const searchQuery = ref('')
@@ -363,30 +367,44 @@ const selectedStatus = ref('')
 const selectedPriority = ref('')
 const selectedRequest = ref(null)
 
-// Modal State
 const isRejecting = ref(false)
 const rejectReason = ref('')
 
-// Alert Dialog State
 const alertOpen = ref(false)
-const pendingAction = ref(null) // 'ready' | 'reject'
+const pendingAction = ref(null) 
 const alertConfig = ref({
   description: '',
   confirmText: 'Continue',
   confirmClass: ''
 })
 
-// Style Maps
-const statusClasses = {
-  'Approved': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  'Ready': 'bg-purple-500/20 text-purple-300 border-purple-500/30', 
-  'Processing': 'bg-blue-500/20 text-blue-300 border-blue-500/30', 
-  'Shipped': 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-  'Delivered': 'bg-green-500/20 text-green-300 border-green-500/30',
-  'Rejected': 'bg-red-500/20 text-red-300 border-red-500/30'
+// Unified mapping logic to prevent hardcoding UI labels
+const formatStatus = (status) => {
+    const map = {
+        'approved': 'Pending Ops Action',
+        'op-approved': 'Op. Approved',
+        'd-approved': 'Dist. Approved',
+        'ready': 'Ready (Budgeted)',
+        'processing': 'Processing',
+        'shipped': 'In Transit',
+        'delivered': 'Delivered',
+        'rejected': 'Rejected'
+    };
+    return map[status] || status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-// Fetch Data
+// Added the new statuses here
+const statusClasses = {
+  'approved': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  'op-approved': 'bg-purple-500/20 text-purple-300 border-purple-500/30', 
+  'd-approved': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  'ready': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  'processing': 'bg-blue-500/20 text-blue-300 border-blue-500/30', 
+  'shipped': 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+  'delivered': 'bg-green-500/20 text-green-300 border-green-500/30',
+  'rejected': 'bg-red-500/20 text-red-300 border-red-500/30'
+}
+
 const fetchRequests = async () => {
   loading.value = true
   try {
@@ -402,7 +420,6 @@ const fetchRequests = async () => {
 
 const handleExport = () => {
   toast.info("Exporting manifest started...")
-  // Mock export logic
   setTimeout(() => {
     toast.success("Manifest exported successfully")
   }, 1000)
@@ -412,7 +429,6 @@ onMounted(() => {
   fetchRequests()
 })
 
-// Computed Logic
 const filteredRequests = computed(() => {
   return requests.value.filter(req => {
     const searchLower = searchQuery.value.toLowerCase()
@@ -435,7 +451,6 @@ const filteredRequests = computed(() => {
   })
 })
 
-// Actions
 const resetFilters = () => {
   searchQuery.value = ''
   selectedStatus.value = 'all'
@@ -453,12 +468,11 @@ const closeModal = () => {
   selectedRequest.value = null
 }
 
-// Alert Logic Handlers
-const initiateReady = () => {
-  pendingAction.value = 'ready'
+const initiateOpApprove = () => {
+  pendingAction.value = 'op_approve'
   alertConfig.value = {
-    description: `This will mark Request ${selectedRequest.value.id} as prepared and ready for shipping. Inventory will be allocated.`,
-    confirmText: 'Mark as Prepared',
+    description: `This will mark Request ${selectedRequest.value.id} as Operationally Approved and ready for shipping.`,
+    confirmText: 'Op. Approve',
     confirmClass: 'bg-green-600 hover:bg-green-500 text-white'
   }
   alertOpen.value = true
@@ -479,29 +493,28 @@ const initiateReject = () => {
 }
 
 const executeAction = async () => {
-  if (pendingAction.value === 'ready') {
-    await markAsReady()
+  if (pendingAction.value === 'op_approve') {
+    await markAsOpApprove()
   } else if (pendingAction.value === 'reject') {
     await confirmReject()
   }
   alertOpen.value = false
 }
 
-// API Calls
-const markAsReady = async () => {
+const markAsOpApprove = async () => {
   if (!selectedRequest.value) return
 
   try {
-    await api.post(`/distributor/procurement-fulfillment/${selectedRequest.value.db_id}/ready`)
+    await api.post(`/distributor/procurement-fulfillment/${selectedRequest.value.db_id}/op-approve`)
     
-    selectedRequest.value.status = 'Ready'
+    selectedRequest.value.status = 'op-approved'
     
-    toast.success(`Request ${selectedRequest.value.id} marked as Ready/Prepared`)
+    toast.success(`Request ${selectedRequest.value.id} marked as Op. Approved`)
     closeModal()
     fetchRequests() 
   } catch (error) {
     console.error(error)
-    toast.error("Failed to update status to Ready")
+    toast.error("Failed to process operational approval")
   }
 }
 

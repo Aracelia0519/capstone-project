@@ -6,7 +6,6 @@
           <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Paint Shop</h1>
           <p class="text-gray-500 mt-1 text-sm">Browse our premium collection of paints</p>
         </div>
-        
       </div>
     </div>
 
@@ -174,9 +173,9 @@
               <div class="mt-4 flex justify-between items-end">
                 <div>
                   <div v-if="product.promotion && product.original_price > product.price" class="text-xs text-gray-400 line-through mb-0.5">
-                    ₱{{ product.original_price.toLocaleString() }}
+                    ₱{{ formatCurrency(product.original_price) }}
                   </div>
-                  <span :class="['text-2xl font-black tracking-tight', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">₱{{ product.price.toLocaleString() }}</span>
+                  <span :class="['text-2xl font-black tracking-tight', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">₱{{ formatCurrency(product.price) }}</span>
                   <span class="text-xs text-gray-400 font-medium ml-1">/unit</span>
                 </div>
                 
@@ -233,15 +232,12 @@
         <div v-if="filteredProducts.length === 0" class="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm mt-6">
           <div class="w-20 h-20 mx-auto mb-4 bg-gray-50 rounded-full flex items-center justify-center text-gray-400">
             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-2">No products found</h3>
           <p class="text-gray-500 mb-6">Try adjusting your filters or search terms</p>
-          <Button
-            @click="clearFilters"
-            class="rounded-xl bg-gray-900 hover:bg-gray-800 text-white px-8"
-          >
+          <Button @click="clearFilters" class="rounded-xl bg-gray-900 hover:bg-gray-800 text-white px-8">
             Clear All Filters
           </Button>
         </div>
@@ -343,8 +339,8 @@
                   </div>
                   <div>
                     <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1">{{ selectedProduct?.name }}</h3>
-                    <p class="text-blue-600 font-black text-xl">₱{{ selectedProduct?.price.toLocaleString() }}</p>
-                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ selectedProduct?.original_price.toLocaleString() }}</p>
+                    <p class="text-blue-600 font-black text-xl">₱{{ formatCurrency(selectedProduct?.price) }}</p>
+                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ formatCurrency(selectedProduct?.original_price) }}</p>
                   </div>
                 </div>
 
@@ -392,8 +388,8 @@
                   </div>
                   <div class="flex-1">
                     <h3 class="font-bold text-gray-900 text-lg">{{ selectedProduct?.name }}</h3>
-                    <p class="text-blue-600 font-black">₱{{ selectedProduct?.price.toLocaleString() }}</p>
-                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ selectedProduct?.original_price.toLocaleString() }}</p>
+                    <p class="text-blue-600 font-black">₱{{ formatCurrency(selectedProduct?.price) }}</p>
+                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-gray-400 line-through">₱{{ formatCurrency(selectedProduct?.original_price) }}</p>
                   </div>
                 </div>
 
@@ -426,7 +422,6 @@
                   <div class="space-y-3">
                     <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'default' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
                       <input type="radio" v-model="addressMode" value="default" class="hidden" />
-                      
                       <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'default' ? 'border-blue-500' : 'border-gray-300'">
                         <div v-if="addressMode === 'default'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
                       </div>
@@ -438,7 +433,6 @@
 
                     <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'custom' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
                       <input type="radio" v-model="addressMode" value="custom" class="hidden" />
-                      
                       <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'custom' ? 'border-blue-500' : 'border-gray-300'">
                         <div v-if="addressMode === 'custom'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
                       </div>
@@ -465,19 +459,19 @@
                   <div class="space-y-3 relative z-10">
                     <div class="flex justify-between text-sm text-gray-300 font-medium">
                       <span>Subtotal ({{ orderQuantity }} items)</span>
-                      <span>₱{{ (selectedProduct?.price * orderQuantity).toLocaleString() }}</span>
+                      <span>₱{{ formatCurrency(selectedProduct?.price * orderQuantity) }}</span>
                     </div>
                     <div class="flex justify-between text-sm text-gray-300 font-medium pb-4 border-b border-gray-700/50">
                       <span>Estimated Shipping</span>
                       <span>
                         <span v-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
                         <span v-else-if="shippingFeeEst === 0" class="text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">FREE</span>
-                        <span v-else>₱{{ shippingFeeEst.toLocaleString() }}</span>
+                        <span v-else>₱{{ formatCurrency(shippingFeeEst) }}</span>
                       </span>
                     </div>
                     <div class="flex justify-between items-end pt-2">
                       <span class="text-sm font-medium text-gray-400">Total to Pay</span>
-                      <span class="text-3xl font-black text-white">₱{{ ((selectedProduct?.price * orderQuantity) + shippingFeeEst).toLocaleString() }}</span>
+                      <span class="text-3xl font-black text-white">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + shippingFeeEst) }}</span>
                     </div>
                   </div>
                 </div>
@@ -509,7 +503,7 @@
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
-            <AlertDialogCancel class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Go Back</AlertDialogCancel>
+            <AlertDialogCancel @click="isCartAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Go Back</AlertDialogCancel>
             <AlertDialogAction @click="confirmAddToCart" :disabled="isProcessing" class="rounded-xl font-bold bg-gray-900 hover:bg-black text-white h-11 px-6 shadow-md">
               {{ isProcessing ? 'Adding...' : 'Yes, Add to Cart' }}
             </AlertDialogAction>
@@ -527,11 +521,11 @@
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
               You are placing an order for <strong class="text-gray-900">{{ orderQuantity }} items</strong>.
               <br/><br/>
-              The total amount of <strong class="text-gray-900 text-lg">₱{{ ((selectedProduct?.price * orderQuantity) + shippingFeeEst).toLocaleString() }}</strong> will be collected upon delivery via Cash on Delivery. Do you want to finalize this purchase?
+              The total amount of <strong class="text-gray-900 text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + shippingFeeEst) }}</strong> will be collected upon delivery via Cash on Delivery. Do you want to finalize this purchase?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
-            <AlertDialogCancel class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
+            <AlertDialogCancel @click="isOrderAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
             <AlertDialogAction @click="confirmOrderNow" :disabled="isProcessing" class="rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white h-11 px-6 shadow-md shadow-green-600/20">
               {{ isProcessing ? 'Processing...' : 'Place Order' }}
             </AlertDialogAction>
@@ -539,7 +533,6 @@
         </AlertDialogContent>
       </AlertDialog>
     </Teleport>
-
   </div>
 </template>
 
@@ -580,7 +573,7 @@ const isProcessing = ref(false)
 // Custom Modal States
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
-const isReviewsModalOpen = ref(false) // NEW: Reviews Modal State
+const isReviewsModalOpen = ref(false)
 const selectedProduct = ref(null)
 
 // Alert Dialog States
@@ -594,6 +587,14 @@ const customAddress = ref('')
 const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
+
+// Helper for consistent currency display (Prevents uneven decimals like .13)
+const formatCurrency = (value) => {
+  return Number(value || 0).toLocaleString('en-PH', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+}
 
 const fetchProducts = async () => {
   try {

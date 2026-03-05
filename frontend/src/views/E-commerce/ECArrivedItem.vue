@@ -99,15 +99,15 @@
                 </TableCell>
                 <TableCell>
                   <div class="flex items-center gap-3">
-                    <div v-if="item.product?.image_url" class="w-10 h-10 rounded-md bg-gray-800 border border-gray-700 overflow-hidden shrink-0">
-                      <img :src="`http://localhost:8000/storage/${item.product.image_url}`" class="w-full h-full object-cover" />
+                    <div v-if="item.raw_material_details?.image_url" class="w-10 h-10 rounded-md bg-gray-800 border border-gray-700 overflow-hidden shrink-0">
+                      <img :src="`http://localhost:8000/storage/${item.raw_material_details.image_url}`" class="w-full h-full object-cover" />
                     </div>
                     <div class="flex flex-col">
-                      <span class="font-bold text-white">{{ item.product?.name || item.product_name }}</span>
+                      <span class="font-bold text-white">{{ item.raw_material_details?.name || item.product_name }}</span>
                       <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                        <span v-if="item.product?.sku_code">SKU: {{ item.product.sku_code }}</span>
-                        <span v-if="item.product?.size">• Size: {{ item.product.size }}</span>
-                        <span v-if="item.product?.type">• {{ item.product.type }}</span>
+                        <span v-if="item.raw_material_details?.sku_code">SKU: {{ item.raw_material_details.sku_code }}</span>
+                        <span v-if="item.raw_material_details?.size">• Size: {{ item.raw_material_details.size }}</span>
+                        <span v-if="item.raw_material_details?.type">• {{ item.raw_material_details.type }}</span>
                       </div>
                     </div>
                   </div>
@@ -172,8 +172,8 @@
             <div class="p-4 flex flex-col sm:flex-row gap-6">
               <div class="w-full sm:w-1/3 aspect-square bg-gray-950 rounded-lg border border-gray-700 overflow-hidden flex items-center justify-center shrink-0">
                 <img 
-                  v-if="selectedItem.product?.image_url" 
-                  :src="`http://localhost:8000/storage/${selectedItem.product.image_url}`" 
+                  v-if="selectedItem.raw_material_details?.image_url" 
+                  :src="`http://localhost:8000/storage/${selectedItem.raw_material_details.image_url}`" 
                   alt="Product Image" 
                   class="w-full h-full object-cover"
                 />
@@ -186,27 +186,27 @@
               <div class="w-full sm:w-2/3 grid grid-cols-2 gap-4">
                 <div class="col-span-2">
                   <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Product Name</p>
-                  <p class="font-bold text-lg text-white">{{ selectedItem.product?.name || selectedItem.product_name }}</p>
-                  <p class="text-sm text-gray-400 mt-1">{{ selectedItem.product?.description || 'No description provided.' }}</p>
+                  <p class="font-bold text-lg text-white">{{ selectedItem.raw_material_details?.name || selectedItem.product_name }}</p>
+                  <p class="text-sm text-gray-400 mt-1">{{ selectedItem.raw_material_details?.description || 'No description provided.' }}</p>
                 </div>
                 
                 <div>
                   <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">SKU Code</p>
-                  <p class="font-medium text-gray-200">{{ selectedItem.product?.sku_code || 'N/A' }}</p>
+                  <p class="font-medium text-gray-200">{{ selectedItem.raw_material_details?.sku_code || 'N/A' }}</p>
                 </div>
                 <div>
                   <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Category & Type</p>
-                  <p class="font-medium text-gray-200">{{ selectedItem.product?.category }} / {{ selectedItem.product?.type }}</p>
+                  <p class="font-medium text-gray-200">{{ selectedItem.category }} / {{ selectedItem.raw_material_details?.type || 'N/A' }}</p>
                 </div>
                 <div>
                   <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Size</p>
-                  <p class="font-medium text-gray-200">{{ selectedItem.product?.size || 'N/A' }}</p>
+                  <p class="font-medium text-gray-200">{{ selectedItem.raw_material_details?.size || 'N/A' }}</p>
                 </div>
                 <div>
                   <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Color Code</p>
                   <div class="flex items-center gap-2">
-                    <div v-if="selectedItem.product?.color_code" class="w-4 h-4 rounded-full border border-gray-600" :style="{ backgroundColor: selectedItem.product.color_code }"></div>
-                    <p class="font-medium text-gray-200">{{ selectedItem.product?.color_code || 'N/A' }}</p>
+                    <div v-if="selectedItem.raw_material_details?.color_code" class="w-4 h-4 rounded-full border border-gray-600" :style="{ backgroundColor: selectedItem.raw_material_details.color_code }"></div>
+                    <p class="font-medium text-gray-200">{{ selectedItem.raw_material_details?.color_code || 'N/A' }}</p>
                   </div>
                 </div>
               </div>
@@ -277,7 +277,7 @@
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirm Move to Inventory</AlertDialogTitle>
                 <AlertDialogDescription class="text-gray-400">
-                  Are you sure you want to officially move <span class="text-emerald-400 font-bold">{{ selectedItem?.quantity }}</span> units of <span class="font-bold text-gray-200">{{ selectedItem?.product?.name || selectedItem?.product_name }}</span> to your inventory? This action will update your stock availability and cannot be undone.
+                  Are you sure you want to officially move <span class="text-emerald-400 font-bold">{{ selectedItem?.quantity }}</span> units of <span class="font-bold text-gray-200">{{ selectedItem?.raw_material_details?.name || selectedItem?.product_name }}</span> to your inventory? This action will update your stock availability and cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -363,8 +363,8 @@ const filteredItems = computed(() => {
   const query = searchQuery.value.toLowerCase()
   return arrivedItems.value.filter(item => 
     item.product_name?.toLowerCase().includes(query) ||
-    item.product?.name?.toLowerCase().includes(query) ||
-    item.product?.sku_code?.toLowerCase().includes(query) ||
+    item.raw_material_details?.name?.toLowerCase().includes(query) ||
+    item.raw_material_details?.sku_code?.toLowerCase().includes(query) ||
     item.supplier?.toLowerCase().includes(query) ||
     item.request_code?.toLowerCase().includes(query)
   )
@@ -400,7 +400,7 @@ const moveToInventory = async () => {
     // Success toast
     toast.success('Successfully moved to inventory!', {
       id: toastId,
-      description: `${selectedItem.value.quantity} units of ${selectedItem.value.product?.name || selectedItem.value.product_name} have been added.`
+      description: `${selectedItem.value.quantity} units of ${selectedItem.value.raw_material_details?.name || selectedItem.value.product_name} have been registered and added.`
     })
     
     closeViewModal()

@@ -76,6 +76,29 @@ const form = ref({
 const categories = ['Interior', 'Exterior', 'Commercial', 'Specialty', 'Maintenance']
 
 // --- Methods ---
+
+// FIX: Robust Dynamic Image URL Generator
+const getImageUrl = (path) => {
+  if (!path) return '';
+  
+  // 1. Get the true base URL from .env, fallback to localhost
+  const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'http://localhost:8000';
+  
+  // 2. Fix old DB records that accidentally hardcoded localhost:8000
+  if (path.includes('localhost:8000')) {
+      path = path.replace('http://localhost:8000', baseUrl);
+  }
+  
+  // 3. If it's already a full HTTP URL, return it directly
+  if (path.startsWith('http')) return path;
+  
+  // 4. Handle new DB records that correctly only saved the relative path ('service_offerings/xyz.jpg')
+  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+}
+
 const fetchServices = async () => {
   isLoading.value = true
   try {
@@ -284,7 +307,7 @@ const proceedToggle = async () => {
         <div class="h-44 bg-gray-800 relative overflow-hidden flex items-center justify-center">
           <div class="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent z-10"></div>
           
-          <img v-if="service.image_paths && service.image_paths.length > 0" :src="service.image_paths[0]" class="w-full h-full object-cover z-0" />
+          <img v-if="service.image_paths && service.image_paths.length > 0" :src="getImageUrl(service.image_paths[0])" class="w-full h-full object-cover z-0" />
           <ImageIcon v-else class="w-12 h-12 text-gray-600" />
           
           <div class="absolute top-3 left-3 z-20 flex gap-2">

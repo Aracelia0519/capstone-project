@@ -137,7 +137,7 @@ import {
   LayoutDashboard, Package, ClipboardList, TrendingUp, Users, Clock, 
   Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, Calendar, 
   History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2, 
-  Handshake, ClipboardCheck 
+  Handshake, ClipboardCheck,  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -216,7 +216,8 @@ const navigation = [
   {
     title: 'Orders & Requests',
     items: [
-      { name: 'Orders / Requests', path: '/distributor/OrdersRequest', icon: ClipboardList, color: 'text-orange-400', badge: '12', badgeColor: 'bg-orange-500/20 text-orange-300', requiresVerify: true }
+      { name: 'Orders / Requests', path: '/distributor/OrdersRequest', icon: ClipboardList, color: 'text-orange-400', badge: '12', badgeColor: 'bg-orange-500/20 text-orange-300', requiresVerify: true },
+      { name: 'Procurement Approval', path: '/distributor/ProcurementApproval', icon: CheckCircle, color: 'text-green-400', requiresVerify: true }
     ]
   },
   {

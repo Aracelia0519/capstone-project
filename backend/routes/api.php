@@ -184,6 +184,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
+        Route::prefix('procurement-approvals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\DistributorProcurementApprovalController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\Distributor\DistributorProcurementApprovalController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\DistributorProcurementApprovalController::class, 'reject']);
+        });
+
         Route::prefix('requirements')->group(function () {
             Route::get('/', [DistributorRequirementController::class, 'index']);       
             Route::post('/', [DistributorRequirementController::class, 'store']);
@@ -276,7 +282,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::prefix('procurement-fulfillment')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'index']);
-            Route::post('/{id}/ready', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'markAsReady']);
+            Route::post('/{id}/op-approve', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'markAsOpApproved']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'reject']);
         });
 
@@ -365,6 +371,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('procurement')->group(function () {
         Route::get('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'index']);
         Route::get('/available-products', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'availableProducts']);
+        
+        //Fetch specific products from a partnered supplier
+        Route::get('/supplier-products/{supplierId}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'supplierProducts']);
+        
         Route::post('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'store']);
         Route::get('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'show']);
         Route::put('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'update']);
@@ -375,6 +385,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Finance Procurement Routes
     Route::prefix('finance')->middleware(['auth:sanctum'])->group(function () {
+        Route::prefix('budget-release')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'approve']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'reject']);
+        });
+
         Route::prefix('procurement')->group(function () {
             Route::get('/requests', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'index']);
             Route::get('/requests/{id}', [\App\Http\Controllers\Api\Finance\FinanceProcurementController::class, 'show']);

@@ -26,8 +26,7 @@ class ArrivedItemController extends Controller
         $distributorId = $this->getDistributorId($request);
 
         // Fetch all delivered requests that haven't been moved to inventory yet
-        $arrivedItems = ProcurementRequest::with(['product'])
-            ->where('distributor_id', $distributorId)
+        $arrivedItems = ProcurementRequest::where('distributor_id', $distributorId)
             ->where('status', 'delivered')
             ->where('moved_to_inventory', false)
             ->orderBy('delivered_at', 'desc')
@@ -57,18 +56,55 @@ class ArrivedItemController extends Controller
                 ->where('moved_to_inventory', false)
                 ->firstOrFail();
 
-            // 1. Mark the request as moved
+            // 1. Determine Product ID mapping from Supplier Raw Material to Distributor Product
+            $productId = $procurement->product_id;
+            
+            if (!$productId) {
+                // Check if the distributor already has this product registered
+                $product = DB::table('distributor_products')
+                    ->where('distributor_id', $distributorId)
+                    ->where('name', $procurement->product_name)
+                    ->first();
+                    
+                if ($product) {
+                    $productId = $product->id;
+                } else {
+                    // Create a new Distributor Product using the Supplier Raw Material details
+                    $rawMaterial = $procurement->raw_material_details;
+                    
+                    $productId = DB::table('distributor_products')->insertGetId([
+                        'distributor_id' => $distributorId,
+                        'category' => $procurement->category,
+                        'type' => $rawMaterial ? $rawMaterial->type : 'Standard',
+                        'name' => $procurement->product_name,
+                        'sku_code' => $rawMaterial && $rawMaterial->sku_code ? $rawMaterial->sku_code : 'SKU-' . strtoupper(substr(uniqid(), -6)),
+                        'size' => $rawMaterial ? $rawMaterial->size : 'Standard',
+                        'color_code' => $rawMaterial ? $rawMaterial->color_code : null,
+                        'price' => $procurement->unit_price * 1.30, // Default 30% markup for client sale
+                        'cost' => $procurement->unit_price,
+                        'description' => $rawMaterial ? $rawMaterial->description : 'Procured from supplier: ' . $procurement->supplier,
+                        'image_url' => $rawMaterial ? $rawMaterial->image_url : null,
+                        'is_active' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+                
+                // Update procurement with the official mapped product_id
+                $procurement->product_id = $productId;
+            }
+
+            // 2. Mark the request as moved
             $procurement->moved_to_inventory = true;
             $procurement->save();
 
-            // 2. Add to the separate DistributorInventory table
-            if ($procurement->product_id) {
-                
+            // 3. Add to the separate DistributorInventory table
+            if ($productId) {
                 // Fetch existing inventory record, or create a new one with 0 quantity
                 $inventory = DistributorInventory::firstOrCreate(
                     [
                         'distributor_id' => $distributorId,
-                        'product_id' => $procurement->product_id
+                        'product_id' => $productId
                     ],
                     ['quantity' => 0]
                 );
@@ -77,10 +113,10 @@ class ArrivedItemController extends Controller
                 $inventory->quantity += $procurement->quantity;
                 $inventory->save();
 
-                // 3. Create Audit Log
+                // 4. Create Audit Log
                 InventoryLog::create([
                     'distributor_id' => $distributorId,
-                    'product_id' => $procurement->product_id,
+                    'product_id' => $productId,
                     'procurement_request_id' => $procurement->id,
                     'quantity_added' => $procurement->quantity,
                 ]);

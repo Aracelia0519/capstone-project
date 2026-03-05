@@ -59,11 +59,14 @@
         <CardContent class="p-4 sm:p-6">
           <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
             <div class="flex flex-col xs:flex-row items-start gap-3 sm:gap-4 w-full sm:w-auto">
+              
               <div class="relative flex-shrink-0">
                 <div 
-                  class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl transition-transform duration-300 group-hover:scale-105"
-                  :style="{ backgroundColor: request.color }"
-                ></div>
+                  class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-2xl transition-transform duration-300 group-hover:scale-105 overflow-hidden flex items-center justify-center"
+                  :style="!request.imageUrl ? { backgroundColor: request.color } : {}"
+                >
+                  <img v-if="request.imageUrl" :src="request.imageUrl" alt="Service Image" class="w-full h-full object-cover" />
+                </div>
                 <Badge variant="secondary" class="absolute -bottom-1 -right-1 px-2 py-0.5 bg-gray-900/90 text-[10px] font-mono border-gray-700">
                   {{ request.colorCode }}
                 </Badge>
@@ -176,34 +179,44 @@
                <Briefcase class="w-4 h-4" />
                Service Package Info
              </h4>
-             <div class="space-y-4">
-               <div>
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Service Title</p>
-                 <p class="font-semibold text-base text-white">{{ selectedRequest.raw.service_offering.title }}</p>
+             
+             <div class="flex flex-col sm:flex-row gap-4 mb-4">
+               <div v-if="selectedRequest.imageUrl" class="w-full sm:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 shadow-md border border-gray-700/50">
+                 <img :src="selectedRequest.imageUrl" class="w-full h-full object-cover" />
                </div>
                
-               <div class="grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+               <div class="flex-1 space-y-4">
                  <div>
-                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Category</p>
-                   <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.category }}</p>
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Service Title</p>
+                   <p class="font-semibold text-base text-white">{{ selectedRequest.raw.service_offering.title }}</p>
                  </div>
-                 <div>
-                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
-                   <p class="text-xs text-emerald-400 font-bold">
-                     ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
-                     <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
-                   </p>
-                 </div>
-                 <div class="col-span-2 md:col-span-1">
-                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Duration</p>
-                   <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.duration }}</p>
+                 
+                 <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+                   <div>
+                     <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Category</p>
+                     <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.category }}</p>
+                   </div>
+                   <div>
+                     <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
+                     <p class="text-xs text-emerald-400 font-bold">
+                       ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
+                       <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
+                     </p>
+                   </div>
                  </div>
                </div>
+             </div>
 
-               <div v-if="selectedRequest.raw.service_offering.description">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Package Description</p>
-                 <p class="text-xs text-gray-400 leading-relaxed">{{ selectedRequest.raw.service_offering.description }}</p>
+             <div class="grid grid-cols-1 mb-4">
+               <div class="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Duration</p>
+                 <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.duration }}</p>
                </div>
+             </div>
+
+             <div v-if="selectedRequest.raw.service_offering.description">
+               <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Package Description</p>
+               <p class="text-xs text-gray-400 leading-relaxed">{{ selectedRequest.raw.service_offering.description }}</p>
              </div>
            </div>
 
@@ -309,6 +322,10 @@ const fetchRequests = async () => {
           serviceProvider: req.provider ? `${req.provider.first_name} ${req.provider.last_name}` : 'Pending Assignment',
           color: generatedColor,
           colorCode: generatedColor,
+          
+          // ADDED IMAGE EXTRACTION HERE
+          imageUrl: req.service_offering?.image_paths?.length > 0 ? req.service_offering.image_paths[0] : null,
+          
           status: req.status,
           statusLabel: req.status.charAt(0).toUpperCase() + req.status.slice(1).replace('-', ' '),
           date: new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),

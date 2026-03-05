@@ -1,6 +1,390 @@
+<template>
+  <div class="min-h-screen relative bg-gray-50/50">
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+      <div class="container mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Professional Services</h1>
+          <p class="text-gray-500 mt-1 text-sm">Book verified experts for your painting and maintenance needs</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+           <Button @click="goToMyBookings" variant="outline" class="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium">
+            <ClipboardList class="w-4 h-4 mr-2" />
+            Manage My Bookings
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white border-b border-gray-100 shadow-sm relative z-20">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex flex-col lg:flex-row gap-4">
+          <div class="flex-1">
+            <div class="relative group">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                <svg class="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+              <Input
+                type="text"
+                v-model="searchQuery"
+                placeholder="Search for services, providers, or categories..."
+                class="pl-10 pr-4 py-3 h-12 w-full rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 bg-gray-50 focus:bg-white transition-all shadow-sm"
+              />
+            </div>
+          </div>
+
+          <div class="flex gap-2 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar items-center">
+            <Button
+              v-for="filter in quickFilters"
+              :key="filter.id"
+              @click="toggleFilter(filter.id)"
+              :variant="activeFilters.includes(filter.id) ? 'default' : 'secondary'"
+              :class="[
+                'whitespace-nowrap flex items-center space-x-2 rounded-xl transition-all h-10',
+                activeFilters.includes(filter.id)
+                  ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700 border-transparent'
+                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+              ]"
+            >
+              <component :is="filter.icon" class="w-4 h-4 mr-1.5" />
+              <span class="font-medium">{{ filter.label }}</span>
+            </Button>
+          </div>
+        </div>
+
+        <div class="mt-5 grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <Label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Category</Label>
+            <Select v-model="selectedCategory">
+              <SelectTrigger class="rounded-xl bg-gray-50 border-gray-200 hover:bg-white hover:border-blue-300 transition-colors focus:ring-blue-500 h-11">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_categories_reset">All Categories</SelectItem>
+                <SelectItem v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Price Structure</Label>
+            <Select v-model="selectedPriceType">
+              <SelectTrigger class="rounded-xl bg-gray-50 border-gray-200 hover:bg-white hover:border-blue-300 transition-colors focus:ring-blue-500 h-11">
+                <SelectValue placeholder="Any Price Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_types_reset">Any Price Type</SelectItem>
+                <SelectItem value="Fixed">Fixed Price</SelectItem>
+                <SelectItem value="Hourly">Per Hour</SelectItem>
+                <SelectItem value="Per Sqm">Per Square Meter</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="col-span-2 md:col-span-1">
+            <Label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Sort By</Label>
+            <Select v-model="sortBy">
+              <SelectTrigger class="rounded-xl bg-gray-50 border-gray-200 hover:bg-white hover:border-blue-300 transition-colors focus:ring-blue-500 h-11">
+                <SelectValue placeholder="Recommended" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recommended">Recommended</SelectItem>
+                <SelectItem value="price-low">Price: Low to High</SelectItem>
+                <SelectItem value="price-high">Price: High to Low</SelectItem>
+                <SelectItem value="newest">Newest Listed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8 md:py-10">
+      
+      <div v-if="isLoading" class="text-center py-20 flex flex-col items-center">
+        <div class="relative w-20 h-20 mb-6">
+           <div class="absolute inset-0 rounded-full border-4 border-gray-100"></div>
+           <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+           <PaintRoller class="absolute inset-0 m-auto w-8 h-8 text-blue-600 animate-pulse" />
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Finding available experts...</h3>
+        <p class="text-gray-500 font-medium">Please wait while we load the service catalog</p>
+      </div>
+
+      <div v-else>
+        <div class="flex justify-between items-center mb-6">
+          <p class="text-gray-600 font-medium bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100 text-sm">
+            Showing <strong class="text-gray-900">{{ filteredServices.length }}</strong> available services
+          </p>
+          <Button v-if="hasActiveFilters" @click="clearFilters" variant="ghost" class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-9 px-3 rounded-lg text-sm font-semibold">
+            Clear Filters
+          </Button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <Card
+            v-for="service in filteredServices"
+            :key="service.id"
+            class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-200 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col h-full"
+          >
+            <div class="h-48 relative overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div v-if="service.image_paths && service.image_paths.length > 0" class="w-full h-full relative group/slider">
+                <img 
+                  :src="getImageUrl(service.image_paths[service.currentImageIndex || 0])" 
+                  alt="Service Image" 
+                  class="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
+                  @error="handleImageError"
+                />
+                
+                <div v-if="service.image_paths.length > 1" class="absolute inset-0 flex items-center justify-between px-2 opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300">
+                  <button @click.stop="prevImage(service)" class="w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                  </button>
+                  <button @click.stop="nextImage(service)" class="w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                  </button>
+                </div>
+                
+                <div v-if="service.image_paths.length > 1" class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
+                  <div v-for="(_, index) in service.image_paths" :key="index" 
+                       :class="['w-1.5 h-1.5 rounded-full transition-all duration-300 shadow-sm', (service.currentImageIndex || 0) === index ? 'bg-white w-3' : 'bg-white/60 hover:bg-white/80']">
+                  </div>
+                </div>
+              </div>
+              <div v-else class="flex flex-col items-center text-gray-400">
+                <ImageIcon class="w-10 h-10 mb-2 opacity-50" />
+                <span class="text-xs font-medium uppercase tracking-wider">No Image</span>
+              </div>
+              
+              <div class="absolute top-3 left-3 z-10">
+                <Badge class="bg-white/90 text-gray-800 backdrop-blur-md border-0 shadow-sm font-semibold tracking-tight">
+                  {{ service.category }}
+                </Badge>
+              </div>
+            </div>
+
+            <CardContent class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="font-bold text-lg leading-tight text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{{ service.title }}</h3>
+                
+                <div class="flex items-center text-sm text-gray-600 mb-3 bg-gray-50 px-2.5 py-1.5 rounded-lg w-max border border-gray-100">
+                  <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
+                  <span class="font-medium truncate max-w-[150px]">{{ service.provider_name }}</span>
+                </div>
+                
+                <p class="text-sm text-gray-500 line-clamp-3 leading-relaxed mb-4">
+                  {{ service.description }}
+                </p>
+              </div>
+
+              <div class="space-y-3 pt-4 border-t border-gray-100 mt-auto">
+                <div class="flex items-center text-sm text-gray-600">
+                  <Clock class="w-4 h-4 text-gray-400 mr-2 shrink-0" />
+                  <span class="font-medium">Duration: <span class="text-gray-900">{{ service.duration }}</span></span>
+                </div>
+                
+                <div class="flex justify-between items-end mt-2">
+                  <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Starting at</p>
+                    <div class="flex items-baseline text-blue-600">
+                      <span class="text-2xl font-black tracking-tight">₱{{ formatCurrency(service.price) }}</span>
+                      <span class="text-xs font-bold text-gray-500 ml-1">/ {{ formatPriceType(service.price_type) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+
+            <CardFooter class="p-5 pt-0 mt-auto border-t border-gray-50 bg-gray-50/50 rounded-b-2xl">
+              <Button
+                @click="openServiceModal(service)"
+                class="w-full mt-4 rounded-xl font-bold bg-gray-900 hover:bg-black text-white h-12 shadow-md transition-all group-hover:shadow-lg"
+              >
+                Request Service
+                <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <div v-if="filteredServices.length === 0" class="text-center py-24 bg-white rounded-3xl border border-gray-200 shadow-sm mt-4">
+          <div class="w-20 h-20 mx-auto mb-5 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 border border-gray-100 shadow-inner">
+            <Search class="w-8 h-8" />
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">No services found</h3>
+          <p class="text-gray-500 mb-6 max-w-md mx-auto">We couldn't find any services matching your current filters. Try adjusting your search criteria.</p>
+          <Button @click="clearFilters" class="rounded-xl bg-gray-900 hover:bg-gray-800 text-white px-8 h-11 shadow-md">
+            Clear All Filters
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="showServiceModal" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
+      </transition>
+
+      <Dialog :open="showServiceModal" @update:open="(val) => !val && closeServiceModal()">
+        <DialogContent class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 border-0 z-[9999]">
+          
+          <div class="px-6 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-start shrink-0">
+            <div>
+              <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight">{{ selectedService?.title }}</DialogTitle>
+              <DialogDescription class="text-gray-500 font-medium mt-1 flex items-center">
+                 By <span class="text-blue-600 ml-1 font-bold">{{ selectedService?.provider_name }}</span>
+              </DialogDescription>
+            </div>
+            <button @click="closeServiceModal" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors shrink-0 border border-gray-200 shadow-sm">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          
+          <div class="px-6 py-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/30">
+            
+            <div class="flex flex-col sm:flex-row gap-4 mb-8 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+              <div class="flex-1 flex items-center gap-3">
+                 <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                    <DollarSign class="w-5 h-5" />
+                 </div>
+                 <div>
+                   <p class="text-xs font-bold text-blue-600/70 uppercase tracking-wider">Estimated Rate</p>
+                   <p class="font-black text-gray-900 text-lg">₱{{ formatCurrency(selectedService?.price) }} <span class="text-sm text-gray-500 font-medium normal-case">/ {{ formatPriceType(selectedService?.price_type) }}</span></p>
+                 </div>
+              </div>
+              <div class="hidden sm:block w-px bg-blue-200"></div>
+              <div class="flex-1 flex items-center gap-3">
+                 <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                    <Clock class="w-5 h-5" />
+                 </div>
+                 <div>
+                   <p class="text-xs font-bold text-blue-600/70 uppercase tracking-wider">Est. Duration</p>
+                   <p class="font-bold text-gray-900 text-base">{{ selectedService?.duration }}</p>
+                 </div>
+              </div>
+            </div>
+
+            <div class="space-y-6">
+              <div>
+                <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider block mb-2 flex items-center gap-2">
+                  <ClipboardList class="w-4 h-4 text-gray-400" />
+                  Project Details
+                </Label>
+                <Textarea 
+                  v-model="bookingForm.description" 
+                  placeholder="Describe what needs to be done. Include estimated sizes, current conditions, or specific requirements..." 
+                  class="resize-none min-h-[100px] border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm bg-white"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider block mb-2 flex items-center gap-2">
+                    <Calendar class="w-4 h-4 text-gray-400" />
+                    Preferred Date
+                  </Label>
+                  <Input 
+                    v-model="bookingForm.preferred_date" 
+                    type="date" 
+                    :min="minDate"
+                    class="border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm h-12 bg-white"
+                  />
+                </div>
+                <div>
+                  <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider block mb-2 flex items-center gap-2">
+                    <Clock class="w-4 h-4 text-gray-400" />
+                    Preferred Time
+                  </Label>
+                  <Select v-model="bookingForm.time_preference">
+                    <SelectTrigger class="border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm h-12 bg-white">
+                      <SelectValue placeholder="Select a timeframe" />
+                    </SelectTrigger>
+                    
+                    <SelectContent class="z-[10000]">
+                      <SelectItem value="Morning (8AM - 12PM)">Morning (8AM - 12PM)</SelectItem>
+                      <SelectItem value="Afternoon (1PM - 5PM)">Afternoon (1PM - 5PM)</SelectItem>
+                      <SelectItem value="Flexible">Flexible / Anytime</SelectItem>
+                    </SelectContent>
+                    
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider block mb-2 flex items-center gap-2">
+                  <Phone class="w-4 h-4 text-gray-400" />
+                  Contact Number
+                </Label>
+                <Input 
+                  v-model="bookingForm.contact_number" 
+                  placeholder="e.g. 09123456789" 
+                  class="border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm h-12 bg-white"
+                />
+              </div>
+
+              <div class="mb-4">
+                <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider block mb-2 flex items-center gap-2">
+                  <MapPin class="w-4 h-4 text-gray-400" />
+                  Service Location
+                </Label>
+                <div class="space-y-3">
+                  <label class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 bg-white" :class="addressMode === 'default' ? 'border-blue-500 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-gray-300'">
+                    <input type="radio" v-model="addressMode" value="default" class="hidden" />
+                    <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'default' ? 'border-blue-500' : 'border-gray-300'">
+                      <div v-if="addressMode === 'default'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                    </div>
+                    <div>
+                      <span class="block font-bold text-gray-900 mb-0.5">Use Profile Address</span>
+                      <span class="text-sm text-gray-500 font-medium">Use the saved address from your account.</span>
+                    </div>
+                  </label>
+
+                  <label class="flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 bg-white" :class="addressMode === 'custom' ? 'border-blue-500 bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-gray-300'">
+                    <input type="radio" v-model="addressMode" value="custom" class="hidden" />
+                    <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex flex-shrink-0 items-center justify-center" :class="addressMode === 'custom' ? 'border-blue-500' : 'border-gray-300'">
+                      <div v-if="addressMode === 'custom'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                    </div>
+                    <div class="w-full">
+                      <span class="block font-bold text-gray-900 mb-1">Custom Address</span>
+                      <transition enter-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 max-h-0" enter-to-class="opacity-100 max-h-32">
+                        <Textarea 
+                          v-if="addressMode === 'custom'" 
+                          v-model="customAddress" 
+                          @click.stop
+                          placeholder="Enter complete block, street, barangay, city, province..." 
+                          class="mt-2 w-full p-3 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-inner resize-none min-h-[80px]"
+                        />
+                      </transition>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0">
+            <Button variant="outline" @click="closeServiceModal" class="border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-bold h-12 px-6">
+              Cancel
+            </Button>
+            <Button @click="submitServiceRequest" :disabled="isSubmitting" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl font-bold h-12 px-8 transition-all">
+              <span v-if="isSubmitting" class="flex items-center">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+              </span>
+              <span v-else>Submit Request</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Teleport>
+
+  </div>
+</template>
+
 <script setup>
-import { ref, onMounted, computed } from 'vue' // Added computed
-import { useRouter } from 'vue-router' // <-- Added for routing
+import { ref, onMounted, computed } from 'vue' 
+import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import { 
@@ -13,10 +397,10 @@ import {
   Image as ImageIcon,
   DollarSign,
   PaintRoller,
-  ClipboardList // <-- Added for the manage button icon
+  ClipboardList,
+  Search
 } from 'lucide-vue-next'
 
-// Shadcn Components
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,52 +422,203 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-// State
-const router = useRouter() // <-- Initialize router
+const router = useRouter() 
 const services = ref([])
 const isLoading = ref(true)
 const showServiceModal = ref(false)
-const isSubmitting = ref(false)
 const selectedService = ref(null)
+const isSubmitting = ref(false)
 
-const serviceRequest = ref({
+const addressMode = ref('default')
+const customAddress = ref('')
+const bookingForm = ref({
   description: '',
-  preferredDate: '',
-  timePreference: '',
-  contact: '',
-  address: ''
+  preferred_date: '',
+  time_preference: '',
+  contact_number: ''
 })
 
-// --- NEW: Calculate the minimum allowed date (Today + 3 Days) ---
+// Current Date for input min
 const minDate = computed(() => {
-  const date = new Date()
-  date.setDate(date.getDate() + 3)
-  return date.toISOString().split('T')[0] // Formats as YYYY-MM-DD
+  const today = new Date()
+  today.setDate(today.getDate() + 1) // Require at least 1 day advance
+  return today.toISOString().split('T')[0]
 })
 
-// Fetch Data
+// Filters State
+const searchQuery = ref('')
+const activeFilters = ref([])
+const selectedCategory = ref('')
+const selectedPriceType = ref('')
+const sortBy = ref('recommended')
+
+const quickFilters = ref([
+  { id: 'painting', label: 'Painting', icon: PaintRoller },
+  { id: 'waterproofing', label: 'Waterproofing', icon: Briefcase },
+  { id: 'consultation', label: 'Color Consult', icon: User },
+])
+
+const categories = ref([
+  'Interior Painting',
+  'Exterior Painting',
+  'Waterproofing',
+  'Surface Preparation',
+  'Wood Staining & Varnish',
+  'Color Consultation',
+  'Other'
+])
+
+const hasActiveFilters = computed(() => {
+  return searchQuery.value || 
+         activeFilters.value.length > 0 || 
+         (selectedCategory.value && selectedCategory.value !== 'all_categories_reset') || 
+         (selectedPriceType.value && selectedPriceType.value !== 'all_types_reset') || 
+         sortBy.value !== 'recommended'
+})
+
+// FIX: Robust Dynamic Image URL Generator
+const getImageUrl = (path) => {
+  if (!path) return '';
+  
+  // 1. Get the true base URL from .env, fallback to localhost
+  const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'http://localhost:8000';
+  
+  // 2. Fix old DB records that accidentally hardcoded localhost:8000
+  if (path.includes('localhost:8000')) {
+      path = path.replace('http://localhost:8000', baseUrl);
+  }
+  
+  // 3. If it's already a full HTTP URL (like S3 or after our replacement), return it directly
+  if (path.startsWith('http')) return path;
+  
+  // 4. Handle new DB records that correctly only saved the relative path ('service_offerings/xyz.jpg')
+  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+}
+
+const handleImageError = (e) => {
+  e.target.style.display = 'none'
+  e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex')
+}
+
+const formatCurrency = (value) => {
+  return Number(value || 0).toLocaleString('en-PH', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  });
+}
+
+const formatPriceType = (type) => {
+  if (type === 'Fixed') return 'Fixed Price'
+  if (type === 'Hourly') return 'Hour'
+  if (type === 'Per Sqm') return 'Sqm'
+  return type
+}
+
 const fetchServices = async () => {
-  isLoading.value = true
   try {
+    isLoading.value = true
     const response = await api.get('/client/services')
     if (response.data.success) {
-      services.value = response.data.data
+      services.value = response.data.data.map(service => ({
+        ...service,
+        currentImageIndex: 0 
+      }))
     }
   } catch (error) {
+    toast.error('Failed to load services')
     console.error('Error fetching services:', error)
-    toast.error('Failed to load services.')
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => {
-  fetchServices()
+// Carousel Controls
+const nextImage = (service) => {
+  if (service.image_paths && service.image_paths.length > 1) {
+    service.currentImageIndex = (service.currentImageIndex + 1) % service.image_paths.length
+  }
+}
+
+const prevImage = (service) => {
+  if (service.image_paths && service.image_paths.length > 1) {
+    service.currentImageIndex = service.currentImageIndex === 0 
+      ? service.image_paths.length - 1 
+      : service.currentImageIndex - 1
+  }
+}
+
+// Filter Logic
+const toggleFilter = (filterId) => {
+  const index = activeFilters.value.indexOf(filterId)
+  if (index > -1) {
+    activeFilters.value.splice(index, 1)
+  } else {
+    activeFilters.value.push(filterId)
+  }
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  activeFilters.value = []
+  selectedCategory.value = ''
+  selectedPriceType.value = ''
+  sortBy.value = 'recommended'
+}
+
+const filteredServices = computed(() => {
+  let filtered = [...services.value]
+
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(s => 
+      (s.title && s.title.toLowerCase().includes(q)) ||
+      (s.provider_name && s.provider_name.toLowerCase().includes(q)) ||
+      (s.category && s.category.toLowerCase().includes(q))
+    )
+  }
+
+  if (activeFilters.value.includes('painting')) {
+    filtered = filtered.filter(s => s.category && s.category.toLowerCase().includes('painting'))
+  }
+  if (activeFilters.value.includes('waterproofing')) {
+    filtered = filtered.filter(s => s.category && s.category.toLowerCase().includes('waterproof'))
+  }
+  if (activeFilters.value.includes('consultation')) {
+    filtered = filtered.filter(s => s.category && s.category.toLowerCase().includes('consultation'))
+  }
+
+  if (selectedCategory.value && selectedCategory.value !== 'all_categories_reset') {
+    filtered = filtered.filter(s => s.category === selectedCategory.value)
+  }
+  
+  if (selectedPriceType.value && selectedPriceType.value !== 'all_types_reset') {
+    filtered = filtered.filter(s => s.price_type === selectedPriceType.value)
+  }
+
+  if (sortBy.value === 'price-low') {
+    filtered.sort((a, b) => a.price - b.price)
+  } else if (sortBy.value === 'price-high') {
+    filtered.sort((a, b) => b.price - a.price)
+  } else if (sortBy.value === 'newest') {
+    filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  }
+
+  return filtered
 })
 
-// Modal Logic
 const openServiceModal = (service) => {
   selectedService.value = service
+  bookingForm.value = {
+    description: '',
+    preferred_date: '',
+    time_preference: '',
+    contact_number: ''
+  }
+  addressMode.value = 'default'
+  customAddress.value = ''
   showServiceModal.value = true
 }
 
@@ -91,268 +626,59 @@ const closeServiceModal = () => {
   showServiceModal.value = false
   setTimeout(() => {
     selectedService.value = null
-    serviceRequest.value = {
-      description: '',
-      preferredDate: '',
-      timePreference: '',
-      contact: '',
-      address: ''
-    }
   }, 300)
 }
 
+const goToMyBookings = () => {
+  router.push('/Clients/myServiceRequest') 
+}
+
 const submitServiceRequest = async () => {
-  if (!serviceRequest.value.preferredDate || !serviceRequest.value.timePreference || !serviceRequest.value.contact || !serviceRequest.value.address) {
-    toast.error('Please fill in all required fields')
+  if (!bookingForm.value.description || !bookingForm.value.preferred_date || !bookingForm.value.time_preference || !bookingForm.value.contact_number) {
+    toast.error('Missing Information', { description: 'Please fill in all required fields.' })
     return
   }
 
-  isSubmitting.value = true
+  if (addressMode.value === 'custom' && !customAddress.value.trim()) {
+    toast.error('Missing Address', { description: 'Please provide your custom address.' })
+    return
+  }
+
   try {
+    isSubmitting.value = true
+    
     const payload = {
       service_offering_id: selectedService.value.id,
       provider_id: selectedService.value.provider_id,
-      description: serviceRequest.value.description || 'No specific instructions provided.',
-      preferred_date: serviceRequest.value.preferredDate,
-      time_preference: serviceRequest.value.timePreference,
-      contact_number: serviceRequest.value.contact,
-      address: serviceRequest.value.address
+      description: bookingForm.value.description,
+      preferred_date: bookingForm.value.preferred_date,
+      time_preference: bookingForm.value.time_preference,
+      contact_number: bookingForm.value.contact_number,
+      address: addressMode.value === 'custom' ? customAddress.value : 'default'
     }
 
     const response = await api.post('/client/services/request', payload)
 
     if (response.data.success) {
-      toast.success(response.data.message)
+      toast.success('Service Requested!', {
+        description: 'The provider has been notified and will contact you soon.'
+      })
       closeServiceModal()
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Failed to submit request. Please try again.')
+    toast.error('Failed to submit request', {
+      description: error.response?.data?.message || 'Please check your details and try again.'
+    })
+    console.error('Submission error:', error)
   } finally {
     isSubmitting.value = false
   }
 }
+
+onMounted(() => {
+  fetchServices()
+})
 </script>
-
-<template>
-  <div class="min-h-screen bg-gray-50/50">
-    
-    <div class="bg-white border-b border-gray-200">
-      <div class="container mx-auto px-4 py-12 md:py-16 text-center max-w-3xl">
-        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <PaintRoller class="w-8 h-8 text-blue-600" />
-        </div>
-        <h1 class="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-4">Professional Painting Services</h1>
-        <p class="text-lg text-gray-500 font-medium mb-8">Browse and request verified service providers for your interior, exterior, and custom painting needs.</p>
-        
-        <Button 
-          @click="router.push('/Clients/myServiceRequest')" 
-          variant="outline" 
-          class="border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl font-bold px-6 h-12 shadow-sm transition-all inline-flex items-center gap-2"
-        >
-          <ClipboardList class="w-5 h-5 text-blue-600" />
-          Manage Requested Services
-        </Button>
-      </div>
-    </div>
-
-    <div class="container mx-auto px-4 py-12">
-      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p class="text-gray-500 font-medium">Loading available services...</p>
-      </div>
-
-      <div v-else-if="services.length === 0" class="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-2xl mx-auto">
-        <Briefcase class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 class="text-2xl font-bold text-gray-900 mb-2">No Services Available</h3>
-        <p class="text-gray-500">Service providers have not posted any offerings yet. Please check back later.</p>
-      </div>
-
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <Card 
-          v-for="service in services" 
-          :key="service.id" 
-          class="rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col bg-white"
-        >
-          <div class="h-56 bg-gray-100 relative overflow-hidden flex items-center justify-center">
-            
-            <div v-if="service.image_paths && service.image_paths.length > 0" class="w-full h-full flex overflow-x-auto snap-x snap-mandatory hide-scrollbar">
-              <img 
-                v-for="(image, index) in service.image_paths" 
-                :key="index" 
-                :src="image" 
-                class="w-full h-full object-cover shrink-0 snap-center group-hover:scale-105 transition-transform duration-700" 
-              />
-            </div>
-            
-            <div v-else class="flex flex-col items-center justify-center text-gray-400 w-full h-full">
-              <ImageIcon class="w-10 h-10 mb-2 opacity-50" />
-              <span class="text-xs font-semibold uppercase tracking-widest">No Image</span>
-            </div>
-            
-            <div class="absolute top-4 left-4 z-10 pointer-events-none flex flex-col gap-2 items-start">
-              <Badge class="bg-white/95 text-blue-700 border-0 shadow-sm backdrop-blur-md font-bold px-3 py-1">
-                {{ service.category }}
-              </Badge>
-            </div>
-
-            <div v-if="service.image_paths && service.image_paths.length > 1" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm">
-              <div v-for="(_, index) in service.image_paths" :key="'dot-'+index" class="w-1.5 h-1.5 rounded-full bg-white/70"></div>
-            </div>
-          </div>
-
-          <CardContent class="p-6 flex-1 flex flex-col">
-            <div class="flex items-center gap-2 mb-3">
-              <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
-                <User class="w-3 h-3 text-indigo-700" />
-              </div>
-              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ service.provider_name }}</span>
-            </div>
-
-            <h3 class="text-xl font-bold text-gray-900 mb-3 leading-tight group-hover:text-blue-600 transition-colors">{{ service.title }}</h3>
-            
-            <p class="text-sm text-gray-600 mb-6 line-clamp-3 leading-relaxed flex-1 whitespace-pre-wrap">
-              {{ service.description }}
-            </p>
-
-            <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-500 font-medium">Rate / Price</span>
-                <div class="text-right">
-                  <span class="text-lg font-black text-gray-900">₱{{ service.price.toLocaleString() }}</span>
-                  <span class="text-[10px] text-gray-500 uppercase tracking-wider ml-1">({{ service.price_type }})</span>
-                </div>
-              </div>
-              <div class="h-px bg-gray-200"></div>
-              <div class="flex justify-between items-center">
-                <span class="text-sm text-gray-500 font-medium">Est. Duration</span>
-                <span class="text-sm font-bold text-gray-900 flex items-center">
-                  <Clock class="w-3.5 h-3.5 mr-1.5 text-blue-500" />
-                  {{ service.duration }}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-
-          <CardFooter class="p-6 pt-0 mt-auto">
-            <Button @click="openServiceModal(service)" class="w-full bg-gray-900 hover:bg-black text-white rounded-xl h-12 font-bold shadow-lg shadow-gray-900/20 transition-all">
-              Request this Service
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    </div>
-
-    <Teleport to="body">
-      <Dialog :open="showServiceModal" @update:open="(val) => !val && closeServiceModal()">
-        <DialogContent class="sm:max-w-[600px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl bg-white max-h-[90vh] flex flex-col">
-          
-          <div class="px-6 py-6 border-b border-gray-100 bg-gray-50/50">
-            <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight">Request Service</DialogTitle>
-            <DialogDescription class="text-gray-500 mt-1 font-medium">
-              You are requesting <span class="font-bold text-gray-900">{{ selectedService?.title }}</span> from <span class="text-blue-600 font-bold">{{ selectedService?.provider_name }}</span>.
-            </DialogDescription>
-          </div>
-
-          <div class="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-            
-            <div class="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-blue-100">
-                  <DollarSign class="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p class="text-xs font-bold text-blue-800 uppercase tracking-wider">Estimated Cost</p>
-                  <p class="text-sm font-medium text-blue-600">₱{{ selectedService?.price.toLocaleString() }} ({{ selectedService?.price_type }})</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Describe what you need</Label>
-              <Textarea 
-                v-model="serviceRequest.description" 
-                placeholder="Give details about the area to be painted, current condition, specific colors requested..." 
-                class="min-h-[100px] bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl resize-none p-4 shadow-inner"
-              />
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div class="space-y-2">
-                <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Preferred Date <span class="text-red-500">*</span></Label>
-                <div class="relative">
-                  <Calendar class="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
-                  <Input 
-                    type="date" 
-                    v-model="serviceRequest.preferredDate" 
-                    :min="minDate"
-                    class="bg-gray-50 border-gray-200 pl-10 focus:border-blue-500 focus:ring-blue-500 rounded-xl h-11"
-                  />
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Must be at least 3 days from today.</p>
-              </div>
-              
-              <div class="space-y-2">
-                <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Time Preference <span class="text-red-500">*</span></Label>
-                <Select v-model="serviceRequest.timePreference">
-                  <SelectTrigger class="bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl h-11">
-                    <div class="flex items-center">
-                      <Clock class="h-4 w-4 text-gray-400 mr-2" />
-                      <SelectValue placeholder="Select timeframe" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent class="rounded-xl">
-                    <SelectItem value="Morning (8AM - 12PM)">Morning (8AM - 12PM)</SelectItem>
-                    <SelectItem value="Afternoon (1PM - 5PM)">Afternoon (1PM - 5PM)</SelectItem>
-                    <SelectItem value="Flexible">Flexible / Anytime</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Contact Number <span class="text-red-500">*</span></Label>
-              <div class="relative">
-                <Phone class="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
-                <Input 
-                  type="tel" 
-                  v-model="serviceRequest.contact" 
-                  placeholder="e.g. +63 912 345 6789"
-                  class="bg-gray-50 border-gray-200 pl-10 focus:border-blue-500 focus:ring-blue-500 rounded-xl h-11"
-                />
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <Label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Complete Address <span class="text-red-500">*</span></Label>
-              <div class="relative">
-                <MapPin class="absolute left-3 top-4 h-5 w-5 text-gray-400 pointer-events-none" />
-                <Textarea 
-                  v-model="serviceRequest.address" 
-                  placeholder="Street, Barangay, City, Province" 
-                  class="bg-gray-50 border-gray-200 pl-10 pt-4 focus:border-blue-500 focus:ring-blue-500 rounded-xl resize-none min-h-[80px] shadow-inner"
-                />
-              </div>
-            </div>
-
-          </div>
-
-          <div class="px-6 py-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0">
-            <Button variant="outline" @click="closeServiceModal" class="border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-bold h-12 px-6">
-              Cancel
-            </Button>
-            <Button @click="submitServiceRequest" :disabled="isSubmitting" class="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 rounded-xl font-bold h-12 px-8 transition-all">
-              <span v-if="isSubmitting" class="flex items-center">
-                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
-              </span>
-              <span v-else>Submit Request</span>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Teleport>
-
-  </div>
-</template>
 
 <style scoped>
 .hide-scrollbar::-webkit-scrollbar {
@@ -375,15 +701,5 @@ const submitServiceRequest = async () => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #d1d5db;
-}
-
-input[type=date]::-webkit-calendar-picker-indicator {
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  cursor: pointer;
 }
 </style>

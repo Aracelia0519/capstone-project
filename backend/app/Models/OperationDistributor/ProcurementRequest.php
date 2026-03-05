@@ -15,12 +15,12 @@ class ProcurementRequest extends Model
     protected $fillable = [
         'requester_id',
         'distributor_id',
-        'supplier_id', // Added supplier_id
+        'supplier_id', 
         'product_id',
         'request_code',
         'product_name',
         'category',
-        'supplier', // Keeping original string column
+        'supplier', 
         'quantity',
         'unit_price',
         'total_cost',
@@ -57,6 +57,24 @@ class ProcurementRequest extends Model
         'shipping_method' => 'standard',
         'payment_terms' => 'net30'
     ];
+
+    // Automatically append this custom attribute to JSON responses
+    protected $appends = ['raw_material_details', 'formatted_status', 'formatted_priority', 'total_cost_formatted'];
+
+    /**
+     * DYNAMICALLY FETCH THE SUPPLIER RAW MATERIAL DETAILS
+     * Since product_id is null during the pending request phase, this fetches 
+     * the image and exact specs directly from the supplier's active catalog.
+     */
+    public function getRawMaterialDetailsAttribute()
+    {
+        if ($this->supplier_id && $this->product_name) {
+            return \App\Models\Supplier\SupplierRawMaterial::where('user_id', $this->supplier_id)
+                ->where('name', $this->product_name)
+                ->first();
+        }
+        return null;
+    }
 
     /**
      * Get the requester user
@@ -111,48 +129,36 @@ class ProcurementRequest extends Model
     }
 
     /**
-     * Scope a query to only include requests for a specific requester
+     * Scope queries
      */
     public function scopeForRequester($query, $requesterId)
     {
         return $query->where('requester_id', $requesterId);
     }
 
-    /**
-     * Scope a query to only include requests for a specific distributor
-     */
     public function scopeForDistributor($query, $distributorId)
     {
         return $query->where('distributor_id', $distributorId);
     }
 
-    /**
-     * Scope a query to only include requests with specific status
-     */
     public function scopeWithStatus($query, $status)
     {
         return $query->where('status', $status);
     }
 
     /**
-     * Get formatted status
+     * Format Attributes
      */
     public function getFormattedStatusAttribute()
     {
         return ucfirst($this->status);
     }
 
-    /**
-     * Get formatted priority
-     */
     public function getFormattedPriorityAttribute()
     {
         return ucfirst($this->priority);
     }
 
-    /**
-     * Get total cost formatted
-     */
     public function getTotalCostFormattedAttribute()
     {
         return '₱' . number_format($this->total_cost, 2);
@@ -169,12 +175,16 @@ class ProcurementRequest extends Model
             $this->rejection_reason = $reason;
         }
         
-        // Set timestamps based on status
         switch ($status) {
             case 'approved':
                 $this->approved_at = now();
                 break;
             case 'processing':
+            case 'op-approved': 
+            case 'd-approved': 
+                $this->processed_at = now();
+                break;
+            case 'ready': 
                 $this->processed_at = now();
                 break;
             case 'shipped':
@@ -188,17 +198,11 @@ class ProcurementRequest extends Model
         $this->save();
     }
 
-    /**
-     * Get the user who approved the request (finance)
-     */
     public function financeApprovedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'finance_approved_by');
     }
 
-    /**
-     * Get the user who rejected the request (finance)
-     */
     public function financeRejectedBy()
     {
         return $this->belongsTo(\App\Models\User::class, 'finance_rejected_by');

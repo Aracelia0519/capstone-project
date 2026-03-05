@@ -1,31 +1,30 @@
 <?php
 
-namespace App\Http\Controllers\Api\OperationDistributor;
+namespace App\Http\Controllers\Api\Distributor;
 
 use App\Http\Controllers\Controller;
 use App\Models\OperationDistributor\ProcurementRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
-class ProcurementReadyController extends Controller
+class DistributorProcurementApprovalController extends Controller
 {
     /**
-     * Fetch requests that are Approved by Finance, or further along in the pipeline.
+     * Fetch all procurement requests for the logged-in distributor with status 'op-approved'
      */
-    public function index()
+    public function index(Request $request)
     {
-        // FIX: Included all downstream statuses ('d-approved', 'ready', 'rejected') 
-        // so requests never disappear from the Operational Distributor's table.
+        $user = Auth::user();
+
+        // Ensure only distributors can access this
+        if ($user->role !== 'distributor') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Fetch requests for this distributor that are 'op-approved' (and optionally 'd-approved' if you want them to see history)
         $requests = ProcurementRequest::with(['requester', 'product'])
-            ->whereIn('status', [
-                'approved', 
-                'op-approved', 
-                'd-approved', 
-                'ready', 
-                'processing', 
-                'shipped', 
-                'delivered', 
-                'rejected'
-            ])
+            ->where('distributor_id', $user->id)
+            ->whereIn('status', ['op-approved', 'd-approved']) // Including d-approved so they can see recently approved ones
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -42,7 +41,7 @@ class ProcurementReadyController extends Controller
                 'requester' => $req->requester ? $req->requester->full_name : 'Unknown',
                 'date' => $req->request_date->format('Y-m-d'),
                 'location' => $req->delivery_address ?? 'Main Office',
-                'status' => $req->status, // Will output exactly what is in DB
+                'status' => $req->status,
                 'priority' => ucfirst($req->priority),
                 'totalAmount' => (float) $req->total_cost,
                 'courier' => $req->shipping_method,
@@ -60,21 +59,24 @@ class ProcurementReadyController extends Controller
     }
 
     /**
-     * Mark a request as Operationally Approved (Stored as 'op-approved' in DB)
+     * Mark a request as Distributor Approved (d-approved)
      */
-    public function markAsOpApproved(Request $request, $id)
+    public function approve(Request $request, $id)
     {
         $procurement = ProcurementRequest::findOrFail($id);
 
-        if ($procurement->status !== 'approved') {
-            return response()->json(['message' => 'Only finance approved requests can be operationally approved.'], 400);
+        if ($procurement->distributor_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized to modify this request.'], 403);
         }
 
-        // Updating directly to 'op-approved'
-        $procurement->updateStatus('op-approved');
+        if ($procurement->status !== 'op-approved') {
+            return response()->json(['message' => 'Only Op. Approved requests can be approved by the Distributor.'], 400);
+        }
+
+        $procurement->updateStatus('d-approved');
         
         return response()->json([
-            'message' => 'Order marked as Op. Approved',
+            'message' => 'Request successfully approved by Distributor',
             'data' => $procurement
         ]);
     }
@@ -85,10 +87,14 @@ class ProcurementReadyController extends Controller
     public function reject(Request $request, $id)
     {
         $request->validate([
-            'reason' => 'required|string'
+            'reason' => 'required|string|max:500'
         ]);
 
         $procurement = ProcurementRequest::findOrFail($id);
+
+        if ($procurement->distributor_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized to modify this request.'], 403);
+        }
 
         $procurement->updateStatus('rejected', $request->reason);
 

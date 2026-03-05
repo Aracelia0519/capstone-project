@@ -21,6 +21,7 @@ import PaintInventory from '@/views/distributor/PaintInventory.vue'
 import ProductAvailable from '@/views/distributor/ProductAvailable.vue'
 import ProductDeployment from '@/views/distributor/ProductDeployment.vue'
 import OrdersRequest from '@/views/distributor/OrdersRequest.vue'
+import ProcurementApproval from '@/views/distributor/ProcurementApproval.vue'
 import ColorDemandInsights from '@/views/distributor/ColorDemandInsights.vue'
 import SalesHistory from '@/views/distributor/SalesHistory.vue'
 import ServiceProviders from '@/views/distributor/ServiceProviders.vue'
@@ -77,8 +78,6 @@ import PayrollManagement from '@/views/humanResource/PayrollManagement.vue'
 import AttendanceRequestHR from '@/views/humanResource/AttendanceRequestHR.vue'
 import LeaveRequestHR from '@/views/humanResource/LeaveRequestHR.vue'
 
-
-
 import FinanceLayout from '@/layouts/financeLayout.vue'
 import FinanceDashboard from '@/views/finance/financeDashboard.vue'
 import Transactions from '@/views/finance/Transactions.vue'
@@ -88,6 +87,7 @@ import ReportsFinance from '@/views/finance/ReportsFinance.vue'
 import ProcurementRequestFinance from '@/views/finance/ProcurementRequestFinance.vue'
 import PayrollRequestFinance from '@/views/finance/PayrollRequestFinance.vue'
 import PayrollPaidFinance from '@/views/finance/PayrollPaidFinance.vue'
+import procurementBudgetRelease from '@/views/finance/procurementBudgetRelease.vue'
 
 import CRMLayout from '@/layouts/CRMLayout.vue'
 import CRMDashboard from '@/views/CRM/CRMDashboard.vue'
@@ -248,6 +248,12 @@ const routes = [
         path: 'ordersRequest',
         name: 'ordersRequest',
         component: OrdersRequest,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ProcurementApproval',
+        name: 'ProcurementApproval',
+        component: ProcurementApproval,
         meta: { requiresVerification: true }
       },
       {
@@ -573,6 +579,11 @@ const routes = [
         path: 'reportFinance',
         name: 'reportFinance',
         component: ReportsFinance
+      },
+      {
+        path: 'procurementBudgetRelease',
+        name: 'procurementBudgetRelease',
+        component: procurementBudgetRelease
       },
       {
         path: 'procurementRequestFinance',

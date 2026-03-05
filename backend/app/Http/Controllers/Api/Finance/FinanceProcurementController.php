@@ -55,10 +55,9 @@ class FinanceProcurementController extends Controller
             // Get pending requests for listing
             $pendingRequests = $query->where('status', 'pending')->paginate($perPage);
             
-            // Get recently processed requests (approved/rejected in last 7 days)
+            // FIX: Get recently processed requests based on Finance timestamps, NOT current status.
             $recentlyProcessed = ProcurementRequest::with(['requester', 'product'])
                 ->where('distributor_id', $distributorId)
-                ->whereIn('status', ['approved', 'rejected'])
                 ->where(function($q) {
                     $q->whereNotNull('finance_approved_at')
                       ->orWhereNotNull('finance_rejected_at');
@@ -68,16 +67,16 @@ class FinanceProcurementController extends Controller
                 ->limit(10)
                 ->get();
 
-            // Get statistics for the current month
+            // FIX: Get statistics based on Finance actions for the current month
             $currentMonth = now()->format('Y-m');
             $statistics = ProcurementRequest::select(
                 DB::raw('COUNT(*) as total_requests'),
-                DB::raw('SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved_count'),
-                DB::raw('SUM(CASE WHEN status = "rejected" THEN 1 ELSE 0 END) as rejected_count'),
-                DB::raw('SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending_count'),
-                DB::raw('SUM(CASE WHEN status = "approved" THEN total_cost ELSE 0 END) as approved_amount'),
-                DB::raw('SUM(CASE WHEN status = "rejected" THEN total_cost ELSE 0 END) as rejected_amount'),
-                DB::raw('SUM(CASE WHEN status = "pending" THEN total_cost ELSE 0 END) as pending_amount')
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved_count'),
+                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN 1 ELSE 0 END) as rejected_count'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN 1 ELSE 0 END) as pending_count'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN total_cost ELSE 0 END) as approved_amount'),
+                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN total_cost ELSE 0 END) as rejected_amount'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN total_cost ELSE 0 END) as pending_amount')
             )
             ->where('distributor_id', $distributorId)
             ->where('request_date', 'like', $currentMonth . '%')
@@ -239,12 +238,6 @@ class FinanceProcurementController extends Controller
             
             $procurementRequest->save();
 
-            // Here you can add additional logic like:
-            // - Update inventory
-            // - Send notifications
-            // - Create purchase order
-            // - Update budget
-
             DB::commit();
 
             return response()->json([
@@ -326,10 +319,6 @@ class FinanceProcurementController extends Controller
             $procurementRequest->rejection_reason = $request->comments;
             $procurementRequest->save();
 
-            // Here you can add additional logic like:
-            // - Send rejection notification
-            // - Log the rejection
-
             DB::commit();
 
             return response()->json([
@@ -375,16 +364,16 @@ class FinanceProcurementController extends Controller
 
             $distributorId = $financeManager->parent_distributor_id;
 
-            // Get monthly statistics for the current year
+            // FIX: Get monthly statistics based on timestamps
             $monthlyStats = ProcurementRequest::select(
                 DB::raw('DATE_FORMAT(request_date, "%Y-%m") as month'),
                 DB::raw('COUNT(*) as total_requests'),
-                DB::raw('SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved_count'),
-                DB::raw('SUM(CASE WHEN status = "rejected" THEN 1 ELSE 0 END) as rejected_count'),
-                DB::raw('SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending_count'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved_count'),
+                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN 1 ELSE 0 END) as rejected_count'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN 1 ELSE 0 END) as pending_count'),
                 DB::raw('SUM(total_cost) as total_amount'),
-                DB::raw('SUM(CASE WHEN status = "approved" THEN total_cost ELSE 0 END) as approved_amount'),
-                DB::raw('SUM(CASE WHEN status = "rejected" THEN total_cost ELSE 0 END) as rejected_amount')
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN total_cost ELSE 0 END) as approved_amount'),
+                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN total_cost ELSE 0 END) as rejected_amount')
             )
             ->where('distributor_id', $distributorId)
             ->whereYear('request_date', now()->year)
@@ -403,12 +392,12 @@ class FinanceProcurementController extends Controller
             ->groupBy('category')
             ->get();
 
-            // Get today's requests
+            // FIX: Get today's stats based on timestamps
             $todayStats = ProcurementRequest::select(
                 DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved'),
-                DB::raw('SUM(CASE WHEN status = "rejected" THEN 1 ELSE 0 END) as rejected'),
-                DB::raw('SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending')
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved'),
+                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN 1 ELSE 0 END) as rejected'),
+                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN 1 ELSE 0 END) as pending')
             )
             ->where('distributor_id', $distributorId)
             ->whereDate('request_date', today())
@@ -438,8 +427,6 @@ class FinanceProcurementController extends Controller
      */
     private function getDepartmentBudgetInfo($procurementRequest)
     {
-        // This is a placeholder. Replace with actual budget logic from your system
-        // For now, we'll return dummy data
         return [
             'department_budget' => 45000.00,
             'remaining_balance' => 32250.00,
