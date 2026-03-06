@@ -13,20 +13,42 @@ class ClientServiceController extends Controller
     /**
      * Fetch all active service offerings from all providers
      */
-    public function getServices()
+    public function getServices(Request $request)
     {
+        // Dynamically get the base URL of the device/domain making the request (e.g., your Hostinger domain)
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+
         $services = ServiceOffering::with('provider')
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $formattedServices = $services->map(function ($service) {
+        $formattedServices = $services->map(function ($service) use ($baseUrl) {
             $providerName = 'Independent Provider';
             if ($service->provider) {
                 $providerName = trim(($service->provider->first_name ?? '') . ' ' . ($service->provider->last_name ?? ''));
                 if (empty($providerName)) {
                     $providerName = $service->provider->name ?? 'Independent Provider';
                 }
+            }
+
+            // FIX: Dynamically format image paths to use the live domain instead of localhost
+            $formattedPaths = [];
+            if (!empty($service->image_paths)) {
+                $formattedPaths = array_map(function ($path) use ($baseUrl) {
+                    // Remove old hardcoded localhost URLs if they exist in the DB
+                    if (str_starts_with($path, 'http')) {
+                        $parsedUrl = parse_url($path);
+                        $path = $parsedUrl['path'] ?? $path; 
+                    }
+                    
+                    // Strip '/storage/' to get the raw relative path
+                    $cleanPath = preg_replace('/^\/?storage\//', '', $path);
+                    $cleanPath = ltrim($cleanPath, '/');
+                    
+                    // Attach the perfect dynamic base URL for the current device/domain
+                    return $baseUrl . '/storage/' . $cleanPath;
+                }, $service->image_paths);
             }
 
             return [
@@ -39,7 +61,7 @@ class ClientServiceController extends Controller
                 'price_type' => $service->price_type,
                 'duration' => $service->duration,
                 'description' => $service->description,
-                'image_paths' => $service->image_paths, // Array of URLs
+                'image_paths' => $formattedPaths, // Send the fully formatted live URLs
             ];
         });
 
