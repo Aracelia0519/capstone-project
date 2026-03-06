@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
+    <Toaster richColors position="top-right" expand />
+
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="px-6 py-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -8,10 +10,10 @@
             <p class="text-gray-600">Process employee payroll by department</p>
           </div>
           <div class="flex items-center space-x-4">
-            <Button variant="outline" @click="downloadPayroll">
+            <Button variant="outline" @click="requirePermission('view', downloadPayroll)">
               Export
             </Button>
-            <Button @click="processPayroll" class="bg-blue-600 hover:bg-blue-700">
+            <Button @click="requirePermission('create', processPayroll)" class="bg-blue-600 hover:bg-blue-700">
               Process Payroll
             </Button>
           </div>
@@ -235,7 +237,7 @@
              
              <div class="flex justify-center space-x-4 mt-8">
                  <Button variant="outline" @click="prevStep">Back</Button>
-                 <Button @click="submitPayroll" :disabled="processing" class="bg-green-600 hover:bg-green-700 min-w-[150px]">
+                 <Button @click="requirePermission('create', submitPayroll)" :disabled="processing" class="bg-green-600 hover:bg-green-700 min-w-[150px]">
                     <span v-if="processing" class="flex items-center gap-2">
                         <div class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Processing...
@@ -275,6 +277,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/utils/axios' 
+import { Toaster, toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -294,6 +297,23 @@ const processing = ref(false)
 const showSuccessModal = ref(false)
 const batchCode = ref('')
 const savedCount = ref(0)
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} payroll records.`);
+    return;
+  }
+  if (callback) callback();
+}
 
 // --- FIX: LOCAL DATE FORMATTER ---
 const formatDateLocal = (date) => {
@@ -369,11 +389,20 @@ const fetchCalculatedPayroll = async () => {
         })
         allEmployees.value = response.data.payroll_items || []
         
+        if (response.data.permissions) {
+            permissions.value = response.data.permissions
+        }
+
         if (departments.value.length > 0 && !activeDepartment.value) {
             activeDepartment.value = departments.value[0]
         }
     } catch (error) {
-        console.error("Error calculating payroll", error)
+        if (error.response?.status === 403) {
+            toast.error(error.response.data.error || "Unauthorized to view or calculate payroll.")
+        } else {
+            console.error("Error calculating payroll", error)
+            toast.error("Failed to fetch payroll data.")
+        }
     } finally {
         loading.value = false
     }
@@ -416,7 +445,10 @@ const processPayroll = () => {
     currentStep.value = 1
     fetchCalculatedPayroll()
 }
-const downloadPayroll = () => { console.log("Export functionality") }
+const downloadPayroll = () => { 
+    toast.info("Export functionality triggered") 
+    console.log("Export functionality") 
+}
 
 const submitPayroll = async () => {
     processing.value = true
@@ -430,9 +462,14 @@ const submitPayroll = async () => {
         batchCode.value = response.data.batch_code
         savedCount.value = response.data.count
         showSuccessModal.value = true
+        toast.success("Payroll processed successfully!")
     } catch (error) {
         console.error("Submission failed", error)
-        alert("Failed to process payroll. Please try again.")
+        if (error.response?.status === 403) {
+            toast.error(error.response.data.error || "Unauthorized to process payroll.")
+        } else {
+            toast.error("Failed to process payroll. Please try again.")
+        }
     } finally {
         processing.value = false
     }

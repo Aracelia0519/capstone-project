@@ -62,6 +62,23 @@ import {
 const requests = ref([])
 const isLoading = ref(false)
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} leave requests.`);
+    return;
+  }
+  if (callback) callback();
+}
+
 // Modal & Action State
 const isDetailsOpen = ref(false)
 const selectedRequest = ref(null)
@@ -115,10 +132,22 @@ const fetchRequests = async () => {
   isLoading.value = true
   try {
     const response = await api.get('/hr/leaves')
-    requests.value = response.data
+    
+    if (response.data && response.data.data) {
+        requests.value = response.data.data
+        if (response.data.permissions) {
+            permissions.value = response.data.permissions
+        }
+    } else {
+        requests.value = response.data
+    }
   } catch (error) {
     console.error(error)
-    toast.error('Failed to load leave requests.')
+    if (error.response?.status === 403) {
+        toast.error(error.response.data.message || 'Unauthorized to view leave requests.')
+    } else {
+        toast.error('Failed to load leave requests.')
+    }
   } finally {
     isLoading.value = false
   }
@@ -146,6 +175,13 @@ const initiateAction = (type) => {
 
 // Execute Action (called after Alert Dialog confirmation)
 const confirmAction = async () => {
+  // Check permission again as a safeguard
+  if (!permissions.value.can_update) {
+    toast.error('Access Denied: You do not have permission to update leave requests.');
+    isConfirmOpen.value = false;
+    return;
+  }
+
   if (!pendingAction.value || !selectedRequest.value) return
 
   const { type } = pendingAction.value
@@ -185,7 +221,11 @@ const confirmAction = async () => {
 
   } catch (error) {
     console.error(error)
-    toast.error('Failed to update request status. Please try again.')
+    if (error.response?.status === 403) {
+        toast.error(error.response.data.message || 'Unauthorized action.');
+    } else {
+        toast.error('Failed to update request status. Please try again.')
+    }
   }
 }
 
@@ -197,7 +237,7 @@ onMounted(() => {
 
 <template>
   <div class="w-full p-4 md:p-8 space-y-6">
-    <Toaster position="top-center" />
+    <Toaster position="top-center" richColors expand />
     
     <div class="flex items-center justify-between">
       <div>
@@ -455,10 +495,10 @@ onMounted(() => {
 
                 <template v-if="selectedRequest.status === 'Pending'">
                     <Button variant="outline" @click="isDetailsOpen = false">Close</Button>
-                    <Button variant="outline" class="border-red-200 text-red-600 hover:bg-red-50" @click="isRejecting = true">
+                    <Button variant="outline" class="border-red-200 text-red-600 hover:bg-red-50" @click="requirePermission('update', () => { isRejecting = true })">
                        Reject
                     </Button>
-                    <Button class="bg-green-600 hover:bg-green-700 text-white" @click="initiateAction('Approved')">
+                    <Button class="bg-green-600 hover:bg-green-700 text-white" @click="requirePermission('update', () => initiateAction('Approved'))">
                        Approve
                     </Button>
                 </template>

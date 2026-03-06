@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
 
-// Import all layouts and views (keep your existing imports)
+// Import all layouts and views
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import Dashboard from '@/views/admin/Dashboard.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
@@ -30,7 +30,6 @@ import HRManagers from '@/views/distributor/HRManagers.vue'
 import FinanceManagers from '@/views/distributor/FinanceManagers.vue'
 import WorkingHours from '@/views/distributor/WorkingHours.vue'
 import PayrollFrequency from '@/views/distributor/PayrollFrequency.vue'
-import CoreDepartments from '@/views/distributor/CoreDepartments.vue'
 import PartnerDistributorReq from '@/views/distributor/PartnerDistributorReq.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
@@ -65,6 +64,7 @@ import ExploreColors from '@/views/landingPage/ExploreColors.vue'
 import Services from '@/views/landingPage/Services.vue'
 import LogIn from '@/views/landingPage/LogIn.vue'
 import SignUp from '@/views/landingPage/SignUp.vue'
+import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
 
 import HRLayout from '@/layouts/HRLayout.vue'
 import HRDashboard from '@/views/humanResource/HRDashboard.vue'
@@ -89,15 +89,6 @@ import PayrollRequestFinance from '@/views/finance/PayrollRequestFinance.vue'
 import PayrollPaidFinance from '@/views/finance/PayrollPaidFinance.vue'
 import procurementBudgetRelease from '@/views/finance/procurementBudgetRelease.vue'
 
-import CRMLayout from '@/layouts/CRMLayout.vue'
-import CRMDashboard from '@/views/CRM/CRMDashboard.vue'
-import CRMClients from '@/views/CRM/CRMClients.vue'
-import CRMDistributors from '@/views/CRM/CRMDistributors.vue'
-import CRMServiceProviders from '@/views/CRM/CRMServiceProviders.vue'
-import CRMInteractions from '@/views/CRM/CRMInteractions.vue'
-import CRMFollowUps from '@/views/CRM/CRMFollowUps.vue'
-import CRMReports from '@/views/CRM/CRMReports.vue'
-
 import ECommerceLayout from '@/layouts/ECommerceLayout.vue'
 import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
 import ProcurementRequests from '@/views/E-commerce/ProcurementRequests.vue'
@@ -119,7 +110,6 @@ import ECPrepareOrder from '@/views/E-commerce/ECPrepareOrder.vue'
 import ECMessages from '@/views/E-commerce/ECMessages.vue'
 import ECPromoApproval from '@/views/E-commerce/ECPromoApproval.vue'
 
-
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
 import ECommerceServices from '@/views/ClientE-Commerce/ECommerceServices.vue'
@@ -136,7 +126,6 @@ import LeavesEmployee from '@/views/Employees/LeavesEmployee.vue'
 import RequestsEmployee from '@/views/Employees/RequestsEmployee.vue'
 import ProfileEmployee from '@/views/Employees/ProfileEmployee.vue'
 import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
-import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
 
 import SupplierLayout from '@/layouts/SupplierLayout.vue'
 import SupplierSettings from '@/views/supplier/SupplierSettings.vue'
@@ -151,11 +140,324 @@ import AddPersonnel from '@/views/supplier/AddPersonnel.vue'
 import RoleActivation from '@/views/supplier/RoleActivation.vue'
 import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
 
+import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
+
 
 const routes = [
   {
     path: '/',
     redirect: '/Landing/homeLanding'
+  },
+  {
+    path: '/special-rbac',
+    component: SpecialRBACLayout,
+    meta: { requiresAuth: true }, 
+    children: [
+      // FIXED: Added missing 'dashboard' route matching LogIn.vue redirect
+      {
+        path: 'dashboard',
+        name: 'rbac_dashboard',
+        component: HRDashboard // Using HRDashboard as generic overview landing
+      },
+      {
+        path: 'distributordashboard',
+        name: 'rbac_distributordashboard',
+        component: DistributorDashboard,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PartneredSupplier',
+        name: 'rbac_PartneredSupplier',
+        component: PartneredSupplier,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'paintInventory',
+        name: 'rbac_paintInventory',
+        component: PaintInventory,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ProductDeployment',
+        name: 'rbac_ProductDeployment',
+        component: ProductDeployment,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'productAvailable',
+        name: 'rbac_productAvailable',
+        component: ProductAvailable,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ordersRequest',
+        name: 'rbac_ordersRequest',
+        component: OrdersRequest,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ProcurementApproval',
+        name: 'rbac_ProcurementApproval',
+        component: ProcurementApproval,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ColorDemandInsights',
+        name: 'rbac_ColorDemandInsights',
+        component: ColorDemandInsights,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'SalesHistory',
+        name: 'rbac_SalesHistory',
+        component: SalesHistory,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'ServiceProviders',
+        name: 'rbac_ServiceProviders',
+        component: ServiceProviders,
+        meta: { requiresVerification: true }
+      }, 
+      {
+        path: 'OperationalDistributorD',
+        name: 'rbac_OperationalDistributorD',
+        component: OperationalDistributors,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'HRmanagerD',
+        name: 'rbac_HRmanagerD',
+        component: HRManagers,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'FinanceManagerD',
+        name: 'rbac_FinanceManagerD',
+        component: FinanceManagers,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'WorkingHours',
+        name: 'rbac_WorkingHours',
+        component: WorkingHours,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PayrollFrequency',
+        name: 'rbac_PayrollFrequency',
+        component: PayrollFrequency,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'PartnerDistributorReq',
+        name: 'rbac_PartnerDistributorReq',
+        component: PartnerDistributorReq,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'reportsD',
+        name: 'rbac_reportsD',
+        component: DistributorReports,
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'profileSettings',
+        name: 'rbac_profileSettings',
+        component: ProfileSettings,
+        meta: { requiresVerification: false }
+      },
+      {
+        path: 'HRdashboard',
+        name: 'rbac_HRdashboard',
+        component: HRDashboard
+      },
+      {
+        path: 'employeesListHR',
+        name: 'rbac_employeesListHR',
+        component: EmployeesList
+      },
+      {
+        path: 'positionRolesHR',
+        name: 'rbac_positionRolesHR',
+        component: PositionsRoles
+      },
+      {
+        path: 'departmentsHR',
+        name: 'rbac_departmentsHR',
+        component: Departments
+      },
+      {
+        path: 'employmentStatusHR',
+        name: 'rbac_employmentStatusHR',
+        component: EmploymentStatus
+      },
+      {
+        path: 'recruitmentApplication',
+        name: 'rbac_recruitmentApplication',
+        component: RecruitmentApplication
+      },
+      {
+        path: 'payrollHR',
+        name: 'rbac_payrollHR',
+        component: PayrollManagement
+      },
+      {
+        path: 'attendanceRequestHR',
+        name: 'rbac_attendanceRequestHR',
+        component: AttendanceRequestHR
+      },
+      {
+        path: 'leaveRequestHR',
+        name: 'rbac_leaveRequestHR',
+        component: LeaveRequestHR
+      },
+      {
+        path: 'reportsHR',
+        name: 'rbac_reportsHR',
+        component: ReportsHR
+      },
+      {
+        path: 'financeDashboard',
+        name: 'rbac_financeDashboard',
+        component: FinanceDashboard
+      },
+      {
+        path: 'transactions',
+        name: 'rbac_transactions',
+        component: Transactions
+      },
+      {
+        path: 'paymentMethods',
+        name: 'rbac_paymentMethods',
+        component: PaymentMethods
+      },
+      {
+        path: 'invoices',
+        name: 'rbac_invoices',
+        component: Invoices
+      },
+      {
+        path: 'reportFinance',
+        name: 'rbac_reportFinance',
+        component: ReportsFinance
+      },
+      {
+        path: 'procurementBudgetRelease',
+        name: 'rbac_procurementBudgetRelease',
+        component: procurementBudgetRelease
+      },
+      {
+        path: 'procurementRequestFinance',
+        name: 'rbac_procurementRequestFinance',
+        component: ProcurementRequestFinance
+      },
+      {
+        path: 'PayrollRequestFinance',
+        name: 'rbac_PayrollRequestFinance',
+        component: PayrollRequestFinance
+      },
+      {
+        path: 'PayrollPaidFinance',
+        name: 'rbac_PayrollPaidFinance',
+        component: PayrollPaidFinance
+      },
+      {
+        path: 'ECDashboard',
+        name: 'rbac_ECDashboard',
+        component: ECommerceDashboard
+      },
+      {
+        path: 'ECProcurement',
+        name: 'rbac_ECProcurement',
+        component: ProcurementRequests
+      },
+      {
+        path: 'ECCategories',
+        name: 'rbac_ECCategories',
+        component: ECommerceCategories
+      },
+      {
+        path: 'ECProcessProcurement',
+        name: 'rbac_ECProcessProcurement',
+        component: ECProcessProcurement
+      },
+      {
+        path: 'ECPTrackProcurement',
+        name: 'rbac_ECPTrackProcurement',
+        component: ECPTrackProcurement
+      },
+      {
+        path: 'ECOrders',
+        name: 'rbac_ECOrders',
+        component: ECommerceOrders
+      },
+      {
+        path: 'ECPayment',
+        name: 'rbac_ECPayment',
+        component: ECommercePayments
+      },
+      {
+        path: 'ECDelivery',
+        name: 'rbac_ECDelivery',
+        component: ECommerceDelivery
+      },
+      {
+        path: 'ECReturns',
+        name: 'rbac_ECReturns',
+        component: ECommerceReturns
+      },
+      {
+        path: 'ECReviews',
+        name: 'rbac_ECReviews',
+        component: ECommerceReviews
+      },
+      {
+        path: 'ECPartnerSupplier',
+        name: 'rbac_ECPartnerSupplier',
+        component: ECPartnerSupplier
+      },
+      {
+        path: 'ECServiceProvider',
+        name: 'rbac_ECServiceProvider',
+        component: ECServiceProvider
+      },
+      {
+        path: 'ECPromotions',
+        name: 'rbac_ECPromotions',
+        component: ECommercePromotions
+      },
+      {
+        path: 'ECreports',
+        name: 'rbac_ECreports',
+        component: ECommerceReports
+      },
+      {
+        path: 'ECArrivedItem',
+        name: 'rbac_ECArrivedItem',
+        component: ECArrivedItem
+      },
+      {
+        path: 'ECInventory',
+        name: 'rbac_ECInventory',
+        component: ECInventory
+      },
+      {
+        path: 'ECPrepareOrder',
+        name: 'rbac_ECPrepareOrder',
+        component: ECPrepareOrder
+      },
+      {
+        path: 'ECMessages',
+        name: 'rbac_ECMessages',
+        component: ECMessages
+      },
+      {
+        path: 'ECPromoApproval',
+        name: 'rbac_ECPromoApproval',
+        component: ECPromoApproval
+      }, 
+    ]
   },
   {
     path: '/admin',
@@ -273,14 +575,7 @@ const routes = [
         name: 'ServiceProviders',
         component: ServiceProviders,
         meta: { requiresVerification: true }
-      },
-      /*{
-        path: 'CoreDepartments',
-        name: 'CoreDepartments',
-        component: CoreDepartments,
-        meta: { requiresVerification: true }
-      },*/
-      
+      }, 
       {
         path: 'OperationalDistributorD',
         name: 'OperationalDistributorD',
@@ -327,7 +622,7 @@ const routes = [
         path: 'profileSettings',
         name: 'profileSettings',
         component: ProfileSettings,
-        meta: { requiresVerification: false } // Always accessible
+        meta: { requiresVerification: false }
       },
     ]
   },
@@ -484,7 +779,6 @@ const routes = [
     ]
   },
 
-  // UPDATED: HR routes now require authentication for hr_manager role
   {
     path: '/HR',
     component: HRLayout,
@@ -546,7 +840,6 @@ const routes = [
     ]
   },
   
-  // UPDATED: Finance routes now require authentication for finance_manager role
   {
     path: '/finance',
     component: FinanceLayout,
@@ -603,7 +896,6 @@ const routes = [
     ]
   },
   
-  // UPDATED: E-Commerce routes now require authentication for operational_distributor role
   {
     path: '/ECommerce',
     component: ECommerceLayout,
@@ -770,51 +1062,6 @@ const routes = [
     ]
   },
   
-  // CRM routes (keeping as is, no authentication required for now)
-  {
-    path: '/CRM',
-    component: CRMLayout,
-    meta: { requiresAuth: false },
-    children: [
-      {
-        path: 'CRMDashboard',
-        name: 'CRMDashboard',
-        component: CRMDashboard
-      },
-      {
-        path: 'CRMClients',
-        name: 'CRMClients',
-        component: CRMClients
-      },
-      {
-        path: 'CRMDistributors',
-        name: 'CRMDistributors',
-        component: CRMDistributors
-      },
-      {
-        path: 'CRMServiceProviders',
-        name: 'CRMServiceProviders',
-        component: CRMServiceProviders
-      },
-      {
-        path: 'CRMInteractions',
-        name: 'CRMInteractions',
-        component: CRMInteractions
-      },
-      {
-        path: 'CRMFollowUps',
-        name: 'CRMFollowUps',
-        component: CRMFollowUps
-      },
-      {
-        path: 'CRMReports',
-        name: 'CRMReports',
-        component: CRMReports
-      },
-    ]
-  },
-  
-  // Client E-Commerce routes (keeping as is, no authentication required for now bitch)
   {
     path: '/ECommerceClient',
     component: ECommerceClientLayout,
@@ -912,20 +1159,17 @@ const router = createRouter({
 let isNavigating = false
 let pendingNavigation = null
 
-// Cache for verification status to avoid multiple API calls
 const verificationCache = {
   data: null,
   timestamp: null,
-  TTL: 5 * 60 * 1000 // 5 minutes
+  TTL: 5 * 60 * 1000 
 }
 
-// Clear verification cache
 const clearVerificationCache = () => {
   verificationCache.data = null
   verificationCache.timestamp = null
 }
 
-// Check if verification cache is valid
 const isVerificationCacheValid = () => {
   if (!verificationCache.data || !verificationCache.timestamp) {
     return false
@@ -933,9 +1177,7 @@ const isVerificationCacheValid = () => {
   return Date.now() - verificationCache.timestamp < verificationCache.TTL
 }
 
-// Route guard to check authentication and verification
 router.beforeEach(async (to, from, next) => {
-  // Skip if already navigating
   if (isNavigating) {
     pendingNavigation = { to, from, next }
     return
@@ -949,7 +1191,6 @@ router.beforeEach(async (to, from, next) => {
 
   if (requiresAuth) {
     try {
-      // Get user from cache (fast) or API (first time)
       const user = await getCurrentUser()
       
       if (!user) {
@@ -961,9 +1202,7 @@ router.beforeEach(async (to, from, next) => {
         return
       }
       
-      // Check role if required
       if (requiredRole && user.role !== requiredRole) {
-        // Define routes for each role - UPDATED with new roles
         const roleRoutes = {
           admin: '/admin/dashboard',
           distributor: '/distributor/distributordashboard',
@@ -976,7 +1215,6 @@ router.beforeEach(async (to, from, next) => {
         
         const redirectRoute = roleRoutes[user.role] || '/Landing/homeLanding'
         
-        // Don't redirect if already going to correct route
         if (to.path.startsWith(redirectRoute)) {
           next()
         } else {
@@ -988,36 +1226,28 @@ router.beforeEach(async (to, from, next) => {
         return
       }
       
-      // Check verification for distributor routes
       if (user.role === 'distributor') {
         try {
           let verificationData = null
           
-          // Check cache first
           if (isVerificationCacheValid()) {
             verificationData = verificationCache.data
           } else {
-            // Fetch verification status
             const response = await axios.get('/distributor/requirements')
             if (response.data.status === 'success') {
               verificationData = response.data.data
-              // Update cache
               verificationCache.data = verificationData
               verificationCache.timestamp = Date.now()
             }
           }
           
-          // Check if user has submitted requirements
           const hasRequirements = verificationData && verificationData.status
           const isApproved = verificationData && verificationData.status === 'approved'
           
-          // If trying to access protected routes and not approved
           if (requiresVerification && !isApproved) {
-            // Always allow access to profile settings
             if (isProfileSettings) {
               next()
             } else {
-              // Redirect to profile settings with verification required flag
               next({
                 path: '/distributor/profileSettings',
                 query: { 
@@ -1031,7 +1261,6 @@ router.beforeEach(async (to, from, next) => {
             return
           }
           
-          // If approved, allow access to all routes
           if (isApproved) {
             next()
             isNavigating = false
@@ -1041,7 +1270,6 @@ router.beforeEach(async (to, from, next) => {
           
         } catch (error) {
           console.error('Failed to check verification status:', error)
-          // If verification check fails, still allow profile settings access
           if (isProfileSettings) {
             next()
           } else {
@@ -1053,7 +1281,6 @@ router.beforeEach(async (to, from, next) => {
         }
       }
       
-      // If no verification required or user is verified, proceed
       next()
     } catch (error) {
       console.error('Auth error:', error)
@@ -1071,7 +1298,6 @@ router.beforeEach(async (to, from, next) => {
   }
 })
 
-// Process any pending navigation
 function processPendingNavigation() {
   if (pendingNavigation) {
     const { to, from, next } = pendingNavigation
@@ -1080,7 +1306,6 @@ function processPendingNavigation() {
   }
 }
 
-// Add axios interceptor to handle 401 responses globally
 axios.interceptors.response.use(
   response => response,
   error => {
@@ -1088,8 +1313,6 @@ axios.interceptors.response.use(
       clearAuthData()
       clearVerificationCache()
       
-      // UPDATED: Added check for payrollLogin to prevent redirecting away from it on failed login
-      // Only redirect if not already going to a login page
       const currentPath = router.currentRoute.value.path
       if (!currentPath.includes('/logIn') && !currentPath.includes('/payrollLogin')) {
         router.push('/Landing/logIn')
@@ -1099,9 +1322,7 @@ axios.interceptors.response.use(
   }
 )
 
-// Listen for logout to clear cache
 router.afterEach((to, from) => {
-  // Clear verification cache when leaving distributor area
   if (from.path.includes('/distributor') && !to.path.includes('/distributor')) {
     clearVerificationCache()
   }

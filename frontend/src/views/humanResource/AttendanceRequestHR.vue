@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50/50 p-4 md:p-6">
+    <Toaster richColors position="top-right" expand />
+
     <div class="mb-8">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Attendance Requests</h1>
       <p class="text-gray-600">Review and manage employee time adjustment and overtime requests</p>
@@ -178,7 +180,7 @@
                       class="h-8 bg-green-50 text-green-700 hover:bg-green-100 border-green-200 shadow-none"
                       variant="outline"
                       :disabled="isProcessing === request.id"
-                      @click="handleAction(request.id, 'approve')"
+                      @click="requirePermission('update', () => handleAction(request.id, 'approve'))"
                     >
                       <span v-if="isProcessing === request.id" class="animate-spin mr-1">...</span>
                       <Check v-else class="h-4 w-4 mr-1" /> 
@@ -189,7 +191,7 @@
                       class="h-8 bg-red-50 text-red-700 hover:bg-red-100 border-red-200 shadow-none"
                       variant="outline"
                       :disabled="isProcessing === request.id"
-                      @click="handleAction(request.id, 'reject')"
+                      @click="requirePermission('update', () => handleAction(request.id, 'reject'))"
                     >
                       <X v-if="isProcessing !== request.id" class="h-4 w-4 mr-1" /> 
                       Reject
@@ -244,7 +246,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner'
 import { 
   Check, X, FileText, Clock, CheckCircle2, XCircle, Search 
 } from 'lucide-vue-next'
@@ -310,6 +312,23 @@ const searchQuery = ref('')
 const filterStatus = ref<'All' | RequestStatus | string>('All')
 const loadingStatus = ref('Initializing...')
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action: string, callback: Function) => {
+  if (!(permissions.value as any)[`can_${action}`]) {
+    toast.error(`Access Denied: You do not have permission to ${action} attendance requests.`);
+    return;
+  }
+  if (callback) callback();
+}
+
 // Modal State
 const showImageModal = ref(false)
 const selectedImageUrl = ref('')
@@ -331,6 +350,11 @@ const fetchRequests = async () => {
         employeeName: req.employee ? `${req.employee.first_name} ${req.employee.last_name}` : 'Unknown Employee',
         employeeCode: req.employee?.employee_code || 'N/A'
       }))
+      
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      }
+
       loadingStatus.value = 'Data loaded'
     } else {
       loadingStatus.value = 'Failed: ' + (response.data.message || 'Unknown error')
@@ -342,7 +366,9 @@ const fetchRequests = async () => {
     let errorMsg = 'Failed to load requests'
     if (error.response) {
       if (error.response.status === 401) errorMsg = 'Unauthorized: Please login again'
-      if (error.response.status === 403) errorMsg = 'Access Denied: ' + (error.response.data.message || '')
+      if (error.response.status === 403) {
+        errorMsg = 'Access Denied: ' + (error.response.data.message || 'You lack required permissions.')
+      }
       if (error.response.data?.message) errorMsg = error.response.data.message
       
       // If we still get HTML, it means the URL is wrong or server is down
@@ -402,8 +428,12 @@ const handleAction = async (id: string, action: 'approve' | 'reject') => {
     }
   } catch (error: any) {
     console.error(`Error ${action}ing request:`, error)
-    const msg = error.response?.data?.message || `Failed to ${action} request`
-    toast.error(msg)
+    if (error.response?.status === 403) {
+      toast.error(error.response.data.message || 'Unauthorized action.');
+    } else {
+      const msg = error.response?.data?.message || `Failed to ${action} request`
+      toast.error(msg)
+    }
   } finally {
     isProcessing.value = null
   }

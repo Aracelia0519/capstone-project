@@ -9,49 +9,123 @@ use App\Models\Employee\EmployeeAttendance;
 use App\Models\Distributor\HRManager;
 use App\Models\HR\Employee;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class AttendanceRequestController extends Controller
 {
+    /**
+     * Check RBAC Permissions for HR Modules (Specifically attendance_request)
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // HR Manager
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager && $hrManager->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $hrManager->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        } 
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'attendance_request') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+        ];
+    }
+
     /**
      * List requests for HR based on their distributor
      */
     public function index()
     {
         $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
         
-        // Check if user is HR Manager
-        $hrManager = HRManager::where('user_id', $user->id)->first();
-        
-        if (!$hrManager) {
-            // Check if user is HR Employee
-            $hrEmployee = Employee::where('user_id', $user->id)
-                ->where('department', 'Human Resources')
-                ->first();
-            
-            if (!$hrEmployee) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized access. HR access required.'
-                ], 403);
-            }
-            
-            // HR Employee: Get requests for their distributor
-            $distributorId = $hrEmployee->parent_distributor_id;
-        } else {
-            // HR Manager: Get requests for their distributor
-            $distributorId = $hrManager->parent_distributor_id;
+        if (!$accessData['has_access']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access. You do not have permission to view attendance requests.'
+            ], 403);
         }
         
+        $distributorId = $accessData['distributor_id'];
+        
         // Fetch requests with employee data
-        $requests = AttendanceRequest::with(['employee.user', 'employee.hrManager.user'])
-            ->where('distributor_id', $distributorId)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = AttendanceRequest::with(['employee.user', 'employee.hrManager.user'])
+            ->orderBy('created_at', 'desc');
+            
+        if ($distributorId) {
+            $query->where('distributor_id', $distributorId);
+        }
+        
+        $requests = $query->get();
         
         return response()->json([
             'status' => 'success',
-            'data' => $requests
+            'data' => $requests,
+            'permissions' => $accessData['permissions']
         ]);
     }
 
@@ -60,6 +134,16 @@ class AttendanceRequestController extends Controller
      */
     public function approve(Request $request, $id)
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_update');
+        
+        if (!$accessData['has_access']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. You do not have permission to approve attendance requests.'
+            ], 403);
+        }
+
         $attendanceReq = AttendanceRequest::with('employee')->find($id);
         
         if (!$attendanceReq) {
@@ -69,33 +153,19 @@ class AttendanceRequestController extends Controller
             ], 404);
         }
 
+        // Validate Distributor ownership (unless Admin)
+        if ($user->role !== 'admin' && $attendanceReq->distributor_id !== $accessData['distributor_id']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized to approve requests for this distributor'
+            ], 403);
+        }
+
         if ($attendanceReq->status !== 'Pending') {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Request already processed'
             ], 400);
-        }
-
-        $user = Auth::user();
-        
-        // Verify HR has permission for this distributor
-        $hrManager = HRManager::where('user_id', $user->id)
-            ->where('parent_distributor_id', $attendanceReq->distributor_id)
-            ->first();
-        
-        if (!$hrManager) {
-            // Check if HR Employee has permission
-            $hrEmployee = Employee::where('user_id', $user->id)
-                ->where('parent_distributor_id', $attendanceReq->distributor_id)
-                ->where('department', 'Human Resources')
-                ->first();
-            
-            if (!$hrEmployee) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized to approve requests for this distributor'
-                ], 403);
-            }
         }
 
         // Create or Update the actual attendance record
@@ -180,6 +250,16 @@ class AttendanceRequestController extends Controller
      */
     public function reject(Request $request, $id)
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_update');
+        
+        if (!$accessData['has_access']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. You do not have permission to reject attendance requests.'
+            ], 403);
+        }
+
         $attendanceReq = AttendanceRequest::find($id);
         
         if (!$attendanceReq) {
@@ -189,26 +269,12 @@ class AttendanceRequestController extends Controller
             ], 404);
         }
 
-        $user = Auth::user();
-        
-        // Verify HR has permission for this distributor
-        $hrManager = HRManager::where('user_id', $user->id)
-            ->where('parent_distributor_id', $attendanceReq->distributor_id)
-            ->first();
-        
-        if (!$hrManager) {
-            // Check if HR Employee has permission
-            $hrEmployee = Employee::where('user_id', $user->id)
-                ->where('parent_distributor_id', $attendanceReq->distributor_id)
-                ->where('department', 'Human Resources')
-                ->first();
-            
-            if (!$hrEmployee) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized to reject requests for this distributor'
-                ], 403);
-            }
+        // Validate Distributor ownership (unless Admin)
+        if ($user->role !== 'admin' && $attendanceReq->distributor_id !== $accessData['distributor_id']) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized to reject requests for this distributor'
+            ], 403);
         }
 
         if ($attendanceReq->status !== 'Pending') {

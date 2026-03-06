@@ -1,12 +1,14 @@
 <template>
   <div class="positions-roles p-4 md:p-6">
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Positions & Roles</h1>
-        <p class="text-gray-600">Define job roles and responsibilities within the organization</p>
+        <p class="text-gray-600">Define job roles and access responsibilities within the organization</p>
       </div>
       <Button 
-        @click="startNewPosition" 
+        @click="requirePermission('create', startNewPosition)" 
         class="mt-4 md:mt-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg border-0"
       >
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +132,7 @@
       </div>
       <h3 class="text-xl font-semibold text-gray-800 mb-3">No Positions Found</h3>
       <p class="text-gray-600 mb-8 max-w-md mx-auto">Start building your team structure by creating your first position.</p>
-      <Button @click="startNewPosition" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md h-auto py-3">
+      <Button @click="requirePermission('create', startNewPosition)" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md h-auto py-3">
         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
@@ -144,8 +146,8 @@
           <div class="flex items-start justify-between mb-4">
             <div>
               <div class="flex items-center mb-2">
-                <div class="p-2 rounded-xl mr-3 shadow-sm" :class="position.department_color.bg">
-                  <svg class="w-5 h-5" :class="position.department_color.text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 rounded-xl mr-3 shadow-sm" :class="position.department_color?.bg || 'bg-gray-100'">
+                  <svg class="w-5 h-5" :class="position.department_color?.text || 'text-gray-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -159,17 +161,17 @@
                   </Badge>
                 </div>
               </div>
-              <span class="inline-block px-3 py-1 text-xs font-medium rounded-full" :class="position.department_color.badge">
+              <span class="inline-block px-3 py-1 text-xs font-medium rounded-full" :class="position.department_color?.badge || 'bg-gray-100 text-gray-800'">
                 {{ position.department }}
               </span>
             </div>
             <div class="flex space-x-1">
-              <Button variant="ghost" size="icon" @click="editPosition(position)" class="h-8 w-8 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50">
+              <Button variant="ghost" size="icon" @click="requirePermission('update', () => editPosition(position))" class="h-8 w-8 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </Button>
-              <Button variant="ghost" size="icon" @click="deletePosition(position.id)" class="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
+              <Button variant="ghost" size="icon" @click="requirePermission('delete', () => deletePosition(position.id))" class="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -233,7 +235,7 @@
     </div>
 
     <Dialog v-model:open="showPositionWizard">
-      <DialogContent class="max-w-4xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0 [&>button]:hidden">
+      <DialogContent class="max-w-[95vw] xl:max-w-7xl p-0 overflow-hidden max-h-[90vh] flex flex-col gap-0 [&>button]:hidden">
         <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 md:p-6 flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
@@ -272,7 +274,7 @@
                     <span class="font-semibold text-sm md:text-base">2</span>
                   </div>
                   <div :class="['ml-1 md:ml-2 text-xs md:text-sm font-medium transition-all duration-300 whitespace-nowrap', 
-                    currentStep >= 2 ? 'text-white' : 'text-blue-300']">Details</div>
+                    currentStep >= 2 ? 'text-white' : 'text-blue-300']">Details & Access</div>
                 </div>
                 
                 <div :class="['w-8 h-1 md:w-16 md:h-1 mx-1 md:mx-2 transition-all duration-300', 
@@ -291,9 +293,10 @@
           </div>
         </div>
         
-        <div class="flex-1 overflow-y-auto p-4 md:p-8">
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
+          
           <div v-if="currentStep === 1" class="space-y-4 md:space-y-6">
-            <div>
+            <div class="max-w-4xl mx-auto">
               <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Title & Department</h3>
               <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Start by providing the basic information about the position.</p>
               
@@ -310,35 +313,21 @@
                       class="pl-10 w-full"
                       placeholder="e.g., Senior Software Engineer, HR Manager" />
                   </div>
-                  <p class="text-xs text-gray-500 mt-2">Enter a clear and descriptive title for this position</p>
                 </div>
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     <span class="text-red-500">*</span> Department
                   </label>
-                  <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                    <button v-for="dept in allDepartments.slice(0, 9)" :key="dept"
-                      @click="if(positionForm.department !== dept) { positionForm.accessibility = []; positionForm.department = dept }"
-                      :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium', 
+                  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                    <button v-for="dept in defaultDepartments" :key="dept"
+                      @click="if(positionForm.department !== dept) { positionForm.accessibility = {}; positionForm.department = dept }"
+                      :class="['px-3 py-3 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium', 
                       positionForm.department === dept 
                         ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
                         : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
                       {{ dept }}
                     </button>
-                    <button @click="if(positionForm.department !== 'other') { positionForm.accessibility = []; positionForm.department = 'other'; showCustomDept = true }"
-                      :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-xs md:text-sm font-medium col-span-2 md:col-span-1', 
-                      positionForm.department === 'other' 
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500 text-blue-700 ring-2 ring-blue-200' 
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
-                      + Custom Department
-                    </button>
-                  </div>
-                  
-                  <div v-if="showCustomDept" class="mt-4">
-                    <Input v-model="positionForm.custom_department" type="text" required
-                      class="border-blue-300 focus:border-blue-500"
-                      placeholder="Enter custom department name..." />
                   </div>
                 </div>
               </div>
@@ -346,37 +335,28 @@
           </div>
           
           <div v-if="currentStep === 2" class="space-y-4 md:space-y-6">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Details</h3>
-              <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Define the responsibilities and compensation for this role.</p>
+            <div class="max-w-6xl mx-auto">
+              <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Details & Access</h3>
+              <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Define the responsibilities and grant system access control.</p>
               
-              <div class="space-y-4">
-                <div>
+              <div class="space-y-6">
+                <div class="max-w-4xl">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
                     <span class="text-red-500">*</span> Role Description
                   </label>
-                  <Textarea v-model="positionForm.description" rows="4" required
+                  <Textarea v-model="positionForm.description" rows="3" required
                     class="resize-none"
-                    placeholder="Describe the key responsibilities, requirements, and expectations for this position..." />
-                  <p class="text-xs text-gray-500 mt-2">Be specific about duties, required skills, and daily tasks</p>
+                    placeholder="Describe the key responsibilities..." />
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Salary Range</label>
                     <div class="space-y-3">
-                      <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 z-10">$</span>
-                        <Input v-model="positionForm.min_salary" type="number" step="0.01" min="0"
-                          class="pl-8"
-                          placeholder="Minimum salary" />
-                      </div>
-                      <div class="text-center text-gray-400">to</div>
-                      <div class="relative">
-                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 z-10">$</span>
-                        <Input v-model="positionForm.max_salary" type="number" step="0.01" min="0"
-                          class="pl-8"
-                          placeholder="Maximum salary" />
+                      <div class="relative flex items-center gap-2">
+                        <Input v-model="positionForm.min_salary" type="number" step="0.01" min="0" placeholder="Min" />
+                        <span class="text-gray-400">-</span>
+                        <Input v-model="positionForm.max_salary" type="number" step="0.01" min="0" placeholder="Max" />
                       </div>
                     </div>
                   </div>
@@ -385,20 +365,20 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <div class="grid grid-cols-2 gap-3">
                       <button @click="positionForm.status = 'active'"
-                        :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-sm font-medium', 
+                        :class="['px-3 py-2 rounded-lg border transition-all text-sm font-medium', 
                         positionForm.status === 'active' 
                           ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-500 text-green-700 ring-2 ring-green-200' 
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50']">
                         <div class="flex items-center justify-center">
                           <div class="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
                           Active
                         </div>
                       </button>
                       <button @click="positionForm.status = 'inactive'"
-                        :class="['px-3 py-2 md:px-4 md:py-3 rounded-lg border transition-all text-sm font-medium', 
+                        :class="['px-3 py-2 rounded-lg border transition-all text-sm font-medium', 
                         positionForm.status === 'inactive' 
                           ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-400 text-gray-700 ring-2 ring-gray-200' 
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400']">
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50']">
                         <div class="flex items-center justify-center">
                           <div class="w-2 h-2 rounded-full bg-gray-500 mr-2"></div>
                           Inactive
@@ -408,37 +388,112 @@
                   </div>
                 </div>
 
-                <div v-if="['Human Resources', 'Operational Distributor'].includes(positionForm.department)" class="mt-6 pt-6 border-t border-gray-200">
-                  <h4 class="text-lg font-semibold text-gray-800 mb-4">Accessibility Settings</h4>
-                  <p class="text-gray-600 mb-4 text-sm md:text-base">Select which sidebar items this position can access:</p>
-                  
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                    <div v-for="item in (positionForm.department === 'Human Resources' ? accessibilityOptions : operationalDistributorAccessibilityOptions)" :key="item.id"
-                      class="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                      @click="toggleAccessibilityItem(item.id)">
-                      <div class="flex items-center h-5">
-                        <Checkbox 
-                          :id="`accessibility-${item.id}`" 
-                          :modelValue="positionForm.accessibility.includes(item.id)"
-                          @update:modelValue="toggleAccessibilityItem(item.id)"
-                        />
-                      </div>
-                      <label :for="`accessibility-${item.id}`" 
-                        class="ml-3 text-sm font-medium text-gray-700 cursor-pointer select-none">
-                        {{ item.label }}
-                      </label>
+                <div v-if="currentModules.length > 0" class="pt-6 border-t border-gray-200">
+                  <div class="flex justify-between items-end mb-4">
+                    <div>
+                      <h4 class="text-lg font-semibold text-gray-800 mb-1">Role-Based Access Control (RBAC)</h4>
+                      <p class="text-sm text-gray-500">Grant granular permissions categorized by function.</p>
                     </div>
                   </div>
-                  <p class="text-xs text-gray-500 mt-2">
-                    Note: These settings determine which sidebar items will be accessible to users assigned to this position.
-                  </p>
+
+                  <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm w-full">
+                    <div class="overflow-auto max-h-[55vh] custom-scrollbar relative">
+                      <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead class="bg-gray-50 sticky top-0 z-20 shadow-sm outline outline-1 outline-gray-200">
+                          <tr>
+                            <th scope="col" class="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider bg-gray-50 w-auto">Module Name</th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="View / Read">👁️<span class="hidden md:inline ml-1">View</span></th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Create / Add">➕<span class="hidden md:inline ml-1">Create</span></th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Update / Edit">✏️<span class="hidden md:inline ml-1">Update</span></th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Delete / Remove">🗑️<span class="hidden md:inline ml-1">Delete</span></th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-indigo-900 uppercase tracking-wider w-20 md:w-32 bg-indigo-50" title="All / Full Access">🔐<span class="hidden md:inline ml-1">All</span></th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 bg-white">
+                          
+                          <template v-for="group in currentModules" :key="group.category">
+                            
+                            <tr class="bg-gray-50/80 border-y border-gray-200">
+                              <td colspan="6" class="py-2.5 px-4 text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-100">
+                                {{ group.category }}
+                              </td>
+                            </tr>
+
+                            <tr v-for="mod in group.items" :key="mod.permissionKey || mod.key" class="hover:bg-blue-50/40 transition-colors group">
+                              <td class="py-2.5 px-4 text-sm font-medium text-gray-900 border-r border-gray-50 pl-6">
+                                <label class="flex items-center cursor-pointer select-none">
+                                  <input 
+                                    type="checkbox" 
+                                    :checked="!!positionForm.accessibility[mod.permissionKey || mod.key]"
+                                    @change="toggleModule(mod.permissionKey || mod.key, $event.target.checked)"
+                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 mr-3"
+                                  >
+                                  <span class="truncate group-hover:text-indigo-700 transition-colors">{{ mod.text || mod.label || mod.name }}</span>
+                                </label>
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].view"
+                                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
+                                >
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].create"
+                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
+                                  class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer"
+                                >
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].update"
+                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
+                                  class="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-600 cursor-pointer"
+                                >
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].delete"
+                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
+                                  class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600 cursor-pointer"
+                                >
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center bg-indigo-50/30 hover:bg-indigo-100/50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  :checked="isFullAccess(mod.permissionKey || mod.key)"
+                                  @change="toggleFullAccess(mod.permissionKey || mod.key, $event.target.checked)"
+                                  class="h-4 w-4 rounded border-indigo-300 text-indigo-700 focus:ring-indigo-700 cursor-pointer"
+                                >
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
           </div>
           
           <div v-if="currentStep === 3" class="space-y-4 md:space-y-6">
-            <div>
+            <div class="max-w-4xl mx-auto">
               <h3 class="text-lg font-semibold text-gray-800 mb-2">Review & Confirm</h3>
               <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Please review all the information before saving.</p>
               
@@ -451,7 +506,7 @@
                   <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Department:</div>
                   <div class="flex-1">
                     <span class="inline-block px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-full text-sm font-medium">
-                      {{ positionForm.department === 'other' ? positionForm.custom_department : positionForm.department }}
+                      {{ positionForm.department }}
                     </span>
                   </div>
                 </div>
@@ -468,32 +523,18 @@
                     </span>
                   </div>
                 </div>
-                <div v-if="positionForm.min_salary || positionForm.max_salary" class="flex flex-col md:flex-row md:items-start">
-                  <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Salary Range:</div>
-                  <div class="flex-1 font-medium text-gray-800">
-                    <span v-if="positionForm.min_salary && positionForm.max_salary">
-                      ${{ formatSalary(positionForm.min_salary) }} - ${{ formatSalary(positionForm.max_salary) }}
-                    </span>
-                    <span v-else-if="positionForm.min_salary">
-                      From ${{ formatSalary(positionForm.min_salary) }}
-                    </span>
-                    <span v-else-if="positionForm.max_salary">
-                      Up to ${{ formatSalary(positionForm.max_salary) }}
-                    </span>
-                  </div>
-                </div>
                 
-                <div v-if="['Human Resources', 'Operational Distributor'].includes(positionForm.department)" class="flex flex-col md:flex-row md:items-start">
+                <div class="flex flex-col md:flex-row md:items-start">
                   <div class="w-full md:w-32 text-sm font-medium text-gray-600 mb-1 md:mb-0">Accessibility:</div>
                   <div class="flex-1">
-                    <div v-if="positionForm.accessibility.length > 0" class="space-y-2">
+                    <div v-if="Object.keys(positionForm.accessibility).length > 0" class="space-y-2">
                       <div class="flex flex-wrap gap-2">
-                        <div v-for="item in (positionForm.department === 'Human Resources' ? accessibilityOptions : operationalDistributorAccessibilityOptions).filter(opt => positionForm.accessibility.includes(opt.id))" :key="item.id"
-                          class="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded-full text-sm font-medium">
-                          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {{ item.label }}
+                        <div v-for="(perms, key) in positionForm.accessibility" :key="key"
+                          class="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded border border-green-200 text-xs font-medium">
+                          {{ getModuleName(key) }} 
+                          <span class="ml-1 opacity-70">
+                            ({{ [perms.view ? 'V' : '', perms.create ? 'C' : '', perms.update ? 'U' : '', perms.delete ? 'D' : ''].filter(Boolean).join(',') }})
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -560,7 +601,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from '@/utils/axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -568,7 +609,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Checkbox } from '@/components/ui/checkbox'
 
 const showPositionWizard = ref(false)
 const currentStep = ref(1)
@@ -579,104 +619,245 @@ const error = ref('')
 const searchQuery = ref('')
 const selectedDepartment = ref('all')
 const selectedStatus = ref('active')
-const showCustomDept = ref(false)
 let searchTimeout = null
 
-// Default departments
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} positions.`);
+    return;
+  }
+  if (callback) callback();
+}
+
 const defaultDepartments = [
   'Human Resources',
   'Finance',
-  'Distributor Assistant',
   'Operational Distributor',
+  'Special RBAC'
 ]
 
-// Accessibility options for HR department
-const accessibilityOptions = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'employee_list', label: 'Employee List' },
-  { id: 'positions_roles', label: 'Position & Roles' },
-  { id: 'departments', label: 'Departments' },
-  { id: 'employee_status', label: 'Employee Status' },
-  { id: 'recruitment_application', label: 'Recruitment Application' },
-  { id: 'payroll_management', label: 'Payroll Management' }
+// ========================
+// Categorized Module Configurations
+// ========================
+
+const hrNavItems = [
+  {
+    category: 'Overview & Reports',
+    items: [
+      { label: 'Dashboard', permissionKey: 'dashboard' },
+      { label: 'HR Reports', permissionKey: 'reports' }
+    ]
+  },
+  {
+    category: 'Organization Management',
+    items: [
+      { label: 'Departments', permissionKey: 'departments' },
+      { label: 'Positions & Roles', permissionKey: 'positions_roles' }
+    ]
+  },
+  {
+    category: 'Employee Management',
+    items: [
+      { label: 'Employee List', permissionKey: 'employee_list' },
+      { label: 'Employment Status', permissionKey: 'employment_status' },
+      { label: 'Recruitment Application', permissionKey: 'recruitment' }
+    ]
+  },
+  {
+    category: 'Payroll & Requests',
+    items: [
+      { label: 'Attendance Request', permissionKey: 'attendance_request' },
+      { label: 'Leave Request', permissionKey: 'leave_request' },
+      { label: 'Payroll Management', permissionKey: 'payroll_management' }
+    ]
+  }
 ]
 
-// Accessibility options for Operational Distributor
-// Accessibility options for Operational Distributor
-const operationalDistributorAccessibilityOptions = [
-  // Overview
-  { id: 'ec_dashboard', label: 'Dashboard' },
-  // Catalog & Inventory
-  { id: 'ec_procurement', label: 'Procurement' },
-  { id: 'ec_categories', label: 'Categories' },
-  { id: 'ec_process_procurement', label: 'Process Request' },
-  { id: 'ec_track_procurement', label: 'Track Procurement' },
-  { id: 'ec_arrived_item', label: 'Arrived Item' },
-  { id: 'ec_inventory', label: 'Inventory' },
-  // Sales Operations
-  { id: 'ec_orders', label: 'Orders' },
-  { id: 'ec_prepare_order', label: 'Prepare Order' },
-  { id: 'ec_payment', label: 'Payments' },
-  { id: 'ec_delivery', label: 'Delivery' },
-  { id: 'ec_returns', label: 'Returns' },
-  { id: 'ec_promo_approval', label: 'Promo Approval' },
-  // Network
-  { id: 'ec_partner_supplier', label: 'Partner Supplier' },
-  { id: 'ec_service_provider', label: 'Service Provider' },
-  // Analytics & UX
-  { id: 'ec_reviews', label: 'Reviews' },
-  { id: 'ec_promotions', label: 'Promotions' },
-  { id: 'ec_reports', label: 'Reports' },
-  // Communication
-  { id: 'ec_messages', label: 'Messages' }
+const financeNavItems = [
+  {
+    category: 'Financial Records',
+    items: [
+      { name: 'Dashboard', permissionKey: 'finance_dashboard' },
+      { name: 'Transactions', permissionKey: 'finance_transactions' },
+      { name: 'Payment Methods', permissionKey: 'finance_payment_methods' }
+    ]
+  },
+  {
+    category: 'Operations',
+    items: [
+      { name: 'Invoices / Billing', permissionKey: 'finance_invoices' },
+      { name: 'Reports', permissionKey: 'finance_reports' }
+    ]
+  },
+  {
+    category: 'Procurement',
+    items: [
+      { name: 'Procurement Requests', permissionKey: 'finance_procurement' },
+      { name: 'Budget Release', permissionKey: 'finance_budget_release' }
+    ]
+  },
+  {
+    category: 'Payroll Management',
+    items: [
+      { name: 'Payroll Request', permissionKey: 'finance_payroll_request' },
+      { name: 'Payroll Paid', permissionKey: 'finance_payroll_paid' }
+    ]
+  }
 ]
 
+const odNavItems = [
+  {
+    category: 'Overview & Analytics',
+    items: [
+      { label: 'OD Dashboard', permissionKey: 'ec_dashboard' },
+      { label: 'Reports', permissionKey: 'ec_reports' }
+    ]
+  },
+  {
+    category: 'Procurement & Inventory',
+    items: [
+      { label: 'Procurement', permissionKey: 'ec_procurement' },
+      { label: 'Process Request', permissionKey: 'ec_process_procurement' },
+      { label: 'Track Procurement', permissionKey: 'ec_track_procurement' },
+      { label: 'Arrived Item', permissionKey: 'ec_arrived_item' },
+      { label: 'Inventory', permissionKey: 'ec_inventory' },
+      { label: 'Categories', permissionKey: 'ec_categories' }
+    ]
+  },
+  {
+    category: 'E-Commerce Fulfillment',
+    items: [
+      { label: 'Orders', permissionKey: 'ec_orders' },
+      { label: 'Prepare Order', permissionKey: 'ec_prepare_order' },
+      { label: 'Delivery', permissionKey: 'ec_delivery' },
+      { label: 'Returns', permissionKey: 'ec_returns' }
+    ]
+  },
+  {
+    category: 'Partnerships & Services',
+    items: [
+      { label: 'Partner Supplier', permissionKey: 'ec_partner_supplier' },
+      { label: 'Service Provider', permissionKey: 'ec_service_provider' }
+    ]
+  },
+  {
+    category: 'Customer Engagement',
+    items: [
+      { label: 'Messages', permissionKey: 'ec_messages' },
+      { label: 'Reviews', permissionKey: 'ec_reviews' },
+      { label: 'Promotions', permissionKey: 'ec_promotions' },
+      { label: 'Promo Approval', permissionKey: 'ec_promo_approval' }
+    ]
+  },
+  {
+    category: 'Financial Operations',
+    items: [
+      { label: 'Payments', permissionKey: 'ec_payment' }
+    ]
+  }
+]
+
+// ========================
+// State & Computed
+// ========================
 const positions = ref([])
 const departments = ref([])
 const statistics = ref({})
-const pagination = ref({
-  current_page: 1,
-  last_page: 1,
-  per_page: 15,
-  total: 0
-})
+const pagination = ref({ current_page: 1, last_page: 1, per_page: 15, total: 0 })
 
 const positionForm = ref({
   title: '',
   department: '',
-  custom_department: '',
   description: '',
   min_salary: '',
   max_salary: '',
   status: 'active',
-  accessibility: [] 
+  accessibility: {} 
 })
 
-// Computed properties
-const allDepartments = computed(() => {
-  const existingDepts = departments.value.map(d => d.name)
-  const uniqueDepts = [...new Set([...defaultDepartments, ...existingDepts])]
-  return uniqueDepts.sort()
+// Current Categorized Modules available based on selected Department
+const currentModules = computed(() => {
+  if (positionForm.value.department === 'Human Resources') return hrNavItems;
+  if (positionForm.value.department === 'Finance') return financeNavItems;
+  if (positionForm.value.department === 'Operational Distributor') return odNavItems;
+  
+  // For special RBAC, combine everything but prefix the categories to keep them distinct
+  if (positionForm.value.department === 'Special RBAC') {
+    return [
+      ...hrNavItems.map(g => ({ ...g, category: `HR - ${g.category}` })),
+      ...financeNavItems.map(g => ({ ...g, category: `Finance - ${g.category}` })),
+      ...odNavItems.map(g => ({ ...g, category: `OD - ${g.category}` }))
+    ];
+  }
+  return [];
 })
 
 const canProceed = computed(() => {
   switch (currentStep.value) {
-    case 1:
-      return positionForm.value.title.trim() && 
-             (positionForm.value.department || 
-              (positionForm.value.department === 'other' && positionForm.value.custom_department.trim()))
-    case 2:
-      return positionForm.value.description.trim()
-    default:
-      return true
+    case 1: return positionForm.value.title.trim() && positionForm.value.department;
+    case 2: return positionForm.value.description.trim();
+    default: return true;
   }
 })
 
-// Methods
+const getModuleName = (key) => {
+  const allGroups = [...hrNavItems, ...financeNavItems, ...odNavItems];
+  for (const group of allGroups) {
+    const mod = group.items.find(m => (m.permissionKey || m.key) === key);
+    if (mod) return mod.text || mod.label || mod.name;
+  }
+  return key;
+}
+
+// ========================
+// Matrix Operations
+// ========================
+const toggleModule = (moduleKey, isChecked) => {
+  if (isChecked) {
+    if (!positionForm.value.accessibility[moduleKey]) {
+      positionForm.value.accessibility[moduleKey] = { view: true, create: false, update: false, delete: false };
+    }
+  } else {
+    delete positionForm.value.accessibility[moduleKey];
+  }
+}
+
+const isFullAccess = (moduleKey) => {
+  const perms = positionForm.value.accessibility[moduleKey];
+  if (!perms) return false;
+  return perms.view && perms.create && perms.update && perms.delete;
+}
+
+const toggleFullAccess = (moduleKey, isChecked) => {
+  if (isChecked) {
+    positionForm.value.accessibility[moduleKey] = { view: true, create: true, update: true, delete: true };
+  } else {
+    positionForm.value.accessibility[moduleKey] = { view: true, create: false, update: false, delete: false };
+  }
+}
+
+const enforceViewDependency = (moduleKey) => {
+  const perms = positionForm.value.accessibility[moduleKey];
+  if (perms && (perms.create || perms.update || perms.delete)) {
+    perms.view = true;
+  }
+}
+
+// ========================
+// API & Navigation
+// ========================
 const fetchPositions = async () => {
   loading.value = true
   error.value = ''
-  
   try {
     const params = {
       page: pagination.value.current_page,
@@ -687,7 +868,6 @@ const fetchPositions = async () => {
     }
 
     const response = await axios.get('/hr/positions', { params })
-    
     if (response.data.success) {
       positions.value = response.data.data.data
       departments.value = response.data.departments
@@ -698,12 +878,21 @@ const fetchPositions = async () => {
         per_page: response.data.data.per_page,
         total: response.data.data.total
       }
+      
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      } else {
+        permissions.value = { can_view: true, can_create: true, can_update: true, can_delete: true }
+      }
     } else {
       error.value = response.data.message || 'Failed to load positions'
+      toast.error(error.value)
     }
   } catch (err) {
+    if (err.response?.status === 403) {
+      toast.error("Unauthorized. You do not have permission to access positions.");
+    }
     error.value = err.response?.data?.message || 'Network error occurred'
-    console.error('Error fetching positions:', err)
   } finally {
     loading.value = false
   }
@@ -723,42 +912,24 @@ const fetchStatistics = async () => {
     if (response.data.success) {
       statistics.value = response.data.data
     }
-  } catch (err) {
-    console.error('Failed to fetch statistics:', err)
-  }
+  } catch (err) {}
 }
 
 const formatSalary = (salary) => {
   if (!salary) return '0'
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(salary)
+  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(salary)
 }
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 const startNewPosition = () => {
   editingPosition.value = null
   currentStep.value = 1
-  showCustomDept.value = false
   positionForm.value = {
-    title: '',
-    department: '',
-    custom_department: '',
-    description: '',
-    min_salary: '',
-    max_salary: '',
-    status: 'active',
-    accessibility: []
+    title: '', department: '', description: '', min_salary: '', max_salary: '', status: 'active', accessibility: {}
   }
   showPositionWizard.value = true
 }
@@ -766,44 +937,33 @@ const startNewPosition = () => {
 const editPosition = (position) => {
   editingPosition.value = position
   currentStep.value = 1
-  showCustomDept.value = false
   
-  // Parse accessibility from requirements or set empty array
-  let accessibility = []
-  if (position.requirements && position.requirements.accessibility) {
-    accessibility = position.requirements.accessibility
+  // Transform backward compatible arrays vs newly fetched structured object
+  let parsedAccessibility = {}
+  if (position.accessibility && typeof position.accessibility === 'object' && !Array.isArray(position.accessibility)) {
+    parsedAccessibility = JSON.parse(JSON.stringify(position.accessibility));
+  } else if (Array.isArray(position.accessibility)) {
+    position.accessibility.forEach(k => {
+      parsedAccessibility[k] = { view: true, create: true, update: true, delete: true };
+    });
   }
-  
+
   positionForm.value = {
     title: position.title,
     department: position.department,
-    custom_department: '',
     description: position.description,
     min_salary: position.min_salary,
     max_salary: position.max_salary,
     status: position.status,
-    accessibility: accessibility
+    accessibility: parsedAccessibility
   }
   showPositionWizard.value = true
 }
 
-const toggleAccessibilityItem = (itemId) => {
-  const index = positionForm.value.accessibility.indexOf(itemId)
-  if (index === -1) {
-    positionForm.value.accessibility.push(itemId)
-  } else {
-    positionForm.value.accessibility.splice(index, 1)
-  }
-}
-
 const deletePosition = async (positionId) => {
-  if (!confirm('Are you sure you want to delete this position? This action cannot be undone.')) {
-    return
-  }
-
+  if (!confirm('Are you sure you want to delete this position? This action cannot be undone.')) return
   try {
     const response = await axios.delete(`/hr/positions/${positionId}`)
-    
     if (response.data.success) {
       toast.success('Position deleted successfully')
       fetchPositions()
@@ -816,81 +976,22 @@ const deletePosition = async (positionId) => {
   }
 }
 
-const nextStep = () => {
-  if (currentStep.value < 3 && canProceed.value) {
-    currentStep.value++
-  }
-}
-
-const previousStep = () => {
-  if (currentStep.value > 1) {
-    currentStep.value--
-  }
-}
-
-const closeWizard = () => {
-  showPositionWizard.value = false
-  currentStep.value = 1
-  editingPosition.value = null
-  showCustomDept.value = false
-  positionForm.value = {
-    title: '',
-    department: '',
-    custom_department: '',
-    description: '',
-    min_salary: '',
-    max_salary: '',
-    status: 'active',
-    accessibility: []
-  }
-}
+const nextStep = () => { if (currentStep.value < 3 && canProceed.value) currentStep.value++ }
+const previousStep = () => { if (currentStep.value > 1) currentStep.value-- }
+const closeWizard = () => { showPositionWizard.value = false; currentStep.value = 1; editingPosition.value = null; }
 
 const savePosition = async () => {
   saving.value = true
-  
   try {
-    // Validate salary range
     if (positionForm.value.min_salary && positionForm.value.max_salary) {
-      const min = parseFloat(positionForm.value.min_salary)
-      const max = parseFloat(positionForm.value.max_salary)
-      if (max <= min) {
+      if (parseFloat(positionForm.value.max_salary) <= parseFloat(positionForm.value.min_salary)) {
         toast.error('Maximum salary must be greater than minimum salary')
         saving.value = false
         return
       }
     }
 
-    // Determine department
-    const department = positionForm.value.department === 'other' 
-      ? positionForm.value.custom_department 
-      : positionForm.value.department
-
-    // Prepare requirements with accessibility for authorized departments
-    let requirements = null
-    if (department === 'Human Resources' || department === 'Operational Distributor') {
-      const currentOptions = department === 'Human Resources' 
-        ? accessibilityOptions 
-        : operationalDistributorAccessibilityOptions;
-        
-      requirements = {
-        accessibility: positionForm.value.accessibility,
-        permissions: positionForm.value.accessibility.map(item => {
-          const option = currentOptions.find(opt => opt.id === item)
-          return option ? option.label : item
-        })
-      }
-    }
-
-    const payload = {
-      ...positionForm.value,
-      department: department,
-      requirements: requirements
-    }
-
-    // Remove custom_department (keeping accessibility so backend receives it easily in the payload)
-    delete payload.custom_department
-
-    // Convert empty strings to null for salary fields
+    const payload = { ...positionForm.value }
     if (payload.min_salary === '') payload.min_salary = null
     if (payload.max_salary === '') payload.max_salary = null
 
@@ -912,9 +1013,7 @@ const savePosition = async () => {
   } catch (err) {
     const errorMsg = err.response?.data?.message || 'Failed to save position'
     if (err.response?.data?.errors) {
-      // Handle validation errors
-      const errors = Object.values(err.response.data.errors).flat()
-      toast.error(errors.join(', '))
+      toast.error(Object.values(err.response.data.errors).flat().join(', '))
     } else {
       toast.error(errorMsg)
     }
@@ -923,21 +1022,9 @@ const savePosition = async () => {
   }
 }
 
-const nextPage = () => {
-  if (pagination.value.current_page < pagination.value.last_page) {
-    pagination.value.current_page++
-    fetchPositions()
-  }
-}
+const nextPage = () => { if (pagination.value.current_page < pagination.value.last_page) { pagination.value.current_page++; fetchPositions() } }
+const prevPage = () => { if (pagination.value.current_page > 1) { pagination.value.current_page--; fetchPositions() } }
 
-const prevPage = () => {
-  if (pagination.value.current_page > 1) {
-    pagination.value.current_page--
-    fetchPositions()
-  }
-}
-
-// Lifecycle hooks
 onMounted(() => {
   fetchPositions()
   fetchStatistics()
@@ -957,41 +1044,36 @@ onMounted(() => {
 }
 
 @keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .animate-modal-appear {
   animation: modal-appear 0.3s ease-out;
 }
 
-/* Custom scrollbar for modal */
-.overflow-y-auto {
+/* Slim Custom Scrollbar setup for Table and Modal */
+.custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
-.overflow-y-auto::-webkit-scrollbar {
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
 }
 </style>

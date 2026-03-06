@@ -19,58 +19,145 @@ use Illuminate\Support\Facades\Log;
 class LeaveRequestController extends Controller
 {
     /**
+     * Check RBAC Permissions for HR Modules (Specifically leave_request)
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // HR Manager
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager && $hrManager->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $hrManager->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        } 
+        
+        // Operational Distributor
+        elseif ($user->role === 'operational_distributor') {
+            $opDist = $user->operationalDistributor; 
+            if ($opDist && $opDist->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $opDist->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        }
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'leave_request') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+        ];
+    }
+
+    /**
      * Display a listing of leave requests for the current distributor.
      */
     public function index()
     {
         $user = Auth::user();
-        $distributorId = null;
+        $accessData = $this->checkAccess($user, 'can_view');
 
-        // Determine Distributor ID based on logged-in user role
-        if ($user->role === 'hr_manager') {
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if ($hrManager) {
-                $distributorId = $hrManager->parent_distributor_id;
-            }
-        } elseif ($user->role === 'distributor') {
-            $distributorId = $user->id;
-        } elseif ($user->role === 'operational_distributor') {
-             // Handle if OD has permission, otherwise restrict
-             $opDist = $user->operationalDistributor; 
-             if($opDist) $distributorId = $opDist->parent_distributor_id;
-        }
-
-        if (!$distributorId) {
+        if (!$accessData['has_access']) {
             return response()->json(['message' => 'Unauthorized or Distributor not found.'], 403);
         }
 
-        // Fetch requests belonging to this distributor
-        $requests = LeaveRequest::with(['employee'])
-            ->where('distributor_id', $distributorId)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($request) {
-                return [
-                    'id' => $request->id,
-                    'type' => ucfirst($request->type),
-                    'startDate' => $request->start_date->format('Y-m-d'),
-                    'endDate' => $request->end_date->format('Y-m-d'),
-                    'days' => $request->duration,
-                    'reason' => $request->reason,
-                    'status' => $request->status,
-                    'isPaid' => $request->is_paid,
-                    'appliedOn' => $request->created_at->format('Y-m-d'),
-                    'rejectionReason' => $request->rejection_reason,
-                    'employee' => [
-                        'name' => $request->employee ? $request->employee->full_name : 'Unknown',
-                        'initials' => $request->employee ? substr($request->employee->first_name, 0, 1) . substr($request->employee->last_name, 0, 1) : '??',
-                        'avatar' => $request->employee->valid_id_photo ?? '',
-                        'department' => $request->employee->department ?? 'General',
-                    ]
-                ];
-            });
+        $distributorId = $accessData['distributor_id'];
 
-        return response()->json($requests);
+        // Fetch requests belonging to this distributor
+        $query = LeaveRequest::with(['employee'])
+            ->orderBy('created_at', 'desc');
+
+        if ($distributorId) {
+            $query->where('distributor_id', $distributorId);
+        }
+
+        $requests = $query->get()->map(function ($request) {
+            return [
+                'id' => $request->id,
+                'type' => ucfirst($request->type),
+                'startDate' => $request->start_date->format('Y-m-d'),
+                'endDate' => $request->end_date->format('Y-m-d'),
+                'days' => $request->duration,
+                'reason' => $request->reason,
+                'status' => $request->status,
+                'isPaid' => $request->is_paid,
+                'appliedOn' => $request->created_at->format('Y-m-d'),
+                'rejectionReason' => $request->rejection_reason,
+                'employee' => [
+                    'name' => $request->employee ? $request->employee->full_name : 'Unknown',
+                    'initials' => $request->employee ? substr($request->employee->first_name, 0, 1) . substr($request->employee->last_name, 0, 1) : '??',
+                    'avatar' => $request->employee->valid_id_photo ?? '',
+                    'department' => $request->employee->department ?? 'General',
+                ]
+            ];
+        });
+
+        return response()->json([
+            'data' => $requests,
+            'permissions' => $accessData['permissions']
+        ]);
     }
 
     /**
@@ -78,6 +165,13 @@ class LeaveRequestController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_update');
+
+        if (!$accessData['has_access']) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to update leave requests.'], 403);
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:Approved,Rejected,Cancelled',
             'rejection_reason' => 'nullable|string|required_if:status,Rejected',
@@ -85,7 +179,10 @@ class LeaveRequestController extends Controller
         ]);
 
         $leaveRequest = LeaveRequest::findOrFail($id);
-        $user = Auth::user();
+
+        if ($user->role !== 'admin' && $leaveRequest->distributor_id !== $accessData['distributor_id']) {
+            return response()->json(['message' => 'Unauthorized to update request for this distributor'], 403);
+        }
 
         $leaveRequest->status = $validated['status'];
         
@@ -170,6 +267,3 @@ class LeaveRequestController extends Controller
         ]);
     }
 }
-
-
-

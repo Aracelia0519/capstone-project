@@ -89,7 +89,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Login user - Modified to include employee department data
+     * Login user - Modified to include employee department and accessibility data
      */
     public function login(Request $request)
     {
@@ -138,16 +138,38 @@ class AuthController extends Controller
             // Initialize employee data
             $employeeData = null;
             
-            // If user is an employee, get their department from hr_employees table
+            // If user is an employee, get their department and accessibilities from hr_employees table
             if ($user->isEmployee()) {
                 $employee = Employee::where('user_id', $user->id)->first();
                 
                 if ($employee) {
+                    // Find position to get accessibility for instant frontend routing checks
+                    $position = \App\Models\HR\Position::where('distributor_id', $employee->parent_distributor_id)
+                        ->where('title', $employee->position)
+                        ->where('status', 'active')
+                        ->first();
+                    
+                    $accessibilityKeys = [];
+                    
+                    if ($position) {
+                        $accessibilitySettings = \App\Models\HR\PositionAccessibility::where('position_id', $position->id)
+                            ->where('is_granted', true)
+                            ->get();
+                        
+                        if ($accessibilitySettings->count() > 0) {
+                            $accessibilityKeys = $accessibilitySettings->pluck('permission_key')->toArray();
+                        } 
+                        elseif ($position->requirements && isset($position->requirements['accessibility'])) {
+                            $accessibilityKeys = $position->requirements['accessibility'];
+                        }
+                    }
+
                     $employeeData = [
                         'department' => $employee->department,
                         'position' => $employee->position,
                         'employee_code' => $employee->employee_code,
-                        'employment_status' => $employee->employment_status
+                        'employment_status' => $employee->employment_status,
+                        'accessibility_keys' => $accessibilityKeys
                     ];
                 }
             }

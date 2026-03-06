@@ -18,29 +18,94 @@ use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
-    // Get all employees for the current distributor (HR Manager only)
+    /**
+     * Check RBAC Permissions for HR Modules
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager) {
+                return [
+                    'has_access' => true,
+                    'parent_distributor_id' => $hrManager->parent_distributor_id,
+                    'hr_manager_id' => $hrManager->id,
+                    'permissions' => [
+                        'can_view' => true,
+                        'can_create' => true,
+                        'can_update' => true,
+                        'can_delete' => true,
+                    ]
+                ];
+            }
+        } elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                // Check position accessibilities
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'employee_list') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'parent_distributor_id' => $employee->parent_distributor_id,
+                                'hr_manager_id' => $employee->hr_manager_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'permissions' => [
+                'can_view' => false,
+                'can_create' => false,
+                'can_update' => false,
+                'can_delete' => false,
+            ]
+        ];
+    }
+
+    // Get all employees for the current distributor (HR Manager & Permitted Employees)
     public function index(Request $request)
     {
         try {
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can access employees.'
+                    'message' => 'Unauthorized. You do not have permission to access employees.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
             $perPage = $request->input('per_page', 20);
             $search = $request->input('search', '');
@@ -48,7 +113,7 @@ class EmployeeController extends Controller
             $employmentStatus = $request->input('employment_status', '');
             $status = $request->input('status', 'active');
             
-            $query = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $query = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->with(['createdBy' => function($q) {
                     $q->select('id', 'first_name', 'last_name', 'email');
                 }])
@@ -86,7 +151,7 @@ class EmployeeController extends Controller
             }
             
             // Get unique departments for current distributor
-            $departments = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $departments = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->distinct('department')
                 ->pluck('department')
                 ->filter()
@@ -137,6 +202,7 @@ class EmployeeController extends Controller
                 'data' => [
                     'employees' => $transformedEmployees,
                     'departments' => $departments,
+                    'permissions' => $accessData['permissions'],
                     'pagination' => [
                         'total' => $employees->total(),
                         'per_page' => $employees->perPage(),
@@ -164,24 +230,18 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can view employee details.'
+                    'message' => 'Unauthorized. You do not have permission to view employee details.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $employee = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->with(['createdBy', 'hrManager', 'parentDistributor', 'user'])
                 ->findOrFail($id);
             
@@ -285,22 +345,17 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_create');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can create employees.'
+                    'message' => 'Unauthorized. You do not have permission to create employees.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
+            $hrManagerId = $accessData['hr_manager_id']; // This could be null if employee creates another, which is valid based on DB schema
             
             // Define custom error messages
             $messages = [
@@ -335,7 +390,6 @@ class EmployeeController extends Controller
                 'email' => 'required|string|email|max:255|unique:hr_employees,email|unique:users,email',
                 'password' => 'required|string|min:8|confirmed',
                 'password_confirmation' => 'required|string|min:8',
-                // Updated: strictly 11 digits
                 'phone' => ['required', 'string', 'regex:/^[0-9]{11}$/'],
                 'emergency_contact' => ['nullable', 'string', 'regex:/^[0-9]{11}$/'],
                 'address' => 'required|string|max:500',
@@ -360,11 +414,10 @@ class EmployeeController extends Controller
                 
                 // Bank Details
                 'bank_name' => 'nullable|string|max:255',
-                // Updated: numbers only
                 'bank_account_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
                 'bank_account_name' => 'nullable|string|max:255',
                 
-                // Government Numbers (Updated: numbers only)
+                // Government Numbers
                 'sss_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
                 'philhealth_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
                 'pagibig_number' => ['nullable', 'string', 'regex:/^[0-9]+$/'],
@@ -372,7 +425,6 @@ class EmployeeController extends Controller
                 
                 // Identification
                 'valid_id_type' => 'required|string|max:100',
-                // Updated: numbers only
                 'id_number' => ['required', 'string', 'regex:/^[0-9]+$/'],
                 
                 // Educational Background
@@ -381,7 +433,7 @@ class EmployeeController extends Controller
                 'year_graduated' => 'required|integer|min:1900|max:' . date('Y'),
                 'course' => 'required|string|max:255',
                 
-                // File Uploads (NOW REQUIRED)
+                // File Uploads
                 'valid_id_photo' => 'required|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
                 'resume' => 'required|file|mimes:pdf,doc,docx|max:5120',
                 'employment_contract' => 'required|file|mimes:pdf|max:5120',
@@ -400,17 +452,14 @@ class EmployeeController extends Controller
                 ], 422);
             }
             
-            // GENERATE EMPLOYEE CODE - Logic moved here to prevent Model dependency error
-            // Format: EMP-{ParentDistributorID}-{Year}-{Sequence}
-            // e.g., EMP-1-2024-0001
-            $prefix = 'EMP-' . $hrManager->parent_distributor_id . '-' . date('Y') . '-';
+            // GENERATE EMPLOYEE CODE
+            $prefix = 'EMP-' . $parentDistributorId . '-' . date('Y') . '-';
             
             $lastEmployee = Employee::where('employee_code', 'like', $prefix . '%')
                 ->orderBy('id', 'desc')
                 ->first();
             
             if ($lastEmployee) {
-                // Extract the sequence number
                 $lastSequence = intval(substr($lastEmployee->employee_code, -4));
                 $sequence = $lastSequence + 1;
             } else {
@@ -424,11 +473,11 @@ class EmployeeController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => $request->password, // Hash the password!
+                'password' => $request->password, 
                 'phone' => $request->phone,
                 'address' => $request->address,
-                'role' => 'employee', // New role for employees
-                'status' => 'active' // Employees should be active by default
+                'role' => 'employee', 
+                'status' => 'active' 
             ];
             
             $employeeUser = User::create($userData);
@@ -448,12 +497,12 @@ class EmployeeController extends Controller
             ]);
             
             // Add system fields
-            $employeeData['password'] = $userData['password']; // Store hashed password in employee table too if needed
+            $employeeData['password'] = $userData['password'];
             $employeeData['employee_code'] = $employeeCode;
-            $employeeData['parent_distributor_id'] = $hrManager->parent_distributor_id;
-            $employeeData['hr_manager_id'] = $hrManager->id;
+            $employeeData['parent_distributor_id'] = $parentDistributorId;
+            $employeeData['hr_manager_id'] = $hrManagerId;
             $employeeData['created_by_user_id'] = $user->id;
-            $employeeData['user_id'] = $employeeUser->id; // Link to User table
+            $employeeData['user_id'] = $employeeUser->id;
             $employeeData['status'] = 'active';
             
             // Handle file uploads
@@ -478,7 +527,6 @@ class EmployeeController extends Controller
             // Create employee
             $employee = Employee::create($employeeData);
             
-            // Log the creation
             Log::info('Employee created', [
                 'employee_id' => $employee->id,
                 'employee_code' => $employee->employee_code,
@@ -486,11 +534,10 @@ class EmployeeController extends Controller
                 'created_by' => $user->id
             ]);
             
-            // Commit transaction
             DB::commit();
             
             // Get company name for response
-            $distributorRequirement = DistributorRequirements::where('user_id', $hrManager->parent_distributor_id)->first();
+            $distributorRequirement = DistributorRequirements::where('user_id', $parentDistributorId)->first();
             $companyName = $distributorRequirement ? $distributorRequirement->company_name : 'Unknown Company';
             
             return response()->json([
@@ -516,7 +563,7 @@ class EmployeeController extends Controller
             
             return response()->json([
                 'status' => 'error',
-                'message' => 'Server Error: ' . $e->getMessage(), // Return exact error for debugging
+                'message' => 'Server Error: ' . $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -531,29 +578,22 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_update');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can update employees.'
+                    'message' => 'Unauthorized. You do not have permission to update employees.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $employee = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->findOrFail($id);
             
             // Validate request
             $validator = Validator::make($request->all(), [
-                // Only allow updating certain fields
                 'department' => 'sometimes|string|max:255',
                 'position' => 'sometimes|string|max:255',
                 'employment_status' => 'sometimes|in:probationary,regular,contractual,resigned,terminated,retired',
@@ -573,7 +613,6 @@ class EmployeeController extends Controller
                 ], 422);
             }
             
-            // Update employee
             $updateData = $request->only([
                 'department', 'position', 'employment_status',
                 'salary', 'salary_currency', 'status', 'notes'
@@ -584,11 +623,10 @@ class EmployeeController extends Controller
                 $hashedPassword = Hash::make($request->password);
                 $updateData['password'] = $hashedPassword;
                 
-                // Also update the corresponding User account password
                 if ($employee->user_id) {
-                    $user = User::find($employee->user_id);
-                    if ($user) {
-                        $user->update(['password' => $hashedPassword]);
+                    $userAccount = User::find($employee->user_id);
+                    if ($userAccount) {
+                        $userAccount->update(['password' => $hashedPassword]);
                     }
                 }
             }
@@ -597,10 +635,10 @@ class EmployeeController extends Controller
             
             // Update User status if employee status changed
             if ($request->has('status') && $employee->user_id) {
-                $user = User::find($employee->user_id);
-                if ($user) {
+                $userAccount = User::find($employee->user_id);
+                if ($userAccount) {
                     $userStatus = $request->status === 'active' ? 'active' : 'inactive';
-                    $user->update(['status' => $userStatus]);
+                    $userAccount->update(['status' => $userStatus]);
                 }
             }
             
@@ -642,24 +680,18 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_delete');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can delete employees.'
+                    'message' => 'Unauthorized. You do not have permission to delete employees.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $employee = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->findOrFail($id);
             
             // Also deactivate the User account
@@ -698,24 +730,18 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_update');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can regularize employees.'
+                    'message' => 'Unauthorized. You do not have permission to regularize employees.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $employee = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $employee = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->findOrFail($id);
             
             if (!$employee->isProbationary()) {
@@ -768,29 +794,23 @@ class EmployeeController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Check if user is an HR Manager
-            if (!$user->isHRManager()) {
+            // RBAC Access Check
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized. Only HR Managers can view statistics.'
+                    'message' => 'Unauthorized. You do not have permission to view statistics.'
                 ], 403);
             }
             
-            // Get HR Manager details
-            $hrManager = HRManager::where('user_id', $user->id)->first();
-            if (!$hrManager) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'HR Manager profile not found.'
-                ], 404);
-            }
+            $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $totalEmployees = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)->count();
-            $activeEmployees = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)->active()->count();
-            $probationaryEmployees = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)->probationary()->count();
+            $totalEmployees = Employee::where('parent_distributor_id', $parentDistributorId)->count();
+            $activeEmployees = Employee::where('parent_distributor_id', $parentDistributorId)->active()->count();
+            $probationaryEmployees = Employee::where('parent_distributor_id', $parentDistributorId)->probationary()->count();
             
             // Department distribution
-            $departmentStats = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $departmentStats = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->select('department', DB::raw('count(*) as count'))
                 ->groupBy('department')
                 ->get()
@@ -802,7 +822,7 @@ class EmployeeController extends Controller
                 });
             
             // Employment type distribution
-            $employmentTypeStats = Employee::where('parent_distributor_id', $hrManager->parent_distributor_id)
+            $employmentTypeStats = Employee::where('parent_distributor_id', $parentDistributorId)
                 ->select('employment_type', DB::raw('count(*) as count'))
                 ->groupBy('employment_type')
                 ->get()
@@ -814,7 +834,7 @@ class EmployeeController extends Controller
                 });
             
             // Get company name
-            $distributorRequirement = DistributorRequirements::where('user_id', $hrManager->parent_distributor_id)->first();
+            $distributorRequirement = DistributorRequirements::where('user_id', $parentDistributorId)->first();
             $companyName = $distributorRequirement ? $distributorRequirement->company_name : 'Unknown Company';
             
             return response()->json([
@@ -835,6 +855,44 @@ class EmployeeController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to fetch statistics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // New Endpoint for specific Employee Accessibility matching api.php routing
+    public function getEmployeeAccessibility($id)
+    {
+        try {
+            $employee = Employee::find($id);
+            if (!$employee) {
+                return response()->json(['status' => 'error', 'message' => 'Employee not found'], 404);
+            }
+            
+            $position = DB::table('positions')
+                ->where('distributor_id', $employee->parent_distributor_id)
+                ->where('title', $employee->position)
+                ->first();
+                
+            if ($position) {
+                $accessibilities = DB::table('position_accessibilities')
+                    ->where('position_id', $position->id)
+                    ->get();
+                    
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $accessibilities
+                ]);
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'data' => []
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to load accessibility',
                 'error' => $e->getMessage()
             ], 500);
         }

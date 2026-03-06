@@ -424,18 +424,20 @@ const validationErrors = reactive({
 const getRedirectRoute = (user) => {
   const { role, employee_data } = user;
   
-  // Handle hr_manager role (from your database)
   if (role === 'hr_manager') {
     return '/HR/HRdashboard';
   }
   
-  // Employee routing based on department
   if (role === 'employee' && employee_data) {
     const department = employee_data.department?.toLowerCase() || '';
     const position = employee_data.position?.toLowerCase() || '';
     
+    // Explicit route check for Special RBAC department
+    if (department.includes('special rbac') || department.includes('special')) {
+      return '/special-rbac/dashboard'; 
+    }
     // Route based on department
-    if (department.includes('human resource') || department.includes('hr')) {
+    else if (department.includes('human resource') || department.includes('hr')) {
       return '/HR/HRdashboard';
     } 
     else if (department.includes('finance') || department.includes('accounting')) {

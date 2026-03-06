@@ -41,6 +41,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
 
+    Route::prefix('special-rbac')->group(function () {
+        Route::get('/sidebar', [\App\Http\Controllers\Api\SpecialRBAC\SpecialRBACSidebarController::class, 'getSidebarAccess']);
+    });
+
     // Dashboard data routes
     Route::prefix('dashboard')->group(function () {
         Route::get('/admin', [DashboardController::class, 'adminDashboard']);

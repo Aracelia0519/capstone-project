@@ -5,19 +5,110 @@ namespace App\Http\Controllers\Api\HR;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\HR\Payroll;
+use App\Models\HR\Employee;
 use App\Models\User;
 use App\Models\Distributor\DistributorWorkingHour; 
 use App\Models\Employee\EmployeeAttendance;
 use App\Models\Employee\LeaveRequest; 
+use App\Models\Distributor\HRManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class PayrollController extends Controller
 {
+    /**
+     * Check RBAC Permissions for HR Modules (Specifically payroll_management)
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // HR Manager
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager && $hrManager->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $hrManager->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        } 
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'payroll_management') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+        ];
+    }
+
     // Fetch all payroll history
     public function index()
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
+        
+        if (!$accessData['has_access']) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to view payrolls.'], 403);
+        }
+
+        // Ideally you could also filter history by distributor here.
         $payrolls = Payroll::with('user')->orderBy('created_at', 'desc')->paginate(10);
         return response()->json($payrolls);
     }
@@ -25,6 +116,15 @@ class PayrollController extends Controller
     // STEP 1: Calculate Payroll (Preview) before saving
     public function calculate(Request $request)
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
+        
+        if (!$accessData['has_access']) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to calculate payrolls.'], 403);
+        }
+
+        $distributorId = $accessData['distributor_id'];
+
         $request->validate([
             'period_start' => 'required|date',
             'period_end' => 'required|date|after_or_equal:period_start',
@@ -48,7 +148,7 @@ class PayrollController extends Controller
             ->toArray();
 
         // 1. Fetch HR Employees (Added 'payment_frequency' to select)
-        $employees = DB::table('hr_employees')
+        $empQuery = DB::table('hr_employees')
             ->join('users', 'hr_employees.user_id', '=', 'users.id')
             ->select(
                 'users.id as user_id', 
@@ -63,8 +163,13 @@ class PayrollController extends Controller
                 'hr_employees.employment_type',
                 'hr_employees.hire_date'
             )
-            ->where('hr_employees.status', 'active')
-            ->get();
+            ->where('hr_employees.status', 'active');
+            
+        if ($distributorId) {
+            $empQuery->where('hr_employees.parent_distributor_id', $distributorId);
+        }
+        
+        $employees = $empQuery->get();
 
         foreach ($employees as $emp) {
             if (in_array($emp->user_id, $existingPayrollUserIds)) continue;
@@ -76,7 +181,7 @@ class PayrollController extends Controller
         }
 
         // 2. Fetch HR Managers
-        $hrManagers = DB::table('hr_managers')
+        $hrMgrQuery = DB::table('hr_managers')
             ->join('users', 'hr_managers.user_id', '=', 'users.id')
             ->select(
                 'users.id as user_id', 
@@ -87,8 +192,13 @@ class PayrollController extends Controller
                 DB::raw("'Human Resources' as department"), 
                 'hr_managers.employment_type'
             )
-            ->where('hr_managers.status', 'active')
-            ->get();
+            ->where('hr_managers.status', 'active');
+            
+        if ($distributorId) {
+            $hrMgrQuery->where('hr_managers.parent_distributor_id', $distributorId);
+        }
+        
+        $hrManagers = $hrMgrQuery->get();
 
         foreach ($hrManagers as $mgr) {
             if (in_array($mgr->user_id, $existingPayrollUserIds)) continue;
@@ -96,7 +206,7 @@ class PayrollController extends Controller
         }
 
         // 3. Fetch Finance Managers
-        $financeManagers = DB::table('finance_managers')
+        $finMgrQuery = DB::table('finance_managers')
             ->join('users', 'finance_managers.user_id', '=', 'users.id')
             ->select(
                 'users.id as user_id', 
@@ -107,8 +217,13 @@ class PayrollController extends Controller
                 DB::raw("'Finance' as department"), 
                 'finance_managers.employment_type'
             )
-            ->where('finance_managers.status', 'active')
-            ->get();
+            ->where('finance_managers.status', 'active');
+            
+        if ($distributorId) {
+            $finMgrQuery->where('finance_managers.parent_distributor_id', $distributorId);
+        }
+        
+        $financeManagers = $finMgrQuery->get();
 
         foreach ($financeManagers as $mgr) {
             if (in_array($mgr->user_id, $existingPayrollUserIds)) continue;
@@ -116,7 +231,7 @@ class PayrollController extends Controller
         }
 
         // 4. Fetch Operational Distributors
-        $opsDistributors = DB::table('operational_distributors')
+        $opsQuery = DB::table('operational_distributors')
             ->join('users', 'operational_distributors.user_id', '=', 'users.id')
             ->select(
                 'users.id as user_id', 
@@ -127,8 +242,13 @@ class PayrollController extends Controller
                 DB::raw("'Operations' as department"), 
                 'operational_distributors.employment_type'
             )
-            ->where('operational_distributors.status', 'active')
-            ->get();
+            ->where('operational_distributors.status', 'active');
+            
+        if ($distributorId) {
+            $opsQuery->where('operational_distributors.parent_distributor_id', $distributorId);
+        }
+        
+        $opsDistributors = $opsQuery->get();
 
         foreach ($opsDistributors as $ops) {
             if (in_array($ops->user_id, $existingPayrollUserIds)) continue;
@@ -138,7 +258,8 @@ class PayrollController extends Controller
         return response()->json([
             'payroll_items' => $payrollData,
             'period_start' => $periodStart,
-            'period_end' => $periodEnd
+            'period_end' => $periodEnd,
+            'permissions' => $accessData['permissions']
         ]);
     }
 
@@ -401,6 +522,13 @@ class PayrollController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_create');
+        
+        if (!$accessData['has_access']) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to create/process payroll.'], 403);
+        }
+
         $request->validate([
             'payroll_items' => 'required|array',
             'period_start' => 'required|date',

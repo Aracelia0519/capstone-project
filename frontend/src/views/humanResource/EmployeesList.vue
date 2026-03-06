@@ -1,5 +1,7 @@
 <template>
-  <div class="employees-list p-4 md:p-6">
+  <div class="employees-list p-4 md:p-6 text-slate-900">
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
       <div>
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Employees</h1>
@@ -14,13 +16,13 @@
         </div>
       </div>
       <div class="mt-4 md:mt-0 flex space-x-3">
-        <button @click="showAddModal = true" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
+        <button @click="requirePermission('create', () => showAddModal = true)" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
           Add Employee
         </button>
-        <button @click="exportToCSV" class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm hover:shadow">
+        <button @click="requirePermission('view', () => exportToCSV())" class="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm hover:shadow">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -91,12 +93,12 @@
             <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input v-model="searchQuery" type="text" placeholder="Search employees..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+            <input v-model="searchQuery" type="text" placeholder="Search employees..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <div class="relative min-w-[150px]">
-            <select v-model="departmentFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+            <select v-model="departmentFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
               <option value="">All Departments</option>
               <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
             </select>
@@ -105,7 +107,7 @@
             </div>
           </div>
           <div class="relative min-w-[150px]">
-            <select v-model="statusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+            <select v-model="statusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
               <option value="">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -116,7 +118,7 @@
             </div>
           </div>
           <div class="relative min-w-[150px]">
-            <select v-model="employmentStatusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
+            <select v-model="employmentStatusFilter" class="appearance-none !bg-none w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:shadow-outline">
               <option value="">All Employment Status</option>
               <option value="probationary">Probationary</option>
               <option value="regular">Regular</option>
@@ -201,23 +203,23 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <div class="flex space-x-3">
-                  <button @click="viewEmployee(employee.id)" class="text-blue-600 hover:text-blue-900 transform hover:scale-110 transition-transform" title="View Details">
+                  <button @click="requirePermission('view', () => viewEmployee(employee.id))" class="text-blue-600 hover:text-blue-900 transform hover:scale-110 transition-transform" title="View Details">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   </button>
-                  <button @click="editEmployee(employee.id)" class="text-yellow-600 hover:text-yellow-900 transform hover:scale-110 transition-transform" title="Edit">
+                  <button @click="requirePermission('update', () => editEmployee(employee.id))" class="text-yellow-600 hover:text-yellow-900 transform hover:scale-110 transition-transform" title="Edit">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button v-if="employee.employment_status === 'probationary'" @click="regularizeEmployee(employee.id)" class="text-green-600 hover:text-green-900 transform hover:scale-110 transition-transform" title="Regularize">
+                  <button v-if="employee.employment_status === 'probationary'" @click="requirePermission('update', () => regularizeEmployee(employee.id))" class="text-green-600 hover:text-green-900 transform hover:scale-110 transition-transform" title="Regularize">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </button>
-                  <button @click="uploadDocument(employee.id)" class="text-purple-600 hover:text-purple-900 transform hover:scale-110 transition-transform" title="Upload Documents">
+                  <button @click="requirePermission('update', () => uploadDocument(employee.id))" class="text-purple-600 hover:text-purple-900 transform hover:scale-110 transition-transform" title="Upload Documents">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -236,7 +238,7 @@
         <h3 class="mt-4 text-lg font-medium text-gray-900">No employees found</h3>
         <p class="mt-2 text-gray-500">Get started by creating your first employee.</p>
         <div class="mt-6">
-          <button @click="showAddModal = true" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
+          <button @click="requirePermission('create', () => showAddModal = true)" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -364,7 +366,7 @@
                     <input 
                       v-model="newEmployee.first_name" 
                       type="text" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.first_name, 'border-gray-300': !errors.first_name}"
                       placeholder="Enter first name"
                     >
@@ -377,7 +379,7 @@
                     <input 
                       v-model="newEmployee.middle_name" 
                       type="text" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       placeholder="Enter middle name"
                     >
                   </div>
@@ -388,7 +390,7 @@
                     <input 
                       v-model="newEmployee.last_name" 
                       type="text" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.last_name, 'border-gray-300': !errors.last_name}"
                       placeholder="Enter last name"
                     >
@@ -401,7 +403,7 @@
                     <input 
                       v-model="newEmployee.email" 
                       type="email" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.email, 'border-gray-300': !errors.email}"
                       placeholder="employee@company.com"
                     >
@@ -416,7 +418,7 @@
                       type="tel"
                       maxlength="11"
                       @input="newEmployee.phone = newEmployee.phone.replace(/[^0-9]/g, '')"
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.phone, 'border-gray-300': !errors.phone}"
                       placeholder="09123456789"
                     >
@@ -432,7 +434,7 @@
                       type="tel"
                       maxlength="11"
                       @input="newEmployee.emergency_contact = newEmployee.emergency_contact.replace(/[^0-9]/g, '')"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       placeholder="09123456789"
                     >
                     <p class="text-xs text-gray-500">11 digits, numbers only</p>
@@ -455,7 +457,7 @@
                           <input 
                             v-model="newEmployee.password" 
                             :type="showPassword ? 'text' : 'password'"
-                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
+                            class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
                             :class="{'border-red-500': errors.password, 'border-gray-300': !errors.password}"
                             placeholder="Create a password"
                             autocomplete="new-password"
@@ -476,7 +478,7 @@
                           <input 
                             v-model="newEmployee.password_confirmation" 
                             :type="showPassword ? 'text' : 'password'"
-                            class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
+                            class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline pr-10"
                             :class="{'border-red-500': errors.password_confirmation, 'border-gray-300': !errors.password_confirmation}"
                             placeholder="Confirm password"
                             autocomplete="new-password"
@@ -509,7 +511,7 @@
                       <input 
                         v-model="newEmployee.date_of_birth" 
                         type="date" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.date_of_birth, 'border-gray-300': !errors.date_of_birth}"
                       >
                       <p v-if="errors.date_of_birth" class="text-red-500 text-xs mt-1">{{ errors.date_of_birth[0] }}</p>
@@ -521,7 +523,7 @@
                       <div class="relative">
                         <select 
                           v-model="newEmployee.gender" 
-                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                           :class="{'border-red-500': errors.gender, 'border-gray-300': !errors.gender}"
                         >
                           <option value="">Select Gender</option>
@@ -542,7 +544,7 @@
                       <div class="relative">
                         <select 
                           v-model="newEmployee.marital_status" 
-                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                           :class="{'border-red-500': errors.marital_status, 'border-gray-300': !errors.marital_status}"
                         >
                           <option value="">Select Status</option>
@@ -565,7 +567,7 @@
                       <input 
                         v-model="newEmployee.nationality" 
                         type="text" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.nationality, 'border-gray-300': !errors.nationality}"
                       >
                       <p v-if="errors.nationality" class="text-red-500 text-xs mt-1">{{ errors.nationality[0] }}</p>
@@ -589,7 +591,7 @@
                       <textarea 
                         v-model="newEmployee.address" 
                         rows="3" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
+                        class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
                         :class="{'border-red-500': errors.address, 'border-gray-300': !errors.address}"
                         placeholder="Enter complete address"
                       ></textarea>
@@ -619,7 +621,7 @@
                       <select 
                         v-model="newEmployee.department" 
                         @change="loadPositionsForDepartment"
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.department, 'border-gray-300': !errors.department}"
                       >
                         <option value="">Select Department</option>
@@ -641,7 +643,7 @@
                       <select 
                         v-model="newEmployee.position" 
                         :disabled="!newEmployee.department || availablePositions.length === 0"
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed"
                         :class="{'border-red-500': errors.position, 'border-gray-300': !errors.position}"
                       >
                         <option value="">Select Position</option>
@@ -668,7 +670,7 @@
                     <div class="relative">
                       <select 
                         v-model="newEmployee.employment_type" 
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.employment_type, 'border-gray-300': !errors.employment_type}"
                       >
                         <option value="">Select Type</option>
@@ -691,7 +693,7 @@
                     <div class="relative">
                       <select 
                         v-model="newEmployee.employment_status" 
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.employment_status, 'border-gray-300': !errors.employment_status}"
                       >
                         <option value="probationary">Probationary</option>
@@ -715,7 +717,7 @@
                       v-model="newEmployee.hire_date" 
                       type="date" 
                       :max="today" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.hire_date, 'border-gray-300': !errors.hire_date}"
                     >
                     <p v-if="errors.hire_date" class="text-red-500 text-xs mt-1">{{ errors.hire_date[0] }}</p>
@@ -728,7 +730,7 @@
                       v-model="newEmployee.probation_end_date" 
                       type="date" 
                       :min="newEmployee.hire_date" 
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                     >
                   </div>
                 </div>
@@ -750,7 +752,7 @@
                       <div class="relative w-28">
                         <select 
                           v-model="newEmployee.salary_currency" 
-                          class="w-full appearance-none !bg-none px-3 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                          class="w-full appearance-none !bg-none px-3 py-3 pr-8 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         >
                           <option value="PHP">PHP</option>
                           <option value="USD">USD</option>
@@ -767,7 +769,7 @@
                         min="0"
                         @keydown="preventInvalidMathChars"
                         placeholder="0.00" 
-                        class="flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="flex-1 px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.salary, 'border-gray-300': !errors.salary}"
                       >
                     </div>
@@ -783,7 +785,7 @@
                         :value="formatFrequency(newEmployee.payment_frequency)" 
                         type="text" 
                         readonly
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 focus:ring-0 cursor-not-allowed"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 focus:ring-0 cursor-not-allowed"
                       >
                     </div>
                     <p class="text-xs text-gray-500">Determined by Distributor settings</p>
@@ -820,7 +822,7 @@
                       <input 
                         v-model="newEmployee.bank_name" 
                         type="text" 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="e.g., BDO, BPI, Metrobank"
                       >
                     </div>
@@ -832,7 +834,7 @@
                         v-model="newEmployee.bank_account_number" 
                         type="text" 
                         @input="newEmployee.bank_account_number = newEmployee.bank_account_number.replace(/[^0-9]/g, '')"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Enter account number"
                       >
                       <p class="text-xs text-gray-500">Numbers only</p>
@@ -844,7 +846,7 @@
                       <input 
                         v-model="newEmployee.bank_account_name" 
                         type="text" 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Account holder name"
                       >
                     </div>
@@ -867,7 +869,7 @@
                         v-model="newEmployee.sss_number" 
                         type="text" 
                         @input="newEmployee.sss_number = newEmployee.sss_number.replace(/[^0-9]/g, '')"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Numbers only"
                       >
                     </div>
@@ -879,7 +881,7 @@
                         v-model="newEmployee.philhealth_number" 
                         type="text" 
                         @input="newEmployee.philhealth_number = newEmployee.philhealth_number.replace(/[^0-9]/g, '')"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Numbers only"
                       >
                     </div>
@@ -891,7 +893,7 @@
                         v-model="newEmployee.pagibig_number" 
                         type="text" 
                         @input="newEmployee.pagibig_number = newEmployee.pagibig_number.replace(/[^0-9]/g, '')"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Numbers only"
                       >
                     </div>
@@ -903,7 +905,7 @@
                         v-model="newEmployee.tin_number" 
                         type="text" 
                         @input="newEmployee.tin_number = newEmployee.tin_number.replace(/[^0-9]/g, '')"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         placeholder="Numbers only"
                       >
                     </div>
@@ -938,7 +940,7 @@
                     <div class="relative">
                       <select 
                         v-model="newEmployee.valid_id_type" 
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.valid_id_type, 'border-gray-300': !errors.valid_id_type}"
                       >
                         <option value="">Select ID Type</option>
@@ -968,7 +970,7 @@
                       v-model="newEmployee.id_number" 
                       type="text" 
                       @input="newEmployee.id_number = newEmployee.id_number.replace(/[^0-9]/g, '')"
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.id_number, 'border-gray-300': !errors.id_number}"
                       placeholder="Numbers only"
                     >
@@ -991,7 +993,7 @@
                         type="file" 
                         @change="handleFileUpload($event, 'valid_id_photo')" 
                         accept="image/*,.pdf" 
-                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.valid_id_photo, 'border-gray-300': !errors.valid_id_photo}"
                       >
                       <div class="text-xs text-gray-500 whitespace-nowrap">Max 5MB</div>
@@ -1018,7 +1020,7 @@
                     <div class="relative">
                       <select 
                         v-model="newEmployee.educational_attainment" 
-                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                        class="w-full appearance-none !bg-none px-4 py-3 pr-10 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                         :class="{'border-red-500': errors.educational_attainment, 'border-gray-300': !errors.educational_attainment}"
                       >
                         <option value="">Select Attainment</option>
@@ -1042,7 +1044,7 @@
                     <input 
                       v-model="newEmployee.school_graduated" 
                       type="text" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.school_graduated, 'border-gray-300': !errors.school_graduated}"
                       placeholder="University or School name"
                     >
@@ -1057,7 +1059,7 @@
                       type="number" 
                       min="1900" 
                       :max="currentYear" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.year_graduated, 'border-gray-300': !errors.year_graduated}"
                       placeholder="Year"
                     >
@@ -1071,7 +1073,7 @@
                       v-model="newEmployee.course" 
                       type="text" 
                       placeholder="e.g., Bachelor of Science in Business Administration" 
-                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
+                      class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline"
                       :class="{'border-red-500': errors.course, 'border-gray-300': !errors.course}"
                     >
                     <p v-if="errors.course" class="text-red-500 text-xs mt-1">{{ errors.course[0] }}</p>
@@ -1105,7 +1107,7 @@
                       :value="companyInfo?.company_name || 'Loading...'" 
                       type="text" 
                       disabled 
-                      class="w-full px-4 py-3 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      class="w-full px-4 py-3 bg-gray-50 border border-blue-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                     >
                   </div>
                   <div class="space-y-2">
@@ -1114,7 +1116,7 @@
                       :value="userName" 
                       type="text" 
                       disabled 
-                      class="w-full px-4 py-3 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                      class="w-full px-4 py-3 bg-gray-50 border border-blue-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
                     >
                   </div>
                 </div>
@@ -1135,7 +1137,7 @@
                         <button type="button" @click="removeFile('resume')" class="text-red-500 hover:text-red-700 ml-2">X</button>
                     </div>
                     <div v-else>
-                        <input type="file" @change="handleFileUpload($event, 'resume')" accept=".pdf,.doc,.docx" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.resume, 'border-gray-300': !errors.resume}">
+                        <input type="file" @change="handleFileUpload($event, 'resume')" accept=".pdf,.doc,.docx" class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400" :class="{'border-red-500': errors.resume, 'border-gray-300': !errors.resume}">
                         <p class="text-xs text-gray-500">PDF, DOC, DOCX</p>
                         <p v-if="errors.resume" class="text-red-500 text-xs mt-1">{{ errors.resume[0] }}</p>
                     </div>
@@ -1147,7 +1149,7 @@
                         <button type="button" @click="removeFile('employment_contract')" class="text-red-500 hover:text-red-700 ml-2">X</button>
                     </div>
                     <div v-else>
-                        <input type="file" @change="handleFileUpload($event, 'employment_contract')" accept=".pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.employment_contract, 'border-gray-300': !errors.employment_contract}">
+                        <input type="file" @change="handleFileUpload($event, 'employment_contract')" accept=".pdf" class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400" :class="{'border-red-500': errors.employment_contract, 'border-gray-300': !errors.employment_contract}">
                         <p class="text-xs text-gray-500">PDF only</p>
                         <p v-if="errors.employment_contract" class="text-red-500 text-xs mt-1">{{ errors.employment_contract[0] }}</p>
                     </div>
@@ -1159,7 +1161,7 @@
                         <button type="button" @click="removeFile('medical_certificate')" class="text-red-500 hover:text-red-700 ml-2">X</button>
                     </div>
                     <div v-else>
-                        <input type="file" @change="handleFileUpload($event, 'medical_certificate')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.medical_certificate, 'border-gray-300': !errors.medical_certificate}">
+                        <input type="file" @change="handleFileUpload($event, 'medical_certificate')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400" :class="{'border-red-500': errors.medical_certificate, 'border-gray-300': !errors.medical_certificate}">
                         <p v-if="errors.medical_certificate" class="text-red-500 text-xs mt-1">{{ errors.medical_certificate[0] }}</p>
                     </div>
                   </div>
@@ -1170,7 +1172,7 @@
                         <button type="button" @click="removeFile('nbi_clearance')" class="text-red-500 hover:text-red-700 ml-2">X</button>
                     </div>
                     <div v-else>
-                        <input type="file" @change="handleFileUpload($event, 'nbi_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.nbi_clearance, 'border-gray-300': !errors.nbi_clearance}">
+                        <input type="file" @change="handleFileUpload($event, 'nbi_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400" :class="{'border-red-500': errors.nbi_clearance, 'border-gray-300': !errors.nbi_clearance}">
                         <p v-if="errors.nbi_clearance" class="text-red-500 text-xs mt-1">{{ errors.nbi_clearance[0] }}</p>
                     </div>
                   </div>
@@ -1181,7 +1183,7 @@
                         <button type="button" @click="removeFile('police_clearance')" class="text-red-500 hover:text-red-700 ml-2">X</button>
                     </div>
                     <div v-else>
-                        <input type="file" @change="handleFileUpload($event, 'police_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg" :class="{'border-red-500': errors.police_clearance, 'border-gray-300': !errors.police_clearance}">
+                        <input type="file" @change="handleFileUpload($event, 'police_clearance')" accept="image/*,.pdf" class="w-full px-4 py-3 border rounded-lg bg-white text-gray-900 placeholder-gray-400" :class="{'border-red-500': errors.police_clearance, 'border-gray-300': !errors.police_clearance}">
                         <p v-if="errors.police_clearance" class="text-red-500 text-xs mt-1">{{ errors.police_clearance[0] }}</p>
                     </div>
                   </div>
@@ -1200,7 +1202,7 @@
                     v-model="newEmployee.notes" 
                     rows="4" 
                     placeholder="Any additional notes or comments about the employee..." 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm focus:shadow-outline resize-none"
                   ></textarea>
                   <p class="text-xs text-gray-500">Optional: Add any special instructions, remarks, or important information.</p>
                 </div>
@@ -1314,7 +1316,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 import { getCurrentUser } from '@/utils/auth'
-import { toast } from 'vue-sonner' 
+import { Toaster, toast } from 'vue-sonner' 
 
 const router = useRouter()
 
@@ -1341,6 +1343,14 @@ const currentStep = ref(1)
 const availableDepartments = ref([])
 const availablePositions = ref([])
 const showPassword = ref(false) 
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
 
 const today = computed(() => new Date().toISOString().split('T')[0])
 const currentYear = new Date().getFullYear()
@@ -1370,6 +1380,15 @@ const userName = computed(() => {
   if (!userInfo.value) return ''
   return `${userInfo.value.first_name || ''} ${userInfo.value.last_name || ''}`.trim()
 })
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} employees.`);
+    return;
+  }
+  if (callback) callback();
+}
 
 // New employee form
 const newEmployee = reactive({
@@ -1706,19 +1725,25 @@ const fetchEmployees = async () => {
     if (response.data.status === 'success') {
       employees.value = response.data.data.employees
       departments.value = response.data.data.departments
+      if (response.data.data.permissions) {
+        permissions.value = response.data.data.permissions
+      }
     }
     
-    const statsResponse = await axios.get('/hr/employees/statistics')
-    if (statsResponse.data.status === 'success') {
-      statistics.value = statsResponse.data.data.statistics
-      companyInfo.value = {
-        company_name: statsResponse.data.data.company_name
+    // Only fetch statistics if they have view permission (should generally align with the base response)
+    if (permissions.value.can_view) {
+      const statsResponse = await axios.get('/hr/employees/statistics')
+      if (statsResponse.data.status === 'success') {
+        statistics.value = statsResponse.data.data.statistics
+        companyInfo.value = {
+          company_name: statsResponse.data.data.company_name
+        }
       }
     }
   } catch (err) {
     console.error('Failed to fetch employees:', err)
     error.value = err.response?.data?.message || 'Failed to load employees'
-    toast.error('Failed to load employees') 
+    toast.error('Failed to load employees. You may not have the required permissions.') 
   } finally {
     loading.value = false
   }
