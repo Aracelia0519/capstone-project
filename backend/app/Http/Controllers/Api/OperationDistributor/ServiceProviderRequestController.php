@@ -15,19 +15,92 @@ use Carbon\Carbon;
 class ServiceProviderRequestController extends Controller
 {
     /**
+     * Retrieves the specific permissions for a user on a given module.
+     */
+    private function getPermissions($user, $permissionKey)
+    {
+        $defaults = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        // Main distributors and head operational distributors automatically have full access
+        if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
+            return [
+                'can_view' => true,
+                'can_create' => true,
+                'can_update' => true,
+                'can_delete' => true
+            ];
+        }
+
+        // Check RBAC for standard employees
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            if (!$employee) return $defaults;
+
+            $position = DB::table('positions')
+                ->where('title', $employee->position)
+                ->where('distributor_id', $employee->parent_distributor_id)
+                ->first();
+            if (!$position) return $defaults;
+
+            $access = DB::table('position_accessibilities')
+                ->where('position_id', $position->id)
+                ->where('permission_key', $permissionKey)
+                ->first();
+
+            if ($access) {
+                return [
+                    'can_view' => (bool) $access->can_view,
+                    'can_create' => (bool) $access->can_create,
+                    'can_update' => (bool) $access->can_update,
+                    'can_delete' => (bool) $access->can_delete,
+                ];
+            }
+        }
+
+        return $defaults;
+    }
+
+    private function checkRbacAccess($user, $permissionKey, $action)
+    {
+        $permissions = $this->getPermissions($user, $permissionKey);
+        return $permissions[$action] ?? false;
+    }
+
+    /**
      * Fetch all service provider requests for the current distributor
      */
     public function index(): JsonResponse
     {
         try {
             $user = Auth::user();
-            $od = $user->operationalDistributor;
 
-            if (!$od) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized access. Only Operational Distributors can access this.'], 403);
+            // Get permissions and check RBAC Read Access using 'ec_service_provider'
+            $permissions = $this->getPermissions($user, 'ec_service_provider');
+            
+            if (!$permissions['can_view']) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to view service provider requests.'], 403);
             }
 
-            $distributorId = $od->parent_distributor_id;
+            // Logic to get Distributor ID based on the user role
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            if (!$distributorId) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access. Distributor context not found.'], 403);
+            }
 
             $requests = ServiceProviderDistributor::with(['serviceProvider.serviceProviderRequirement'])
                 ->where('distributor_id', $distributorId)
@@ -61,7 +134,11 @@ class ServiceProviderRequestController extends Controller
                     ];
                 });
 
-            return response()->json(['success' => true, 'data' => $requests], 200);
+            return response()->json([
+                'success' => true, 
+                'data' => $requests,
+                'permissions' => $permissions
+            ], 200);
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to fetch requests', 'error' => $e->getMessage()], 500);
@@ -74,15 +151,31 @@ class ServiceProviderRequestController extends Controller
     public function approve(Request $request, $id): JsonResponse
     {
         try {
-            $user = Auth::user(); // Operational Distributor Head
-            $od = $user->operationalDistributor;
+            $user = Auth::user();
+
+            // Hard backend RBAC check for updating
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_update')) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to approve partnership requests.'], 403);
+            }
+
+            // Logic to get Distributor ID based on the user role
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
 
             $req = ServiceProviderDistributor::with('serviceProvider')->where('id', $id)
-                    ->where('distributor_id', $od->parent_distributor_id)
+                    ->where('distributor_id', $distributorId)
                     ->first();
 
             if (!$req) {
-                return response()->json(['success' => false, 'message' => 'Partnership request not found.'], 404);
+                return response()->json(['success' => false, 'message' => 'Partnership request not found or unauthorized.'], 404);
             }
 
             // Update Status
@@ -92,7 +185,7 @@ class ServiceProviderRequestController extends Controller
             ]);
 
             // Get Names instead of IDs
-            $odHeadName = $user->full_name ?? 'Unknown Operational Distributor';
+            $authorizedName = $user->full_name ?? 'Authorized Representative';
             $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Unknown Service Provider';
 
             // --- Generate Formal Agreement Document ---
@@ -103,7 +196,7 @@ class ServiceProviderRequestController extends Controller
                     <hr/>
                     <h3>Parties Involved</h3>
                     <ul>
-                        <li><strong>Operational Distributor Head:</strong> {$odHeadName}</li>
+                        <li><strong>Authorized Representative:</strong> {$authorizedName}</li>
                         <li><strong>Service Provider:</strong> {$spName}</li>
                     </ul>
                     <h3>Terms of Agreement</h3>
@@ -137,17 +230,33 @@ class ServiceProviderRequestController extends Controller
     public function reject(Request $request, $id): JsonResponse
     {
         try {
+            $user = Auth::user();
+
+            // Hard backend RBAC check for updating/rejecting
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_update')) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to reject partnership requests.'], 403);
+            }
+
             $request->validate(['reason' => 'required|string|max:1000']);
 
-            $user = Auth::user();
-            $od = $user->operationalDistributor;
+            // Logic to get Distributor ID based on the user role
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
 
             $req = ServiceProviderDistributor::where('id', $id)
-                    ->where('distributor_id', $od->parent_distributor_id)
+                    ->where('distributor_id', $distributorId)
                     ->first();
 
             if (!$req) {
-                return response()->json(['success' => false, 'message' => 'Partnership request not found.'], 404);
+                return response()->json(['success' => false, 'message' => 'Partnership request not found or unauthorized.'], 404);
             }
 
             $req->update([

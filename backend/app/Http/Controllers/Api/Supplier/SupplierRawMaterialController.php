@@ -30,6 +30,8 @@ class SupplierRawMaterialController extends Controller
             'size' => 'required|string',
             'color_code' => 'nullable|string',
             'price' => 'required|numeric|min:0',
+            'min_order' => 'nullable|integer|min:1',
+            'max_order' => 'nullable|integer|gte:min_order',
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:2048' // Max 2MB
         ]);
@@ -62,6 +64,8 @@ class SupplierRawMaterialController extends Controller
             'color_code' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
+            'min_order' => 'nullable|integer|min:1',
+            'max_order' => 'nullable|integer|gte:min_order',
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:2048'
         ]);

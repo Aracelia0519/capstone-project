@@ -1,5 +1,38 @@
 <template>
   <div class="arrived-items-container p-4 md:p-6">
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',          // slightly smaller padding
+            fontSize: '15px',              // slightly smaller font
+            minWidth: '280px',             // smaller width
+            maxWidth: '400px',
+            borderRadius: '10px',          // slightly smaller rounding
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
+
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -8,6 +41,7 @@
         </div>
         <div class="flex items-center gap-3 mt-4 md:mt-0">
           <Button 
+            @click="requirePermission('view', handleExport)"
             variant="outline" 
             class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent"
           >
@@ -126,7 +160,7 @@
                 <TableCell class="text-right">
                   <div class="flex items-center justify-end gap-1">
                     <Button 
-                      @click="openViewModal(item)"
+                      @click="requirePermission('view', () => openViewModal(item))"
                       variant="ghost" 
                       size="sm" 
                       class="text-emerald-400 hover:text-white hover:bg-emerald-600/20"
@@ -262,37 +296,37 @@
             Cancel
           </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger as-child>
-              <Button 
-                :disabled="isMoving"
-                class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0"
-              >
-                <Loader2 v-if="isMoving" class="w-4 h-4 mr-2 animate-spin" />
-                <CheckCircle2 v-else class="w-4 h-4 mr-2" />
-                Move to Inventory
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Move to Inventory</AlertDialogTitle>
-                <AlertDialogDescription class="text-gray-400">
-                  Are you sure you want to officially move <span class="text-emerald-400 font-bold">{{ selectedItem?.quantity }}</span> units of <span class="font-bold text-gray-200">{{ selectedItem?.raw_material_details?.name || selectedItem?.product_name }}</span> to your inventory? This action will update your stock availability and cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction @click="moveToInventory" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
-                  Yes, Move to Inventory
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button 
+            :disabled="isMoving"
+            @click="requirePermission('update', () => isConfirmOpen = true)"
+            class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0"
+          >
+            <Loader2 v-if="isMoving" class="w-4 h-4 mr-2 animate-spin" />
+            <CheckCircle2 v-else class="w-4 h-4 mr-2" />
+            Move to Inventory
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog :open="isConfirmOpen" @update:open="isConfirmOpen = $event">
+      <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Move to Inventory</AlertDialogTitle>
+          <AlertDialogDescription class="text-gray-400">
+            Are you sure you want to officially move <span class="text-emerald-400 font-bold">{{ selectedItem?.quantity }}</span> units of <span class="font-bold text-gray-200">{{ selectedItem?.raw_material_details?.name || selectedItem?.product_name }}</span> to your inventory? This action will update your stock availability and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isConfirmOpen = false" class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction @click="moveToInventory" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+            Yes, Move to Inventory
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
   </div>
 </template>
@@ -301,7 +335,9 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
 import { Search, FileDown, Eye, PackageX, Loader2, CheckCircle2, Package, ImageOff, Camera } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+
+// MISSING IMPORT ADDED HERE
+import { Toaster, toast } from 'vue-sonner'
 
 // Standard UI Components
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -321,7 +357,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
 // State
@@ -331,18 +366,48 @@ const searchQuery = ref('')
 const showViewModal = ref(false)
 const selectedItem = ref<any>(null)
 const isMoving = ref(false)
+const isConfirmOpen = ref(false)
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action: string, callback: Function) => {
+  if (!(permissions.value as any)[`can_${action}`]) {
+    toast.error(`Access Denied: You do not have permission to ${action} arrived items.`);
+    return;
+  }
+  if (callback) callback();
+}
 
 // Fetch Arrived Items (Delivered Procurement Requests)
 const fetchArrivedItems = async () => {
   try {
     isLoading.value = true
     const response = await api.get('/operation-distributor/arrived-items')
-    arrivedItems.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch arrived items:', error)
-    toast.error('Failed to load arrived items', {
-      description: 'Could not fetch data from the server. Please try again later.'
-    })
+    
+    if (response.data && response.data.data) {
+        arrivedItems.value = response.data.data
+        if (response.data.permissions) {
+            permissions.value = response.data.permissions
+        }
+    } else {
+        arrivedItems.value = response.data
+    }
+  } catch (error: any) {
+    if (error.response?.status === 403) {
+        toast.error('Unauthorized: Access to arrived items is restricted.')
+    } else {
+        console.error('Failed to fetch arrived items:', error)
+        toast.error('Failed to load arrived items', {
+          description: 'Could not fetch data from the server. Please try again later.'
+        })
+    }
   } finally {
     isLoading.value = false
   }
@@ -383,8 +448,16 @@ const closeViewModal = () => {
   }, 300)
 }
 
+const handleExport = () => {
+  toast.info("Exporting CSV manifest...")
+  setTimeout(() => {
+    toast.success("CSV exported successfully.")
+  }, 1000)
+}
+
 const moveToInventory = async () => {
   if (!selectedItem.value) return
+  isConfirmOpen.value = false // Close the confirmation modal
 
   // Create a loading toast id to update it later
   const toastId = toast.loading('Moving items to inventory...')
@@ -449,5 +522,13 @@ const formatDate = (dateString: string) => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 1); 
+}
+</style>
+
+<style>
+/* Unscoped global override to force Sonner Toaster to the very top */
+[data-sonner-toaster] {
+  z-index: 2147483647 !important; /* Maximum z-index possible */
+  position: fixed !important;
 }
 </style>

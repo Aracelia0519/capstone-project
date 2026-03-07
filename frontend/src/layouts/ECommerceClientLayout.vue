@@ -41,9 +41,12 @@
           <template #default>
             <router-view v-slot="{ Component }">
               <transition name="page-slide" mode="out-in">
+                <div v-if="isCheckingAuth" class="flex items-center justify-center min-h-[50vh]">
+                  <Loader2 class="w-12 h-12 text-blue-600 animate-spin" />
+                </div>
                 <component 
+                  v-else
                   :is="Component" 
-                  v-if="userData"
                   :user="userData"
                 />
               </transition>
@@ -105,6 +108,7 @@ import { getCurrentUser } from '@/utils/auth'
 
 const router = useRouter()
 const userData = ref(null)
+const isCheckingAuth = ref(true)
 
 const isLoggingOut = ref(false)
 const logoutProgress = ref(0)
@@ -137,15 +141,21 @@ const initializeUserData = () => {
 
 onMounted(async () => {
   initializeUserData()
-  if (!userData.value) {
-    try {
-      userData.value = await getCurrentUser()
-      if (!userData.value) throw new Error("Not authenticated")
+  
+  try {
+    const user = await getCurrentUser()
+    if (user) {
+      userData.value = user
       localStorage.setItem('user_data', JSON.stringify(userData.value))
-    } catch {
-      router.push('/Landing/logIn')
-      return 
+    } else {
+      userData.value = null // Explicitly handle guest state
     }
+  } catch (error) {
+    // If getting the user fails (e.g. invalid token, no token), proceed as guest.
+    console.warn("Continuing as guest user.")
+    userData.value = null
+  } finally {
+    isCheckingAuth.value = false
   }
 })
 

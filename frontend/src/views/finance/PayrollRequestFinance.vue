@@ -7,7 +7,7 @@ import {
   MoreHorizontal, 
   FileText 
 } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner'
 import axios from '@/utils/axios'
 
 // UI Components
@@ -72,6 +72,25 @@ const isAlertOpen = ref(false)
 const alertAction = ref(null) // 'approve' | 'reject'
 const alertTargetId = ref(null)
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} payroll requests.`
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // Fetch Data
 const fetchRequests = async () => {
   isLoading.value = true
@@ -83,9 +102,19 @@ const fetchRequests = async () => {
       }
     })
     requests.value = response.data.data
+    
+    // Assign permissions state
+    if (response.data.permissions) {
+      permissions.value = response.data.permissions
+    }
+    
   } catch (error) {
-    console.error(error)
-    toast.error("Failed to load payroll requests.")
+    if (error.response?.status === 403) {
+      toast.error("Unauthorized", { description: "You do not have permission to view payroll requests." })
+    } else {
+      console.error(error)
+      toast.error("Failed to load payroll requests.")
+    }
   } finally {
     isLoading.value = false
   }
@@ -120,22 +149,28 @@ const formatDate = (dateString) => {
 
 // Actions
 const openDetails = (request) => {
-  selectedRequest.value = request
-  isDetailsOpen.value = true
+  requirePermission('view', () => {
+    selectedRequest.value = request
+    isDetailsOpen.value = true
+  })
 }
 
 // 1. Trigger Alert for Approval
 const initiateApprove = (id) => {
-  alertTargetId.value = id
-  alertAction.value = 'approve'
-  isAlertOpen.value = true
+  requirePermission('update', () => {
+    alertTargetId.value = id
+    alertAction.value = 'approve'
+    isAlertOpen.value = true
+  })
 }
 
 // 2. Trigger Alert for Rejection
 const initiateReject = (id) => {
-  alertTargetId.value = id
-  alertAction.value = 'reject'
-  isAlertOpen.value = true
+  requirePermission('update', () => {
+    alertTargetId.value = id
+    alertAction.value = 'reject'
+    isAlertOpen.value = true
+  })
 }
 
 // 3. Confirm and Execute Action
@@ -161,8 +196,12 @@ const confirmAction = async () => {
     fetchRequests() 
 
   } catch (error) {
-    console.error(error)
-    toast.error(`Failed to ${action} request.`)
+    if (error.response?.status === 403) {
+      toast.error("Action Denied", { description: "You are not authorized to update this payroll." })
+    } else {
+      console.error(error)
+      toast.error(`Failed to ${action} request.`)
+    }
   } finally {
     isProcessing.value = false
     alertTargetId.value = null
@@ -184,6 +223,8 @@ const getStatusVariant = (status) => {
 
 <template>
   <div class="p-6 space-y-6">
+    <Toaster richColors position="top-right" expand />
+    
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">Payroll Approvals</h1>

@@ -268,6 +268,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios' 
+import { toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -315,6 +316,9 @@ const fetchCategories = async () => {
     categories.value = response.data.categories
   } catch (error) {
     console.error('Failed to fetch categories:', error)
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', { description: error.response.data.message })
+    }
   } finally {
     isLoading.value = false
   }
@@ -343,13 +347,41 @@ const editCategory = (category) => {
   showAddModal.value = true
 }
 
-const toggleStatus = (category) => {
-  category.status = category.status === 'Active' ? 'Inactive' : 'Active'
+const toggleStatus = async (category) => {
+  try {
+    const newStatus = category.status === 'Active' ? 'Inactive' : 'Active'
+    
+    // Check RBAC by pinging the update endpoint
+    await api.put(`/operation-distributor/categories/${category.id}`, { status: newStatus })
+    
+    // Update frontend state on success
+    category.status = newStatus
+    toast.success('Status Updated', { description: `Category status changed to ${newStatus}.` })
+  } catch (error) {
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', { description: error.response.data.message })
+    } else {
+      toast.error('Error', { description: 'Failed to update category status.' })
+    }
+  }
 }
 
-const deleteCategory = (category) => {
+const deleteCategory = async (category) => {
   if (confirm(`Are you sure you want to remove the category "${category.name}" from view? Note: Real deletion requires re-assigning associated products in the database.`)) {
-    categories.value = categories.value.filter(c => c.id !== category.id)
+    try {
+      // Check RBAC by pinging the destroy endpoint
+      await api.delete(`/operation-distributor/categories/${category.id}`)
+      
+      // Update frontend state on success
+      categories.value = categories.value.filter(c => c.id !== category.id)
+      toast.success('Category Deleted', { description: `Category ${category.name} has been removed.` })
+    } catch (error) {
+      if (error.response?.status === 403) {
+        toast.error('Access Denied', { description: error.response.data.message })
+      } else {
+        toast.error('Error', { description: 'Failed to delete category.' })
+      }
+    }
   }
 }
 
@@ -361,10 +393,7 @@ const viewProducts = async (category) => {
   categoryProducts.value = []
   
   try {
-    // Calling the newly created endpoint and sending the category name directly
     const response = await api.get(`/operation-distributor/categories/products?category=${encodeURIComponent(category.name)}`)
-    
-    console.log("Raw API Response for Products:", response.data)
     
     // Extract the payload
     if (response.data && response.data.data) {
@@ -374,32 +403,49 @@ const viewProducts = async (category) => {
     }
   } catch (error) {
     console.error('Failed to fetch products for category:', error)
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', { description: error.response.data.message })
+      showProductsModal.value = false // Close the modal since they can't view
+    }
   } finally {
     isLoadingProducts.value = false
   }
 }
 
-const saveCategory = () => {
-  // NOTE: Categories are dynamic based on products. 
-  // To truly save this to the DB, you would need a standalone "categories" table schema.
-  // For now, it updates the UI state.
-  if (editingCategory.value) {
-    const index = categories.value.findIndex(c => c.id === editingCategory.value.id)
-    if (index !== -1) {
-      categories.value[index] = { ...categoryForm.value, id: editingCategory.value.id }
+const saveCategory = async () => {
+  try {
+    // NOTE: Sending the request to the API directly to check the Employee RBAC access rights
+    if (editingCategory.value) {
+      await api.put(`/operation-distributor/categories/${editingCategory.value.id}`, categoryForm.value)
+      
+      const index = categories.value.findIndex(c => c.id === editingCategory.value.id)
+      if (index !== -1) {
+        categories.value[index] = { ...categoryForm.value, id: editingCategory.value.id }
+      }
+      toast.success('Category Updated', { description: 'Your category changes have been saved.' })
+    } else {
+      await api.post('/operation-distributor/categories', categoryForm.value)
+      
+      const newId = categories.value.length > 0 ? Math.max(...categories.value.map(c => c.id)) + 1 : 1
+      categories.value.push({
+        ...categoryForm.value,
+        id: newId,
+        productCount: 0,
+        createdDate: new Date().toISOString().split('T')[0],
+        sampleProducts: []
+      })
+      toast.success('Category Created', { description: 'Your new category has been added.' })
     }
-  } else {
-    const newId = categories.value.length > 0 ? Math.max(...categories.value.map(c => c.id)) + 1 : 1
-    categories.value.push({
-      ...categoryForm.value,
-      id: newId,
-      productCount: 0,
-      createdDate: new Date().toISOString().split('T')[0],
-      sampleProducts: []
-    })
+    
+    closeModal()
+  } catch (error) {
+    if (error.response?.status === 403) {
+      // Show shadcn-vue sonner notification for lack of permissions
+      toast.error('Access Denied', { description: error.response.data.message })
+    } else {
+      toast.error('Error', { description: 'An error occurred while saving the category.' })
+    }
   }
-  
-  closeModal()
 }
 
 const closeModal = () => {

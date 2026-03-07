@@ -1,5 +1,7 @@
 <template>
-  <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8">
+  <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8 relative">
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-1 md:mb-2">
@@ -7,7 +9,8 @@
         </h1>
         <p class="text-sm md:text-base text-gray-400">Increase sales through targeted promotions and discounts</p>
       </div>
-      <Button @click="showCreateModal = true" 
+      <Button v-if="permissions.can_create" 
+              @click="showCreateModal = true" 
               class="w-full md:w-auto bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 hover:from-orange-400 hover:to-red-400 transition-all duration-300 shadow-lg shadow-orange-500/20 rounded-lg px-6">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -90,18 +93,12 @@
       <CardContent class="p-0">
         <div class="p-4 md:p-5 border-b border-white/5 flex flex-col md:flex-row gap-4 items-center justify-between bg-white/[0.02]">
           <div class="relative w-full md:w-96">
-            <Search class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
+            <Search class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
             <Input 
               v-model="searchQuery"
               placeholder="Search promotions by name or code..." 
-              class="pl-10 bg-black/40 border-white/10 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 w-full rounded-lg transition-all"
+              class="pl-10 bg-black/40 border-white/10 text-white placeholder:text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 w-full rounded-lg transition-all"
             />
-          </div>
-          <div class="flex items-center gap-3 w-full md:w-auto">
-            <Button variant="outline" class="border-white/10 bg-transparent text-gray-300 hover:text-white hover:bg-white/5 w-full md:w-auto rounded-lg transition-colors">
-              <Filter class="w-4 h-4 mr-2" />
-              Filter Options
-            </Button>
           </div>
         </div>
 
@@ -148,7 +145,7 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-300">{{ formatDate(promo.start_date) }}</div>
+                  <div class="text-sm font-medium text-white">{{ formatDate(promo.start_date) }}</div>
                   <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                     <span class="w-1 h-1 rounded-full bg-gray-600"></span>
                     {{ formatDate(promo.end_date) }}
@@ -333,7 +330,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from '@/utils/axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner' 
 import { Search, Filter, MoreVertical } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -359,7 +356,14 @@ const saving = ref(false)
 
 const isCodeManuallyEdited = ref(false)
 
-// Generate a random 5-character string of letters and numbers
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
 const generateRandomSuffix = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let result = ''
@@ -369,7 +373,6 @@ const generateRandomSuffix = () => {
   return result
 }
 
-// Store the random suffix so it doesn't change on every keystroke
 const currentRandomSuffix = ref(generateRandomSuffix())
 
 const promotions = ref([])
@@ -386,7 +389,6 @@ const promoForm = ref({
   endDate: ''
 })
 
-// Auto-generate Promo Code with random suffix
 watch(() => promoForm.value.name, (newName) => {
   if (!isCodeManuallyEdited.value) {
     const cleanName = newName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10)
@@ -394,11 +396,9 @@ watch(() => promoForm.value.name, (newName) => {
   }
 })
 
-// Detect manual typing
 const handleCodeInput = (event) => {
   const value = event.target.value
   if (!value) {
-    // If they clear the input entirely, reactivate auto-generation with a fresh random code
     isCodeManuallyEdited.value = false
     currentRandomSuffix.value = generateRandomSuffix()
     const cleanName = promoForm.value.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10)
@@ -425,10 +425,21 @@ const fetchPromotions = async () => {
     const res = await axios.get('/crm/promotions')
     if(res.data.status === 'success') {
        promotions.value = res.data.data
+       
+       if (res.data.permissions) {
+         permissions.value = res.data.permissions
+       }
     }
   } catch (err) {
     console.error('Error fetching promotions:', err)
-    toast.error('Failed to load promotions')
+    if (err.response?.status === 403) {
+      toast.error('Access Denied', {
+         description: err.response.data.message || 'You lack permissions to view promotions.',
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+      })
+    } else {
+      toast.error('Failed to load promotions')
+    }
   } finally {
     loading.value = false
   }
@@ -496,7 +507,6 @@ const handleFormSubmit = () => {
   if (!startDate) return toast.error('Start Date is required.');
   if (!endDate) return toast.error('End Date is required.');
 
-  // Date validation
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const start = new Date(startDate);
@@ -523,6 +533,17 @@ const handleFormSubmit = () => {
 }
 
 const submitPromotion = async () => {
+  // FINAL HARD STOP on the frontend before interacting with the API
+  if (!permissions.value.can_create) {
+     toast.error('Access Denied', {
+        description: 'You do not have permission to create promotions.',
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+     });
+     showConfirmDialog.value = false;
+     showCreateModal.value = false;
+     return;
+  }
+
   saving.value = true
   try {
     const response = await axios.post('/crm/promotions', {
@@ -541,7 +562,6 @@ const submitPromotion = async () => {
       showConfirmDialog.value = false 
       showCreateModal.value = false 
       
-      // Reset logic and re-generate a new suffix for the next time the form opens
       isCodeManuallyEdited.value = false
       currentRandomSuffix.value = generateRandomSuffix()
       promoForm.value = {
@@ -559,7 +579,9 @@ const submitPromotion = async () => {
     }
   } catch (err) {
     console.error('Failed to create promotion:', err)
-    if (err.response?.data?.errors) {
+    if (err.response?.status === 403) {
+      toast.error('Action Restricted', { description: err.response.data.message || 'You do not have permission to create promotions.' })
+    } else if (err.response?.data?.errors) {
       const errors = Object.values(err.response.data.errors).flat()
       toast.error(errors[0])
     } else {

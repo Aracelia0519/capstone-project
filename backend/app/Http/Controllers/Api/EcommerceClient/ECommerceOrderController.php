@@ -6,15 +6,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\EcommerceClient\ProductReview;
+use Illuminate\Support\Facades\Auth;
 
 class ECommerceOrderController extends Controller
 {
     /**
      * Fetch all orders for the authenticated client.
+     * Safely returns an empty array if the user is unauthenticated (guest).
      */
     public function index(Request $request)
     {
-        $user = $request->user();
+        $user = Auth::guard('sanctum')->user();
+
+        // If not logged in, return an empty list gracefully
+        if (!$user) {
+            return response()->json([]);
+        }
 
         // Eager load items and the related products
         $orders = ClientOrder::with(['items.product', 'items.distributor'])

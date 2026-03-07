@@ -34,12 +34,71 @@ class PromotionApprovalController extends Controller
     }
 
     /**
+     * Fetch RBAC permissions for the logged-in user.
+     */
+    private function getPermissions($user)
+    {
+        $defaultPermissions = [
+            'can_view' => true,
+            'can_create' => true,
+            'can_update' => true,
+            'can_delete' => true
+        ];
+
+        // Non-employees (like distributors, admins) bypass this specific RBAC check
+        if ($user->role !== 'employee') {
+            return $defaultPermissions;
+        }
+
+        $noAccess = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if (!$employee) return $noAccess;
+
+        $position = DB::table('positions')
+            ->where('title', $employee->position)
+            ->where('distributor_id', $employee->parent_distributor_id)
+            ->first();
+
+        if (!$position) return $noAccess;
+
+        $access = DB::table('position_accessibilities')
+            ->where('position_id', $position->id)
+            ->where('permission_key', 'ec_promo_approval')
+            ->first();
+
+        // Check if access row exists and is generally granted
+        if (!$access || !$access->is_granted) return $noAccess;
+
+        return [
+            'can_view' => (bool)$access->can_view,
+            'can_create' => (bool)$access->can_create,
+            'can_update' => (bool)$access->can_update,
+            'can_delete' => (bool)$access->can_delete,
+        ];
+    }
+
+    /**
      * Fetch all pending promotions and dashboard stats for the current distributor.
      */
     public function index()
     {
         try {
             $user = Auth::user();
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_view']) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access Denied: You do not have permission to view promotions.'
+                ], 403);
+            }
+
             $distributorId = $this->getDistributorId($user);
 
             $query = Promotion::where('distributor_id', $distributorId);
@@ -59,7 +118,8 @@ class PromotionApprovalController extends Controller
             return response()->json([
                 'status' => 'success',
                 'data' => $promotions,
-                'stats' => $stats
+                'stats' => $stats,
+                'permissions' => $permissions
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -73,6 +133,15 @@ class PromotionApprovalController extends Controller
     {
         try {
             $user = Auth::user();
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_update']) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access Denied: You do not have permission to approve promotions.'
+                ], 403);
+            }
+
             $distributorId = $this->getDistributorId($user);
 
             $promotion = Promotion::where('id', $id)
@@ -94,6 +163,15 @@ class PromotionApprovalController extends Controller
     {
         try {
             $user = Auth::user();
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_update']) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access Denied: You do not have permission to reject promotions.'
+                ], 403);
+            }
+
             $distributorId = $this->getDistributorId($user);
 
             $promotion = Promotion::where('id', $id)

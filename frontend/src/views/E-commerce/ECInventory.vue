@@ -1,5 +1,9 @@
 <template>
   <div class="inventory-container p-4 md:p-6">
+    <Teleport to="body">
+      <Toaster position="top-right" theme="dark" class="!z-[999999]" style="z-index: 999999;" />
+    </Teleport>
+
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -18,6 +22,7 @@
             Refresh Inventory
           </Button>
           <Button 
+            @click="requirePermission('create', handleAddProduct)"
             class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0"
           >
             <Plus class="w-5 h-5 mr-2" />
@@ -149,7 +154,7 @@
                 <TableCell>
                   <div class="flex flex-col">
                     <span class="text-gray-200">{{ item.category }}</span>
-                    <span class="text-xs text-gray-500">{{ item.type }}</span>
+                    <span class="text-xs text-white-500">{{ item.type }}</span>
                   </div>
                 </TableCell>
                 
@@ -161,7 +166,7 @@
                     ]">
                       {{ item.quantity }}
                     </span>
-                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">
+                    <span class="text-[10px] text-white-500 uppercase tracking-wider">
                       Min: {{ item.min_stock_level }}
                     </span>
                   </div>
@@ -188,7 +193,7 @@
                 
                 <TableCell class="text-right">
                   <Button 
-                    @click="openViewModal(item)"
+                    @click="requirePermission('view', () => openViewModal(item))"
                     variant="ghost" 
                     size="sm" 
                     class="text-blue-400 hover:text-white hover:bg-blue-600/20"
@@ -329,34 +334,16 @@
             Close
           </Button>
 
-          <AlertDialog v-if="selectedItem && selectedItem.ecommerce_status === 'not_deployed'">
-            <AlertDialogTrigger as-child>
-              <Button 
-                :disabled="isProcessing"
-                class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:opacity-90 border-0 shadow-lg shadow-indigo-500/20"
-              >
-                <Loader2 v-if="isProcessing" class="w-4 h-4 mr-2 animate-spin" />
-                <Store class="w-4 h-4 mr-2" v-else />
-                Request for Deployment
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Deploy to E-Commerce?</AlertDialogTitle>
-                <AlertDialogDescription class="text-gray-400">
-                  Are you sure you want to request making <span class="text-white font-bold">{{ selectedItem?.name }}</span> visible on the e-commerce store? The business owner will need to approve this.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction @click="requestDeployment" class="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
-                  Yes, Request Deployment
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button 
+            v-if="selectedItem && selectedItem.ecommerce_status === 'not_deployed'"
+            :disabled="isProcessing"
+            @click="requirePermission('update', () => isDeployConfirmOpen = true)"
+            class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:opacity-90 border-0 shadow-lg shadow-indigo-500/20"
+          >
+            <Loader2 v-if="isProcessing" class="w-4 h-4 mr-2 animate-spin" />
+            <Store class="w-4 h-4 mr-2" v-else />
+            Request for Deployment
+          </Button>
           
           <Button 
             v-else-if="selectedItem && selectedItem.ecommerce_status === 'pending'"
@@ -370,13 +357,32 @@
       </DialogContent>
     </Dialog>
 
+    <AlertDialog :open="isDeployConfirmOpen" @update:open="isDeployConfirmOpen = $event">
+      <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white z-50">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Deploy to E-Commerce?</AlertDialogTitle>
+          <AlertDialogDescription class="text-gray-400">
+            Are you sure you want to request making <span class="text-white font-bold">{{ selectedItem?.name }}</span> visible on the e-commerce store? The business owner will need to approve this.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isDeployConfirmOpen = false" class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction @click="requestDeployment" class="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+            Yes, Request Deployment
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios' 
-import { toast } from 'vue-sonner'
+import { toast, Toaster } from 'vue-sonner'
 import { 
   Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle 
 } from 'lucide-vue-next'
@@ -399,7 +405,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
 // State
@@ -409,6 +414,24 @@ const selectedItem = ref<any>(null)
 const isProcessing = ref(false)
 const isLoading = ref(true)
 const inventoryItems = ref<any[]>([])
+const isDeployConfirmOpen = ref(false)
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action: string, callback: Function) => {
+  if (!(permissions.value as any)[`can_${action}`]) {
+    toast.error(`Access Denied: You do not have permission to ${action} inventory items.`);
+    return;
+  }
+  if (callback) callback();
+}
 
 // Fetch API Data
 const fetchInventory = async () => {
@@ -418,12 +441,20 @@ const fetchInventory = async () => {
 
     if (response.data.success) {
       inventoryItems.value = response.data.data
+      
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      }
     } else {
       toast.error('Failed to load inventory data.')
     }
-  } catch (error) {
-    console.error('API Error:', error)
-    toast.error('An error occurred while fetching inventory.')
+  } catch (error: any) {
+    if (error.response?.status === 403) {
+        toast.error('Unauthorized: Access to inventory is restricted.')
+    } else {
+        console.error('API Error:', error)
+        toast.error('An error occurred while fetching inventory.')
+    }
   } finally {
     isLoading.value = false
   }
@@ -459,6 +490,10 @@ const filteredItems = computed(() => {
 })
 
 // Actions
+const handleAddProduct = () => {
+  toast.info("Add new product feature coming soon.")
+}
+
 const openViewModal = (item: any) => {
   selectedItem.value = item
   showViewModal.value = true
@@ -473,6 +508,7 @@ const closeViewModal = () => {
 
 const requestDeployment = async () => {
   if (!selectedItem.value) return
+  isDeployConfirmOpen.value = false
 
   isProcessing.value = true
   const toastId = toast.loading('Sending deployment request...')
@@ -498,9 +534,13 @@ const requestDeployment = async () => {
     } else {
       toast.error('Request failed', { id: toastId, description: response.data.message })
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Deployment Error:', error)
-    toast.error('Error', { id: toastId, description: 'Could not submit deployment request.' })
+    if (error.response?.status === 403) {
+      toast.error('Unauthorized', { id: toastId, description: 'You do not have permission to request deployment.' })
+    } else {
+      toast.error('Error', { id: toastId, description: 'Could not submit deployment request.' })
+    }
   } finally {
     isProcessing.value = false
   }
@@ -526,5 +566,13 @@ const requestDeployment = async () => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 1); 
+}
+</style>
+
+<style>
+/* Unscoped global override to force Sonner Toaster to the very top */
+[data-sonner-toaster] {
+  z-index: 2147483647 !important; /* Maximum z-index possible */
+  position: fixed !important;
 }
 </style>

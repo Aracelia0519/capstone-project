@@ -15,26 +15,107 @@ use App\Models\Distributor\OperationalDistributor;
 use App\Models\Supplier\SupplierRequirements;
 use App\Models\Distributor\DistributorAddress; 
 use App\Models\Supplier\SupplierRawMaterial;
+use App\Models\HR\Employee;
+use App\Models\Distributor\HRManager;
 
 class ProcurementController extends Controller
 {
+    /**
+     * Check RBAC Permissions for Procurement Module
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // Managers and Operational Distributors
+        $distributorId = $this->getDistributorId($user);
+        if (in_array($user->role, ['hr_manager', 'finance_manager', 'operational_distributor'])) {
+            return [
+                'has_access' => true,
+                'distributor_id' => $distributorId,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        } 
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'ec_procurement') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+        ];
+    }
+
     public function index(Request $request)
     {
         try {
             $user = Auth::user();
-            $query = ProcurementRequest::query();
             
-            if ($user->role === 'distributor') {
-                $query->where('distributor_id', $user->id);
-            } elseif (in_array($user->role, ['operational_distributor', 'employee', 'hr_manager', 'finance_manager'])) {
-                $query->where('requester_id', $user->id);
-            } elseif ($user->role === 'admin') {
-                // Admin can see all requests
-            } else {
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to view procurement requests'
                 ], 403);
+            }
+
+            $query = ProcurementRequest::query();
+            
+            if ($user->role !== 'admin') {
+                $query->where('distributor_id', $accessData['distributor_id']);
             }
             
             // FIX: Changed from has() to filled()
@@ -67,6 +148,7 @@ class ProcurementController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $requests,
+                'permissions' => $accessData['permissions'],
                 'message' => 'Procurement requests retrieved successfully'
             ]);
             
@@ -81,6 +163,12 @@ class ProcurementController extends Controller
     public function supplierProducts(Request $request, $supplierId)
     {
         try {
+            $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
             $products = SupplierRawMaterial::where('user_id', $supplierId)
                 ->where('is_active', true)
                 ->get();
@@ -102,7 +190,12 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            $distributorId = $this->getDistributorId($user);
+            $accessData = $this->checkAccess($user, 'can_create');
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            $distributorId = $accessData['distributor_id'];
 
             $suppliers = SupplierPartner::where('distributor_id', $distributorId)
                 ->where('status', 'active')
@@ -153,14 +246,19 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            $distributorId = $this->getDistributorId($user);
+            $accessData = $this->checkAccess($user, 'can_create');
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized to create requests'], 403);
+            }
+
+            $distributorId = $accessData['distributor_id'];
             
             $validator = Validator::make($request->all(), [
                 'supplier_id' => 'required|exists:users,id',
                 'supplier' => 'required|string|max:255',
                 'items' => 'required|array|min:1',
                 'items.*.id' => 'required|exists:supplier_raw_materials,id',
-                'items.*.quantity' => 'required|integer|min:1|max:5000',
+                'items.*.quantity' => 'required|integer|min:1', // Removed the hard max limit to check DB later
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
                 'shipping_method' => 'nullable|string|in:standard,express,pickup',
@@ -177,6 +275,28 @@ class ProcurementController extends Controller
                 ], 422);
             }
             
+            // DB Specific Validations for min and max orders
+            foreach ($request->items as $item) {
+                $material = SupplierRawMaterial::findOrFail($item['id']);
+                $minOrder = $material->min_order ?? 1;
+                
+                if ($item['quantity'] < $minOrder) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['items' => ["Quantity for {$material->name} must be at least {$minOrder}."]]
+                    ], 422);
+                }
+
+                if (!is_null($material->max_order) && $item['quantity'] > $material->max_order) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['items' => ["Quantity for {$material->name} cannot exceed {$material->max_order}."]]
+                    ], 422);
+                }
+            }
+
             DB::beginTransaction();
             $createdRequests = [];
 
@@ -232,7 +352,9 @@ class ProcurementController extends Controller
             $user = Auth::user();
             $request = ProcurementRequest::with(['requester', 'distributor', 'selectedSupplier'])->findOrFail($id);
             
-            if (!$this->canViewRequest($user, $request)) {
+            $accessData = $this->checkAccess($user, 'can_view');
+            
+            if (!$accessData['has_access'] || ($user->role !== 'admin' && $request->distributor_id !== $accessData['distributor_id'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to view this request'
@@ -259,7 +381,8 @@ class ProcurementController extends Controller
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            if (!$this->canUpdateRequest($user, $procurementRequest)) {
+            $accessData = $this->checkAccess($user, 'can_update');
+            if (!$accessData['has_access'] || ($user->role !== 'admin' && $procurementRequest->distributor_id !== $accessData['distributor_id'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this request'
@@ -268,17 +391,12 @@ class ProcurementController extends Controller
             
             $updatableFields = [];
             
-            if ($user->id === $procurementRequest->requester_id && $procurementRequest->status === 'pending') {
-                $updatableFields = ['delivery_address', 'instructions', 'required_by_date'];
+            if ($procurementRequest->status === 'pending') {
+                $updatableFields = ['delivery_address', 'instructions', 'required_by_date', 'shipping_method'];
             }
             
-            if ($user->id === $procurementRequest->distributor_id) {
-                if ($request->has('status')) {
-                    $procurementRequest->updateStatus($request->status, $request->rejection_reason);
-                }
-                if ($request->has('shipping_method')) {
-                    $updatableFields[] = 'shipping_method';
-                }
+            if ($request->has('status')) {
+                $procurementRequest->updateStatus($request->status, $request->rejection_reason);
             }
             
             foreach ($updatableFields as $field) {
@@ -309,10 +427,11 @@ class ProcurementController extends Controller
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            if ($user->id !== $procurementRequest->requester_id) {
+            $accessData = $this->checkAccess($user, 'can_update');
+            if (!$accessData['has_access'] || ($user->role !== 'admin' && $procurementRequest->distributor_id !== $accessData['distributor_id'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only the requester can cancel this request'
+                    'message' => 'Unauthorized to cancel this request'
                 ], 403);
             }
             
@@ -342,15 +461,17 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_view');
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
             $query = ProcurementRequest::query();
 
-            if ($user->role === 'distributor') {
-                $query->where('distributor_id', $user->id);
-            } elseif (in_array($user->role, ['operational_distributor', 'employee', 'hr_manager', 'finance_manager'])) {
-                $query->where('requester_id', $user->id);
+            if ($user->role !== 'admin') {
+                $query->where('distributor_id', $accessData['distributor_id']);
             }
             
-            // FIX: Changed from has() to filled()
             if ($request->filled('period')) {
                 $period = $request->period;
                 $now = now();
@@ -382,11 +503,8 @@ class ProcurementController extends Controller
                 ->pluck('count', 'priority');
             
             $recentRequests = ProcurementRequest::query()
-                ->when($user->role === 'distributor', function($q) use ($user) {
-                    $q->where('distributor_id', $user->id);
-                })
-                ->when(in_array($user->role, ['operational_distributor', 'employee', 'hr_manager', 'finance_manager']), function($q) use ($user) {
-                    $q->where('requester_id', $user->id);
+                ->when($user->role !== 'admin', function($q) use ($accessData) {
+                    $q->where('distributor_id', $accessData['distributor_id']);
                 })
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
@@ -410,22 +528,6 @@ class ProcurementController extends Controller
                 'message' => 'Failed to retrieve statistics: ' . $e->getMessage()
             ], 500);
         }
-    }
-    
-    private function canViewRequest($user, $request)
-    {
-        if ($user->role === 'admin') return true;
-        if ($user->id === $request->requester_id) return true;
-        if ($user->id === $request->distributor_id) return true;
-        return false;
-    }
-    
-    private function canUpdateRequest($user, $request)
-    {
-        if ($user->role === 'admin') return true;
-        if ($user->id === $request->requester_id && $request->status === 'pending') return true;
-        if ($user->id === $request->distributor_id) return true;
-        return false;
     }
 
     private function getDistributorId($user) {

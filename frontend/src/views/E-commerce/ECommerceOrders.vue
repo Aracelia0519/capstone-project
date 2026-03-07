@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner' // <-- Updated import
 import { 
   Check, 
   Clock, 
@@ -89,8 +89,30 @@ const showConfirmDialog = ref(false)
 const orderToConfirm = ref<Order | null>(null)
 const showMobileSheet = ref(false)
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action: string, callback: Function) => {
+  // Use keyof to satisfy TS typing
+  const permKey = `can_${action}` as keyof typeof permissions.value;
+  
+  if (!permissions.value[permKey]) {
+    toast.error(`Access Denied`, {
+        description: `You do not have permission to ${action} orders.`,
+        duration: 5000
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // --- Computed ---
-// Filter orders to show only those that are 'pending' (incoming)
 const incomingOrders = computed(() => 
   orders.value.filter(order => order.status.toLowerCase() === 'pending')
 )
@@ -98,16 +120,6 @@ const incomingOrders = computed(() =>
 const selectedOrder = computed(() => 
   orders.value.find(o => o.id === selectedOrderId.value)
 )
-
-const statusVariant = (status: string) => {
-  switch(status.toLowerCase()) {
-    case 'pending': return 'default'
-    case 'confirmed': return 'secondary'
-    case 'shipped': return 'outline'
-    case 'delivered': return 'default'
-    default: return 'outline'
-  }
-}
 
 const statusIcon = (status: string) => {
   switch(status.toLowerCase()) {
@@ -124,13 +136,20 @@ const fetchOrders = async () => {
   isLoading.value = true
   error.value = ''
   
-  const toastId = toast.loading('Loading client orders...', {
-    description: 'Please wait while we fetch the latest orders.'
-  })
-  
   try {
     const response = await api.get('/operation-distributor/ecommerce-orders')
-    orders.value = response.data
+    
+    // Handle standardized wrapper response
+    if (response.data.success) {
+      orders.value = response.data.data
+      
+      // Inject permissions for RBAC
+      if (response.data.permissions) {
+          permissions.value = response.data.permissions
+      }
+    } else {
+      orders.value = response.data // Fallback just in case
+    }
     
     // Select first incoming order by default if exists
     if (incomingOrders.value.length > 0 && !selectedOrderId.value) {
@@ -139,18 +158,21 @@ const fetchOrders = async () => {
       selectedOrderId.value = null
     }
     
-    toast.success('Orders loaded successfully', {
-      id: toastId,
-      description: `Found ${incomingOrders.value.length} pending order(s)`
-    })
   } catch (err: any) {
     console.error('Failed to fetch orders', err)
-    error.value = 'Could not load orders. Please try again.'
     
-    toast.error('Failed to load orders', {
-      id: toastId,
-      description: err.response?.data?.message || 'An error occurred while fetching orders'
-    })
+    if (err.response?.status === 403) {
+      error.value = 'Access Denied: You lack permissions to view orders.'
+      toast.error('Access Denied', {
+        description: err.response.data.message || 'You do not have permission to view this page.',
+        duration: 5000
+      })
+    } else {
+      error.value = 'Could not load orders. Please try again.'
+      toast.error('Error', {
+        description: 'An error occurred while fetching orders'
+      })
+    }
   } finally {
     isLoading.value = false
   }
@@ -201,11 +223,20 @@ const confirmOrder = async () => {
     
   } catch (err: any) {
     console.error('Failed to confirm', err)
-    toast.error('Failed to confirm order', {
-      id: toastId,
-      description: err.response?.data?.message || 'An error occurred while confirming the order',
-      duration: 5000
-    })
+    
+    if (err.response?.status === 403) {
+      toast.dismiss(toastId) 
+      toast.error('Action Restricted', {
+        description: err.response.data.message || 'You do not have permission to confirm orders.',
+        duration: 5000
+      })
+    } else {
+      toast.error('Failed to confirm order', {
+        id: toastId,
+        description: err.response?.data?.message || 'An error occurred while confirming the order',
+        duration: 5000
+      })
+    }
   } finally {
     isProcessing.value = false
     orderToConfirm.value = null
@@ -244,7 +275,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col text-gray-100">
+  <div class="flex h-full w-full flex-col text-gray-100 relative">
+    <Toaster richColors position="top-right" expand />
     
     <AlertDialog :open="showConfirmDialog" @update:open="showConfirmDialog = $event">
       <AlertDialogContent class="w-[95%] max-w-md mx-auto rounded-lg bg-gray-900 border-gray-800 text-white">
@@ -417,16 +449,16 @@ onMounted(() => {
                 </CardHeader>
                 <CardContent class="text-sm space-y-3 pt-4">
                   <div class="flex justify-between">
-                      <span class="text-gray-400">Name:</span>
-                      <span class="font-medium text-gray-200">{{ selectedOrder.client_name }}</span>
+                      <span class="text-white-400">Name:</span>
+                      <span class="font-medium text-white-200">{{ selectedOrder.client_name }}</span>
                   </div>
                   <div class="flex justify-between">
-                      <span class="text-gray-400">Contact:</span>
-                      <span class="text-gray-200">{{ selectedOrder.client_phone }}</span>
+                      <span class="text-white-400">Contact:</span>
+                      <span class="text-white-200">{{ selectedOrder.client_phone }}</span>
                   </div>
                   <Separator class="my-3 bg-gray-800" />
                    <div class="flex justify-between items-center">
-                      <span class="text-gray-400">Payment Method:</span>
+                      <span class="text-white-400">Payment Method:</span>
                       <Badge class="bg-gray-800/80 text-gray-300 border-gray-700 uppercase">{{ selectedOrder.payment_method }}</Badge>
                   </div>
                 </CardContent>
@@ -454,17 +486,17 @@ onMounted(() => {
                  <Table>
                     <TableHeader class="bg-transparent border-b border-gray-800">
                        <TableRow class="border-gray-800 hover:bg-transparent">
-                          <TableHead class="text-gray-400">Product</TableHead>
-                          <TableHead class="text-right text-gray-400">Qty</TableHead>
-                          <TableHead class="text-right text-gray-400">Unit Price</TableHead>
-                          <TableHead class="text-right text-gray-400">Total</TableHead>
+                          <TableHead class="text-white">Product</TableHead>
+                          <TableHead class="text-right text-white">Qty</TableHead>
+                          <TableHead class="text-right text-white">Unit Price</TableHead>
+                          <TableHead class="text-right text-white">Total</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
                        <TableRow v-for="item in selectedOrder.items" :key="item.id" class="border-gray-800 hover:bg-gray-800/30">
                           <TableCell>
                              <div class="font-medium text-gray-200">{{ item.name }}</div>
-                             <div class="text-xs text-gray-500">{{ item.category }}</div>
+                             <div class="text-xs text-white">{{ item.category }}</div>
                           </TableCell>
                           <TableCell class="text-right text-gray-300">{{ item.quantity }}</TableCell>
                           <TableCell class="text-right text-gray-300">{{ formatCurrency(item.unit_price) }}</TableCell>
@@ -475,12 +507,12 @@ onMounted(() => {
               </CardContent>
               <CardFooter class="bg-transparent p-5 flex flex-col items-end gap-2 border-t border-gray-800">
                  <div class="flex items-center gap-4 text-sm text-gray-400 w-full md:w-64 justify-between">
-                    <span>Subtotal:</span>
-                    <span>{{ formatCurrency(selectedOrder.total_amount) }}</span>
+                    <span class="text-white">Subtotal:</span>
+                    <span class="text-white">{{ formatCurrency(selectedOrder.total_amount) }}</span>
                  </div>
                  <div class="flex items-center gap-4 text-sm text-gray-400 w-full md:w-64 justify-between">
-                    <span>Shipping Fee:</span>
-                    <span>{{ formatCurrency(selectedOrder.shipping_fee) }}</span>
+                    <span class="text-white">Shipping Fee:</span>
+                    <span class="text-white">{{ formatCurrency(selectedOrder.shipping_fee) }}</span>
                  </div>
                  <Separator class="bg-gray-800 w-full md:w-64 my-1" />
                  <div class="flex items-center gap-4 text-lg font-bold w-full md:w-64 justify-between">
@@ -492,7 +524,7 @@ onMounted(() => {
 
             <div v-if="selectedOrder.status === 'pending'" class="mt-8 flex justify-end">
               <Button 
-                @click="openConfirmDialog(selectedOrder)" 
+                @click="requirePermission('update', () => openConfirmDialog(selectedOrder))" 
                 :disabled="isProcessing"
                 class="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-8"
                 size="lg"
@@ -698,7 +730,7 @@ onMounted(() => {
 
           <div v-if="selectedOrder.status === 'pending'" class="mt-6">
             <Button 
-              @click="openConfirmDialog(selectedOrder)" 
+              @click="requirePermission('update', () => openConfirmDialog(selectedOrder))" 
               :disabled="isProcessing"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white"
               size="lg"

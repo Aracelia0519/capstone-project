@@ -32,7 +32,7 @@
       </nav>
 
       <div class="flex items-center gap-2">
-        <DropdownMenu>
+        <DropdownMenu v-if="user">
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" class="relative h-10 w-10 rounded-full ring-2 ring-slate-100 ring-offset-2">
               <Avatar class="h-8 w-8">
@@ -62,6 +62,15 @@
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <div v-else class="hidden lg:flex items-center gap-2">
+          <Button variant="ghost" as-child class="rounded-xl font-medium">
+            <router-link to="/Landing/logIn">Log In</router-link>
+          </Button>
+          <Button as-child class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20">
+            <router-link to="/Landing/register">Sign Up</router-link>
+          </Button>
+        </div>
+
         <Button variant="ghost" class="lg:hidden p-2" @click="mobileMenuOpen = !mobileMenuOpen">
           <Menu v-if="!mobileMenuOpen" class="w-6 h-6" />
           <X v-else class="w-6 h-6" />
@@ -83,6 +92,15 @@
           {{ item.label }}
         </router-link>
       </Button>
+      
+      <div v-if="!user" class="pt-4 mt-2 border-t space-y-2">
+        <Button variant="outline" as-child class="w-full h-11 rounded-xl">
+          <router-link to="/Landing/logIn" @click="mobileMenuOpen = false">Log In</router-link>
+        </Button>
+        <Button as-child class="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white">
+          <router-link to="/Landing/register" @click="mobileMenuOpen = false">Sign Up</router-link>
+        </Button>
+      </div>
     </div>
 
     <Dialog :open="showLogoutModal" @update:open="showLogoutModal = $event">
@@ -129,7 +147,7 @@ const activeItem = ref('shop')
 const mobileMenuOpen = ref(false)
 const showLogoutModal = ref(false)
 const isLoggingOut = ref(false)
-const cartCount = ref(3)
+const cartCount = ref(0) // You may want to tie this to a store or API for guests/users
 
 const props = defineProps({
   user: {
@@ -140,14 +158,14 @@ const props = defineProps({
 
 const emit = defineEmits(['logout-started', 'logout-finished'])
 
-// Computed properties to show real user data while defaulting to previous values if null
+// Computed properties fallbacks safely handle guest objects
 const displayUserName = computed(() => {
-  if (!props.user) return 'Julian Namoc'
+  if (!props.user) return 'Guest'
   return props.user.name || `${props.user.first_name} ${props.user.last_name}`
 })
 
 const displayUserEmail = computed(() => {
-  return props.user?.email || 'IspyMILK@gmail.com'
+  return props.user?.email || ''
 })
 
 const navItems = [

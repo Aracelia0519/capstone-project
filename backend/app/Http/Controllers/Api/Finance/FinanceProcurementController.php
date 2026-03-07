@@ -12,31 +12,98 @@ use Illuminate\Support\Facades\Validator;
 class FinanceProcurementController extends Controller
 {
     /**
+     * Resolve the distributor ID based on the logged-in user's role.
+     */
+    private function getDistributorId($user)
+    {
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            return $employee ? $employee->parent_distributor_id : null;
+        } elseif (in_array($user->role, ['finance_manager', 'operational_distributor', 'hr_manager'])) {
+            $tableName = $user->role . 's';
+            $staff = DB::table($tableName)->where('user_id', $user->id)->first();
+            return $staff ? $staff->parent_distributor_id : null;
+        } elseif ($user->role === 'distributor') {
+            return $user->id;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Fetch RBAC permissions for the logged-in user.
+     */
+    private function getPermissions($user)
+    {
+        $defaultPermissions = [
+            'can_view' => true,
+            'can_create' => true,
+            'can_update' => true,
+            'can_delete' => true
+        ];
+
+        // Non-employees bypass this specific RBAC check and get full access
+        if ($user->role !== 'employee') {
+            return $defaultPermissions;
+        }
+
+        $noAccess = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if (!$employee) return $noAccess;
+
+        $position = DB::table('positions')
+            ->where('title', $employee->position)
+            ->where('distributor_id', $employee->parent_distributor_id)
+            ->first();
+
+        if (!$position) return $noAccess;
+
+        $access = DB::table('position_accessibilities')
+            ->where('position_id', $position->id)
+            ->where('permission_key', 'finance_procurement')
+            ->first();
+
+        // Check if access row exists and is generally granted
+        if (!$access || !$access->is_granted) return $noAccess;
+
+        return [
+            'can_view' => (bool)$access->can_view,
+            'can_create' => (bool)$access->can_create,
+            'can_update' => (bool)$access->can_update,
+            'can_delete' => (bool)$access->can_delete,
+        ];
+    }
+
+    /**
      * Get all procurement requests for finance manager's distributor
      */
     public function index(Request $request)
     {
         try {
             $user = Auth::user();
-            
-            // Check if user is finance manager by role
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            // Check if user has permission to view
+            if (!$permissions['can_view']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access. Finance manager only.'
+                    'message' => 'Access Denied: You do not have permission to view finance requests.'
                 ], 403);
             }
 
-            // Get finance manager's parent distributor ID from finance_managers table
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             // Get status filter if provided
             $status = $request->get('status', 'pending');
@@ -95,7 +162,8 @@ class FinanceProcurementController extends Controller
                         'rejected_amount' => floatval($statistics->rejected_amount ?? 0),
                         'pending_amount' => floatval($statistics->pending_amount ?? 0),
                     ]
-                ]
+                ],
+                'permissions' => $permissions
             ]);
 
         } catch (\Exception $e) {
@@ -114,25 +182,23 @@ class FinanceProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            
-            // Check if user is finance manager by role
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            // Check if user has permission to view
+            if (!$permissions['can_view']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access. Finance manager only.'
+                    'message' => 'Access Denied: You do not have permission to view finance requests.'
                 ], 403);
             }
 
-            // Get finance manager's parent distributor ID from finance_managers table
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             // Find the request
             $request = ProcurementRequest::with(['requester', 'product'])
@@ -174,12 +240,13 @@ class FinanceProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            
-            // Check if user is finance manager by role
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            // Check if user has permission to update/approve
+            if (!$permissions['can_update']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access. Finance manager only.'
+                    'message' => 'Access Denied: You do not have permission to approve finance requests.'
                 ], 403);
             }
 
@@ -196,16 +263,13 @@ class FinanceProcurementController extends Controller
                 ], 422);
             }
 
-            // Get finance manager's parent distributor ID
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             // Find the request
             $procurementRequest = ProcurementRequest::where('distributor_id', $distributorId)
@@ -263,12 +327,13 @@ class FinanceProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            
-            // Check if user is finance manager by role
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            // Check if user has permission to update/reject
+            if (!$permissions['can_update']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access. Finance manager only.'
+                    'message' => 'Access Denied: You do not have permission to reject finance requests.'
                 ], 403);
             }
 
@@ -285,16 +350,13 @@ class FinanceProcurementController extends Controller
                 ], 422);
             }
 
-            // Get finance manager's parent distributor ID
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             // Find the request
             $procurementRequest = ProcurementRequest::where('distributor_id', $distributorId)
@@ -344,25 +406,22 @@ class FinanceProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            
-            // Check if user is finance manager by role
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_view']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access. Finance manager only.'
+                    'message' => 'Access Denied.'
                 ], 403);
             }
 
-            // Get finance manager's parent distributor ID
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             // FIX: Get monthly statistics based on timestamps
             $monthlyStats = ProcurementRequest::select(
@@ -442,23 +501,22 @@ class FinanceProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            
-            if ($user->role !== 'finance_manager') {
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_view']) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized access.'
+                    'message' => 'Access Denied.'
                 ], 403);
             }
 
-            $financeManager = $user->financeManager;
-            if (!$financeManager) {
+            $distributorId = $this->getDistributorId($user);
+            if (!$distributorId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Finance manager record not found.'
+                    'message' => 'Distributor record not found.'
                 ], 404);
             }
-
-            $distributorId = $financeManager->parent_distributor_id;
 
             $counts = ProcurementRequest::select(
                 DB::raw('COUNT(*) as total'),

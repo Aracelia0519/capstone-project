@@ -26,14 +26,35 @@ use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
-// Public routes
+// ==========================================
+// PUBLIC ROUTES (Accessible by Guests)
+// ==========================================
+
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/check-email', [AuthController::class, 'checkEmail']);
 });
 
-// Protected routes (require authentication)
+// Public E-Commerce Client Routes - Shop
+Route::prefix('client/shop')->group(function () {
+    Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
+    Route::get('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'index']); // Public so guests don't get 401
+});
+
+// Public E-Commerce Client Routes - Services
+Route::prefix('client/services')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'getServices']);
+});
+
+// Public E-Commerce Client Routes - Orders (Allows Guests to fetch safely)
+Route::get('/client/orders', [ECommerceOrderController::class, 'index']);
+
+
+// ==========================================
+// PROTECTED ROUTES (Requires Authentication)
+// ==========================================
+
 Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::prefix('auth')->group(function () {
@@ -70,7 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/password', [UserController::class, 'updatePassword']);
     });
 
-    // Client Requirements - ID Verification & Ecommerce Shop
+    // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
         // -----------------------------------------------------
         // CHATS: galing sa selected Servive Provider ng Client
@@ -99,25 +120,21 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // -----------------------------------------------------
-        // ECOMMERCE SERVICES: galing sa Ecommerce ng Client
+        // ECOMMERCE SERVICES: Actions requiring Auth
         // -----------------------------------------------------
         Route::prefix('services')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'getServices']);
             Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
-
             Route::get('/my-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'index']);
         });
 
         // E-Commerce Client Shop & Cart Routes
         Route::prefix('shop')->group(function () {
-            // Shop Endpoints
-            Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
+            // Protected Shop Endpoints (Actions)
             Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
             Route::post('/cart', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'addToCart']);
             Route::post('/order-now', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'orderNow']);
 
-            // Cart Management Endpoints
-            Route::get('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'index']);
+            // Cart Management Endpoints (Actions)
             Route::put('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'update']);
             Route::delete('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'destroy']);
             Route::delete('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'clear']);
@@ -130,10 +147,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/colors/{id}', [\App\Http\Controllers\Api\Client\ColorController::class, 'deleteColor']);
         Route::post('/colors/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ColorController::class, 'toggleFavorite']);
         Route::get('/color-stats', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColorStats']);
+        
+        // E-Commerce Protected Order Actions
+        Route::post('/orders/reviews', [ECommerceOrderController::class, 'submitReview']);
     });
 
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
+
+        // -----------------------------------------------------
+        // SERVICE PROVIDER PAYMENT SETTINGS SHITS
+        // -----------------------------------------------------
+        Route::prefix('payment-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SPPaymentSettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\ServiceProvider\SPPaymentSettingController::class, 'update']);
+        });
 
         // -----------------------------------------------------
         // Chat to between Client and Service Provider
@@ -444,6 +472,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/sidebar-access', [\App\Http\Controllers\Api\Supplier\SupplierSidebarController::class, 'getSidebarAccess']);
 
+        // -----------------------------------------------------
+        //  SUPPLIER PAYMENT SETTINGS SHITS DAMN
+        // -----------------------------------------------------
+        Route::prefix('payment-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierPaymentSettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Supplier\SupplierPaymentSettingController::class, 'update']);
+        });
+
         Route::prefix('personnel-officers')->group(function () {
             Route::post('/', [PersonnelOfficerController::class, 'store']);
         });
@@ -502,7 +538,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'index']);
         Route::post('/{id}/start', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'arrive']);
-        Route::post('/{id}/remit', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'remit']); // Added this
+        Route::post('/{id}/remit', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'remit']); 
     });
 
     Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
@@ -519,7 +555,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'index']);
         Route::post('/{id}/start', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'arrive']);
-        Route::post('/{id}/remit', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'remit']); // ADDED THIS
+        Route::post('/{id}/remit', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'remit']); 
     });
 
     Route::prefix('operation-distributor')->group(function () {
@@ -529,10 +565,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);
 
         // -----------------------------------------------------
-        //  ECOMMERCE PAYMENTS(operational distributor part men)
+        //  ECOMMERCE PAYMENTS (Operational Distributor)
         // -----------------------------------------------------
         Route::prefix('payments')->group(function () {
             Route::get('/', [PaymentManagementController::class, 'index']);
+        });
+
+        // -----------------------------------------------------
+        //  ECOMMERCE PAYMENT SETTINGS (Merged in PaymentManagementController)
+        // -----------------------------------------------------
+        Route::prefix('payment-settings')->group(function () {
+            Route::get('/', [PaymentManagementController::class, 'getSettings']);
+            Route::put('/', [PaymentManagementController::class, 'updateSettings']);
         });
 
         // -------------------------------------------------------------
@@ -572,9 +616,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     });
 
-    Route::get('/client/orders', [ECommerceOrderController::class, 'index']);
-    Route::post('/client/orders/reviews', [ECommerceOrderController::class, 'submitReview']);
-
     Route::prefix('crm')->group(function () {
         Route::get('/promotions', [\App\Http\Controllers\Api\CRM\PromotionController::class, 'index']);
         Route::post('/promotions', [\App\Http\Controllers\Api\CRM\PromotionController::class, 'store']);
@@ -586,6 +627,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/approve', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'approve']);
         Route::post('/{id}/reject', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'reject']);
     });
-
     
 });

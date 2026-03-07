@@ -87,11 +87,32 @@ class SpecialRBACSidebarController extends Controller
                     'title' => 'Operations (OD)',
                     'items' => [
                         ['name' => 'Dashboard', 'path' => '/special-rbac/ECDashboard', 'icon' => 'Activity', 'permissionKey' => 'ec_dashboard'],
+                        ['name' => 'OD Reports', 'path' => '/special-rbac/ECReports', 'icon' => 'FileBarChart', 'permissionKey' => 'ec_reports'],
+                        
+                        // Procurement & Inventory
                         ['name' => 'Procurement', 'path' => '/special-rbac/ECProcurement', 'icon' => 'PackagePlus', 'permissionKey' => 'ec_procurement'],
+                        ['name' => 'Process Request', 'path' => '/special-rbac/ECProcessProcurement', 'icon' => 'FileText', 'permissionKey' => 'ec_process_procurement'],
+                        ['name' => 'Track Procurement', 'path' => '/special-rbac/ECPTrackProcurement', 'icon' => 'Truck', 'permissionKey' => 'ec_track_procurement'],
+                        ['name' => 'Arrived Items', 'path' => '/special-rbac/ECArrivedItem', 'icon' => 'CheckCircle', 'permissionKey' => 'ec_arrived_item'],
                         ['name' => 'Inventory', 'path' => '/special-rbac/ECInventory', 'icon' => 'Boxes', 'permissionKey' => 'ec_inventory'],
+                        ['name' => 'Categories', 'path' => '/special-rbac/ECCategories', 'icon' => 'FileText', 'permissionKey' => 'ec_categories'],
+                        
+                        // Orders & Fulfillment
                         ['name' => 'Orders', 'path' => '/special-rbac/ECOrders', 'icon' => 'ShoppingBag', 'permissionKey' => 'ec_orders'],
+                        ['name' => 'Prepare Order', 'path' => '/special-rbac/ECPrepareOrder', 'icon' => 'PackagePlus', 'permissionKey' => 'ec_prepare_order'],
                         ['name' => 'Delivery', 'path' => '/special-rbac/ECDelivery', 'icon' => 'Truck', 'permissionKey' => 'ec_delivery'],
-                        // Include others below if needed for sidebar display
+                        ['name' => 'Returns', 'path' => '/special-rbac/ECReturns', 'icon' => 'ArrowLeftRight', 'permissionKey' => 'ec_returns'],
+                        
+                        // Network & Marketing
+                        ['name' => 'Partner Supplier', 'path' => '/special-rbac/ECPartnerSupplier', 'icon' => 'Building2', 'permissionKey' => 'ec_partner_supplier'],
+                        ['name' => 'Service Providers', 'path' => '/special-rbac/ECServiceProvider', 'icon' => 'Users', 'permissionKey' => 'ec_service_provider'],
+                        ['name' => 'Messages', 'path' => '/special-rbac/ECMessages', 'icon' => 'FileText', 'permissionKey' => 'ec_messages'],
+                        ['name' => 'Reviews', 'path' => '/special-rbac/ECReviews', 'icon' => 'CheckCircle', 'permissionKey' => 'ec_reviews'],
+                        ['name' => 'Promotions', 'path' => '/special-rbac/ECPromotions', 'icon' => 'Activity', 'permissionKey' => 'ec_promotions'],
+                        ['name' => 'Promo Approval', 'path' => '/special-rbac/ECPromoApproval', 'icon' => 'CheckCircle', 'permissionKey' => 'ec_promo_approval'],
+                        
+                        // Financial
+                        ['name' => 'Payments', 'path' => '/special-rbac/ECPayment', 'icon' => 'CreditCard', 'permissionKey' => 'ec_payment'],
                     ]
                 ]
             ];

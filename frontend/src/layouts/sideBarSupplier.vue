@@ -272,7 +272,7 @@ const navigation = [
     title: 'Financials',
     items: [
       { name: 'Invoices', path: '/supplier/Invoices', icon: FileText, color: 'text-cyan-400', requiresVerify: true },
-      { name: 'Payments', path: '/supplier/Payments', icon: Wallet, color: 'text-green-400', requiresVerify: true }
+      { name: 'Payments', path: '/supplier/SupplierPayments', icon: Wallet, color: 'text-green-400', requiresVerify: true }
     ]
   },
 ]

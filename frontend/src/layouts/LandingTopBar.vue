@@ -90,7 +90,8 @@ const navItems = [
   { id: 'home', label: 'Home', route: '/Landing/homeLanding' },
   { id: 'how-it-works', label: 'How It Works', route: '/Landing/HowItWorks' },
   { id: 'explore-colors', label: 'Explore Colors', route: '/Landing/exploreColors' },
-  { id: 'services', label: 'Services', route: '/Landing/servicesLanding' }
+  { id: 'services', label: 'Services', route: '/Landing/servicesLanding' },
+  { id: 'ecommerce', label: 'E-Commerce', route: '/ECommerceClient/EccommerceShop' }
 ]
 
 const navigateTo = (route) => {

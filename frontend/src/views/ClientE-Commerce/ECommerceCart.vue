@@ -219,6 +219,32 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+      </transition>
+      
+      <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Authentication Required
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
+              You must be logged in to manage your cart and proceed to checkout. Please log in or create an account to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">
+              Log In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Teleport>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCheckoutModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
             <div v-if="isCheckoutModalOpen" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5">
@@ -359,7 +385,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
@@ -379,6 +405,13 @@ import {
 
 const router = useRouter()
 
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
+
 // State
 const cartItems = ref([])
 const isLoading = ref(true)
@@ -386,6 +419,7 @@ const isUpdating = ref(false)
 const isProcessing = ref(false)
 
 // Modal & Form States
+const isAuthAlertOpen = ref(false)
 const isCheckoutModalOpen = ref(false)
 const isCheckoutAlertOpen = ref(false)
 const addressMode = ref('default')
@@ -521,6 +555,11 @@ const clearCart = async () => {
 
 // Checkout Flow
 const openCheckoutModal = () => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+  
   if (cartItems.value.length === 0) {
     toast.error('Your cart is empty. Add some items to proceed.')
     return

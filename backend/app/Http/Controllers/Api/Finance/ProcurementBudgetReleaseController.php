@@ -12,12 +12,94 @@ use Illuminate\Support\Facades\DB;
 class ProcurementBudgetReleaseController extends Controller
 {
     /**
+     * Resolve the distributor ID based on the logged-in user's role.
+     */
+    private function getDistributorId($user)
+    {
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            return $employee ? $employee->parent_distributor_id : null;
+        } elseif (in_array($user->role, ['finance_manager', 'operational_distributor', 'hr_manager'])) {
+            $tableName = $user->role . 's';
+            $staff = DB::table($tableName)->where('user_id', $user->id)->first();
+            return $staff ? $staff->parent_distributor_id : null;
+        } elseif ($user->role === 'distributor') {
+            return $user->id;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Fetch RBAC permissions for the logged-in user.
+     */
+    private function getPermissions($user)
+    {
+        $defaultPermissions = [
+            'can_view' => true,
+            'can_create' => true,
+            'can_update' => true,
+            'can_delete' => true
+        ];
+
+        // Non-employees bypass this specific RBAC check and get full access
+        if ($user->role !== 'employee') {
+            return $defaultPermissions;
+        }
+
+        $noAccess = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if (!$employee) return $noAccess;
+
+        $position = DB::table('positions')
+            ->where('title', $employee->position)
+            ->where('distributor_id', $employee->parent_distributor_id)
+            ->first();
+
+        if (!$position) return $noAccess;
+
+        $access = DB::table('position_accessibilities')
+            ->where('position_id', $position->id)
+            ->where('permission_key', 'finance_budget_release')
+            ->first();
+
+        // Check if access row exists and is generally granted
+        if (!$access || !$access->is_granted) return $noAccess;
+
+        return [
+            'can_view' => (bool)$access->can_view,
+            'can_create' => (bool)$access->can_create,
+            'can_update' => (bool)$access->can_update,
+            'can_delete' => (bool)$access->can_delete,
+        ];
+    }
+
+    /**
      * Fetch procurement requests that are 'd-approved' (Distributor Approved) or 'ready'
      */
     public function index(Request $request)
     {
-        // Fetches requests for all users since the prompt requested "make sure all users logged in can manage"
+        $user = Auth::user();
+        $permissions = $this->getPermissions($user);
+
+        if (!$permissions['can_view']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access Denied: You do not have permission to view budget releases.'
+            ], 403);
+        }
+
+        $distributorId = $this->getDistributorId($user);
+
+        // Fetches requests mapped to the authorized distributor
         $requests = ProcurementRequest::with(['requester', 'distributor'])
+            ->where('distributor_id', $distributorId)
             ->whereIn('status', ['d-approved', 'ready'])
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -49,7 +131,11 @@ class ProcurementBudgetReleaseController extends Controller
             ];
         });
 
-        return response()->json($formatted);
+        return response()->json([
+            'success' => true,
+            'data' => $formatted,
+            'permissions' => $permissions
+        ]);
     }
 
     /**
@@ -58,6 +144,15 @@ class ProcurementBudgetReleaseController extends Controller
     public function approve(Request $request, $id)
     {
         try {
+            $user = Auth::user();
+            $permissions = $this->getPermissions($user);
+
+            if (!$permissions['can_update']) {
+                return response()->json([
+                    'message' => 'Access Denied: You do not have permission to approve budget releases.'
+                ], 403);
+            }
+
             DB::beginTransaction();
 
             $procurement = ProcurementRequest::findOrFail($id);
@@ -95,6 +190,15 @@ class ProcurementBudgetReleaseController extends Controller
      */
     public function reject(Request $request, $id)
     {
+        $user = Auth::user();
+        $permissions = $this->getPermissions($user);
+
+        if (!$permissions['can_update']) {
+            return response()->json([
+                'message' => 'Access Denied: You do not have permission to reject budget releases.'
+            ], 403);
+        }
+
         $request->validate([
             'reason' => 'required|string|max:500'
         ]);

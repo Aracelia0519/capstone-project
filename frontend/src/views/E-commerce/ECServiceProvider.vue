@@ -1,5 +1,7 @@
 <template>
-  <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen text-slate-200">
+  <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen text-slate-200 relative">
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
@@ -267,14 +269,14 @@
               <Button 
                 variant="outline" 
                 class="w-full sm:w-auto border-red-900/50 bg-red-950/20 text-red-400 hover:bg-red-900/40 hover:text-red-300"
-                @click="initiateReject"
+                @click="requirePermission('update', initiateReject)"
               >
                 <X class="mr-2 h-4 w-4" />
                 Decline
               </Button>
               <Button 
                 class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
-                @click="initiateApprove"
+                @click="requirePermission('update', initiateApprove)"
                 :disabled="!agreedToTerms"
               >
                 <Check class="mr-2 h-4 w-4" />
@@ -356,7 +358,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner' // Added Toaster
 import api from '@/utils/axios'
 import { 
   Loader2, RefreshCw, Search, Eye, Check, X,
@@ -391,6 +393,29 @@ const showRejectDialog = ref(false)
 // Selection & Forms
 const selectedRequest = ref(null)
 const rejectReason = ref('')
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  const permKey = `can_${action}`
+  
+  if (!permissions.value[permKey]) {
+    toast.error(`Access Denied`, {
+        description: `You do not have permission to ${action} service provider requests.`,
+        duration: 5000,
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+    });
+    return;
+  }
+  if (callback) callback();
+}
 
 // Filter logic: Only display pending requests in the table
 const filteredRequests = computed(() => {
@@ -429,10 +454,21 @@ const fetchData = async () => {
     const response = await api.get('/operation-distributor/service-provider-requests')
     if (response.data.success) {
       requests.value = response.data.data
+      
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      }
     }
   } catch (error) {
     console.error(error)
-    toast.error('Failed to load data', { description: 'Check your internet connection.' })
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', {
+         description: error.response.data.message || 'You lack permissions to view these requests.',
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+      })
+    } else {
+      toast.error('Failed to load data', { description: 'Check your internet connection.' })
+    }
   } finally {
     loading.value = false
   }
@@ -491,7 +527,11 @@ const confirmApprove = async () => {
     }
   } catch (error) {
     console.error(error)
-    toast.error('Approval failed', { description: error.response?.data?.message || 'An error occurred.' })
+    if (error.response?.status === 403) {
+      toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to approve.' })
+    } else {
+      toast.error('Approval failed', { description: error.response?.data?.message || 'An error occurred.' })
+    }
   } finally {
     isProcessing.value = false
   }
@@ -526,7 +566,11 @@ const submitReject = async () => {
     }
   } catch (error) {
     console.error(error)
-    toast.error('Failed to reject proposal', { description: error.response?.data?.message || 'An error occurred.' })
+    if (error.response?.status === 403) {
+      toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to decline.' })
+    } else {
+      toast.error('Failed to reject proposal', { description: error.response?.data?.message || 'An error occurred.' })
+    }
   } finally {
     isProcessing.value = false
   }

@@ -13,12 +13,76 @@ use Illuminate\Support\Facades\DB;
 class PartnerSupplierController extends Controller
 {
     /**
+     * Retrieves the specific permissions for a user on a given module.
+     */
+    private function getPermissions($user, $permissionKey)
+    {
+        $defaults = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        // Main distributors and head operational distributors automatically have full access
+        if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
+            return [
+                'can_view' => true,
+                'can_create' => true,
+                'can_update' => true,
+                'can_delete' => true
+            ];
+        }
+
+        // Check RBAC for standard employees
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            if (!$employee) return $defaults;
+
+            $position = DB::table('positions')
+                ->where('title', $employee->position)
+                ->where('distributor_id', $employee->parent_distributor_id)
+                ->first();
+            if (!$position) return $defaults;
+
+            $access = DB::table('position_accessibilities')
+                ->where('position_id', $position->id)
+                ->where('permission_key', $permissionKey)
+                ->first();
+
+            if ($access) {
+                return [
+                    'can_view' => (bool) $access->can_view,
+                    'can_create' => (bool) $access->can_create,
+                    'can_update' => (bool) $access->can_update,
+                    'can_delete' => (bool) $access->can_delete,
+                ];
+            }
+        }
+
+        return $defaults;
+    }
+
+    private function checkRbacAccess($user, $permissionKey, $action)
+    {
+        $permissions = $this->getPermissions($user, $permissionKey);
+        return $permissions[$action] ?? false;
+    }
+
+    /**
      * Display a listing of suppliers available for partnership.
      */
     public function index()
     {
         try {
             $user = Auth::user();
+
+            // Get permissions and check RBAC Read Access using 'ec_partner_supplier'
+            $permissions = $this->getPermissions($user, 'ec_partner_supplier');
+            
+            if (!$permissions['can_view']) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to view partner suppliers.'], 403);
+            }
 
             // Determine the Parent Distributor ID
             $distributorId = null;
@@ -29,7 +93,7 @@ class PartnerSupplierController extends Controller
                     $distributorId = $opDist->parent_distributor_id;
                 }
             } elseif ($user->role === 'employee') {
-                // NEW: Logic for Employee
+                // Logic for Employee
                 $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
                 if ($employee) {
                     $distributorId = $employee->parent_distributor_id;
@@ -103,7 +167,8 @@ class PartnerSupplierController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $suppliers
+                'data' => $suppliers,
+                'permissions' => $permissions // Send permissions back to frontend
             ]);
 
         } catch (\Exception $e) {
@@ -119,6 +184,11 @@ class PartnerSupplierController extends Controller
      */
     public function store(Request $request)
     {
+        // Hard backend RBAC check for creating requests
+        if (!$this->checkRbacAccess($request->user(), 'ec_partner_supplier', 'can_create')) {
+            return response()->json(['message' => 'Access Denied: You do not have permission to request partnerships.'], 403);
+        }
+
         $request->validate([
             'supplier_id' => 'required|exists:users,id',
             'message' => 'nullable|string'
@@ -136,7 +206,7 @@ class PartnerSupplierController extends Controller
                     $distributorId = $opDist->parent_distributor_id;
                 }
             } elseif ($user->role === 'employee') {
-                // NEW: Logic for Employee
+                // Logic for Employee
                 $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
                 if ($employee) {
                     $distributorId = $employee->parent_distributor_id;

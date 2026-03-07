@@ -7,6 +7,11 @@
           <p class="text-gray-300">Manage customer payments securely and efficiently</p>
         </div>
         <div class="mt-4 md:mt-0 flex space-x-3">
+          <Button @click="openSettings" class="bg-gray-800 text-white border border-gray-700 hover:bg-gray-700">
+            <Settings class="w-5 h-5 mr-2" />
+            Payment Settings
+          </Button>
+
           <Button class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 hover:opacity-90">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2 -2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -108,10 +113,10 @@
                 <SelectTrigger class="bg-gray-800 border-gray-700 text-white">
                   <SelectValue placeholder="All Methods" />
                 </SelectTrigger>
-                <SelectContent class="bg-gray-800 border-gray-700 text-white">
+                <SelectContent class="bg-gray-800 border-gray-700 text-white z-[9999]">
                   <SelectItem value="all_methods_placeholder">All Methods</SelectItem>
                   <SelectItem value="COD">COD</SelectItem>
-                  <SelectItem value="GCash" disabled>GCash</SelectItem>
+                  <SelectItem value="GCash">GCash</SelectItem>
                   <SelectItem value="Bank Transfer" disabled>Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
@@ -122,7 +127,7 @@
                 <SelectTrigger class="bg-gray-800 border-gray-700 text-white">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
-                <SelectContent class="bg-gray-800 border-gray-700 text-white">
+                <SelectContent class="bg-gray-800 border-gray-700 text-white z-[9999]">
                   <SelectItem value="all_status_placeholder">All Status</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
@@ -137,7 +142,7 @@
                 <SelectTrigger class="bg-gray-800 border-gray-700 text-white">
                   <SelectValue placeholder="All Time" />
                 </SelectTrigger>
-                <SelectContent class="bg-gray-800 border-gray-700 text-white">
+                <SelectContent class="bg-gray-800 border-gray-700 text-white z-[9999]">
                   <SelectItem value="all_time_placeholder">All Time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="week">This Week</SelectItem>
@@ -190,7 +195,7 @@
                   <div class="flex items-center">
                     <div :class="[
                       'w-8 h-8 rounded-lg mr-3 flex items-center justify-center',
-                      methodColors[payment.method]
+                      methodColors[payment.method] || methodColors['COD']
                     ]">
                       <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path v-if="payment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -257,7 +262,7 @@
     </div>
 
     <Dialog :open="!!selectedPayment" @update:open="(val) => !val && (selectedPayment = null)">
-      <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-2xl">
+      <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-2xl z-[9999]">
         <DialogHeader class="border-b border-gray-800 pb-4">
           <DialogTitle>Payment Details</DialogTitle>
           <p class="text-gray-400" v-if="selectedPayment">{{ selectedPayment.paymentId }}</p>
@@ -282,7 +287,7 @@
                     <div class="flex items-center">
                       <div :class="[
                         'w-6 h-6 rounded mr-2 flex items-center justify-center',
-                        methodColors[selectedPayment.method]
+                        methodColors[selectedPayment.method] || methodColors['COD']
                       ]">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path v-if="selectedPayment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -351,12 +356,75 @@
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog :open="isSettingsModalOpen" @update:open="(val) => !val && (isSettingsModalOpen = false)">
+      <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-md z-[9999]">
+        <DialogHeader class="border-b border-gray-800 pb-4">
+          <DialogTitle>Payment Settings</DialogTitle>
+          <p class="text-gray-400 text-sm mt-1">Configure available payment methods for your customers.</p>
+        </DialogHeader>
+
+        <div class="space-y-6 py-4">
+          <div class="flex items-center justify-between bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+            <div>
+              <h4 class="font-medium text-white">Cash on Delivery (COD)</h4>
+              <p class="text-sm text-gray-400">Allow customers to pay upon receiving the order.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+              <input type="checkbox" v-model="settingsForm.is_cod_enabled" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+
+          <div class="space-y-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-medium text-white">GCash Payment</h4>
+                <p class="text-sm text-gray-400">Accept payments via GCash direct transfer.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                <input type="checkbox" v-model="settingsForm.is_gcash_enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+
+            <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
+              <div v-if="settingsForm.is_gcash_enabled" class="space-y-2 pt-2 border-t border-gray-700">
+                <Label class="text-gray-300">GCash Mobile Number <span class="text-red-500">*</span></Label>
+                <Input type="text" v-model="settingsForm.gcash_number" placeholder="e.g. 09123456789"
+                       class="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
+                <p class="text-xs text-amber-500 mt-1 italic">Make sure this number is active and accepts incoming GCash transfers.</p>
+              </div>
+            </transition>
+          </div>
+        </div>
+
+        <div class="flex justify-end space-x-3 mt-2 pt-4 border-t border-gray-800">
+          <Button variant="outline" @click="isSettingsModalOpen = false"
+                 class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">
+            Cancel
+          </Button>
+          <Button @click="saveSettings" :disabled="isSavingSettings"
+                 class="bg-emerald-600 text-white border-0 hover:bg-emerald-500">
+            <svg v-if="isSavingSettings" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Save Settings
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
+import { toast } from 'vue-sonner'
+import { Settings } from 'lucide-vue-next'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -394,6 +462,15 @@ const selectedStatus = ref('')
 const dateRange = ref('')
 const selectedPayment = ref(null)
 
+// Settings Modal State
+const isSettingsModalOpen = ref(false)
+const isSavingSettings = ref(false)
+const settingsForm = ref({
+  is_cod_enabled: true,
+  is_gcash_enabled: false,
+  gcash_number: ''
+})
+
 const statusClasses = {
   'Completed': 'bg-green-500/20 text-green-300',
   'Pending': 'bg-amber-500/20 text-amber-300',
@@ -420,6 +497,50 @@ const fetchPayments = async () => {
     console.error("Error fetching payment data:", error)
   } finally {
     isLoading.value = false
+  }
+}
+
+// Fetch Payment Settings
+const fetchPaymentSettings = async () => {
+  try {
+    const response = await api.get('/operation-distributor/payment-settings')
+    if (response.data.success && response.data.data) {
+      settingsForm.value = {
+        is_cod_enabled: !!response.data.data.is_cod_enabled,
+        is_gcash_enabled: !!response.data.data.is_gcash_enabled,
+        gcash_number: response.data.data.gcash_number || ''
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching payment settings:", error)
+  }
+}
+
+// Modal Toggle Handlers
+const openSettings = () => {
+  fetchPaymentSettings()
+  isSettingsModalOpen.value = true
+}
+
+const saveSettings = async () => {
+  // Simple validation
+  if (settingsForm.value.is_gcash_enabled && !settingsForm.value.gcash_number?.trim()) {
+    toast.error("Please enter a GCash Mobile Number.")
+    return
+  }
+
+  isSavingSettings.value = true
+  try {
+    const response = await api.put('/operation-distributor/payment-settings', settingsForm.value)
+    if (response.data.success) {
+      toast.success("Payment Settings Updated!")
+      isSettingsModalOpen.value = false
+    }
+  } catch (error) {
+    console.error("Error saving settings:", error)
+    toast.error(error.response?.data?.message || "Failed to update settings.")
+  } finally {
+    isSavingSettings.value = false
   }
 }
 

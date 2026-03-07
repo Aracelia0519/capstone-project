@@ -12,7 +12,7 @@ import {
   CreditCard,
   Wallet
 } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -79,6 +79,25 @@ const paymentForm = ref({
   notes: ''
 })
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} payroll disbursements.`
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // --- API Calls ---
 const fetchPayrolls = async () => {
   isLoading.value = true
@@ -93,9 +112,17 @@ const fetchPayrolls = async () => {
     })
     
     payrollRequests.value = response.data.data
+
+    if (response.data.permissions) {
+      permissions.value = response.data.permissions
+    }
   } catch (error) {
-    console.error("Fetch Error:", error)
-    toast.error('Failed to fetch payroll requests')
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', { description: 'You do not have permission to view disbursements.' })
+    } else {
+      console.error("Fetch Error:", error)
+      toast.error('Failed to fetch payroll requests')
+    }
   } finally {
     isLoading.value = false
   }
@@ -173,10 +200,16 @@ const executePayment = async () => {
     fetchPayrolls() 
 
   } catch (error) {
-    console.error(error)
-    toast.error('Payment Processing Failed', {
-      description: error.response?.data?.message || 'An error occurred while communicating with the server.'
-    })
+    if (error.response?.status === 403) {
+      toast.error('Action Not Allowed', {
+        description: 'You do not have permission to process payments.'
+      })
+    } else {
+      console.error(error)
+      toast.error('Payment Processing Failed', {
+        description: error.response?.data?.message || 'An error occurred while communicating with the server.'
+      })
+    }
     isAlertOpen.value = false // Close alert so they can try again or fix input
   } finally {
     isProcessing.value = false
@@ -191,6 +224,8 @@ onMounted(() => {
 <template>
   <div class="flex flex-col gap-6 p-6 bg-slate-50/50 min-h-screen">
     
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Payroll Disbursement</h1>
@@ -343,7 +378,7 @@ onMounted(() => {
                     v-if="payroll.status.toLowerCase() === 'approved'" 
                     size="sm" 
                     class="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                    @click="openPaymentDialog(payroll)"
+                    @click="requirePermission('update', () => openPaymentDialog(payroll))"
                   >
                     Pay Now
                   </Button>

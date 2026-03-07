@@ -319,7 +319,7 @@
                 
                 <div class="flex space-x-4">
                   <Button 
-                    @click="approveRequest"
+                    @click="requirePermission('update', approveRequest)"
                     :disabled="processing"
                     class="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   >
@@ -333,7 +333,7 @@
                     {{ processing ? 'Processing...' : 'Approve Request' }}
                   </Button>
                   <Button 
-                    @click="rejectRequest"
+                    @click="requirePermission('update', rejectRequest)"
                     :disabled="processing"
                     class="flex-1 bg-red-600 hover:bg-red-700 text-white"
                   >
@@ -490,6 +490,25 @@ const page = ref(1);
 const hasMore = ref(true);
 const loadingMore = ref(false);
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+});
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} finance requests.`
+    });
+    return;
+  }
+  if (callback) callback();
+};
+
 // Functions
 const fetchData = async (append = false) => {
   if (append) {
@@ -519,14 +538,22 @@ const fetchData = async (append = false) => {
       statistics.value = response.data.data.statistics;
       statistics.value.total_requests = statistics.value.approved + statistics.value.rejected + statistics.value.pending;
 
+      if (response.data.permissions) {
+          permissions.value = response.data.permissions;
+      }
+
       // Check if we have more pages (Simple check: if we got no data, assume end)
       if (newRequests.length === 0) {
           hasMore.value = false;
       }
     }
   } catch (error) {
-    console.error('Error fetching procurement requests:', error);
-    toast.error('Error', { description: 'Failed to load procurement requests.' });
+    if (error.response?.status === 403) {
+      toast.error('Unauthorized', { description: 'Access to finance procurement is restricted.' });
+    } else {
+      console.error('Error fetching procurement requests:', error);
+      toast.error('Error', { description: 'Failed to load procurement requests.' });
+    }
   } finally {
     loading.value = false;
     loadingMore.value = false;
@@ -560,8 +587,12 @@ const selectRequest = async (id) => {
       budgetInfo.value = response.data.data.budget_info;
     }
   } catch (error) {
-    console.error('Error fetching request details:', error);
-    toast.error('Error', { description: 'Failed to load request details.' });
+    if (error.response?.status === 403) {
+      toast.error('Unauthorized', { description: 'You do not have permission to view this request.' });
+    } else {
+      console.error('Error fetching request details:', error);
+      toast.error('Error', { description: 'Failed to load request details.' });
+    }
   } finally {
     detailsLoading.value = false;
   }
@@ -587,8 +618,12 @@ const approveRequest = async () => {
       comments.value = '';
     }
   } catch (error) {
-    console.error('Error approving request:', error);
-     toast.error('Error', { description: 'Failed to approve request.' });
+    if (error.response?.status === 403) {
+      toast.error('Action Not Allowed', { description: 'You do not have permission to approve requests.' });
+    } else {
+      console.error('Error approving request:', error);
+      toast.error('Error', { description: 'Failed to approve request.' });
+    }
   } finally {
     processing.value = false;
   }
@@ -619,8 +654,12 @@ const rejectRequest = async () => {
       comments.value = '';
     }
   } catch (error) {
-    console.error('Error rejecting request:', error);
-    toast.error('Error', { description: 'Failed to reject request.' });
+    if (error.response?.status === 403) {
+      toast.error('Action Not Allowed', { description: 'You do not have permission to reject requests.' });
+    } else {
+      console.error('Error rejecting request:', error);
+      toast.error('Error', { description: 'Failed to reject request.' });
+    }
   } finally {
     processing.value = false;
   }

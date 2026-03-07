@@ -1,6 +1,37 @@
 <template>
   <div class="procurement-fulfillment min-h-screen p-4 md:p-6 text-gray-100">
-    <Toaster position="top-right" theme="dark" />
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',          // slightly smaller padding
+            fontSize: '15px',              // slightly smaller font
+            minWidth: '280px',             // smaller width
+            maxWidth: '400px',
+            borderRadius: '10px',          // slightly smaller rounding
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
     
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -9,7 +40,7 @@
           <p class="text-gray-400 text-sm md:text-base">Manage finance-approved requests and warehouse logistics</p>
         </div>
         <div class="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" class="w-full sm:w-auto bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800 hover:text-white" @click="handleExport">
+          <Button variant="outline" class="w-full sm:w-auto bg-gray-900 border-gray-800 text-gray-300 hover:bg-gray-800 hover:text-white" @click="requirePermission('view', handleExport)">
             <Download class="w-4 h-4 mr-2" />
             Export Manifest
           </Button>
@@ -287,16 +318,16 @@
                 
                 <div v-if="selectedRequest.status === 'approved'" class="contents">
                    <template v-if="!isRejecting">
-                      <Button variant="destructive" @click="isRejecting = true" class="w-full sm:w-auto bg-red-900/50 text-red-200 hover:bg-red-900">
+                      <Button variant="destructive" @click="requirePermission('update', () => { isRejecting = true })" class="w-full sm:w-auto bg-red-900/50 text-red-200 hover:bg-red-900">
                          Reject
                       </Button>
-                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="initiateOpApprove">
+                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="requirePermission('update', initiateOpApprove)">
                          <Truck class="w-4 h-4 mr-2" />
                          Op. Approve
                       </Button>
                    </template>
                    
-                   <Button v-else variant="destructive" @click="initiateReject" :disabled="!rejectReason" class="w-full sm:w-auto">
+                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason" class="w-full sm:w-auto">
                      Confirm Reject
                    </Button>
                 </div>
@@ -314,7 +345,7 @@
     </Dialog>
 
     <AlertDialog :open="alertOpen" @update:open="alertOpen = $event">
-      <AlertDialogContent class="bg-gray-950 border-gray-800 text-white z-[100] w-[90vw] sm:w-full max-w-lg rounded-lg">
+      <AlertDialogContent class="bg-gray-950 border-gray-800 text-white z-50 w-[90vw] sm:w-full max-w-lg rounded-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription class="text-gray-400">
@@ -378,6 +409,23 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} request fulfillments.`);
+    return;
+  }
+  if (callback) callback();
+}
+
 // Unified mapping logic to prevent hardcoding UI labels
 const formatStatus = (status) => {
     const map = {
@@ -409,10 +457,22 @@ const fetchRequests = async () => {
   loading.value = true
   try {
     const response = await api.get('/distributor/procurement-fulfillment')
-    requests.value = response.data
+    
+    if (response.data && response.data.data) {
+        requests.value = response.data.data
+        if (response.data.permissions) {
+            permissions.value = response.data.permissions
+        }
+    } else {
+        requests.value = response.data
+    }
   } catch (error) {
-    console.error("Failed to fetch requests", error)
-    toast.error("Failed to load requests from server")
+    if (error.response?.status === 403) {
+      toast.error('Unauthorized: Access to procurement fulfillment is restricted.')
+    } else {
+      console.error("Failed to fetch requests", error)
+      toast.error("Failed to load requests from server")
+    }
   } finally {
     loading.value = false
   }
@@ -539,5 +599,13 @@ const confirmReject = async () => {
 <style scoped>
 .dialog-content {
   background-color: #030712; 
+}
+</style>
+
+<style>
+/* Unscoped global override: Targets the exact data-attribute injected by vue-sonner */
+[data-sonner-toaster] {
+  z-index: 2147483647 !important; /* Maximum z-index possible */
+  position: fixed !important;
 }
 </style>

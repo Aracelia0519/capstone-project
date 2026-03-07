@@ -12,6 +12,63 @@ use Carbon\Carbon;
 
 class PromotionController extends Controller
 {
+    /**
+     * Retrieves the specific permissions for a user on a given module.
+     */
+    private function getPermissions($user, $permissionKey)
+    {
+        $defaults = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        // Main distributors and head operational distributors automatically have full access
+        if (in_array($user->role, ['distributor', 'operational_distributor'])) {
+            return [
+                'can_view' => true,
+                'can_create' => true,
+                'can_update' => true,
+                'can_delete' => true
+            ];
+        }
+
+        // Check RBAC for standard employees
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            if (!$employee) return $defaults;
+
+            $position = DB::table('positions')
+                ->where('title', $employee->position)
+                ->where('distributor_id', $employee->parent_distributor_id)
+                ->first();
+            if (!$position) return $defaults;
+
+            $access = DB::table('position_accessibilities')
+                ->where('position_id', $position->id)
+                ->where('permission_key', $permissionKey)
+                ->first();
+
+            if ($access) {
+                return [
+                    'can_view' => (bool) $access->can_view,
+                    'can_create' => (bool) $access->can_create,
+                    'can_update' => (bool) $access->can_update,
+                    'can_delete' => (bool) $access->can_delete,
+                ];
+            }
+        }
+
+        return $defaults;
+    }
+
+    private function checkRbacAccess($user, $permissionKey, $action)
+    {
+        $permissions = $this->getPermissions($user, $permissionKey);
+        return $permissions[$action] ?? false;
+    }
+
     // Helper method to resolve the distributor ID based on user roles
     private function getDistributorId($user)
     {
@@ -41,6 +98,12 @@ class PromotionController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthenticated'], 401);
         }
 
+        $permissions = $this->getPermissions($user, 'ec_promotions');
+        
+        if (!$permissions['can_view']) {
+            return response()->json(['status' => 'error', 'message' => 'Access Denied: You do not have permission to view promotions.'], 403);
+        }
+
         $distributorId = $this->getDistributorId($user);
 
         // Filter promotions where distributor matches and load the relationships
@@ -49,7 +112,11 @@ class PromotionController extends Controller
             ->latest()
             ->get();
             
-        return response()->json(['status' => 'success', 'data' => $promotions]);
+        return response()->json([
+            'status' => 'success', 
+            'data' => $promotions,
+            'permissions' => $permissions
+        ]);
     }
 
     public function getProducts()
@@ -59,6 +126,10 @@ class PromotionController extends Controller
             
             if (!$user) {
                 return response()->json(['status' => 'error', 'message' => 'Unauthenticated'], 401);
+            }
+
+            if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_view') && !$this->checkRbacAccess($user, 'ec_promotions', 'can_create')) {
+                return response()->json(['status' => 'error', 'message' => 'Access Denied'], 403);
             }
 
             $distributorId = $this->getDistributorId($user);
@@ -98,6 +169,12 @@ class PromotionController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+
+        // HARD BACKEND CHECK: If an employee circumvents the UI, the backend will stop it here.
+        if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_create')) {
+            return response()->json(['status' => 'error', 'message' => 'Access Denied: You do not have permission to create promotions.'], 403);
+        }
+
         $distributorId = $this->getDistributorId($user);
 
         $maxEndDate = $request->start_date 
@@ -121,7 +198,7 @@ class PromotionController extends Controller
 
         $promotion = Promotion::create([
             'user_id' => $user->id,
-            'distributor_id' => $distributorId, // Attaching the distributor directly
+            'distributor_id' => $distributorId,
             'product_id' => $validated['product_id'] ?? null,
             'name' => $validated['name'],
             'type' => $validated['type'],

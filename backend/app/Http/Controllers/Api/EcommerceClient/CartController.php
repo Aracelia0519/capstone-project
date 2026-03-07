@@ -17,10 +17,19 @@ class CartController extends Controller
 {
     /**
      * Fetch all cart items for the authenticated client
+     * Now securely handles unauthenticated guests by returning an empty cart list.
      */
     public function index()
     {
-        $user = Auth::user();
+        $user = Auth::guard('sanctum')->user();
+        
+        // Return an empty cart if the user is a guest
+        if (!$user) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ]);
+        }
         
         $cartItems = ClientCart::with(['product'])
             ->where('client_id', $user->id)

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from '@/utils/axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner'
 import { 
   Search, CheckCircle2, XCircle, Eye, Calendar, Tag, Package, AlertCircle, Loader2, Clock, CheckCircle
 } from 'lucide-vue-next'
@@ -33,6 +33,25 @@ const showReviewModal = ref(false)
 const showConfirmDialog = ref(false)
 const pendingAction = ref({ type: '', id: null })
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} promotions.`
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 const fetchPendingPromotions = async () => {
   loading.value = true
   try {
@@ -40,9 +59,19 @@ const fetchPendingPromotions = async () => {
     if (res.data.status === 'success') {
       pendingPromotions.value = res.data.data
       stats.value = res.data.stats
+      
+      if (res.data.permissions) {
+          permissions.value = res.data.permissions
+      }
     }
   } catch (err) {
-    toast.error('Failed to load pending promotions')
+    if (err.response?.status === 403) {
+      toast.error('Access Denied', {
+        description: 'You do not have permission to view promotions.'
+      })
+    } else {
+      toast.error('Failed to load pending promotions')
+    }
   } finally {
     loading.value = false
   }
@@ -65,9 +94,16 @@ const executeAction = async () => {
       fetchPendingPromotions()
     }
   } catch (err) {
-    toast.error(`Error: ${err.response?.data?.message || 'Action failed'}`)
+    if (err.response?.status === 403) {
+      toast.error('Action Not Allowed', {
+        description: err.response?.data?.message || `You do not have permission to ${type} promotions.`
+      })
+    } else {
+      toast.error(`Error: ${err.response?.data?.message || 'Action failed'}`)
+    }
   } finally {
     actionLoading.value = false
+    showConfirmDialog.value = false
   }
 }
 
@@ -92,6 +128,39 @@ const formatDate = (dateString) => {
 
 <template>
   <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8 text-white">
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',          // slightly smaller padding
+            fontSize: '15px',              // slightly smaller font
+            minWidth: '280px',             // smaller width
+            maxWidth: '400px',
+            borderRadius: '10px',          // slightly smaller rounding
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400">
@@ -173,7 +242,7 @@ const formatDate = (dateString) => {
                       {{ promo.creator.first_name[0] }}{{ promo.creator.last_name[0] }}
                     </div>
                     <div>
-                      <div class="text-xs font-medium">{{ promo.creator.first_name }} {{ promo.creator.last_name }}</div>
+                      <div class="text-xs font-medium text-white">{{ promo.creator.first_name }} {{ promo.creator.last_name }}</div>
                       <div class="text-[10px] text-gray-500">{{ formatDate(promo.created_at) }}</div>
                     </div>
                   </div>
@@ -214,10 +283,10 @@ const formatDate = (dateString) => {
         </div>
 
         <DialogFooter class="flex flex-col sm:flex-row gap-3">
-          <Button @click="confirmAction('reject', selectedPromo.id)" variant="outline" class="w-full sm:w-auto border-red-500/20 text-red-400 hover:bg-red-500/10">
+          <Button @click="requirePermission('update', () => confirmAction('reject', selectedPromo.id))" variant="outline" class="w-full sm:w-auto border-red-500/20 text-red-400 hover:bg-red-500/10">
             <XCircle class="w-4 h-4 mr-2" /> Reject
           </Button>
-          <Button @click="confirmAction('approve', selectedPromo.id)" class="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600">
+          <Button @click="requirePermission('update', () => confirmAction('approve', selectedPromo.id))" class="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600">
             <CheckCircle2 class="w-4 h-4 mr-2" /> Approve Promotion
           </Button>
         </DialogFooter>

@@ -1,5 +1,7 @@
 <template>
-  <div class="ecommerce-reviews p-4 md:p-6 min-h-screen">
+  <div class="ecommerce-reviews p-4 md:p-6 min-h-screen relative">
+    <Toaster richColors position="top-right" expand />
+
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -87,7 +89,7 @@
           <CardContent class="p-5 h-full flex flex-col justify-center">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               <div class="space-y-2">
-                <Label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Search</Label>
+                <Label class="text-xs font-bold text-white uppercase tracking-widest">Search</Label>
                 <div class="relative">
                   <Search class="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                   <Input type="text" v-model="searchQuery" placeholder="Product or client..." class="bg-gray-800 border-gray-700 text-white pl-9 placeholder:text-gray-500 rounded-xl" />
@@ -95,7 +97,7 @@
               </div>
               
               <div class="space-y-2">
-                <Label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Rating Filter</Label>
+                <Label class="text-xs font-bold text-white uppercase tracking-widest">Rating Filter</Label>
                 <Select v-model="selectedRating">
                   <SelectTrigger class="bg-gray-800 border-gray-700 text-white rounded-xl">
                     <SelectValue placeholder="All Ratings" />
@@ -111,7 +113,7 @@
               </div>
               
               <div class="space-y-2">
-                <Label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Status</Label>
+                <Label class="text-xs font-bold text-white uppercase tracking-widest">Status</Label>
                 <Select v-model="selectedStatus">
                   <SelectTrigger class="bg-gray-800 border-gray-700 text-white rounded-xl">
                     <SelectValue placeholder="All Statuses" />
@@ -177,7 +179,7 @@
                     <Badge :class="statusClasses[review.status]" class="border-0 capitalize text-xs font-bold px-2.5 py-0.5">
                       {{ review.status }}
                     </Badge>
-                    <span class="text-xs font-medium text-gray-500">{{ review.date }}</span>
+                    <span class="text-xs font-medium text-white">{{ review.date }}</span>
                   </div>
                   
                   <DropdownMenu>
@@ -187,14 +189,14 @@
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="w-48 bg-gray-900 border-gray-700 text-gray-300 rounded-xl shadow-xl">
-                      <DropdownMenuItem @click="updateStatus(review.id, 'published')" v-if="review.status !== 'published'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('update', () => updateStatus(review.id, 'published'))" v-if="review.status !== 'published'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <CheckCircle class="w-4 h-4 mr-2 text-emerald-400" /> Publish Review
                       </DropdownMenuItem>
-                      <DropdownMenuItem @click="updateStatus(review.id, 'hidden')" v-if="review.status !== 'hidden'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('update', () => updateStatus(review.id, 'hidden'))" v-if="review.status !== 'hidden'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <EyeOff class="w-4 h-4 mr-2 text-gray-400" /> Hide Review
                       </DropdownMenuItem>
                       <DropdownMenuSeparator class="bg-gray-800" />
-                      <DropdownMenuItem @click="showResponseForm(review)" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('update', () => showResponseForm(review))" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <Reply class="w-4 h-4 mr-2 text-blue-400" /> Reply to Customer
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -203,7 +205,7 @@
                 
                 <div class="mt-3.5 text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
                   <p v-if="review.comment" class="italic font-medium">"{{ review.comment }}"</p>
-                  <p v-else class="text-gray-500 italic">No written comment provided.</p>
+                  <p v-else class="text-white-500 italic">No written comment provided.</p>
                 </div>
               </div>
               
@@ -257,7 +259,7 @@
           <Button variant="outline" @click="respondingToReview = null" class="bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-bold">
             Cancel
           </Button>
-          <Button @click="submitResponse" :disabled="!responseForm.text || isProcessing" class="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl font-bold px-6 shadow-lg shadow-blue-600/20">
+          <Button @click="requirePermission('update', submitResponse)" :disabled="!responseForm.text || isProcessing" class="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl font-bold px-6 shadow-lg shadow-blue-600/20">
             {{ isProcessing ? 'Submitting...' : 'Submit Reply' }}
           </Button>
         </DialogFooter>
@@ -270,7 +272,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
-import { toast } from 'vue-sonner'
+import { Toaster, toast } from 'vue-sonner' // Added Toaster import
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -322,6 +324,29 @@ const selectedStatus = ref('all')
 const respondingToReview = ref(null)
 const responseForm = ref({ text: '' })
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  const permKey = `can_${action}`
+  
+  if (!permissions.value[permKey]) {
+    toast.error(`Access Denied`, {
+        description: `You do not have permission to perform this action on reviews.`,
+        duration: 5000,
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 const statusClasses = {
   'published': 'bg-emerald-500/20 text-emerald-400',
   'pending': 'bg-amber-500/20 text-amber-400',
@@ -335,10 +360,22 @@ const fetchReviews = async () => {
     const response = await api.get('/operation-distributor/reviews')
     if (response.data.success) {
       reviews.value = response.data.data
+      
+      // Inject permissions for RBAC
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      }
     }
   } catch (error) {
     console.error('Error fetching reviews:', error)
-    toast.error('Failed to load reviews')
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', {
+         description: error.response.data.message || 'You lack permissions to view these reviews.',
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+      })
+    } else {
+      toast.error('Failed to load reviews')
+    }
   } finally {
     isLoading.value = false
   }
@@ -359,7 +396,7 @@ const fiveStarCount = computed(() => reviews.value.filter(r => r.rating === 5).l
 const publishedCount = computed(() => reviews.value.filter(r => r.status === 'published').length)
 const pendingCount = computed(() => reviews.value.filter(r => r.status === 'pending').length)
 
-// NEW: Rating Distribution logic
+// Rating Distribution logic
 const ratingDistribution = computed(() => {
   const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
   
@@ -409,7 +446,11 @@ const updateStatus = async (id, newStatus) => {
       toast.success(`Review successfully ${newStatus}`)
     }
   } catch (error) {
-    toast.error('Failed to update status')
+    if (error.response?.status === 403) {
+      toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to update reviews.' })
+    } else {
+      toast.error('Failed to update status')
+    }
   }
 }
 
@@ -436,7 +477,11 @@ const submitResponse = async () => {
       responseForm.value.text = ''
     }
   } catch (error) {
-    toast.error('Failed to submit response')
+    if (error.response?.status === 403) {
+      toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to respond to reviews.' })
+    } else {
+      toast.error('Failed to submit response')
+    }
   } finally {
     isProcessing.value = false
   }

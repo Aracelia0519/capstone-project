@@ -1,12 +1,12 @@
 <template>
   <SidebarProvider>
-    <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 overflow-hidden">
+    <div class="flex min-h-screen w-full bg-slate-900 font-sans overflow-hidden">
       <SideBarSpecialRBAC 
         @logout-started="handleLogoutStart" 
         @logout-finished="handleLogoutFinish"
       />
 
-      <SidebarInset class="main-content-area bg-white border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+      <SidebarInset class="main-content-area bg-white border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto text-slate-900">
         
         <transition name="fade">
           <div 
@@ -25,13 +25,18 @@
           </div>
         </transition>
 
-        <div class="flex-1 w-full bg-slate-50 text-slate-900 relative">
-          <router-view v-slot="{ Component }">
+        <header class="flex h-16 shrink-0 items-center gap-2 px-4 md:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50">
+          <SidebarTrigger class="-ml-1 text-indigo-500 hover:bg-slate-800" />
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Special RBAC</span>
+        </header>
+
+        <main class="flex-1 w-full bg-slate-50 relative z-10 p-4 md:p-8 pt-20 md:pt-8 text-slate-900">
+          <router-view v-slot="{ Component, route }">
             <transition name="page" mode="out-in">
-              <component :is="Component" />
+              <component :is="Component" :key="route.path" />
             </transition>
           </router-view>
-        </div>
+        </main>
       </SidebarInset>
     </div>
   </SidebarProvider>
@@ -39,7 +44,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import SideBarSpecialRBAC from '@/layouts/sideBarSpecialRBAC.vue'
 
 const isLoggingOut = ref(false)
@@ -54,6 +59,7 @@ const handleLogoutFinish = () => {
 </script>
 
 <style scoped>
+/* Preserved smooth fade animation for logout */
 .fade-enter-active, .fade-leave-active { 
   transition: all 0.5s ease; 
 }
@@ -62,6 +68,7 @@ const handleLogoutFinish = () => {
   backdrop-filter: blur(0px); 
 }
 
+/* Preserved smooth slide-in/out animation for page routing */
 .page-enter-active, .page-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
@@ -72,5 +79,15 @@ const handleLogoutFinish = () => {
 .page-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* DEEP OVERRIDE: Forces all headers inside the main content to be black */
+:deep(main h1),
+:deep(main h2),
+:deep(main h3),
+:deep(main h4),
+:deep(main h5),
+:deep(main h6) {
+  color: #0f172a !important; /* Tailwind slate-900 */
 }
 </style>

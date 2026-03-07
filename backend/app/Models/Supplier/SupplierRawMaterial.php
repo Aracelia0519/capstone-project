@@ -20,6 +20,8 @@ class SupplierRawMaterial extends Model
         'size',
         'color_code',
         'price',
+        'min_order',   // Added min_order
+        'max_order',   // Added max_order
         'description',
         'image_url',
         'is_active'

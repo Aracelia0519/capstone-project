@@ -1,5 +1,6 @@
 <template>
   <div class="procurement-requests p-4 md:p-6">
+
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -13,7 +14,7 @@
             </svg>
             Refresh Stats
           </button>
-          <button @click="openRequestModal" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
+          <button @click="requirePermission('create', openRequestModal)" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -182,7 +183,7 @@
     <div v-if="showRequestModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
       <div class="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
         <div class="p-6 border-b border-gray-800 flex items-center justify-between shrink-0">
-          <h3 class="text-xl font-bold text-white">Bulk Procurement Request</h3>
+          <text class="text-xl font-bold text-white">Bulk Procurement Request</text>
           <button @click="closeModal" class="text-gray-400 hover:text-white transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -202,12 +203,12 @@
             <div class="wizard-form-content">
               
               <div v-if="currentStep === 1" class="wizard-form-step space-y-6">
-                <h4 class="text-lg font-semibold text-white">Select a Supplier</h4>
+                <text class="text-lg font-semibold text-white">Select a Supplier</text>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div v-for="supplier in suppliers" :key="supplier.id" @click="selectSupplierFromWizard(supplier)" :class="['p-4 border rounded-xl cursor-pointer transition-all flex items-center', requestForm.supplier_id === supplier.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-gray-700 bg-gray-800 hover:bg-gray-700']">
                     <div class="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold mr-4">{{ supplier.name.charAt(0) }}</div>
                     <div>
-                      <h5 class="text-white font-medium">{{ supplier.name }}</h5>
+                      <text class="text-white font-medium">{{ supplier.name }}</text>
                     </div>
                   </div>
                   <div v-if="suppliers.length === 0" class="col-span-full text-gray-400 py-4">You have no active supplier partnerships.</div>
@@ -216,7 +217,7 @@
 
               <div v-else-if="currentStep === 2" class="wizard-form-step space-y-6">
                 <div class="flex justify-between items-center mb-4">
-                  <h4 class="text-lg font-semibold text-white">Select Products from {{ requestForm.supplier }}</h4>
+                  <text class="text-lg font-semibold text-white">Select Products from {{ requestForm.supplier }}</text>
                   <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 flex items-center">
                     <span class="text-gray-400 text-sm mr-2">Cart Total:</span>
                     <span class="text-indigo-400 font-bold">₱{{ formatCurrency(calculatedCartTotal) }}</span>
@@ -244,8 +245,13 @@
                     </div>
 
                     <div>
-                      <h5 class="text-white font-medium line-clamp-1 mb-1" :title="product.name">{{ product.name }}</h5>
-                      <p class="text-xs text-gray-400 mb-4">{{ product.category }} | {{ product.type }} | {{ product.size }}</p>
+                      <text class="text-white font-medium line-clamp-1 mb-1" :title="product.name">{{ product.name }}</text>
+                      <p class="text-xs text-gray-400 mb-2">{{ product.category }} | {{ product.type }} | {{ product.size }}</p>
+                      
+                      <p class="text-xs font-semibold text-indigo-400 mb-4">
+                        Min Order: {{ product.min_order || 1 }} 
+                        <span v-if="product.max_order">| Max: {{ product.max_order }}</span>
+                      </p>
                     </div>
                     
                     <div class="flex items-center justify-between bg-gray-900 rounded-lg p-1 border border-gray-700 mt-auto">
@@ -262,7 +268,7 @@
               </div>
 
               <div v-else-if="currentStep === 3" class="wizard-form-step space-y-6">
-                <h4 class="text-lg font-semibold text-white mb-4">Delivery & Logistics</h4>
+                <text class="text-lg font-semibold text-white mb-4">Delivery & Logistics</text>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div class="wizard-form-group">
                     <label class="block text-sm text-gray-300 mb-2">Delivery Address <span class="text-red-400">*</span></label>
@@ -303,7 +309,7 @@
               </div>
 
               <div v-else-if="currentStep === 4" class="wizard-form-step space-y-6">
-                <h4 class="text-lg font-semibold text-white mb-4">Final Review</h4>
+                <text class="text-lg font-semibold text-white mb-4">Final Review</text>
                 
                 <div class="wizard-form-group mb-6">
                   <label class="block text-sm text-gray-300 mb-2">Priority Level <span class="text-red-400">*</span></label>
@@ -315,7 +321,7 @@
                 </div>
                 
                 <div class="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-                  <h5 class="text-white font-semibold mb-4 border-b border-gray-700 pb-2">Order Items</h5>
+                  <text class="text-white font-semibold mb-4 border-b border-gray-700 pb-2">Order Items</text>
                   <div class="space-y-3 mb-6">
                     <div v-for="item in cart" :key="item.id" class="flex justify-between text-sm">
                       <span class="text-gray-300">{{ item.name }} (x{{ item.quantity }})</span>
@@ -356,9 +362,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
-import Toastify from 'toastify-js'
-import "toastify-js/src/toastify.css"
-
+import { toast } from 'vue-sonner'
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedPriority = ref('')
@@ -396,6 +400,23 @@ const requestForm = ref({
   instructions: '',
   required_by_date: ''
 })
+
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied: You do not have permission to ${action} procurement requests.`);
+    return;
+  }
+  if (callback) callback();
+}
 
 const getImageUrl = (path) => {
   if (!path) return '';
@@ -436,7 +457,6 @@ const prevStep = () => {
   if (currentStep.value > 1) currentStep.value--
 }
 
-// FIX: Only append params if they have an actual value (truthy)
 const fetchRequests = async () => {
   try {
     loading.value = true
@@ -457,9 +477,17 @@ const fetchRequests = async () => {
     if (response.data.success) {
       requests.value = response.data.data.data
       pagination.value = response.data.data
+      
+      if (response.data.permissions) {
+          permissions.value = response.data.permissions
+      }
     }
   } catch (err) {
-    error.value = 'Failed to load requests.'
+    if (err.response?.status === 403) {
+      toast.error('Unauthorized: Access to procurement requests is restricted.')
+    } else {
+      error.value = 'Failed to load requests.'
+    }
   } finally {
     loading.value = false
   }
@@ -517,15 +545,24 @@ const startRequestWithSupplier = (supplier) => {
 
 const updateCart = (product, change) => {
   const index = cart.value.findIndex(p => p.id === product.id)
+  const minOrder = product.min_order || 1
+  const maxOrder = product.max_order || 5000 // Using a fallback high limit if missing
+  
   if (index > -1) {
-    const newQty = cart.value[index].quantity + change
-    if (newQty <= 0) {
+    const currentQty = cart.value[index].quantity
+    const newQty = currentQty + change
+    
+    // If decrementing drops below minimum order limit, remove completely
+    if (change < 0 && newQty < minOrder) {
       cart.value.splice(index, 1)
-    } else if (newQty <= 5000) {
+    } else if (newQty > maxOrder) {
+      showToast(`Maximum order limit for ${product.name} is ${maxOrder}`, 'warning')
+    } else {
       cart.value[index].quantity = newQty
     }
   } else if (change > 0) {
-    cart.value.push({ ...product, quantity: change })
+    // Adding the item straight away fulfills the minimum order requirement
+    cart.value.push({ ...product, quantity: minOrder })
   }
 }
 
@@ -600,14 +637,15 @@ const formatCurrency = (val) => val ? parseFloat(val).toLocaleString('en-PH', { 
 const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''
 
 const showToast = (message, type = 'info') => {
-  const colors = { success: "#10b981", error: "#ef4444", warning: "#f59e0b", info: "#3b82f6" }
-  Toastify({ text: message, duration: 3000, style: { background: colors[type] || colors.info, borderRadius: "8px" } }).showToast()
+  if (type === 'success') toast.success(message)
+  else if (type === 'error') toast.error(message)
+  else if (type === 'warning') toast.warning(message)
+  else toast.info(message)
 }
 
 onMounted(() => {
   fetchRequests()
   fetchStatistics()
-  fetchFormOptions()
   debouncedFetchRequests = debounce(fetchRequests, 500)
 })
 </script>

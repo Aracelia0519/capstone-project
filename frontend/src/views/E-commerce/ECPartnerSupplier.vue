@@ -1,5 +1,7 @@
 <template>
-  <div class="p-6 min-h-screen space-y-8 text-slate-100">
+  <div class="p-6 min-h-screen space-y-8 text-slate-100 relative">
+    <Toaster richColors position="top-right" expand />
+
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-white">Partner Suppliers</h1>
@@ -110,7 +112,7 @@
         <CardFooter class="px-6 pb-6 pt-0 mt-auto">
            <Button 
               v-if="supplier.status === 'available' || supplier.status === 'rejected'"
-              @click="initiatePartnership(supplier)" 
+              @click="requirePermission('create', () => initiatePartnership(supplier))" 
               class="w-full bg-slate-100 hover:bg-white text-slate-900 transition-all shadow-md hover:shadow-lg font-medium"
            >
               <i class="fas fa-plus-circle mr-2"></i> {{ supplier.status === 'rejected' ? 'Re-apply Partnership' : 'Request Partnership' }}
@@ -198,7 +200,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios' 
-import { toast } from 'vue-sonner' 
+import { Toaster, toast } from 'vue-sonner' // Added Toaster and updated import
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -225,6 +227,29 @@ const loading = ref(false)
 const requestMessage = ref('')
 const suppliers = ref([])
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action, callback) => {
+  const permKey = `can_${action}`
+  
+  if (!permissions.value[permKey]) {
+    toast.error(`Access Denied`, {
+        description: `You do not have permission to perform this action.`,
+        duration: 5000,
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // Methods
 const getInitials = (name) => {
   if (!name) return '??';
@@ -248,22 +273,32 @@ const formatCurrency = (value) => {
 const fetchSuppliers = async () => {
   loading.value = true;
   try {
-    // UPDATED: Using api instance (centralized axios)
-    // Note: Assuming api instance handles base URL and auth tokens automatically
     const response = await api.get('/partners/suppliers');
 
     if (response.data.success) {
       suppliers.value = response.data.data;
+      
+      // Inject permissions for RBAC dynamically
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions;
+      }
     } else {
       toast.error('Failed to load suppliers', {
-         style: { background: '#ffffff', color: '#000000', border: '1px solid #e2e8f0' }
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
       });
     }
   } catch (error) {
     console.error(error);
-    toast.error('Connection error: Unable to fetch suppliers', {
-       style: { background: '#ffffff', color: '#000000', border: '1px solid #e2e8f0' }
-    });
+    if (error.response?.status === 403) {
+      toast.error('Access Denied', {
+         description: error.response.data.message || 'You lack permissions to view partner suppliers.',
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+      });
+    } else {
+      toast.error('Connection error: Unable to fetch suppliers', {
+         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+      });
+    }
   } finally {
     loading.value = false;
   }
@@ -283,7 +318,6 @@ const confirmPartnership = () => {
 const executePartnershipRequest = async () => {
   isProcessing.value = true;
   try {
-    // UPDATED: Using api instance
     const response = await api.post('/partners/request', {
        supplier_id: selectedSupplier.value.id,
        message: requestMessage.value
@@ -292,7 +326,7 @@ const executePartnershipRequest = async () => {
     if (response.data.success) {
       toast.success(`Request sent to ${selectedSupplier.value.name}!`, {
         description: 'It has been submitted for approval.',
-        style: { background: '#ffffff', color: '#000000', border: '1px solid #e2e8f0' }
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
       });
       
       await fetchSuppliers();
@@ -301,10 +335,17 @@ const executePartnershipRequest = async () => {
       selectedSupplier.value = null;
     }
   } catch (error) {
-    const msg = error.response?.data?.message || 'Failed to send request.';
-    toast.error(msg, {
-       style: { background: '#ffffff', color: '#000000', border: '1px solid #e2e8f0' }
-    });
+    if (error.response?.status === 403) {
+       toast.error('Action Restricted', {
+          description: error.response.data.message || 'You do not have permission to request partnerships.',
+          style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+       });
+    } else {
+       const msg = error.response?.data?.message || 'Failed to send request.';
+       toast.error(msg, {
+          style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+       });
+    }
     showAlertDialog.value = false; 
   } finally {
     isProcessing.value = false;
@@ -329,3 +370,7 @@ onMounted(() => {
   fetchSuppliers();
 })
 </script>
+
+<style scoped>
+/* Scoped overrides if needed */
+</style>

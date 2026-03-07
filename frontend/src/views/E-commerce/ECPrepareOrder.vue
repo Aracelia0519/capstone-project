@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { toast } from 'vue-sonner'
-import api from '@/utils/axios' // Using your preconfigured axios instance
+import { Toaster, toast } from 'vue-sonner' // Added Toaster for rendering notifications
+import api from '@/utils/axios' 
 import { 
   Check, 
   Clock, 
@@ -85,6 +85,28 @@ const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
 const showMobileSheet = ref(false)
 
+// User Permissions setup via RBAC
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// RBAC Action Interceptor (Matches ProcurementRequests/Orders paradigm)
+const requirePermission = (action: string, callback: Function) => {
+  const permKey = `can_${action}` as keyof typeof permissions.value;
+  
+  if (!permissions.value[permKey]) {
+    toast.error(`Access Denied`, {
+        description: `You do not have permission to ${action} prepare orders.`,
+        duration: 5000
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // Form State
 const selectedDeliveryMan = ref<string>('')
 const proofFile = ref<File | null>(null)
@@ -127,16 +149,29 @@ const fetchOrders = async () => {
   isLoading.value = true
   try {
     const response = await api.get('/operation-distributor/prepare-orders')
-    mockOrders.value = response.data
+    
+    // Handle the standardized response payload to extract both data and permissions
+    if (response.data.success) {
+        mockOrders.value = response.data.data
+        if (response.data.permissions) {
+            permissions.value = response.data.permissions
+        }
+    } else {
+        mockOrders.value = response.data
+    }
 
     if (!selectedOrderId.value && confirmedOrders.value.length > 0) {
       selectedOrderId.value = confirmedOrders.value[0].id
     } else if (confirmedOrders.value.length === 0) {
       selectedOrderId.value = null
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    toast.error('Failed to fetch orders')
+    if (error.response?.status === 403) {
+        toast.error('Access Denied', { description: error.response.data.message || 'You lack permissions to view these orders.' })
+    } else {
+        toast.error('Failed to fetch orders')
+    }
   } finally {
     isLoading.value = false
   }
@@ -146,9 +181,11 @@ const fetchDeliveryPersonnel = async () => {
   try {
     const response = await api.get('/operation-distributor/prepare-orders/personnel')
     mockDeliveryMen.value = response.data
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    toast.error('Failed to fetch delivery personnel')
+    if (error.response?.status !== 403) {
+      toast.error('Failed to fetch delivery personnel')
+    }
   }
 }
 
@@ -211,9 +248,13 @@ const submitPreparation = async () => {
     // Reset form
     selectedDeliveryMan.value = ''
     removeProof()
-  } catch (error) {
+  } catch (error: any) {
     console.error(error)
-    toast.error('Failed to process and dispatch the order.')
+    if (error.response?.status === 403) {
+      toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to dispatch orders.' })
+    } else {
+      toast.error('Failed to process and dispatch the order.')
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -237,8 +278,9 @@ const formatDate = (dateString: string) => {
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col text-gray-100">
-    
+  <div class="flex h-full w-full flex-col text-gray-100 relative">
+    <Toaster richColors position="top-right" expand />
+
     <div class="hidden md:flex h-full w-full overflow-hidden">
       <div class="w-80 lg:w-96 border-r border-gray-800 flex flex-col h-full">
         <div class="p-4 border-b border-gray-800 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
@@ -336,16 +378,16 @@ const formatDate = (dateString: string) => {
                 </CardHeader>
                 <CardContent class="text-sm space-y-3 pt-4">
                   <div class="flex justify-between">
-                      <span class="text-gray-400">Name:</span>
+                      <span class="text-white-400">Name:</span>
                       <span class="font-medium text-gray-200">{{ selectedOrder.client_name }}</span>
                   </div>
                   <div class="flex justify-between">
-                      <span class="text-gray-400">Contact:</span>
+                      <span class="text-white-400">Contact:</span>
                       <span class="text-gray-200">{{ selectedOrder.client_phone }}</span>
                   </div>
                   <Separator class="my-3 bg-gray-800" />
                    <div class="flex justify-between items-center">
-                      <span class="text-gray-400">Payment Method:</span>
+                      <span class="text-white-400">Payment Method:</span>
                       <Badge class="bg-gray-800/80 text-gray-300 border-gray-700 uppercase">{{ selectedOrder.payment_method }}</Badge>
                   </div>
                 </CardContent>
@@ -373,8 +415,8 @@ const formatDate = (dateString: string) => {
                  <Table>
                     <TableHeader class="bg-transparent border-b border-gray-800">
                        <TableRow class="border-gray-800 hover:bg-transparent">
-                          <TableHead class="text-gray-400">Product</TableHead>
-                          <TableHead class="text-right text-gray-400">Qty</TableHead>
+                          <TableHead class="text-white">Product</TableHead>
+                          <TableHead class="text-right text-white">Qty</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -462,7 +504,7 @@ const formatDate = (dateString: string) => {
                </CardContent>
                <CardFooter class="bg-transparent p-5 border-t border-gray-800 flex justify-end">
                   <Button 
-                    @click="submitPreparation" 
+                    @click="requirePermission('update', submitPreparation)" 
                     :disabled="!canSubmit || isSubmitting" 
                     class="w-full sm:w-auto px-8 bg-blue-600 hover:bg-blue-700 text-white transition-all"
                     size="lg"
@@ -656,7 +698,7 @@ const formatDate = (dateString: string) => {
              </CardContent>
              <CardFooter class="bg-transparent p-4 border-t border-gray-800">
                 <Button 
-                  @click="submitPreparation" 
+                  @click="requirePermission('update', submitPreparation)" 
                   :disabled="!canSubmit || isSubmitting" 
                   class="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   size="lg"

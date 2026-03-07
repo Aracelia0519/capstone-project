@@ -224,8 +224,28 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="showServiceModal" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
+        <div v-if="showServiceModal || isAuthAlertOpen" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
       </transition>
+
+      <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Authentication Required
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
+              You must be logged in to request a service or manage your bookings. Please log in or create an account to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">
+              Log In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog :open="showServiceModal" @update:open="(val) => !val && closeServiceModal()">
         <DialogContent class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 border-0 z-[9999]">
@@ -383,7 +403,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue' 
+import { ref, onMounted, computed, defineProps } from 'vue' 
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
@@ -421,6 +441,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
 
 const router = useRouter() 
 const services = ref([])
@@ -428,6 +465,9 @@ const isLoading = ref(true)
 const showServiceModal = ref(false)
 const selectedService = ref(null)
 const isSubmitting = ref(false)
+
+// Authentication Modal State
+const isAuthAlertOpen = ref(false)
 
 const addressMode = ref('default')
 const customAddress = ref('')
@@ -610,6 +650,11 @@ const filteredServices = computed(() => {
 })
 
 const openServiceModal = (service) => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+  
   selectedService.value = service
   bookingForm.value = {
     description: '',
@@ -630,6 +675,10 @@ const closeServiceModal = () => {
 }
 
 const goToMyBookings = () => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
   router.push('/Clients/myServiceRequest') 
 }
 

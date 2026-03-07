@@ -1,6 +1,37 @@
 <template>
   <div class="budget-release min-h-screen p-4 md:p-6 text-slate-900 bg-slate-50/50">
-    <Toaster position="top-right" />
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',          // slightly smaller padding
+            fontSize: '15px',              // slightly smaller font
+            minWidth: '280px',             // smaller width
+            maxWidth: '400px',
+            borderRadius: '10px',          // slightly smaller rounding
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
     
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -227,16 +258,16 @@
                 
                 <div v-if="selectedRequest.status === 'd-approved'" class="contents">
                    <template v-if="!isRejecting">
-                      <Button variant="outline" @click="isRejecting = true" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
+                      <Button variant="outline" @click="requirePermission('update', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
                          Reject Request
                       </Button>
-                      <Button class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" @click="initiateApprove">
+                      <Button class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" @click="requirePermission('update', initiateApprove)">
                          <Coins class="w-4 h-4 mr-2" />
                          Release Budget & Approve
                       </Button>
                    </template>
                    
-                   <Button v-else variant="destructive" @click="initiateReject" :disabled="!rejectReason" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm">
+                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm">
                      Confirm Rejection
                    </Button>
                 </div>
@@ -319,6 +350,25 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
+// RBAC Permissions ref state
+const permissions = ref({
+  can_view: false,
+  can_create: false,
+  can_update: false,
+  can_delete: false
+})
+
+// Validation interceptor for operations
+const requirePermission = (action, callback) => {
+  if (!permissions.value['can_' + action]) {
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} budget releases.`
+    });
+    return;
+  }
+  if (callback) callback();
+}
+
 // UI Mappings for Light Theme Badges
 const statusClasses = {
   'd-approved': 'bg-amber-100 text-amber-700 border border-amber-200', 
@@ -351,10 +401,24 @@ const fetchRequests = async () => {
   loading.value = true
   try {
     const response = await api.get('/finance/budget-release')
-    requests.value = response.data
+    
+    // Process updated response wrapper for RBAC
+    if (response.data.success !== undefined) {
+      requests.value = response.data.data
+      if (response.data.permissions) {
+        permissions.value = response.data.permissions
+      }
+    } else {
+      requests.value = response.data // Fallback in case of old endpoint signature
+    }
+
   } catch (error) {
-    console.error("Failed to fetch approvals", error)
-    toast.error("Failed to load budget release requests from server")
+    if (error.response?.status === 403) {
+      toast.error("Unauthorized", { description: "You do not have permission to view budget releases." })
+    } else {
+      console.error("Failed to fetch approvals", error)
+      toast.error("Failed to load budget release requests from server")
+    }
   } finally {
     loading.value = false
   }
@@ -425,7 +489,11 @@ const markAsApproved = async () => {
         setTimeout(closeModal, 1500) 
         return `Funds released! Request ${selectedRequest.value.id} is now Ready.`
       },
-      error: 'Failed to release budget'
+      error: (err) => {
+        return err.response?.status === 403 
+          ? 'Access denied: You cannot approve budget releases.' 
+          : 'Failed to release budget.'
+      }
     })
   } catch (error) {
     console.error(error)
@@ -447,7 +515,11 @@ const confirmReject = async () => {
         closeModal()
         return `Request ${selectedRequest.value.id} has been rejected.`
       },
-      error: 'Failed to reject request'
+      error: (err) => {
+        return err.response?.status === 403 
+          ? 'Access denied: You cannot reject budget releases.' 
+          : 'Failed to reject request.'
+      }
     })
   } catch (error) {
     console.error(error)

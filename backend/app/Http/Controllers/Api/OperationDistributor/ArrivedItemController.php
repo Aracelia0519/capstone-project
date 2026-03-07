@@ -8,29 +8,125 @@ use App\Models\OperationDistributor\ProcurementRequest;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\OperationDistributor\InventoryLog;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\HR\Employee;
+use App\Models\Distributor\HRManager;
 
 class ArrivedItemController extends Controller
 {
-    private function getDistributorId(Request $request)
+    /**
+     * Check RBAC Permissions for Arrived Items Module
+     */
+    private function checkAccess($user, $action = 'can_view')
     {
-        $user = $request->user();
-        if ($user->role === 'operational_distributor') {
-            $op = DB::table('operational_distributors')->where('user_id', $user->id)->first();
-            return $op ? $op->parent_distributor_id : $user->id;
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
         }
-        return $user->id;
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+            ];
+        }
+
+        // HR Manager
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager && $hrManager->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $hrManager->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        } 
+        
+        // Operational Distributor
+        elseif ($user->role === 'operational_distributor') {
+            $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first(); 
+            if ($opDist && $opDist->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $opDist->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                ];
+            }
+        }
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'ec_arrived_item') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
+                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
+                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_create' => (bool)$access->can_create,
+                                    'can_update' => (bool)$access->can_update,
+                                    'can_delete' => (bool)$access->can_delete,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+        ];
     }
 
     public function index(Request $request)
     {
-        $distributorId = $this->getDistributorId($request);
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
 
-        // Fetch all delivered requests that haven't been moved to inventory yet
-        $arrivedItems = ProcurementRequest::where('distributor_id', $distributorId)
-            ->where('status', 'delivered')
+        if (!$accessData['has_access']) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to view arrived items.'], 403);
+        }
+
+        $distributorId = $accessData['distributor_id'];
+
+        $query = ProcurementRequest::where('status', 'delivered')
             ->where('moved_to_inventory', false)
-            ->orderBy('delivered_at', 'desc')
-            ->get();
+            ->orderBy('delivered_at', 'desc');
+
+        if ($user->role !== 'admin') {
+            $query->where('distributor_id', $distributorId);
+        }
+
+        $arrivedItems = $query->get();
 
         // Attach the arrival proof from supplier_deliveries
         foreach ($arrivedItems as $item) {
@@ -41,20 +137,34 @@ class ArrivedItemController extends Controller
             $item->arrival_proof_path = $delivery ? $delivery->arrival_proof_path : null;
         }
 
-        return response()->json($arrivedItems);
+        return response()->json([
+            'data' => $arrivedItems,
+            'permissions' => $accessData['permissions']
+        ]);
     }
 
     public function moveToInventory(Request $request, $id)
     {
-        $distributorId = $this->getDistributorId($request);
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_update');
+
+        if (!$accessData['has_access']) {
+            return response()->json(['message' => 'Unauthorized. You do not have permission to update inventory.'], 403);
+        }
+
+        $distributorId = $accessData['distributor_id'];
         
         DB::beginTransaction();
         try {
-            $procurement = ProcurementRequest::where('id', $id)
-                ->where('distributor_id', $distributorId)
+            $query = ProcurementRequest::where('id', $id)
                 ->where('status', 'delivered')
-                ->where('moved_to_inventory', false)
-                ->firstOrFail();
+                ->where('moved_to_inventory', false);
+
+            if ($user->role !== 'admin') {
+                $query->where('distributor_id', $distributorId);
+            }
+
+            $procurement = $query->firstOrFail();
 
             // 1. Determine Product ID mapping from Supplier Raw Material to Distributor Product
             $productId = $procurement->product_id;

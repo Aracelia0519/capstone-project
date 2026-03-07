@@ -491,8 +491,28 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isCartAlertOpen || isOrderAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+        <div v-if="isCartAlertOpen || isOrderAlertOpen || isAuthAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
+
+      <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Authentication Required
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
+              You must be logged in to make a purchase or add items to your cart. Please log in or create an account to continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">
+              Log In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog :open="isCartAlertOpen" @update:open="isCartAlertOpen = $event">
         <AlertDialogContent class="rounded-2xl border-0 shadow-2xl z-[10000]">
@@ -538,6 +558,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 
@@ -565,6 +586,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
+
+const router = useRouter()
+
 // API Data
 const products = ref([])
 const isLoading = ref(true)
@@ -577,6 +607,7 @@ const isReviewsModalOpen = ref(false)
 const selectedProduct = ref(null)
 
 // Alert Dialog States
+const isAuthAlertOpen = ref(false)
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
 
@@ -588,7 +619,7 @@ const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
-// Helper for consistent currency display (Prevents uneven decimals like .13)
+// Helper for consistent currency display
 const formatCurrency = (value) => {
   return Number(value || 0).toLocaleString('en-PH', { 
     minimumFractionDigits: 2, 
@@ -613,6 +644,11 @@ const fetchProducts = async () => {
 
 // Modal Handlers
 const openCartModal = (product) => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+  
   if (product.stock <= 0) {
     toast.error('Cannot add to cart. This product is out of stock.');
     return;
@@ -623,6 +659,11 @@ const openCartModal = (product) => {
 }
 
 const openOrderModal = (product) => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+
   if (product.stock <= 0) {
     toast.error('Cannot order. This product is out of stock.');
     return;

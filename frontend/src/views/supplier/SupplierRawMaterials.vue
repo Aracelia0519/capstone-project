@@ -259,6 +259,13 @@
                   <span class="text-slate-500">SKU:</span>
                   <span class="font-medium text-slate-700 font-mono">{{ product.sku_code }}</span>
                 </div>
+                <div v-if="product.min_order || product.max_order" class="flex justify-between items-center mt-1">
+                  <span class="text-slate-500">Order Limits:</span>
+                  <span class="font-medium text-slate-700">
+                    Min: {{ product.min_order || 1 }} 
+                    <span v-if="product.max_order">| Max: {{ product.max_order }}</span>
+                  </span>
+                </div>
               </div>
               
               <div class="mt-auto flex gap-2 pt-2 border-t border-slate-100">
@@ -432,7 +439,7 @@
             </div>
 
             <div v-else-if="currentStep === 2" class="space-y-4">
-              <div class="grid grid-cols-1 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="space-y-2">
                   <Label for="price" class="text-slate-700">Selling Price (₱) <span class="text-red-500">*</span></Label>
                   <Input 
@@ -443,6 +450,26 @@
                     min="0" 
                     step="0.01"
                     :class="{'border-red-300': !newProduct.price && showValidation}"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <Label for="min_order" class="text-slate-700">Min Order Qty</Label>
+                  <Input 
+                    id="min_order" 
+                    type="number" 
+                    v-model="newProduct.min_order" 
+                    placeholder="e.g. 1" 
+                    min="1" 
+                  />
+                </div>
+                <div class="space-y-2">
+                  <Label for="max_order" class="text-slate-700">Max Order Qty</Label>
+                  <Input 
+                    id="max_order" 
+                    type="number" 
+                    v-model="newProduct.max_order" 
+                    placeholder="e.g. 1000" 
+                    min="1" 
                   />
                 </div>
               </div>
@@ -521,6 +548,7 @@
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Size</span> <span class="font-medium text-slate-800">{{ newProduct.size }}</span></div>
                    
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Selling Price</span> <span class="font-bold text-green-600">₱{{ formatPrice(newProduct.price) }}</span></div>
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Limits (Min/Max)</span> <span class="font-medium text-slate-800">{{ newProduct.min_order || 1 }} - {{ newProduct.max_order || 'No Max' }}</span></div>
 
                    <div v-if="newProduct.color_code" class="col-span-2">
                      <span class="text-slate-500 block text-xs uppercase tracking-wide mb-1">Color</span> 
@@ -686,6 +714,8 @@ const newProduct = reactive({
   size: '',
   color_code: '',
   price: '',
+  min_order: '',
+  max_order: '',
   description: '',
   image_url: ''
 });
@@ -849,7 +879,6 @@ const hasColorCategorySelected = computed(() => {
 const loadProducts = async () => {
   isLoading.value = true;
   try {
-    // Note: removed `/api` prefix here to utilize the custom axios configuration accurately
     const response = await api.get('/supplier/raw-materials');
     products.value = response.data;
     updateCategoryCounts();
@@ -908,7 +937,7 @@ const closeModal = (val) => {
 const resetForm = () => {
   Object.assign(newProduct, {
     category: '', type: '', name: '', sku_code: '', size: '', 
-    color_code: '', price: '', description: '', image_url: ''
+    color_code: '', price: '', min_order: '', max_order: '', description: '', image_url: ''
   });
   imagePreview.value = '';
   uploadedImage.value = null;
@@ -929,6 +958,12 @@ const validateStep = () => {
   }
   if (currentStep.value === 2) {
     if (!newProduct.price || parseFloat(newProduct.price) <= 0) return false;
+    if (newProduct.min_order && newProduct.max_order) {
+        if (parseInt(newProduct.min_order) > parseInt(newProduct.max_order)) {
+            toast.error("Max order quantity must be greater than or equal to Min order quantity");
+            return false;
+        }
+    }
   }
   showValidation.value = false;
   return true;
@@ -937,7 +972,7 @@ const validateStep = () => {
 const nextStep = () => {
   if (validateStep()) {
     currentStep.value++;
-  } else {
+  } else if (currentStep.value !== 2 || !showValidation.value) {
     toast.error('Please fill in all required fields');
   }
 };
@@ -997,8 +1032,8 @@ const handleSubmit = async () => {
     }
 
     if (isEditing.value) {
-      // Laravel needs PUT mapping for multipart form data edits
-      formData.append('_method', 'PUT');
+      // NOTE: Removed `formData.append('_method', 'PUT')` so it hits Route::post() in api.php 
+      // without throwing a 405 Method Not Allowed error.
       await api.post(`/supplier/raw-materials/${editingId.value}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -1091,11 +1126,11 @@ const getCategoryShortName = (cat) => {
 const exportCatalog = () => {
   if (!products.value.length) return toast.warning('No materials to export');
   
-  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Description'];
+  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Min Order', 'Max Order', 'Description'];
   const csv = [
     headers.join(','),
     ...products.value.map(p => 
-      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.description || ''}"`
+      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.min_order || ''}","${p.max_order || ''}","${p.description || ''}"`
     )
   ].join('\n');
   

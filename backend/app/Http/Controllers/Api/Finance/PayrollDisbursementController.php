@@ -8,15 +8,75 @@ use App\Models\Finance\FinancePayroll;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class PayrollDisbursementController extends Controller
 {
+    /**
+     * Fetch RBAC permissions for the logged-in user.
+     */
+    private function getPermissions($user)
+    {
+        $defaultPermissions = [
+            'can_view' => true,
+            'can_create' => true,
+            'can_update' => true,
+            'can_delete' => true
+        ];
+
+        // Non-employees bypass this specific RBAC check and get full access
+        if ($user->role !== 'employee') {
+            return $defaultPermissions;
+        }
+
+        $noAccess = [
+            'can_view' => false,
+            'can_create' => false,
+            'can_update' => false,
+            'can_delete' => false
+        ];
+
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if (!$employee) return $noAccess;
+
+        $position = DB::table('positions')
+            ->where('title', $employee->position)
+            ->where('distributor_id', $employee->parent_distributor_id)
+            ->first();
+
+        if (!$position) return $noAccess;
+
+        $access = DB::table('position_accessibilities')
+            ->where('position_id', $position->id)
+            ->where('permission_key', 'finance_payroll_paid')
+            ->first();
+
+        // Check if access row exists and is generally granted
+        if (!$access || !$access->is_granted) return $noAccess;
+
+        return [
+            'can_view' => (bool)$access->can_view,
+            'can_create' => (bool)$access->can_create,
+            'can_update' => (bool)$access->can_update,
+            'can_delete' => (bool)$access->can_delete,
+        ];
+    }
+
     /**
      * Get payrolls that are specifically "Approved" or "Paid".
      * Joins directly with hr_employees to get bank details.
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+        $permissions = $this->getPermissions($user);
+
+        if (!$permissions['can_view']) {
+            return response()->json([
+                'message' => 'Access Denied: You do not have permission to view payroll disbursements.'
+            ], 403);
+        }
+
         $status = $request->query('status');
         $search = $request->query('search');
 
@@ -51,8 +111,11 @@ class PayrollDisbursementController extends Controller
         }
 
         $payrolls = $query->orderBy('payrolls.updated_at', 'desc')->paginate(15);
+        
+        $responseData = $payrolls->toArray();
+        $responseData['permissions'] = $permissions;
 
-        return response()->json($payrolls);
+        return response()->json($responseData);
     }
 
     /**
@@ -62,6 +125,15 @@ class PayrollDisbursementController extends Controller
      */
     public function markAsPaid(Request $request, $id)
     {
+        $user = Auth::user();
+        $permissions = $this->getPermissions($user);
+
+        if (!$permissions['can_update']) {
+            return response()->json([
+                'message' => 'Access Denied: You do not have permission to process payments.'
+            ], 403);
+        }
+
         $request->validate([
             'admin_notes' => 'nullable|string',
         ]);

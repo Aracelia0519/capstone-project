@@ -11,7 +11,6 @@ import {
   Download,
   FileCheck,
   Menu,
-  ArrowLeft,
   ChevronRight,
   Image,
   X
@@ -78,8 +77,15 @@ interface Order {
   items: OrderItem[]
 }
 
+interface SupplierDetails {
+  company_name: string
+  business_registration_number: string
+  address: string
+}
+
 // --- State ---
 const orders = ref<Order[]>([])
+const supplierDetails = ref<SupplierDetails | null>(null)
 const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -113,7 +119,14 @@ const fetchProcessingOrders = async () => {
   isLoading.value = true
   try {
     const response = await api.get('/supplier/processing-orders')
-    orders.value = response.data
+    
+    // Handle new payload structure
+    if (response.data.orders) {
+        orders.value = response.data.orders
+        supplierDetails.value = response.data.supplier
+    } else {
+        orders.value = response.data
+    }
 
     if (orders.value.length > 0 && !selectedOrderId.value) {
       selectedOrderId.value = orders.value[0].id
@@ -126,6 +139,15 @@ const fetchProcessingOrders = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// VAT Helpers
+const getVatableSales = (total: number) => {
+  return total / 1.12;
+}
+
+const getVatAmount = (total: number) => {
+  return total - getVatableSales(total);
 }
 
 const handleFileChange = (event: Event, type: 'receipt' | 'proof') => {
@@ -179,7 +201,11 @@ const clearFile = (type: 'receipt' | 'proof') => {
 const generateReceiptBlob = () => {
   if (!selectedOrder.value) return null
 
-  // HTML content styled for Word
+  const companyName = supplierDetails.value?.company_name || 'MY SUPPLIER CO.';
+  const companyAddress = supplierDetails.value?.address || 'Address not available';
+  const vatReg = supplierDetails.value?.business_registration_number || '000-000-000-000';
+
+  // HTML content styled for Word with VAT Computation
   const content = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/1999/xhtml'>
     <head>
@@ -187,24 +213,24 @@ const generateReceiptBlob = () => {
       <title>Official Receipt</title>
       <style>
         body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; margin: 1.5cm; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .company-name { font-size: 16pt; font-weight: bold; }
-        .sub-header { color: #555; font-size: 10pt; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 15px; }
+        .company-name { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
+        .sub-header { color: #555; font-size: 10pt; margin-top: 5px; }
         .meta-table { width: 100%; margin-bottom: 20px; border: none; }
         .meta-table td { padding: 5px; vertical-align: top; }
         .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .items-table th { border-bottom: 2px solid #000; padding: 8px 5px; text-align: left; background-color: #f0f0f0; font-weight: bold; }
-        .items-table td { border-bottom: 1px solid #ddd; padding: 8px 5px; }
-        .total-section { margin-top: 20px; text-align: right; font-size: 14pt; font-weight: bold; border-top: 2px solid #000; padding-top: 10px; }
+        .items-table th { border-bottom: 2px solid #000; border-top: 2px solid #000; padding: 8px 5px; text-align: left; background-color: #f9f9f9; font-weight: bold; }
+        .items-table td { border-bottom: 1px dashed #ddd; padding: 8px 5px; }
         .footer { margin-top: 50px; text-align: center; font-size: 9pt; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
       </style>
     </head>
     <body>
       <div class="header">
-        <div class="company-name">MY SUPPLIER CO.</div>
-        <div class="sub-header">123 Warehouse St., Philippines | VAT Reg: 000-123-456-000</div>
+        <div class="company-name">${companyName}</div>
+        <div class="sub-header">${companyAddress}</div>
+        <div class="sub-header">VAT Reg / TIN: ${vatReg}</div>
         <br/>
-        <div style="font-size: 14pt; font-weight: bold;">OFFICIAL RECEIPT</div>
+        <div style="font-size: 14pt; font-weight: bold; letter-spacing: 2px;">OFFICIAL RECEIPT</div>
       </div>
 
       <table class="meta-table">
@@ -243,9 +269,29 @@ const generateReceiptBlob = () => {
         </tbody>
       </table>
 
-      <div class="total-section">
-        TOTAL AMOUNT: ${formatCurrency(selectedOrder.value.total_amount)}
-      </div>
+      <table style="width: 100%; margin-top: 20px;">
+        <tr>
+          <td width="50%">
+            <p style="font-size: 9pt; color: #555;">Notes/Remarks: This document is valid for claiming input taxes.</p>
+          </td>
+          <td width="50%">
+            <table style="width: 100%; border-top: 2px solid #000; padding-top: 5px;">
+              <tr>
+                <td style="padding: 3px 0; color: #444;">VATable Sales:</td>
+                <td style="padding: 3px 0; text-align: right;">${formatCurrency(getVatableSales(selectedOrder.value.total_amount))}</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 0; color: #444;">VAT Amount (12%):</td>
+                <td style="padding: 3px 0; text-align: right; border-bottom: 1px solid #ccc;">${formatCurrency(getVatAmount(selectedOrder.value.total_amount))}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; font-size: 14pt; padding-top: 10px;">TOTAL AMOUNT:</td>
+                <td style="font-weight: bold; font-size: 14pt; text-align: right; padding-top: 10px;">${formatCurrency(selectedOrder.value.total_amount)}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
 
       <div class="footer">
         This is a system-generated receipt.<br/>
@@ -391,9 +437,7 @@ onMounted(() => {
 <template>
   <div class="flex h-screen w-full flex-col bg-muted/20">
     
-    <!-- Desktop View (md and up) -->
     <div class="hidden md:flex h-full w-full">
-      <!-- Left Sidebar - Orders List -->
       <div class="w-80 lg:w-96 border-r bg-background flex flex-col h-full">
         <div class="p-4 border-b space-y-4">
           <div class="flex items-center justify-between">
@@ -446,7 +490,6 @@ onMounted(() => {
         </ScrollArea>
       </div>
 
-      <!-- Right Side - Order Details -->
       <div class="flex-1 flex flex-col h-full overflow-hidden bg-muted/10">
         <header class="h-16 border-b bg-background flex items-center px-6 justify-between shrink-0">
           <h1 class="text-xl font-bold flex items-center gap-2">
@@ -459,7 +502,6 @@ onMounted(() => {
           <ScrollArea class="flex-1 p-6">
             <div class="max-w-3xl mx-auto space-y-6">
               
-              <!-- Order Summary Card -->
               <Card>
                 <CardHeader class="pb-3">
                   <div class="flex items-start justify-between">
@@ -499,7 +541,6 @@ onMounted(() => {
                 </CardContent>
               </Card>
 
-              <!-- Fulfillment Documentation Card -->
               <Card class="border-dashed border-2 bg-background/50">
                 <CardHeader>
                   <CardTitle class="flex items-center gap-2">
@@ -511,7 +552,6 @@ onMounted(() => {
                 </CardHeader>
                 <CardContent class="space-y-6">
                    
-                   <!-- Receipt Upload Section -->
                    <div class="grid w-full items-center gap-2">
                       <Label class="font-semibold">1. Official Receipt / Invoice</Label>
                       
@@ -556,7 +596,7 @@ onMounted(() => {
                                </Button>
                             </DialogTrigger>
                             
-                            <DialogContent class="w-[95%] max-w-[500px] mx-auto rounded-lg">
+                            <DialogContent class="w-[95%] max-w-[600px] mx-auto rounded-lg">
                               <DialogHeader>
                                 <DialogTitle>Generate Official Receipt</DialogTitle>
                                 <DialogDescription>
@@ -565,53 +605,70 @@ onMounted(() => {
                               </DialogHeader>
                               
                               <ScrollArea class="max-h-[60vh]">
-                                <div class="border rounded-lg p-4 bg-white text-black text-sm font-serif mt-2">
-                                   <div class="text-center border-b pb-4 mb-4">
-                                      <h3 class="font-bold text-base">MY SUPPLIER CO.</h3>
-                                      <p class="text-xs text-gray-500">123 Warehouse St., Philippines</p>
-                                      <p class="text-xs text-gray-500">VAT Reg: 000-123-456-000</p>
-                                      <h2 class="font-bold text-lg mt-4">OFFICIAL RECEIPT</h2>
+                                <div class="border rounded-lg p-6 bg-white text-black text-sm font-serif mt-2 relative">
+                                   <div class="text-center border-b-2 border-gray-300 pb-4 mb-4">
+                                      <h3 class="font-bold text-xl uppercase tracking-wider">{{ supplierDetails?.company_name || 'MY SUPPLIER CO.' }}</h3>
+                                      <p class="text-xs text-gray-600 mt-1">{{ supplierDetails?.address || '123 Warehouse St., Philippines' }}</p>
+                                      <p class="text-xs text-gray-600">VAT Reg / TIN: {{ supplierDetails?.business_registration_number || '000-123-456-000' }}</p>
+                                      <h2 class="font-bold text-lg mt-5 tracking-widest text-gray-800">OFFICIAL RECEIPT</h2>
                                    </div>
                                    
-                                   <div class="flex flex-col gap-4 mb-4 text-xs">
-                                      <div>
-                                        <span class="text-gray-500 block">Bill To:</span>
-                                        <span class="font-bold">{{ selectedOrder.distributor_name }}</span><br/>
-                                        <span>{{ selectedOrder.distributor_address || 'N/A' }}</span>
+                                   <div class="flex flex-col md:flex-row justify-between gap-4 mb-6 text-xs">
+                                      <div class="flex-1 bg-gray-50 p-3 rounded border">
+                                        <span class="text-gray-500 block uppercase font-bold text-[10px] mb-1">Bill To</span>
+                                        <span class="font-bold text-sm block">{{ selectedOrder.distributor_name }}</span>
+                                        <span class="text-gray-600 mt-1 block">{{ selectedOrder.distributor_address || 'N/A' }}</span>
                                       </div>
-                                      <div class="text-left md:text-right">
-                                        <span class="text-gray-500 block">Invoice #:</span>
-                                        <span>INV-{{ selectedOrder.id }}</span><br/>
-                                        <span class="text-gray-500 block mt-1">Date:</span>
-                                        <span>{{ new Date().toLocaleDateString() }}</span>
+                                      <div class="flex-1 bg-gray-50 p-3 rounded border text-left md:text-right">
+                                        <span class="text-gray-500 block uppercase font-bold text-[10px] mb-1">Receipt Details</span>
+                                        <div class="grid grid-cols-2 gap-1 text-left md:text-right">
+                                           <span class="text-gray-500 text-left">Invoice #:</span>
+                                           <span class="font-mono font-medium">INV-{{ selectedOrder.id }}</span>
+                                           <span class="text-gray-500 text-left mt-1">Date:</span>
+                                           <span>{{ new Date().toLocaleDateString() }}</span>
+                                           <span class="text-gray-500 text-left mt-1">Ref Code:</span>
+                                           <span class="font-mono text-[10px] pt-1">{{ selectedOrder.request_code }}</span>
+                                        </div>
                                       </div>
                                    </div>
 
                                    <table class="w-full text-left mb-4 text-xs">
-                                      <thead class="border-b-2 border-black">
+                                      <thead class="bg-gray-100 border-y-2 border-gray-400">
                                          <tr>
-                                            <th class="py-1">Item</th>
-                                            <th class="py-1 text-right">Qty</th>
-                                            <th class="py-1 text-right">Amount</th>
+                                            <th class="py-2 px-2 font-bold uppercase text-gray-700">Item Description</th>
+                                            <th class="py-2 px-2 font-bold uppercase text-gray-700 text-right">Qty</th>
+                                            <th class="py-2 px-2 font-bold uppercase text-gray-700 text-right">Amount</th>
                                          </tr>
                                       </thead>
                                       <tbody>
-                                         <tr v-for="item in selectedOrder.items" :key="item.id">
-                                            <td class="py-1">{{ item.name }}</td>
-                                            <td class="py-1 text-right">{{ item.quantity }}</td>
-                                            <td class="py-1 text-right">{{ formatCurrency(item.total) }}</td>
+                                         <tr v-for="item in selectedOrder.items" :key="item.id" class="border-b border-gray-200 border-dashed">
+                                            <td class="py-2 px-2">{{ item.name }}</td>
+                                            <td class="py-2 px-2 text-right">{{ item.quantity }}</td>
+                                            <td class="py-2 px-2 text-right">{{ formatCurrency(item.total) }}</td>
                                          </tr>
                                       </tbody>
                                    </table>
 
-                                   <div class="border-t-2 border-black pt-2 flex justify-between font-bold text-base">
-                                      <span>Total</span>
-                                      <span>{{ formatCurrency(selectedOrder.total_amount) }}</span>
+                                   <div class="border-t-2 border-black pt-4 mt-4 flex justify-end">
+                                      <div class="w-full max-w-[280px] text-xs">
+                                         <div class="flex justify-between mb-1 py-1">
+                                            <span class="text-gray-600 font-medium">VATable Sales</span>
+                                            <span>{{ formatCurrency(getVatableSales(selectedOrder.total_amount)) }}</span>
+                                         </div>
+                                         <div class="flex justify-between mb-2 py-1">
+                                            <span class="text-gray-600 font-medium">VAT Amount (12%)</span>
+                                            <span>{{ formatCurrency(getVatAmount(selectedOrder.total_amount)) }}</span>
+                                         </div>
+                                         <div class="flex justify-between font-bold text-base border-t border-gray-300 pt-3 mt-1 text-black">
+                                            <span>Total Amount Due</span>
+                                            <span>{{ formatCurrency(selectedOrder.total_amount) }}</span>
+                                         </div>
+                                      </div>
                                    </div>
                                 </div>
                               </ScrollArea>
 
-                              <DialogFooter class="flex-col sm:flex-row gap-2">
+                              <DialogFooter class="flex-col sm:flex-row gap-2 mt-4">
                                 <Button variant="secondary" @click="downloadReceipt" class="w-full sm:w-auto">
                                   <Download class="h-4 w-4 mr-2" />
                                   Download
@@ -631,7 +688,6 @@ onMounted(() => {
 
                    <Separator />
 
-                   <!-- Proof of Preparation Section -->
                    <div class="grid w-full items-center gap-2">
                       <Label class="font-semibold">2. Proof of Preparation (Photo)</Label>
                       <div>
@@ -669,7 +725,6 @@ onMounted(() => {
                       </div>
                    </div>
 
-                   <!-- Notes Section -->
                    <div class="grid w-full gap-2 pt-2">
                       <Label for="notes">Additional Notes</Label>
                       <Textarea v-model="notes" placeholder="Any remarks regarding packaging or items..." rows="3" />
@@ -693,7 +748,6 @@ onMounted(() => {
           </ScrollArea>
         </div>
 
-        <!-- No Order Selected State -->
         <div v-else class="flex h-full flex-col items-center justify-center text-muted-foreground pb-20 px-4">
            <div class="bg-muted/50 p-6 rounded-full mb-4">
               <Package class="h-12 w-12 opacity-50" />
@@ -704,10 +758,8 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Mobile View (below md) -->
     <div class="flex md:hidden flex-col h-full w-full">
       
-      <!-- Mobile Header -->
       <header class="border-b bg-background px-4 py-3 sticky top-0 z-20 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <Sheet v-model:open="showMobileSheet">
@@ -717,7 +769,6 @@ onMounted(() => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" class="w-[85%] sm:w-80 p-0">
-              <!-- Mobile Orders List -->
               <div class="flex flex-col h-full">
                 <div class="p-4 border-b space-y-4">
                   <div class="flex items-center justify-between">
@@ -803,7 +854,6 @@ onMounted(() => {
         </Button>
       </header>
 
-      <!-- Mobile Content -->
       <ScrollArea class="flex-1">
         <div v-if="!selectedOrder" class="flex flex-col items-center justify-center text-muted-foreground py-20 px-4">
           <div class="bg-muted/50 p-6 rounded-full mb-4">
@@ -814,7 +864,6 @@ onMounted(() => {
         </div>
 
         <div v-else-if="!showMobilePreview" class="p-4">
-          <!-- Mobile Order Summary (Collapsed View) -->
           <Card>
             <CardContent class="p-4">
               <div class="flex items-center justify-between mb-3">
@@ -843,9 +892,6 @@ onMounted(() => {
         </div>
 
         <div v-else class="p-4 space-y-4 pb-8">
-          <!-- Mobile Full Details View -->
-          
-          <!-- Order Summary Card -->
           <Card>
             <CardHeader class="pb-2">
               <div class="flex items-start justify-between">
@@ -870,7 +916,6 @@ onMounted(() => {
             </CardContent>
           </Card>
 
-          <!-- Items List -->
           <Card>
             <CardHeader class="pb-2">
               <CardTitle class="text-base">Items to Prepare</CardTitle>
@@ -891,15 +936,22 @@ onMounted(() => {
                 </div>
               </div>
             </CardContent>
-            <CardFooter class="bg-muted/50 p-3">
-              <div class="flex w-full justify-between items-center font-bold">
-                <span>Total</span>
+            <CardFooter class="bg-muted/50 p-3 flex-col gap-2">
+              <div class="flex w-full justify-between items-center text-xs text-gray-500">
+                <span>VATable Sales</span>
+                <span>{{ formatCurrency(getVatableSales(selectedOrder.total_amount)) }}</span>
+              </div>
+              <div class="flex w-full justify-between items-center text-xs text-gray-500">
+                <span>VAT (12%)</span>
+                <span>{{ formatCurrency(getVatAmount(selectedOrder.total_amount)) }}</span>
+              </div>
+              <div class="flex w-full justify-between items-center font-bold border-t pt-2 mt-1">
+                <span>Total Amount Due</span>
                 <span class="text-primary">{{ formatCurrency(selectedOrder.total_amount) }}</span>
               </div>
             </CardFooter>
           </Card>
 
-          <!-- Fulfillment Documentation (Mobile) -->
           <Card class="border-dashed border-2">
             <CardHeader class="pb-2">
               <CardTitle class="text-base flex items-center gap-2">
@@ -908,7 +960,6 @@ onMounted(() => {
             </CardHeader>
             <CardContent class="space-y-4">
               
-              <!-- Receipt Upload -->
               <div class="space-y-2">
                 <Label class="font-semibold text-sm">1. Official Receipt</Label>
                 <div class="border rounded-md p-2 bg-background">
@@ -936,7 +987,6 @@ onMounted(() => {
                       </Button>
                     </DialogTrigger>
                     <DialogContent class="w-[95%] max-w-[400px] mx-auto">
-                      <!-- Dialog content same as desktop but optimized for mobile -->
                       <DialogHeader>
                         <DialogTitle class="text-base">Generate Receipt</DialogTitle>
                         <DialogDescription class="text-xs">
@@ -945,27 +995,41 @@ onMounted(() => {
                       </DialogHeader>
                       
                       <ScrollArea class="max-h-[50vh]">
-                        <div class="border rounded-lg p-3 bg-white text-black text-xs">
-                          <!-- Simplified preview for mobile -->
+                        <div class="border rounded-lg p-4 bg-white text-black text-xs font-serif">
                           <div class="text-center border-b pb-2 mb-2">
-                            <h3 class="font-bold">MY SUPPLIER CO.</h3>
-                            <p class="text-[10px] text-gray-500">123 Warehouse St., Philippines</p>
+                            <h3 class="font-bold text-sm uppercase">{{ supplierDetails?.company_name || 'MY SUPPLIER CO.' }}</h3>
+                            <p class="text-[10px] text-gray-500 mt-1">{{ supplierDetails?.address || '123 Warehouse St., Philippines' }}</p>
+                            <p class="text-[10px] text-gray-500">VAT Reg: {{ supplierDetails?.business_registration_number || '000-123-456-000' }}</p>
                           </div>
-                          <div class="mb-2">
-                            <span class="font-bold">{{ selectedOrder.distributor_name }}</span>
+                          <div class="mb-3 bg-gray-50 p-2 rounded border">
+                            <span class="text-gray-500 block uppercase font-bold text-[8px] mb-1">Bill To</span>
+                            <span class="font-bold block text-xs">{{ selectedOrder.distributor_name }}</span>
                           </div>
                           <div v-for="item in selectedOrder.items" :key="item.id" class="flex justify-between text-[10px] mb-1">
                             <span>{{ item.name }} x{{ item.quantity }}</span>
                             <span>{{ formatCurrency(item.total) }}</span>
                           </div>
-                          <div class="border-t mt-2 pt-2 flex justify-between font-bold">
-                            <span>Total</span>
-                            <span>{{ formatCurrency(selectedOrder.total_amount) }}</span>
+                          
+                          <div class="border-t border-gray-300 mt-3 pt-3 flex justify-end">
+                            <div class="w-full max-w-[200px]">
+                              <div class="flex justify-between mb-1 text-[10px]">
+                                <span class="text-gray-600">VATable Sales</span>
+                                <span>{{ formatCurrency(getVatableSales(selectedOrder.total_amount)) }}</span>
+                              </div>
+                              <div class="flex justify-between mb-2 text-[10px]">
+                                <span class="text-gray-600">VAT Amount (12%)</span>
+                                <span>{{ formatCurrency(getVatAmount(selectedOrder.total_amount)) }}</span>
+                              </div>
+                              <div class="flex justify-between font-bold border-t pt-2 mt-1">
+                                <span>Total</span>
+                                <span>{{ formatCurrency(selectedOrder.total_amount) }}</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </ScrollArea>
 
-                      <DialogFooter class="flex-col gap-2">
+                      <DialogFooter class="flex-col gap-2 mt-2">
                         <Button variant="secondary" size="sm" @click="downloadReceipt" class="w-full">
                           <Download class="h-3 w-3 mr-2" /> Download
                         </Button>
@@ -981,7 +1045,6 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Proof of Preparation -->
               <div class="space-y-2">
                 <Label class="font-semibold text-sm">2. Proof of Preparation</Label>
                 <div class="border rounded-md p-2 bg-background">
@@ -1004,7 +1067,6 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Notes -->
               <div class="space-y-2">
                 <Label for="notes-mobile" class="font-semibold text-sm">Notes</Label>
                 <Textarea 

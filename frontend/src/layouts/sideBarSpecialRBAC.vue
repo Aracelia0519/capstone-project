@@ -1,6 +1,6 @@
 <template>
   <Sidebar collapsible="icon" class="border-r border-slate-800/50 bg-slate-900 transition-all duration-500 ease-in-out">
-    <SidebarHeader class="h-auto py-6 border-b border-slate-800/50 bg-slate-900 px-4">
+    <SidebarHeader class="h-auto py-6 border-b border-slate-800/50 bg-slate-900 px-4 shrink-0">
       <div class="flex items-center gap-3 w-full">
         <div class="relative shrink-0">
           <Avatar class="w-12 h-12 ring-2 ring-indigo-500/30 ring-offset-2 ring-offset-slate-900">
@@ -11,7 +11,7 @@
           <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-slate-900" />
         </div>
         
-        <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 flex-1">
+        <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 flex-1 nav-text-clip">
           <h2 class="text-sm font-bold text-slate-100 truncate">{{ userDetails.name || 'Loading...' }}</h2>
           <div class="flex items-center gap-1.5 mt-0.5">
             <Badge variant="outline" class="h-5 px-1.5 text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border-indigo-500/20 truncate max-w-[120px]">
@@ -22,7 +22,7 @@
       </div>
     </SidebarHeader>
 
-    <SidebarContent class="bg-slate-900 overflow-y-auto custom-scrollbar">
+    <SidebarContent class="bg-slate-900 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
       <div v-if="isLoading" class="p-6 flex justify-center">
         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
       </div>
@@ -32,24 +32,26 @@
       </div>
 
       <SidebarGroup v-else v-for="(group, idx) in navigationData" :key="idx" class="px-2 py-4">
-        <SidebarGroupLabel class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 group-data-[collapsible=icon]:hidden">
+        <SidebarGroupLabel v-if="state === 'expanded' || isMobile" class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 nav-text-clip">
           {{ group.title }}
         </SidebarGroupLabel>
         
         <SidebarMenu>
           <SidebarMenuItem v-for="item in group.items" :key="item.permissionKey">
-            <SidebarMenuButton asChild :tooltip="item.name">
+            <SidebarMenuButton asChild :tooltip="item.name" class="h-auto">
               <router-link 
                 :to="item.path"
                 class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 transition-all duration-300 hover:bg-slate-800 hover:text-white group"
                 active-class="bg-indigo-500/10 text-indigo-400 font-medium relative after:absolute after:left-0 after:top-1/2 after:-translate-y-1/2 after:w-1 after:h-8 after:bg-indigo-500 after:rounded-r-full"
               >
-                <component 
-                  :is="iconMap[item.icon] || fallbackIcon" 
-                  class="w-5 h-5 shrink-0 transition-colors duration-300"
-                  :class="[$route.path.includes(item.path) ? 'text-indigo-400' : 'text-slate-400 group-hover:text-white']"
-                />
-                <span class="truncate group-data-[collapsible=icon]:hidden">{{ item.name }}</span>
+                <div class="shrink-0 flex items-center justify-center w-5 h-5">
+                  <component 
+                    :is="iconMap[item.icon] || fallbackIcon" 
+                    class="w-5 h-5 transition-colors duration-300"
+                    :class="[$route.path.includes(item.path) ? 'text-indigo-400' : 'text-slate-400 group-hover:text-white']"
+                  />
+                </div>
+                <span v-if="state === 'expanded' || isMobile" class="truncate nav-text-clip">{{ item.name }}</span>
               </router-link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -57,18 +59,24 @@
       </SidebarGroup>
     </SidebarContent>
 
-    <SidebarFooter class="border-t border-slate-800/50 bg-slate-900 p-3">
+    <SidebarFooter class="border-t border-slate-800/50 bg-slate-900 p-3 shrink-0">
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton 
             @click="showLogoutModal = true"
-            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 transition-all duration-300 hover:bg-red-500/10 hover:text-red-400 group"
+            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 transition-all duration-300 hover:bg-red-500/10 hover:text-red-400 group h-auto"
           >
-            <LogOut class="w-5 h-5 shrink-0 text-slate-400 group-hover:text-red-400" />
-            <span class="group-data-[collapsible=icon]:hidden font-medium">Log out</span>
+            <div class="shrink-0 flex items-center justify-center w-5 h-5">
+              <LogOut class="w-5 h-5 text-slate-400 group-hover:text-red-400" />
+            </div>
+            <span v-if="state === 'expanded' || isMobile" class="font-medium nav-text-clip">Log out</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
+
+      <div v-if="!isMobile" class="flex justify-center pt-2">
+        <SidebarTrigger class="text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors" />
+      </div>
     </SidebarFooter>
 
     <Dialog :open="showLogoutModal" @update:open="showLogoutModal = $event">
@@ -109,6 +117,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Avatar } from '@/components/ui/avatar'
@@ -188,8 +197,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.nav-text-clip {
+  white-space: nowrap;
+  overflow: hidden;
+  display: inline-block;
+  transition: opacity 0.2s ease;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;

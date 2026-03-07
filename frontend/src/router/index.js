@@ -46,6 +46,7 @@ import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
 import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
 import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
 import SPChat from '@/views/serviceProvider/SPChat.vue'
+import SPPaymentSettings from '@/views/serviceProvider/SPPaymentSettings.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -139,6 +140,9 @@ import PersonnelOfficer from '@/views/supplier/PersonnelOfficer.vue'
 import AddPersonnel from '@/views/supplier/AddPersonnel.vue'
 import RoleActivation from '@/views/supplier/RoleActivation.vue'
 import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
+import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
+
+
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
 
@@ -686,6 +690,11 @@ const routes = [
         name: 'ProfileSettingsSP',
         component: ProfileSettingsSP
       },
+      {
+        path: 'SPPaymentSettings',
+        name: 'SPPaymentSettings',
+        component: SPPaymentSettings
+      },
     ]
   },
   {
@@ -1059,13 +1068,18 @@ const routes = [
         name: 'SupplierDelivery',
         component: SupplierDelivery
       },
+      {
+        path: 'SupplierPayments',
+        name: 'SupplierPayments',
+        component: SupplierPayments
+      },      
     ]
   },
   
   {
     path: '/ECommerceClient',
     component: ECommerceClientLayout,
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: false },
     children: [
       {
         path: 'EccommerceShop',

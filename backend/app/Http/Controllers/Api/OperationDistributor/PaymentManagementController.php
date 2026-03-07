@@ -8,16 +8,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\DistributorDelivery\ECDeliveryRemittance;
+use App\Models\OperationDistributor\DistributorPaymentSetting;
 use Carbon\Carbon;
 
 class PaymentManagementController extends Controller
 {
-    public function index()
+    /**
+     * Reusable method to resolve the main distributor ID based on the logged-in user's role
+     */
+    private function resolveDistributorId($user)
     {
-        $user = Auth::user();
-        
-        // 1. Determine the correct Distributor ID
-        // Start by assuming the user is the main distributor
         $distributorId = $user->id;
 
         // Dynamically check the specific role table to get the parent_distributor_id
@@ -31,26 +31,31 @@ class PaymentManagementController extends Controller
             $distributorId = DB::table('finance_managers')->where('user_id', $user->id)->value('parent_distributor_id') ?? $distributorId;
         }
 
-        // 2. Fetch orders that belong to this correct distributor
-        $orders = ClientOrder::with(['client', 'items' => function($query) use ($distributorId) {
-                $query->where('distributor_id', $distributorId);
-            }])
-            ->whereHas('items', function($query) use ($distributorId) {
-                $query->where('distributor_id', $distributorId);
-            })
-            ->where('payment_method', 'cod') // Only fetch Cash on Delivery for now
-            ->orderBy('created_at', 'desc')
-            ->get();
+        return $distributorId;
+    }
 
-        // 3. Fetch all remittance records for this distributor to check completed payments
-        $remittances = ECDeliveryRemittance::where('distributor_id', $distributorId)
-            ->pluck('order_id')
-            ->toArray();
+    /**
+     * Fetch all payments for the resolved distributor
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $distributorId = $this->resolveDistributorId($user);
+
+        // Fetch orders associated with this distributor's products
+        $orders = ClientOrder::whereHas('items', function ($query) use ($distributorId) {
+            $query->where('distributor_id', $distributorId);
+        })->with(['client', 'items' => function ($query) use ($distributorId) {
+            $query->where('distributor_id', $distributorId);
+        }])->get();
 
         $payments = [];
 
+        // Pre-fetch all delivered remittances to optimize query
+        $remittances = ECDeliveryRemittance::whereIn('order_id', $orders->pluck('id'))->pluck('order_id')->toArray();
+
         foreach ($orders as $order) {
-            // 4. Only make it "Completed" if there is data in the ec_delivery_remittances table
+            // Only make it "Completed" if there is data in the ec_delivery_remittances table
             $isCompleted = in_array($order->id, $remittances);
             
             // Format Client Name safely 
@@ -67,7 +72,7 @@ class PaymentManagementController extends Controller
                 'paymentId' => 'PAY-' . str_replace('ORD-', '', $order->order_number),
                 'orderId' => $order->order_number,
                 'client' => $clientName,
-                'method' => 'COD',
+                'method' => strtoupper($order->payment_method ?? 'COD'),
                 'amount' => (float) $order->grand_total,
                 'status' => $isCompleted ? 'Completed' : 'Pending', // Force UI to Pending until remitted
                 'date' => Carbon::parse($order->created_at)->format('Y-m-d'),
@@ -81,6 +86,61 @@ class PaymentManagementController extends Controller
         return response()->json([
             'success' => true,
             'data' => $payments
+        ]);
+    }
+
+    /**
+     * Get the current payment settings for the distributor
+     */
+    public function getSettings(Request $request)
+    {
+        $user = Auth::user();
+        $distributorId = $this->resolveDistributorId($user);
+
+        // Fetch or Initialize default settings if not exists
+        $settings = DistributorPaymentSetting::firstOrCreate(
+            ['distributor_id' => $distributorId],
+            [
+                'is_cod_enabled' => true,
+                'is_gcash_enabled' => false,
+                'gcash_number' => null
+            ]
+        );
+
+        return response()->json([
+            'success' => true, 
+            'data' => $settings
+        ]);
+    }
+
+    /**
+     * Update the payment settings for the distributor
+     */
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'is_cod_enabled' => 'required|boolean',
+            'is_gcash_enabled' => 'required|boolean',
+            // If GCash is enabled, the number is strictly required
+            'gcash_number' => 'required_if:is_gcash_enabled,true|nullable|string|max:20'
+        ]);
+
+        $user = Auth::user();
+        $distributorId = $this->resolveDistributorId($user);
+
+        $settings = DistributorPaymentSetting::updateOrCreate(
+            ['distributor_id' => $distributorId],
+            [
+                'is_cod_enabled' => $request->is_cod_enabled,
+                'is_gcash_enabled' => $request->is_gcash_enabled,
+                'gcash_number' => $request->is_gcash_enabled ? $request->gcash_number : null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'Payment settings updated successfully!', 
+            'data' => $settings
         ]);
     }
 }

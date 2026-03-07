@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\OperationDistributor\ProcurementRequest;
 use App\Models\Supplier\ProcurementFulfillment;
+use App\Models\Supplier\SupplierRequirements;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -31,6 +32,21 @@ class SupplierOrderProcessingController extends Controller
             if ($officer) {
                 $supplierId = $officer->supplier_id;
             }
+        }
+
+        // Fetch supplier business details for authentic receipt generation
+        $supplierReq = SupplierRequirements::with('address')->where('user_id', $supplierId)->first();
+        $supplierData = [
+            'company_name' => $supplierReq->company_name ?? 'Unknown Company',
+            'business_registration_number' => $supplierReq->business_registration_number ?? '000-000-000-000',
+            'address' => 'Address not provided'
+        ];
+
+        if ($supplierReq && $supplierReq->address) {
+            $addr = $supplierReq->address;
+            // Format address neatly
+            $addressParts = array_filter([$addr->block_address, $addr->barangay, $addr->city, $addr->province]);
+            $supplierData['address'] = implode(', ', $addressParts);
         }
 
         // Fetch requests assigned to this supplier with status 'processing'
@@ -72,7 +88,11 @@ class SupplierOrderProcessingController extends Controller
             ];
         });
 
-        return response()->json($formattedOrders);
+        // Return both the orders array and the supplier details object
+        return response()->json([
+            'orders' => $formattedOrders,
+            'supplier' => $supplierData
+        ]);
     }
 
     /**
