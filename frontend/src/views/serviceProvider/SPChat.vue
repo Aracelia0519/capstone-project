@@ -182,6 +182,30 @@
                     <span v-else-if="message.payload?.deal_status === 'declined'">❌ Client Declined the Deal.</span>
                  </div>
               </div>
+
+              <div v-else-if="message.type === 'payment_term'" class="bg-gradient-to-br from-slate-800 to-slate-900 border border-yellow-500/50 rounded-xl p-4 shadow-lg w-full max-w-sm sm:max-w-md">
+                 <div class="flex items-center gap-2 mb-3 border-b border-yellow-500/30 pb-2">
+                    <CreditCard class="w-5 h-5 text-yellow-400" />
+                    <span class="text-sm font-bold text-white uppercase tracking-wider">Payment Terms Offer</span>
+                 </div>
+                 <div class="space-y-2 text-xs text-slate-200 bg-slate-950/50 p-3 rounded-lg border border-slate-800 shadow-inner">
+                    <div class="flex justify-between items-center mb-1">
+                       <span class="text-slate-400 font-medium">Payment Method</span> 
+                       <span class="font-bold text-yellow-400 uppercase">{{ message.payload?.payment_method }}</span>
+                    </div>
+                    <div class="h-px bg-slate-700/50 my-1"></div>
+                    <div class="flex flex-col gap-1">
+                       <span class="text-slate-400">Payment Term Condition:</span> 
+                       <span class="font-medium text-sm text-white">{{ message.payload?.payment_term }}</span>
+                    </div>
+                 </div>
+
+                 <div class="mt-3 text-center text-xs font-bold" :class="{ 'text-yellow-300 animate-pulse': message.payload?.term_status === 'pending', 'text-emerald-400': message.payload?.term_status === 'agreed', 'text-red-400': message.payload?.term_status === 'declined' }">
+                    <span v-if="message.payload?.term_status === 'pending'">Waiting for client's approval...</span>
+                    <span v-else-if="message.payload?.term_status === 'agreed'">✅ Client Agreed to Terms!</span>
+                    <span v-else-if="message.payload?.term_status === 'declined'">❌ Client Declined the Terms.</span>
+                 </div>
+              </div>
               
               <div class="flex items-center mt-1 space-x-1" :class="message.sender === 'me' ? 'justify-end' : 'justify-start sm:ml-1'">
                 <span class="text-[9px] md:text-[10px] text-slate-500">{{ message.time }}</span>
@@ -222,6 +246,10 @@
                    <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openOfficialDealModal">
                       <ShieldCheck class="w-4 h-4 mr-2 text-emerald-400" /> 
                       <span class="font-medium text-sm">Create Official Deal</span>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openPaymentTermModal" v-if="hasOngoingDeal">
+                      <CreditCard class="w-4 h-4 mr-2 text-yellow-400" /> 
+                      <span class="font-medium text-sm">Send Payment Terms</span>
                    </DropdownMenuItem>
                  </div>
               </DropdownMenuContent>
@@ -328,6 +356,63 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="showPaymentTermModal">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[500px] rounded-3xl overflow-hidden p-0 max-h-[90vh] flex flex-col shadow-2xl shadow-black/80">
+        
+        <div class="px-6 py-6 border-b border-slate-800 bg-slate-950/50 shrink-0">
+          <DialogTitle class="text-xl md:text-2xl font-bold flex items-center gap-2 tracking-tight">
+             <CreditCard class="w-6 h-6 text-yellow-400" />
+             Set Payment Terms
+          </DialogTitle>
+          <p class="text-slate-400 text-sm mt-2">Specify the payment method and terms for the ongoing official deal.</p>
+        </div>
+        
+        <div class="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Payment Method <span class="text-red-500">*</span></Label>
+              <Select v-model="paymentTermForm.payment_method">
+                 <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl">
+                   <SelectValue placeholder="Select payment method" />
+                 </SelectTrigger>
+                 <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
+                   <SelectItem v-if="paymentSettings.is_gcash_enabled" value="gcash">GCash</SelectItem>
+                   <SelectItem v-if="paymentSettings.is_on_hand_enabled" value="on_hand">On Hand (Cash)</SelectItem>
+                 </SelectContent>
+               </Select>
+               <p v-if="!paymentSettings.is_gcash_enabled && !paymentSettings.is_on_hand_enabled" class="text-xs text-red-400">Please enable at least one payment method in your settings first.</p>
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Payment Terms <span class="text-red-500">*</span></Label>
+              <Select v-model="paymentTermForm.payment_term">
+                 <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl">
+                   <SelectValue placeholder="Select terms condition" />
+                 </SelectTrigger>
+                 <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
+                   <SelectItem value="100% payment first">100% payment first</SelectItem>
+                   <SelectItem value="50% payment first">50% payment first</SelectItem>
+                   <SelectItem value="40% payment first">40% payment first</SelectItem>
+                   <SelectItem value="30% payment first">30% payment first</SelectItem>
+                   <SelectItem value="20% payment first">20% payment first</SelectItem>
+                   <SelectItem value="10% payment first">10% payment first</SelectItem>
+                   <SelectItem value="Service first before payment">Service first before payment</SelectItem>
+                 </SelectContent>
+               </Select>
+           </div>
+        </div>
+
+        <div class="px-6 py-5 bg-slate-950/80 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+           <Button variant="outline" class="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl font-bold h-12 px-6" @click="showPaymentTermModal = false">Cancel</Button>
+           <Button class="bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-bold h-12 px-8 shadow-lg shadow-yellow-900/20 transition-all" @click="sendPaymentTerm" :disabled="isSending || (!paymentSettings.is_gcash_enabled && !paymentSettings.is_on_hand_enabled)">
+              <span v-if="isSending" class="flex items-center">
+                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+              </span>
+              <span v-else>Send Terms</span>
+           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -350,7 +435,8 @@ import {
   Check,
   CheckCheck,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
@@ -388,6 +474,18 @@ const dealForm = ref({
   description: '' 
 })
 
+// Payment Terms Modal Form State
+const showPaymentTermModal = ref(false)
+const paymentTermForm = ref({
+  payment_method: '',
+  payment_term: ''
+})
+const paymentSettings = ref({
+  is_on_hand_enabled: false,
+  is_gcash_enabled: false
+})
+const currentDealId = ref(null)
+
 // Initialize WebSockets securely using Pusher Cloud
 const initWebSockets = (userId) => {
   window.Pusher = Pusher
@@ -397,8 +495,8 @@ const initWebSockets = (userId) => {
 
   window.Echo = new Echo({
     broadcaster: 'pusher',
-    key: 'fade6ce6ed8705f2ace4', // Your exact Pusher Key
-    cluster: 'ap1',              // Your exact Pusher Cluster
+    key: 'fade6ce6ed8705f2ace4', 
+    cluster: 'ap1',              
     forceTLS: true,              
     authEndpoint: `${apiUrl}/broadcasting/auth`, 
     auth: {
@@ -434,14 +532,12 @@ const initWebSockets = (userId) => {
     })
 }
 
-// Blocks mathematical operators and negative signs from the price input
 const preventInvalidChars = (e) => {
   if (['e', 'E', '+', '-'].includes(e.key)) {
     e.preventDefault()
   }
 }
 
-// Helpers
 const getInitials = (name) => {
   if (!name) return 'UN'
   return name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2)
@@ -465,17 +561,28 @@ const filteredContacts = computed(() => {
 
 const activeMessages = computed(() => messages.value)
 
-// API Actions
+const hasOngoingDeal = computed(() => {
+  return messages.value.some(m => m.type === 'official_deal' && m.payload?.deal_status === 'ongoing')
+})
+
 const fetchCurrentUser = async () => {
   try {
     const res = await api.get('/auth/me')
     currentUser.value = res.data.data || res.data.user || res.data 
-    
     if (currentUser.value && currentUser.value.id) {
        initWebSockets(currentUser.value.id)
     }
-  } catch (error) { 
-    console.error('Auth error', error) 
+  } catch (error) { console.error('Auth error', error) }
+}
+
+const fetchPaymentSettings = async () => {
+  try {
+    const response = await api.get('/service-provider/payment-settings')
+    if (response.data.success) {
+      paymentSettings.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Failed to load payment settings', error)
   }
 }
 
@@ -547,7 +654,6 @@ const submitMessageToDb = async (type, textContent, payloadData = null) => {
       }
       
       messages.value.push(newMsgObj)
-      
       const cRef = contacts.value.find(c => c.id === activeContact.value.id)
       if(cRef) cRef.lastMessage = type === 'text' ? textContent : `Sent ${type.replace('_', ' ')}`
       
@@ -600,7 +706,6 @@ const sendOfficialDeal = async () => {
     toast.error("Please complete all required fields")
     return
   }
-  // Ensures value is numeric and cleanly passed
   dealForm.value.price = parseFloat(dealForm.value.price);
   
   const success = await submitMessageToDb('official_deal', null, { ...dealForm.value })
@@ -610,8 +715,43 @@ const sendOfficialDeal = async () => {
   }
 }
 
+// Open Payment Terms Form
+const openPaymentTermModal = () => {
+  // Find the deal ID from the messages
+  const acceptedDeal = messages.value.slice().reverse().find(m => m.type === 'official_deal' && m.payload?.deal_status === 'ongoing')
+  if (!acceptedDeal) {
+     toast.error("No ongoing deal found to attach payment terms.")
+     return
+  }
+  currentDealId.value = acceptedDeal.payload.deal_id
+  
+  paymentTermForm.value = { payment_method: '', payment_term: '' }
+  showPaymentTermModal.value = true
+}
+
+// Send the Payment Terms Action
+const sendPaymentTerm = async () => {
+  if(!paymentTermForm.value.payment_method || !paymentTermForm.value.payment_term) {
+    toast.error("Please select a method and a term.")
+    return
+  }
+  
+  const payloadData = {
+     deal_id: currentDealId.value,
+     payment_method: paymentTermForm.value.payment_method,
+     payment_term: paymentTermForm.value.payment_term
+  }
+
+  const success = await submitMessageToDb('payment_term', null, payloadData)
+  if(success) {
+    toast.success("Payment terms sent successfully!")
+    showPaymentTermModal.value = false
+  }
+}
+
 onMounted(async () => {
   await fetchCurrentUser()
+  await fetchPaymentSettings()
   await fetchContacts()
 })
 </script>

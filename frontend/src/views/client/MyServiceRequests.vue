@@ -120,6 +120,17 @@
                 <MessageSquare class="w-4 h-4" />
                 Messages
               </Button>
+
+              <Button 
+                v-if="request.raw.payment_term && (request.raw.payment_term.status === 'agreed' || request.raw.payment_term.status === 'awaiting_proof_approval' || request.raw.payment_term.status === 'paid')"
+                variant="secondary" 
+                size="sm"
+                @click="viewDetails(request)"
+                class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 border border-yellow-500/30 rounded-xl gap-2 shadow-lg shadow-yellow-900/20"
+              >
+                <CreditCard class="w-4 h-4" />
+                Payment Actions
+              </Button>
             </div>
           </div>
           
@@ -174,6 +185,67 @@
         
         <div v-if="selectedRequest" class="px-6 py-5 space-y-6">
            
+           <div v-if="selectedRequest.raw.payment_term" class="bg-gradient-to-br from-yellow-900/10 to-yellow-800/20 rounded-2xl p-5 border border-yellow-700/50 shadow-inner">
+             <h4 class="text-sm font-bold text-yellow-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+               <CreditCard class="w-4 h-4" />
+               Official Payment Terms
+             </h4>
+
+             <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800 mb-4">
+               <div>
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Method</p>
+                 <p class="text-xs text-yellow-300 font-bold uppercase">{{ selectedRequest.raw.payment_term.payment_method }}</p>
+               </div>
+               <div>
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Term Condition</p>
+                 <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.payment_term.payment_term }}</p>
+               </div>
+             </div>
+
+             <div v-if="selectedRequest.raw.payment_term.status === 'agreed'">
+                <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-2">
+                   <p class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please proceed with the payment.</p>
+                   <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
+                      <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                      <span v-else>Pay via GCash (PayMongo)</span>
+                   </Button>
+                </div>
+                
+                <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-2">
+                   <p class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please hand the payment physically and upload the receipt/proof here.</p>
+                   <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                   
+                   <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
+                      <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                      <span v-else>Upload Proof of Payment</span>
+                   </Button>
+                </div>
+             </div>
+
+             <div v-else-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="text-center pt-2">
+                <div class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
+                   <p class="text-sm font-bold text-blue-400">Proof Uploaded Successfully</p>
+                   <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify your payment.</p>
+                   
+                   <div v-if="selectedRequest.raw.payment_term.proof_of_payment_url" class="mt-3 w-full h-32 rounded-lg overflow-hidden border border-gray-700">
+                      <img :src="selectedRequest.raw.payment_term.proof_of_payment_url" class="w-full h-full object-cover hover:scale-105 transition-transform" />
+                   </div>
+                </div>
+             </div>
+
+             <div v-else-if="selectedRequest.raw.payment_term.status === 'paid'" class="text-center pt-2">
+                <div class="bg-emerald-900/30 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-center gap-2">
+                   <CheckCircle2 class="w-5 h-5 text-emerald-400" />
+                   <p class="text-sm font-bold text-emerald-400">Payment Verified & Completed!</p>
+                </div>
+             </div>
+
+             <div v-else-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
+                Awaiting your agreement in the chat section.
+             </div>
+
+           </div>
+
            <div v-if="selectedRequest.raw.service_offering" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
              <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
                <Briefcase class="w-4 h-4" />
@@ -272,7 +344,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -283,19 +356,24 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 
 // --- State Management ---
 const activeFilter = ref('all')
 const serviceRequests = ref([])
 const isLoading = ref(true)
 
-// Modal State
 const isModalOpen = ref(false)
 const selectedRequest = ref(null)
+
+// Payment State
+const proofInput = ref(null)
+const isUploadingProof = ref(false)
+const isPaying = ref(false)
 
 // --- Data Fetching ---
 const fetchRequests = async () => {
@@ -304,8 +382,6 @@ const fetchRequests = async () => {
     const response = await api.get('/client/services/my-requests')
     if (response.data.success) {
       serviceRequests.value = response.data.data.map(req => {
-        
-        // Progress Logic Setup
         let progress = 10;
         if (req.status === 'verifying') progress = 30;
         else if (req.status === 'approved') progress = 50;
@@ -322,19 +398,22 @@ const fetchRequests = async () => {
           serviceProvider: req.provider ? `${req.provider.first_name} ${req.provider.last_name}` : 'Pending Assignment',
           color: generatedColor,
           colorCode: generatedColor,
-          
-          // ADDED IMAGE EXTRACTION HERE
           imageUrl: req.service_offering?.image_paths?.length > 0 ? req.service_offering.image_paths[0] : null,
-          
           status: req.status,
           statusLabel: req.status.charAt(0).toUpperCase() + req.status.slice(1).replace('-', ' '),
           date: new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           requestedDate: req.preferred_date || 'N/A',
           currentStageDate: new Date(req.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           progress: progress,
-          raw: req // Keep raw payload to dump in Modal
+          raw: req
         }
       })
+
+      // Auto update modal state if it's open
+      if (selectedRequest.value) {
+         const updatedReq = serviceRequests.value.find(r => r.id === selectedRequest.value.id)
+         if(updatedReq) selectedRequest.value = updatedReq
+      }
     }
   } catch (error) {
     console.error('Failed to load requests:', error)
@@ -343,8 +422,65 @@ const fetchRequests = async () => {
   }
 }
 
-onMounted(() => {
-  fetchRequests()
+// --- Payment Actions ---
+const uploadProofOfPayment = async (termId) => {
+  if (!proofInput.value || !proofInput.value.files[0]) {
+    toast.error("Please select an image file first.")
+    return
+  }
+  
+  const formData = new FormData()
+  formData.append('proof_image', proofInput.value.files[0])
+
+  isUploadingProof.value = true
+  try {
+    const res = await api.post(`/client/services/payment-terms/${termId}/upload-proof`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if(res.data.success) {
+      toast.success(res.data.message)
+      await fetchRequests() // re-fetch to update statuses
+    }
+  } catch(error) {
+    toast.error(error.response?.data?.message || "Failed to upload proof.")
+  } finally {
+    isUploadingProof.value = false
+    if(proofInput.value) proofInput.value.value = null // clear input
+  }
+}
+
+const payWithGcash = async (termId) => {
+  isPaying.value = true
+  try {
+    const res = await api.post(`/client/services/payment-terms/${termId}/pay-gcash`)
+    if(res.data.success) {
+      window.location.href = res.data.checkout_url
+    }
+  } catch (error) {
+    toast.error("Failed to generate GCash link.")
+    isPaying.value = false
+  }
+}
+
+const verifyServicePayment = async (termId) => {
+  try {
+    const res = await api.post('/client/services/payment-terms/verify-gcash', { term_id: termId })
+    if (res.data.success) {
+      toast.success(res.data.message || "Payment completed successfully!")
+      fetchRequests() 
+      router.replace({ query: {} }) // remove query string
+    }
+  } catch(error) {
+    toast.error("Error verifying payment or payment is not complete.")
+  }
+}
+
+onMounted(async () => {
+  await fetchRequests()
+  
+  if (route.query.service_payment_term_id) {
+     verifyServicePayment(route.query.service_payment_term_id)
+  }
 })
 
 // --- Computeds ---
@@ -442,7 +578,6 @@ const getStatusMessage = (status) => {
   return messages[status] || 'Status unknown'
 }
 
-// Actions
 const viewDetails = (request) => {
   selectedRequest.value = request
   isModalOpen.value = true
@@ -454,39 +589,12 @@ const goToChat = () => {
 </script>
 
 <style scoped>
-/* Smooth transitions */
-* {
-  transition: all 0.2s ease-in-out;
-}
+* { transition: all 0.2s ease-in-out; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #38bdf8, #0ea5e9); border-radius: 3px; }
 
-/* Re-applying your custom scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.3);
-  border-radius: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #38bdf8, #0ea5e9);
-  border-radius: 3px;
-}
-
-/* Custom indicator animations */
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

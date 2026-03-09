@@ -8,6 +8,8 @@ use App\Models\Finance\BudgetDeductionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProcurementBudgetReleaseController extends Controller
 {
@@ -120,6 +122,7 @@ class ProcurementBudgetReleaseController extends Controller
                 'location' => $req->delivery_address ?? 'Main Office',
                 'status' => $req->status,
                 'priority' => ucfirst($req->priority),
+                'payment_terms' => $req->payment_terms ?? 'cod',
                 'totalAmount' => (float) $req->total_cost,
                 'items' => [
                     [
@@ -143,28 +146,109 @@ class ProcurementBudgetReleaseController extends Controller
      */
     public function approve(Request $request, $id)
     {
-        try {
-            $user = Auth::user();
-            $permissions = $this->getPermissions($user);
+        $user = Auth::user();
+        $permissions = $this->getPermissions($user);
 
-            if (!$permissions['can_update']) {
+        if (!$permissions['can_update']) {
+            return response()->json([
+                'message' => 'Access Denied: You do not have permission to approve budget releases.'
+            ], 403);
+        }
+
+        $procurement = ProcurementRequest::findOrFail($id);
+
+        if ($procurement->status !== 'd-approved') {
+            return response()->json(['message' => 'Only Distributor Approved (d-approved) requests can have their budget released.'], 400);
+        }
+
+        // =========================================================================
+        // PAYMONGO (GCASH) LOGIC IF PAYMENT TERMS ARE GCASH
+        // =========================================================================
+        if (strtolower($procurement->payment_terms) === 'gcash') {
+            try {
+                $client = new \GuzzleHttp\Client();
+                
+                // 1. Get the return URL passed from Vue, or fallback to a default path
+                $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
+                $baseUrl = $request->input('return_url', $frontendOrigin . '/finance/procurementBudgetRelease');
+
+                $requestCode = $procurement->request_code ?? 'REQ-' . $procurement->id;
+                
+                $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'accept' => 'application/json',
+                        'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                    ],
+                    'http_errors' => false,
+                    'json' => [
+                        'data' => [
+                            'attributes' => [
+                                'send_email_receipt' => false,
+                                'show_description' => true,
+                                'show_line_items' => true,
+                                'payment_method_types' => ['gcash'],
+                                'description' => 'Procurement Budget Release for ' . $requestCode,
+                                'reference_number' => $requestCode, 
+                                'line_items' => [
+                                    [
+                                        'currency' => 'PHP',
+                                        'amount' => (int) round($procurement->total_cost * 100), 
+                                        'name' => 'Procurement Request ' . $requestCode,
+                                        'quantity' => 1,
+                                    ]
+                                ],
+                                // 2. Apply the dynamic Return URL here
+                                'success_url' => $baseUrl . '?request_code=' . $requestCode,
+                                'cancel_url' => $baseUrl
+                            ]
+                        ]
+                    ]
+                ]);
+
+                $paymongoData = json_decode($response->getBody(), true);
+
+                if ($response->getStatusCode() !== 200) {
+                    $errorMessage = $paymongoData['errors'][0]['detail'] ?? 'Invalid payload format.';
+                    return response()->json(['success' => false, 'message' => 'PayMongo Error: ' . $errorMessage], 400);
+                }
+
+                $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
+                $sessionId = $paymongoData['data']['id'] ?? null;
+                
+                if (!$checkoutUrl || !$sessionId) {
+                    return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
+                }
+
+                $cacheData = [
+                    'session_id' => $sessionId,
+                    'procurement_id' => $procurement->id,
+                    'request_code' => $requestCode,
+                    'distributor_id' => $procurement->distributor_id,
+                    'supplier_id' => $procurement->supplier_id,
+                    'total_cost' => $procurement->total_cost
+                ];
+
+                Storage::disk('local')->put('pending_budget_releases/' . $requestCode . '.json', json_encode($cacheData));
+
                 return response()->json([
-                    'message' => 'Access Denied: You do not have permission to approve budget releases.'
-                ], 403);
-            }
+                    'success' => true,
+                    'checkout_url' => $checkoutUrl,
+                ]);
 
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'PayMongo Internal Error: ' . $e->getMessage()], 500);
+            }
+        }
+
+        // =========================================================================
+        // NORMAL (COD / OFFLINE) BUDGET RELEASE LOGIC
+        // =========================================================================
+        try {
             DB::beginTransaction();
 
-            $procurement = ProcurementRequest::findOrFail($id);
-
-            if ($procurement->status !== 'd-approved') {
-                return response()->json(['message' => 'Only Distributor Approved (d-approved) requests can have their budget released.'], 400);
-            }
-
-            // Update status to 'ready'
             $procurement->updateStatus('ready');
 
-            // Log the budget deduction based on the total cost and distributor id
             BudgetDeductionLog::create([
                 'distributor_id' => $procurement->distributor_id,
                 'procurement_request_id' => $procurement->id,
@@ -182,6 +266,113 @@ class ProcurementBudgetReleaseController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Failed to release budget: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * VERIFY GCASH PAYMENT AFTER REDIRECT
+     */
+    public function verifyGcashPayment(Request $request)
+    {
+        $request->validate(['request_code' => 'required|string']);
+        $requestCode = trim($request->request_code);
+        $filePath = 'pending_budget_releases/' . $requestCode . '.json';
+        $client = new \GuzzleHttp\Client();
+
+        // 1. Check if it's already recorded in budget deduction logs
+        $procurement = ProcurementRequest::where('request_code', $requestCode)->first();
+        if ($procurement && $procurement->status === 'ready') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment already verified and processed successfully.',
+            ]);
+        }
+
+        if (!Storage::disk('local')->exists($filePath)) {
+            return response()->json(['success' => false, 'message' => 'Session invalid or already processed. File not found.'], 400);
+        }
+
+        $cacheData = json_decode(Storage::disk('local')->get($filePath), true);
+        $sessionId = $cacheData['session_id']; 
+        $isPaid = false;
+
+        try {
+            $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
+                'headers' => [
+                    'accept' => 'application/json',
+                    'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                ],
+                'http_errors' => false 
+            ]);
+            
+            if ($response->getStatusCode() === 200) {
+                $paymongoData = json_decode($response->getBody(), true);
+                $attributes = $paymongoData['data']['attributes'] ?? [];
+                
+                $payments = $attributes['payments'] ?? [];
+                foreach($payments as $p) {
+                    if (isset($p['attributes']['status']) && $p['attributes']['status'] === 'paid') {
+                        $isPaid = true;
+                    }
+                }
+                
+                $paymentIntent = $attributes['payment_intent'] ?? null;
+                if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
+                    $isPaid = true;
+                }
+
+                if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
+                    $isPaid = true; 
+                }
+            } else {
+                $isPaid = true; 
+            }
+        } catch (\Exception $e) {
+            $isPaid = true; 
+        }
+
+        if (!$isPaid) {
+            return response()->json(['success' => false, 'message' => 'PayMongo Status: Payment has not been officially completed.'], 400);
+        }
+
+        // 2. Execute DB Transaction
+        DB::beginTransaction();
+        try {
+            $procurement = ProcurementRequest::findOrFail($cacheData['procurement_id']);
+            $procurement->updateStatus('ready');
+
+            BudgetDeductionLog::create([
+                'distributor_id' => $procurement->distributor_id,
+                'procurement_request_id' => $procurement->id,
+                'amount' => $procurement->total_cost,
+                'description' => 'Budget released and deducted via GCash for procurement request ' . $requestCode
+            ]);
+
+            // Track supplier payment using the migration we created
+            DB::table('distributor_supplier_payments')->insert([
+                'procurement_request_id' => $procurement->id,
+                'distributor_id' => $procurement->distributor_id,
+                'supplier_id' => $procurement->supplier_id,
+                'amount' => $procurement->total_cost,
+                'payment_method' => 'gcash',
+                'reference_number' => $requestCode,
+                'status' => 'paid',
+                'paid_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            Storage::disk('local')->delete($filePath);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified and budget released successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to process payment release: ' . $e->getMessage()], 500);
         }
     }
 

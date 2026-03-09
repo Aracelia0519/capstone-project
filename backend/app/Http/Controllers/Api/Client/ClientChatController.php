@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Models\ServiceProvider\SPMessage;
-use App\Models\ServiceProvider\OfficialDeal; // NEW
+use App\Models\ServiceProvider\OfficialDeal;
+use App\Models\ServiceProvider\OfficialPaymentTerm; // NEW
 use App\Events\MessageSent;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,9 +17,10 @@ class ClientChatController extends Controller
     {
         $clientId = Auth::id();
 
+        // FIXED: Removed 'pending' filter
         $requests = ClientServiceRequest::with(['provider', 'serviceOffering'])
             ->where('client_id', $clientId)
-            ->whereNotIn('status', ['pending', 'rejected'])
+            ->where('status', '!=', 'rejected')
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -83,7 +85,7 @@ class ClientChatController extends Controller
             'receiver_id' => 'required|exists:users,id',
             'service_request_id' => 'nullable|exists:client_service_requests,id',
             'message' => 'nullable|string',
-            'type' => 'required|in:text,request_summary,official_deal',
+            'type' => 'required|in:text,request_summary,official_deal,payment_term', // UPDATED
             'payload' => 'nullable|array'
         ]);
 
@@ -102,7 +104,6 @@ class ClientChatController extends Controller
         return response()->json(['success' => true, 'data' => $message]);
     }
 
-    // **NEW LOGIC: Handle Client Agree/Decline**
     public function respondToDeal(Request $request, $dealId)
     {
         $request->validate([
@@ -114,21 +115,17 @@ class ClientChatController extends Controller
         $chatMessage = SPMessage::findOrFail($request->message_id);
 
         if ($request->action === 'agree') {
-            // 1. Update Official Deal Table
             $deal->update(['status' => 'ongoing']);
             
-            // 2. Update the parent Client Service Request Table
             if ($deal->client_service_request_id) {
                 ClientServiceRequest::where('id', $deal->client_service_request_id)
                     ->update(['status' => 'ongoing']);
             }
 
-            // 3. Update the payload of the Chat Message to lock the buttons
             $payload = $chatMessage->payload;
             $payload['deal_status'] = 'ongoing';
             $chatMessage->update(['payload' => $payload]);
 
-            // 4. Send an automatic reply to the Provider
             $replyMsg = SPMessage::create([
                 'sender_id' => Auth::id(),
                 'receiver_id' => $deal->provider_id,
@@ -140,7 +137,6 @@ class ClientChatController extends Controller
             broadcast(new MessageSent($replyMsg))->toOthers();
 
         } else {
-            // If declined, only update the deal table and send reply, keep Service Request "verifying"
             $deal->update(['status' => 'declined']);
             
             $payload = $chatMessage->payload;
@@ -158,9 +154,42 @@ class ClientChatController extends Controller
             broadcast(new MessageSent($replyMsg))->toOthers();
         }
 
-        return response()->json([
-            'success' => true, 
-            'updated_message' => $chatMessage 
+        return response()->json(['success' => true, 'updated_message' => $chatMessage]);
+    }
+
+    // NEW: Handle Payment Term Acceptance/Decline
+    public function respondToPaymentTerm(Request $request, $termId)
+    {
+        $request->validate([
+            'action' => 'required|in:agree,decline',
+            'message_id' => 'required|exists:sp_messages,id'
         ]);
+
+        $term = OfficialPaymentTerm::findOrFail($termId);
+        $chatMessage = SPMessage::findOrFail($request->message_id);
+
+        $status = $request->action === 'agree' ? 'agreed' : 'declined';
+        $term->update(['status' => $status]);
+
+        $payload = $chatMessage->payload;
+        $payload['term_status'] = $status;
+        $chatMessage->update(['payload' => $payload]);
+
+        $replyText = $request->action === 'agree' 
+            ? 'I have agreed to the payment terms.' 
+            : 'I have declined the payment terms. Let\'s negotiate.';
+
+        $replyMsg = SPMessage::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $term->provider_id,
+            'service_request_id' => $chatMessage->service_request_id,
+            'message' => $replyText,
+            'type' => 'text',
+            'is_read' => false
+        ]);
+        
+        broadcast(new MessageSent($replyMsg))->toOthers();
+
+        return response()->json(['success' => true, 'updated_message' => $chatMessage]);
     }
 }

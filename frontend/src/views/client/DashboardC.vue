@@ -10,14 +10,21 @@
             <span class="block">Transform Your Space</span>
             <span class="block bg-gradient-to-r from-sky-400 via-sky-500 to-sky-700 bg-clip-text text-transparent">With Perfect Colors</span>
           </h1>
-          <p class="text-slate-400 text-lg mb-8 max-w-xl">Visualize, select, and track your paint projects with real-time updates</p>
+          <p class="text-slate-400 text-lg mb-6 max-w-xl">Visualize, select, and track your paint projects with real-time updates</p>
           
+          <div class="flex flex-wrap justify-center md:justify-start items-center gap-4 mb-6">
+            <Button @click="goToShop" class="bg-sky-500 hover:bg-sky-600 text-white rounded-full px-6 py-5 shadow-lg shadow-sky-500/20 border-0 font-semibold text-base transition-all">
+              <ShoppingCart class="w-5 h-5 mr-2" />
+              Visit E-Commerce Shop
+            </Button>
+          </div>
+
           <div class="flex flex-wrap justify-center md:justify-start gap-3">
-            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md">
+            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md text-white">
               <CheckCircle2 class="w-4 h-4 mr-2 text-sky-400" />
               {{ dashboardStats.activeProjects }} Active Projects
             </Badge>
-            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md">
+            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md text-white">
               <Palette class="w-4 h-4 mr-2 text-sky-400" />
               {{ dashboardStats.colorsSelected }} Colors Selected
             </Badge>
@@ -180,7 +187,7 @@
 
     <div class="quick-actions">
       <h3 class="text-lg font-bold mb-4 text-slate-200">Quick Actions</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Button 
           v-for="action in quickActionList" 
           :key="action.label"
@@ -191,7 +198,7 @@
           <div :class="['p-3 rounded-2xl shadow-lg text-white', action.color]">
             <component :is="action.icon" class="w-6 h-6" />
           </div>
-          <span class="font-semibold">{{ action.label }}</span>
+          <span class="font-semibold text-white">{{ action.label }}</span>
         </Button>
       </div>
     </div>
@@ -200,6 +207,7 @@
 
 <script setup>
 import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { 
   Card, CardContent, CardHeader, CardTitle 
 } from '@/components/ui/card'
@@ -213,8 +221,10 @@ import {
 import { 
   CheckCircle2, Palette, ClipboardList, ChevronRight, 
   User, Paintbrush2, Users, Star, Mail, History, 
-  FileText, Info, Plus, Eye, Lightbulb
+  FileText, Info, Plus, Eye, Lightbulb, ShoppingCart
 } from 'lucide-vue-next'
+
+const router = useRouter()
 
 // --- Script Logic (Preserved and Reactive) ---
 
@@ -254,6 +264,10 @@ const recentActivity = reactive([
 
 // --- Methods ---
 
+const goToShop = () => {
+  router.push('/ECommerceClient/EccommerceShop')
+}
+
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
@@ -278,8 +292,9 @@ const getActivityIconClass = (type) => {
   return base + "bg-amber-500/10 text-amber-400 border-amber-500/20"
 }
 
-// Quick Action Configurations
+// Quick Action Configurations (Added E-Commerce Shop to the start)
 const quickActionList = [
+  { label: 'E-Commerce Shop', icon: ShoppingCart, color: 'bg-gradient-to-br from-emerald-500 to-teal-400', handler: goToShop },
   { label: 'New Service Request', icon: Plus, color: 'bg-gradient-to-br from-blue-500 to-cyan-400', handler: () => console.log('New service') },
   { label: 'Browse Colors', icon: Palette, color: 'bg-gradient-to-br from-purple-500 to-pink-400', handler: () => console.log('Browse colors') },
   { label: 'Color Preview', icon: Eye, color: 'bg-gradient-to-br from-indigo-500 to-violet-400', handler: () => console.log('Preview') },

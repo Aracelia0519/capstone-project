@@ -197,8 +197,13 @@
             <Card class="bg-white border-slate-200 shadow-sm">
               <CardContent class="p-5 flex flex-col justify-center h-full">
                 <h4 class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-2">Total Budget Required</h4>
-                <div class="text-3xl font-black text-emerald-600 mb-2">
+                <div class="text-3xl font-black text-emerald-600 mb-1">
                   ₱{{ selectedRequest.totalAmount.toLocaleString() }}
+                </div>
+                <div class="text-sm font-semibold mb-3 flex items-center gap-1" :class="selectedRequest.payment_terms === 'gcash' ? 'text-blue-600' : 'text-slate-600'">
+                  <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4" /> 
+                  <Wallet v-else class="w-4 h-4" /> 
+                  Via {{ selectedRequest.payment_terms === 'gcash' ? 'GCash' : 'COD / Offline' }}
                 </div>
                 <Badge :class="['w-fit mt-auto', statusClasses[selectedRequest.status]]">
                   {{ selectedRequest.status === 'd-approved' ? 'Dist. Approved (Pending Release)' : (selectedRequest.status === 'ready' ? 'Funds Released' : selectedRequest.status) }}
@@ -261,9 +266,10 @@
                       <Button variant="outline" @click="requirePermission('update', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
                          Reject Request
                       </Button>
-                      <Button class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" @click="requirePermission('update', initiateApprove)">
-                         <Coins class="w-4 h-4 mr-2" />
-                         Release Budget & Approve
+                      <Button :class="['w-full sm:w-auto shadow-sm text-white', selectedRequest.payment_terms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700']" @click="requirePermission('update', initiateApprove)">
+                         <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4 mr-2" />
+                         <Coins v-else class="w-4 h-4 mr-2" />
+                         {{ selectedRequest.payment_terms === 'gcash' ? 'Proceed to GCash' : 'Release Budget & Approve' }}
                       </Button>
                    </template>
                    
@@ -295,8 +301,8 @@
         </AlertDialogHeader>
         <AlertDialogFooter class="flex-col sm:flex-row gap-3 mt-6">
           <AlertDialogCancel @click="alertOpen = false" class="bg-white text-slate-700 hover:bg-slate-100 border-slate-300 mt-0 shadow-sm font-medium">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="executeAction" :class="[alertConfig.confirmClass, 'shadow-sm font-medium']">
-            {{ alertConfig.confirmText }}
+          <AlertDialogAction @click="executeAction" :disabled="isProcessing" :class="[alertConfig.confirmClass, 'shadow-sm font-medium']">
+            {{ isProcessing ? 'Processing...' : alertConfig.confirmText }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -307,10 +313,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { 
   RefreshCw, MapPin, AlertCircle, Building2,
-  FileText, Clock, CheckCircle2, Wallet, Coins, ShoppingCart
+  FileText, Clock, CheckCircle2, Wallet, Coins, ShoppingCart, CreditCard
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -331,8 +338,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+const router = useRouter()
+const route = useRoute()
+
 // State
 const loading = ref(false)
+const isProcessing = ref(false)
 const requests = ref([])
 const selectedRequest = ref(null)
 
@@ -424,8 +435,34 @@ const fetchRequests = async () => {
   }
 }
 
+// Intercept GCash Redirects
+const verifyGcashPayment = async (requestCode) => {
+  loading.value = true
+  toast.info('Verifying GCash Payment... Please wait.')
+  
+  // 2.5 second buffer to let PayMongo's test server sync
+  await new Promise(resolve => setTimeout(resolve, 2500));
+  
+  try {
+    const response = await api.post('/finance/budget-release/verify-gcash', { request_code: requestCode })
+    if (response.data.success) {
+      toast.success('Payment Confirmed!', { description: 'Budget released successfully via GCash.' })
+      router.replace({ query: {} }) // Clear URL
+    }
+  } catch (error) {
+    toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'The payment session could not be verified.' })
+    router.replace({ query: {} })
+  } finally {
+    fetchRequests()
+  }
+}
+
 onMounted(() => {
-  fetchRequests()
+  if (route.query.request_code) {
+    verifyGcashPayment(route.query.request_code)
+  } else {
+    fetchRequests()
+  }
 })
 
 // Handlers
@@ -441,11 +478,15 @@ const closeModal = () => {
 
 const initiateApprove = () => {
   pendingAction.value = 'approve'
+  const isGcash = selectedRequest.value.payment_terms === 'gcash'
+  
   alertConfig.value = {
-    title: 'Confirm Budget Release',
-    description: `You are about to release ₱${selectedRequest.value.totalAmount.toLocaleString()} for Request ${selectedRequest.value.id}. This action will log a budget deduction and set the request to Ready. Do you wish to proceed?`,
-    confirmText: 'Yes, Release Funds',
-    confirmClass: 'bg-emerald-600 hover:bg-emerald-700 text-white'
+    title: isGcash ? 'Proceed to GCash Payment' : 'Confirm Budget Release',
+    description: isGcash 
+      ? `You are about to transfer ₱${selectedRequest.value.totalAmount.toLocaleString()} to the supplier via GCash. You will be redirected to PayMongo securely.`
+      : `You are about to release ₱${selectedRequest.value.totalAmount.toLocaleString()} for Request ${selectedRequest.value.id}. This action will log a budget deduction and set the request to Ready. Do you wish to proceed?`,
+    confirmText: isGcash ? 'Proceed to GCash' : 'Yes, Release Funds',
+    confirmClass: isGcash ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
   }
   alertOpen.value = true
 }
@@ -471,32 +512,46 @@ const executeAction = async () => {
   } else if (pendingAction.value === 'reject') {
     await confirmReject()
   }
-  alertOpen.value = false
+  if (!isProcessing.value) {
+     alertOpen.value = false
+  }
 }
 
-// Submissions
 const markAsApproved = async () => {
   if (!selectedRequest.value) return
 
   try {
-    const promise = api.post(`/finance/budget-release/${selectedRequest.value.db_id}/approve`)
+    isProcessing.value = true
     
-    toast.promise(promise, {
-      loading: 'Processing budget release...',
-      success: () => {
+    // 1. Get the current exact URL path dynamically (works for both /finance and /special-rbac)
+    const currentPath = window.location.origin + route.path
+
+    // 2. Send the return_url to the backend
+    const response = await api.post(`/finance/budget-release/${selectedRequest.value.db_id}/approve`, {
+      return_url: currentPath
+    })
+    
+    if (response.data.checkout_url) {
+        toast.success('Redirecting to PayMongo for GCash checkout...')
+        setTimeout(() => {
+            window.location.href = response.data.checkout_url
+        }, 1500)
+    } else {
         selectedRequest.value.status = 'ready'
         fetchRequests() // Refresh list in background
+        toast.success(`Funds released! Request ${selectedRequest.value.id} is now Ready.`)
         setTimeout(closeModal, 1500) 
-        return `Funds released! Request ${selectedRequest.value.id} is now Ready.`
-      },
-      error: (err) => {
-        return err.response?.status === 403 
-          ? 'Access denied: You cannot approve budget releases.' 
-          : 'Failed to release budget.'
-      }
-    })
+        alertOpen.value = false
+    }
   } catch (error) {
-    console.error(error)
+    if (error.response?.status === 403) {
+      toast.error('Access denied', { description: 'You cannot approve budget releases.' })
+    } else {
+      toast.error('Error', { description: error.response?.data?.message || 'Failed to release budget.' })
+    }
+    alertOpen.value = false
+  } finally {
+    isProcessing.value = false
   }
 }
 
@@ -504,6 +559,7 @@ const confirmReject = async () => {
   if (!selectedRequest.value || !rejectReason.value) return
 
   try {
+    isProcessing.value = true
     const promise = api.post(`/finance/budget-release/${selectedRequest.value.db_id}/reject`, {
       reason: rejectReason.value
     })
@@ -523,6 +579,8 @@ const confirmReject = async () => {
     })
   } catch (error) {
     console.error(error)
+  } finally {
+    isProcessing.value = false
   }
 }
 </script>

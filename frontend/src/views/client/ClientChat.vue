@@ -175,6 +175,33 @@
                     <span v-else-if="message.payload?.deal_status === 'declined'">❌ You Declined this Deal</span>
                  </div>
               </div>
+
+              <div v-else-if="message.type === 'payment_term'" class="bg-gradient-to-br from-slate-800 to-slate-900 border border-yellow-500/50 rounded-xl p-4 shadow-lg w-full max-w-sm sm:max-w-md">
+                 <div class="flex items-center gap-2 mb-3 border-b border-yellow-500/30 pb-2">
+                    <CreditCard class="w-5 h-5 text-yellow-400" />
+                    <span class="text-sm font-bold text-white uppercase tracking-wider">Payment Terms Offer</span>
+                 </div>
+                 <div class="space-y-2 text-xs text-slate-200 bg-slate-950/50 p-3 rounded-lg border border-slate-800 shadow-inner">
+                    <div class="flex justify-between items-center mb-1">
+                       <span class="text-slate-400 font-medium">Payment Method</span> 
+                       <span class="font-bold text-yellow-400 uppercase">{{ message.payload?.payment_method }}</span>
+                    </div>
+                    <div class="h-px bg-slate-700/50 my-1"></div>
+                    <div class="flex flex-col gap-1">
+                       <span class="text-slate-400">Payment Term Condition:</span> 
+                       <span class="font-medium text-sm text-white">{{ message.payload?.payment_term }}</span>
+                    </div>
+                 </div>
+
+                 <div v-if="message.sender !== 'me' && message.payload?.term_status === 'pending'" class="mt-3 flex gap-2">
+                    <Button size="sm" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" @click="handlePaymentTermAction('agree', message)">Agree</Button>
+                    <Button size="sm" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10" @click="handlePaymentTermAction('decline', message)">Decline</Button>
+                 </div>
+                 <div v-else-if="message.sender !== 'me'" class="mt-3 text-center text-xs font-bold" :class="{ 'text-emerald-400': message.payload?.term_status === 'agreed', 'text-red-400': message.payload?.term_status === 'declined' }">
+                    <span v-if="message.payload?.term_status === 'agreed'">✅ You Agreed to these Terms</span>
+                    <span v-else-if="message.payload?.term_status === 'declined'">❌ You Declined these Terms</span>
+                 </div>
+              </div>
               
               <div class="flex items-center mt-1 space-x-1" :class="message.sender === 'me' ? 'justify-end' : 'justify-start sm:ml-1'">
                 <span class="text-[9px] md:text-[10px] text-slate-500">{{ message.time }}</span>
@@ -246,7 +273,8 @@ import {
   Check,
   CheckCheck,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
@@ -439,7 +467,6 @@ const sendTextMessage = async () => {
   await submitMessageToDb('text', text)
 }
 
-// **NEW: Handle Deal Actions (Agree/Decline)**
 const handleDealAction = async (action, message) => {
   if(!message.payload || !message.payload.deal_id) {
      toast.error("Deal reference missing");
@@ -454,11 +481,7 @@ const handleDealAction = async (action, message) => {
 
     if (res.data.success) {
       toast.success(action === 'agree' ? 'Deal Agreed Successfully!' : 'Deal Declined')
-      
-      // Update UI locally immediately
       message.payload.deal_status = action === 'agree' ? 'ongoing' : 'declined';
-      
-      // Add the system reply locally to our chat 
       messages.value.push({
         id: Date.now(),
         sender: 'me',
@@ -471,6 +494,37 @@ const handleDealAction = async (action, message) => {
     }
   } catch(error) {
     toast.error('Failed to process deal action')
+  }
+}
+
+// NEW: Handle Payment Term Agreement
+const handlePaymentTermAction = async (action, message) => {
+  if(!message.payload || !message.payload.term_id) {
+     toast.error("Payment term reference missing");
+     return;
+  }
+  
+  try {
+    const res = await api.post(`/client/chat/payment-terms/${message.payload.term_id}/respond`, {
+      action: action,
+      message_id: message.id
+    })
+
+    if (res.data.success) {
+      toast.success(action === 'agree' ? 'Payment Term Agreed!' : 'Payment Term Declined')
+      message.payload.term_status = action === 'agree' ? 'agreed' : 'declined';
+      messages.value.push({
+        id: Date.now(),
+        sender: 'me',
+        text: action === 'agree' ? "I have agreed to the payment terms." : "I have declined the payment terms. Let's negotiate.",
+        type: 'text',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent'
+      });
+      scrollToBottom();
+    }
+  } catch(error) {
+    toast.error('Failed to process payment term action')
   }
 }
 

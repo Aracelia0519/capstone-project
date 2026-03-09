@@ -121,7 +121,7 @@
               </td>
               <td class="py-4 px-6">
                 <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  <div class="w-14 h-14 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
                     <img v-if="request.raw_material_details?.image_url" :src="getImageUrl(request.raw_material_details.image_url)" class="w-full h-full object-cover" />
                     <svg v-else class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   </div>
@@ -295,9 +295,11 @@
                     </select>
                   </div>
                   <div class="wizard-form-group">
-                    <label class="block text-sm text-gray-300 mb-2">Payment Terms</label>
+                    <label class="block text-sm text-gray-300 mb-2">Payment Terms <span class="text-red-400">*</span></label>
                     <select v-model="requestForm.payment_terms" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
-                      <option value="cod">Cash on Delivery</option>
+                      <option v-if="selectedSupplierSettings.is_cod_enabled" value="cod">Cash on Delivery</option>
+                      <option v-if="selectedSupplierSettings.is_gcash_enabled" value="gcash">GCash</option>
+                      <option v-if="!selectedSupplierSettings.is_cod_enabled && !selectedSupplierSettings.is_gcash_enabled" value="" disabled>No Payment Methods Available</option>
                     </select>
                   </div>
                 </div>
@@ -396,9 +398,15 @@ const requestForm = ref({
   priority: 'medium',
   delivery_address: '',
   shipping_method: 'standard',
-  payment_terms: 'cod',
+  payment_terms: '', 
   instructions: '',
   required_by_date: ''
+})
+
+// Supplier Settings Computed
+const selectedSupplierSettings = computed(() => {
+  const supplier = suppliers.value.find(s => s.id === requestForm.value.supplier_id)
+  return supplier?.payment_settings || { is_cod_enabled: true, is_gcash_enabled: false }
 })
 
 // User Permissions setup via RBAC
@@ -433,7 +441,7 @@ const validateCurrentStep = computed(() => {
   switch (currentStep.value) {
     case 1: return requestForm.value.supplier_id !== ''
     case 2: return cart.value.length > 0
-    case 3: return requestForm.value.delivery_address !== ''
+    case 3: return requestForm.value.delivery_address !== '' && requestForm.value.payment_terms !== ''
     case 4: return requestForm.value.priority !== ''
     default: return false
   }
@@ -447,7 +455,10 @@ const nextStep = () => {
     let errorMessage = ''
     if (currentStep.value === 1) errorMessage = 'Please select a supplier.'
     else if (currentStep.value === 2) errorMessage = 'Please add at least one product to the cart.'
-    else if (currentStep.value === 3) errorMessage = 'Please provide a delivery address.'
+    else if (currentStep.value === 3) {
+      if (!requestForm.value.delivery_address) errorMessage = 'Please provide a delivery address.'
+      else if (!requestForm.value.payment_terms) errorMessage = 'Please select a valid payment term.'
+    }
     
     if (errorMessage) showToast(errorMessage, 'warning')
   }
@@ -467,7 +478,6 @@ const fetchRequests = async () => {
       per_page: 10 
     }
     
-    // This prevents sending empty strings entirely
     if (searchQuery.value) params.search = searchQuery.value
     if (selectedStatus.value) params.status = selectedStatus.value
     if (selectedPriority.value) params.priority = selectedPriority.value
@@ -534,6 +544,16 @@ const fetchSupplierProducts = async (supplierId) => {
 const selectSupplierFromWizard = (supplier) => {
   requestForm.value.supplier_id = supplier.id
   requestForm.value.supplier = supplier.name
+
+  // Auto-select the first available payment method for this supplier
+  if (supplier.payment_settings?.is_cod_enabled) {
+    requestForm.value.payment_terms = 'cod'
+  } else if (supplier.payment_settings?.is_gcash_enabled) {
+    requestForm.value.payment_terms = 'gcash'
+  } else {
+    requestForm.value.payment_terms = ''
+  }
+
   fetchSupplierProducts(supplier.id)
 }
 
@@ -546,13 +566,12 @@ const startRequestWithSupplier = (supplier) => {
 const updateCart = (product, change) => {
   const index = cart.value.findIndex(p => p.id === product.id)
   const minOrder = product.min_order || 1
-  const maxOrder = product.max_order || 5000 // Using a fallback high limit if missing
+  const maxOrder = product.max_order || 5000 
   
   if (index > -1) {
     const currentQty = cart.value[index].quantity
     const newQty = currentQty + change
     
-    // If decrementing drops below minimum order limit, remove completely
     if (change < 0 && newQty < minOrder) {
       cart.value.splice(index, 1)
     } else if (newQty > maxOrder) {
@@ -561,7 +580,6 @@ const updateCart = (product, change) => {
       cart.value[index].quantity = newQty
     }
   } else if (change > 0) {
-    // Adding the item straight away fulfills the minimum order requirement
     cart.value.push({ ...product, quantity: minOrder })
   }
 }
@@ -615,7 +633,7 @@ const closeModal = () => {
   currentStep.value = 1
   wizardSteps.value.forEach(s => s.completed = false)
   cart.value = []
-  requestForm.value = { supplier_id: '', supplier: '', priority: 'medium', delivery_address: '', shipping_method: 'standard', payment_terms: 'cod', instructions: '', required_by_date: '' }
+  requestForm.value = { supplier_id: '', supplier: '', priority: 'medium', delivery_address: '', shipping_method: 'standard', payment_terms: '', instructions: '', required_by_date: '' }
 }
 
 const changePage = (page) => {

@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Models\ServiceProvider\SPMessage;
-use App\Models\ServiceProvider\OfficialDeal; // NEW
+use App\Models\ServiceProvider\OfficialDeal;
+use App\Models\ServiceProvider\OfficialPaymentTerm; // NEW
 use App\Events\MessageSent;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,9 +17,10 @@ class SPChatController extends Controller
     {
         $providerId = Auth::id();
 
+        // FIXED: Removed 'pending' from the whereNotIn so you can chat immediately!
         $requests = ClientServiceRequest::with(['client', 'serviceOffering'])
             ->where('provider_id', $providerId)
-            ->whereNotIn('status', ['pending', 'rejected'])
+            ->where('status', '!=', 'rejected') 
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -81,13 +83,12 @@ class SPChatController extends Controller
             'receiver_id' => 'required|exists:users,id',
             'service_request_id' => 'nullable|exists:client_service_requests,id',
             'message' => 'nullable|string',
-            'type' => 'required|in:text,request_summary,official_deal',
+            'type' => 'required|in:text,request_summary,official_deal,payment_term', // UPDATED
             'payload' => 'nullable|array'
         ]);
 
         $payload = $request->payload;
 
-        // **NEW LOGIC: Store the Official Deal in DB before sending**
         if ($request->type === 'official_deal' && $request->service_request_id) {
             $clientReq = ClientServiceRequest::find($request->service_request_id);
             
@@ -106,10 +107,24 @@ class SPChatController extends Controller
                     'status' => 'pending'
                 ]);
 
-                // Attach deal tracking to payload so client can respond to it
                 $payload['deal_id'] = $deal->id;
                 $payload['deal_status'] = 'pending';
             }
+        }
+
+        // NEW: Handle Payment Term Creation
+        if ($request->type === 'payment_term') {
+            $term = OfficialPaymentTerm::create([
+                'official_deal_id' => $payload['deal_id'],
+                'provider_id' => Auth::id(),
+                'client_id' => $request->receiver_id,
+                'payment_method' => $payload['payment_method'],
+                'payment_term' => $payload['payment_term'],
+                'status' => 'pending'
+            ]);
+
+            $payload['term_id'] = $term->id;
+            $payload['term_status'] = 'pending';
         }
 
         $message = SPMessage::create([

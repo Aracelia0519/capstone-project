@@ -56,7 +56,7 @@
               <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
                 <SelectValue placeholder="All Brands" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent class="z-[10000]">
                 <SelectItem value="all_brands_reset">All Brands</SelectItem>
                 <SelectItem v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</SelectItem>
               </SelectContent>
@@ -69,7 +69,7 @@
               <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent class="z-[10000]">
                 <SelectItem value="all_types_reset">All Types</SelectItem>
                 <SelectItem v-for="type in types" :key="type" :value="type">{{ type }}</SelectItem>
               </SelectContent>
@@ -82,7 +82,7 @@
               <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
                 <SelectValue placeholder="All Finishes" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent class="z-[10000]">
                 <SelectItem value="all_finishes_reset">All Finishes</SelectItem>
                 <SelectItem v-for="finish in finishes" :key="finish" :value="finish">{{ finish }}</SelectItem>
               </SelectContent>
@@ -95,7 +95,7 @@
               <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
                 <SelectValue placeholder="All Prices" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent class="z-[10000]">
                 <SelectItem value="all_prices_reset">All Prices</SelectItem>
                 <SelectItem v-for="price in priceRanges" :key="price" :value="price">{{ price }}</SelectItem>
               </SelectContent>
@@ -108,7 +108,7 @@
     <div class="container mx-auto px-4 py-10">
       <div v-if="isLoading" class="text-center py-20 flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p class="text-gray-500 font-medium">Loading products from inventory...</p>
+        <p class="text-gray-500 font-medium">Processing your request...</p>
       </div>
 
       <div v-else>
@@ -121,7 +121,7 @@
                 <SelectTrigger class="rounded-xl bg-white border-gray-200">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent class="z-[10000]">
                   <SelectItem value="name">Name</SelectItem>
                   <SelectItem value="price-low">Price: Low to High</SelectItem>
                   <SelectItem value="price-high">Price: High to Low</SelectItem>
@@ -165,7 +165,7 @@
 
             <CardContent class="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <p class="text-xs font-bold tracking-wider text-blue-600 uppercase mb-1">{{ product.brand }}</p>
+                <p class="text-xs font-bold tracking-wider text-blue-600 uppercase mb-1">{{ product.distributor_name || product.brand }}</p>
                 <h3 :class="['font-bold text-lg leading-tight mb-1', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">{{ product.name }}</h3>
                 <p class="text-sm text-gray-500 line-clamp-1">{{ product.type }} • {{ product.finish }}</p>
               </div>
@@ -393,8 +393,7 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  <div>
+                <div class="mb-8">
                     <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Order Quantity</Label>
                     <div class="flex items-center p-1 bg-gray-50 border border-gray-200 rounded-2xl w-max overflow-hidden shadow-inner">
                       <button @click="decrementQuantity" class="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm hover:bg-gray-50 text-gray-600 transition-colors font-bold" :disabled="orderQuantity <= 1" :class="orderQuantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''">-</button>
@@ -404,16 +403,43 @@
                     <p :class="['text-xs font-medium mt-2', orderQuantity >= selectedProduct?.stock ? 'text-red-500' : 'text-gray-400']">
                       {{ orderQuantity >= selectedProduct?.stock ? 'Max stock reached' : `${selectedProduct?.stock} units available` }}
                     </p>
-                  </div>
+                </div>
 
-                  <div>
-                    <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
-                    <div class="border border-green-200 bg-green-50 p-3 rounded-2xl flex items-center gap-3 shadow-sm h-12">
-                      <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                        <div class="w-2 h-2 rounded-full bg-white"></div>
+                <div class="mb-8">
+                  <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200" :class="paymentMethod === 'cod' ? 'border-green-500 bg-green-50/30 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
+                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-gray-900 flex items-center gap-2">
+                          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                          Cash on Delivery
+                        </span>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-green-500' : 'border-gray-300'">
+                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                        </div>
                       </div>
-                      <span class="font-bold text-green-800 text-sm">Cash on Delivery</span>
-                    </div>
+                    </label>
+
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
+                        !selectedProduct?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'gcash' ? 'border-blue-500 bg-blue-50/30 shadow-sm cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
+                      ]">
+                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!selectedProduct?.distributor_gcash_enabled" />
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-gray-900 flex items-center gap-2">
+                          <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                          GCash (Online)
+                        </span>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'gcash' ? 'border-blue-500' : 'border-gray-300'">
+                          <div v-if="paymentMethod === 'gcash'" class="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div v-if="!selectedProduct?.distributor_gcash_enabled" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                        Unavailable
+                      </div>
+                    </label>
+
                   </div>
                 </div>
 
@@ -461,7 +487,7 @@
                       <span>Subtotal ({{ orderQuantity }} items)</span>
                       <span>₱{{ formatCurrency(selectedProduct?.price * orderQuantity) }}</span>
                     </div>
-                    <div class="flex justify-between text-sm text-gray-300 font-medium pb-4 border-b border-gray-700/50">
+                    <div class="flex justify-between text-sm text-gray-300 font-medium">
                       <span>Estimated Shipping</span>
                       <span>
                         <span v-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
@@ -469,8 +495,28 @@
                         <span v-else>₱{{ formatCurrency(shippingFeeEst) }}</span>
                       </span>
                     </div>
-                    <div class="flex justify-between items-end pt-2">
-                      <span class="text-sm font-medium text-gray-400">Total to Pay</span>
+                    
+                    <div class="py-2 border-t border-gray-700/50">
+                       <span class="text-[10px] uppercase font-bold text-gray-400 tracking-widest block mb-1">Projected Status</span>
+                       <span v-if="orderQuantity <= 30" class="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded border border-green-500/30">Confirmed Automatically</span>
+                       <span v-else class="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded border border-yellow-500/30">Requires Manual Confirmation (Bulk)</span>
+                    </div>
+
+                    <div class="pt-3 border-t border-gray-700/50 space-y-1">
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>VATable Sales</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales((selectedProduct?.price * orderQuantity) + shippingFeeEst)) }}</span>
+                        <span v-else>--</span>
+                      </div>
+                      <div class="flex justify-between text-xs text-gray-400">
+                        <span>VAT Amount (12%)</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount((selectedProduct?.price * orderQuantity) + shippingFeeEst)) }}</span>
+                        <span v-else>--</span>
+                      </div>
+                    </div>
+
+                    <div class="flex justify-between items-end pt-3 border-t border-gray-600">
+                      <span class="text-sm font-medium text-gray-300">Grand Total</span>
                       <span class="text-3xl font-black text-white">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + shippingFeeEst) }}</span>
                     </div>
                   </div>
@@ -535,19 +581,27 @@
         <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
-              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              Confirm COD Order
+              <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg v-else class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+              Confirm {{ paymentMethod === 'cod' ? 'COD' : 'GCash' }} Order
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
               You are placing an order for <strong class="text-gray-900">{{ orderQuantity }} items</strong>.
               <br/><br/>
-              The total amount of <strong class="text-gray-900 text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + shippingFeeEst) }}</strong> will be collected upon delivery via Cash on Delivery. Do you want to finalize this purchase?
+              The total amount is <strong class="text-gray-900 text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + shippingFeeEst) }}</strong>. 
+              <br/>
+              <span v-if="paymentMethod === 'gcash'" class="text-blue-600 text-sm font-semibold mt-2 block">
+                You will be redirected to PayMongo to complete your GCash payment securely.
+              </span>
+              <span v-else class="text-sm mt-2 block">
+                This will be collected upon delivery.
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
             <AlertDialogCancel @click="isOrderAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction @click="confirmOrderNow" :disabled="isProcessing" class="rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white h-11 px-6 shadow-md shadow-green-600/20">
-              {{ isProcessing ? 'Processing...' : 'Place Order' }}
+            <AlertDialogAction @click="confirmOrderNow" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md" :class="paymentMethod === 'cod' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'">
+              {{ isProcessing ? 'Processing...' : (paymentMethod === 'gcash' ? 'Proceed to GCash' : 'Place Order') }}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -558,11 +612,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 
-// shadcn components
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -594,6 +647,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
 
 // API Data
 const products = ref([])
@@ -615,16 +669,24 @@ const isOrderAlertOpen = ref(false)
 const orderQuantity = ref(1)
 const addressMode = ref('default')
 const customAddress = ref('')
+const paymentMethod = ref('cod')
 const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
-// Helper for consistent currency display
 const formatCurrency = (value) => {
   return Number(value || 0).toLocaleString('en-PH', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
   });
+}
+
+const getVatableSales = (total) => {
+  return total / 1.12;
+}
+
+const getVatAmount = (total) => {
+  return total - getVatableSales(total);
 }
 
 const fetchProducts = async () => {
@@ -642,7 +704,6 @@ const fetchProducts = async () => {
   }
 }
 
-// Modal Handlers
 const openCartModal = (product) => {
   if (!props.user) {
     isAuthAlertOpen.value = true;
@@ -672,9 +733,16 @@ const openOrderModal = (product) => {
   orderQuantity.value = 1
   addressMode.value = 'default'
   customAddress.value = ''
+  paymentMethod.value = 'cod'
   isOrderModalOpen.value = true
   calculateLiveShipping()
 }
+
+watch(selectedProduct, (newProd) => {
+  if (newProd && !newProd.distributor_gcash_enabled && paymentMethod.value === 'gcash') {
+    paymentMethod.value = 'cod'
+  }
+})
 
 const openReviewsModal = (product) => {
   selectedProduct.value = product
@@ -768,6 +836,84 @@ const confirmAddToCart = async () => {
   }
 }
 
+const downloadReceipt = (receiptData) => {
+  const content = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/1999/xhtml'>
+    <head>
+      <meta charset="utf-8">
+      <title>Order Receipt - ${receiptData.order_number}</title>
+      <style>
+        body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; margin: 1.5cm; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 15px; }
+        .company-name { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
+        .sub-header { color: #555; font-size: 10pt; margin-top: 5px; }
+        .meta-table { width: 100%; margin-bottom: 20px; border: none; }
+        .meta-table td { padding: 5px; vertical-align: top; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th { border-bottom: 2px solid #000; border-top: 2px solid #000; padding: 8px 5px; text-align: left; background-color: #f9f9f9; font-weight: bold; }
+        .items-table td { border-bottom: 1px dashed #ddd; padding: 8px 5px; }
+        .footer { margin-top: 50px; text-align: center; font-size: 9pt; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company-name">${receiptData.distributor_name || 'E-COMMERCE CHECKOUT'}</div>
+        <br/>
+        <div style="font-size: 14pt; font-weight: bold; letter-spacing: 2px;">OFFICIAL RECEIPT</div>
+      </div>
+      <table class="meta-table">
+        <tr>
+          <td width="60%">
+            <strong>BILL TO:</strong><br/>${receiptData.client_name}<br/>
+            Payment Method: ${receiptData.payment_method}<br/>Status: ${receiptData.status}
+          </td>
+          <td width="40%" style="text-align: right;">
+            <strong>ORDER #:</strong> ${receiptData.order_number}<br/>
+            <strong>DATE:</strong> ${receiptData.date}<br/>
+          </td>
+        </tr>
+      </table>
+      <table class="items-table">
+        <thead>
+          <tr><th>Item Description</th><th style="text-align: right;">Qty</th><th style="text-align: right;">Unit Price</th><th style="text-align: right;">Amount</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${receiptData.product_name || 'Multiple Items'}</td>
+            <td style="text-align: right;">${receiptData.quantity || ''}</td>
+            <td style="text-align: right;">${formatCurrency(receiptData.price || 0)}</td>
+            <td style="text-align: right;">${formatCurrency((receiptData.price || 0) * (receiptData.quantity || 1))}</td>
+          </tr>
+          <tr><td>Shipping Fee</td><td></td><td></td><td style="text-align: right;">${formatCurrency(receiptData.shipping_fee)}</td></tr>
+        </tbody>
+      </table>
+      <table style="width: 100%; margin-top: 20px;">
+        <tr>
+          <td width="50%"><p style="font-size: 9pt; color: #555;">Notes/Remarks: Thank you for your purchase. This document serves as your official e-receipt.</p></td>
+          <td width="50%">
+            <table style="width: 100%; border-top: 2px solid #000; padding-top: 5px;">
+              <tr><td style="padding: 3px 0; color: #444;">VATable Sales:</td><td style="padding: 3px 0; text-align: right;">${formatCurrency(receiptData.vatable_sales)}</td></tr>
+              <tr><td style="padding: 3px 0; color: #444;">VAT Amount (12%):</td><td style="padding: 3px 0; text-align: right; border-bottom: 1px solid #ccc;">${formatCurrency(receiptData.vat_amount)}</td></tr>
+              <tr><td style="font-weight: bold; font-size: 14pt; padding-top: 10px;">TOTAL AMOUNT:</td><td style="font-weight: bold; font-size: 14pt; text-align: right; padding-top: 10px;">${formatCurrency(receiptData.grand_total)}</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <div class="footer">This is a system-generated receipt.<br/>Generated on ${new Date().toLocaleString()}</div>
+    </body>
+    </html>
+  `
+  const blob = new Blob(['\ufeff', content], { type: 'application/msword' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `Receipt_${receiptData.order_number}.doc`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 const confirmOrderNow = async () => {
   try {
     isProcessing.value = true
@@ -777,7 +923,8 @@ const confirmOrderNow = async () => {
       distributor_id: selectedProduct.value.distributor_id,
       quantity: orderQuantity.value,
       distributor_lat: selectedProduct.value.distributor_lat,
-      distributor_lng: selectedProduct.value.distributor_lng
+      distributor_lng: selectedProduct.value.distributor_lng,
+      payment_method: paymentMethod.value
     }
 
     if (addressMode.value === 'custom') {
@@ -787,15 +934,54 @@ const confirmOrderNow = async () => {
     const response = await api.post('/client/shop/order-now', payload)
 
     if (response.data.success) {
-      toast.success('Order placed successfully! (Cash on Delivery)')
-      isOrderAlertOpen.value = false 
-      closeModals() 
-      await fetchProducts() 
+      if (response.data.checkout_url && paymentMethod.value === 'gcash') {
+        toast.success('Redirecting to PayMongo for GCash checkout...')
+        setTimeout(() => {
+          window.location.href = response.data.checkout_url
+        }, 1500)
+      } else {
+        toast.success('Order placed successfully! (Cash on Delivery)')
+        if (response.data.receipt_data) {
+          downloadReceipt(response.data.receipt_data);
+        }
+        isOrderAlertOpen.value = false 
+        closeModals() 
+        await fetchProducts() 
+      }
     }
   } catch (error) {
     toast.error(error.response?.data?.message || 'Failed to place order. Ensure your profile address is configured.')
   } finally {
     isProcessing.value = false
+  }
+}
+
+// ==========================================
+// GCASH SESSION VERIFIER HOOK
+// ==========================================
+const verifyGcashPayment = async (orderNumber) => {
+  isLoading.value = true
+  toast.info('Verifying GCash Payment... Please wait.')
+  
+  // 2.5 second buffer to let PayMongo's test server sync
+  await new Promise(resolve => setTimeout(resolve, 2500));
+  
+  try {
+    const response = await api.post('/client/shop/verify-gcash', { order_number: orderNumber }) // <-- CHANGED HERE
+    if (response.data.success) {
+      toast.success('Payment Confirmed!', { description: 'Your order has been recorded successfully.' })
+      
+      if (response.data.receipt_data) {
+        downloadReceipt(response.data.receipt_data)
+      }
+      
+      router.replace({ query: {} }) // Strip the params from the URL
+    }
+  } catch (error) {
+    toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'The payment session could not be verified or was already processed.' })
+    router.replace({ query: {} })
+  } finally {
+    fetchProducts()
   }
 }
 
@@ -901,7 +1087,12 @@ const clearFilters = () => {
 }
 
 onMounted(() => {
-  fetchProducts()
+  // INTERCEPT THE REDIRECT FROM PAYMONGO
+  if (route.query.order_number) { // <-- CHANGED HERE
+    verifyGcashPayment(route.query.order_number) // <-- CHANGED HERE
+  } else {
+    fetchProducts()
+  }
 })
 </script>
 

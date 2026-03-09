@@ -99,7 +99,7 @@
         </CardContent>
       </Card>
 
-      <Card class="col-span-1 lg:col-span-2 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm">
+      <Card class="col-span-1 lg:col-span-2 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm h-min">
         <CardHeader>
           <CardTitle class="flex items-center gap-2 text-white">
             <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,82 +145,121 @@
         </CardContent>
       </Card>
 
-      <Card class="col-span-1 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle class="flex items-center gap-2 text-white">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Change Password
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form @submit.prevent="changePassword" class="space-y-4">
-            <div v-if="passwordError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
-              {{ passwordError }}
-            </div>
-
-            <div class="space-y-2">
-              <Label class="text-slate-300">Current Password</Label>
-              <div class="relative">
-                <Input 
-                  :type="showCurrentPassword ? 'text' : 'password'"
-                  v-model="password.current"
-                  placeholder="Enter current password"
-                  class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
-                />
-                <button type="button" @click="togglePasswordVisibility('current')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                  <svg v-if="showCurrentPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                </button>
+      <div class="col-span-1 flex flex-col gap-6">
+        <Card class="bg-slate-800/40 border-slate-700/30 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2 text-white">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Change Password
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="changePassword" class="space-y-4">
+              <div v-if="passwordError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+                {{ passwordError }}
               </div>
-            </div>
 
-            <div class="space-y-2">
-              <Label class="text-slate-300">New Password</Label>
-              <div class="relative">
-                <Input 
-                  :type="showNewPassword ? 'text' : 'password'"
-                  v-model="password.new"
-                  placeholder="Enter new password"
-                  class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
-                />
-                <button type="button" @click="togglePasswordVisibility('new')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                  <svg v-if="showNewPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                </button>
+              <div class="space-y-2">
+                <Label class="text-slate-300">Current Password</Label>
+                <div class="relative">
+                  <Input 
+                    :type="showCurrentPassword ? 'text' : 'password'"
+                    v-model="password.current"
+                    placeholder="Enter current password"
+                    class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
+                  />
+                  <button type="button" @click="togglePasswordVisibility('current')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <svg v-if="showCurrentPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  </button>
+                </div>
               </div>
-              <div class="flex gap-1 h-1 mt-2">
-                <div v-for="n in 5" :key="n" class="flex-1 rounded-full transition-all duration-300" 
-                     :class="getStrengthColor(n)"></div>
-              </div>
-              <p class="text-xs text-right text-slate-400 mt-1">{{ passwordStrengthLabel }}</p>
-            </div>
 
-            <div class="space-y-2">
-              <Label class="text-slate-300">Confirm Password</Label>
-              <div class="relative">
-                <Input 
-                  :type="showConfirmPassword ? 'text' : 'password'"
-                  v-model="password.confirm"
-                  placeholder="Confirm new password"
-                  class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
-                  :class="{ 'border-red-500/50': passwordMismatch }"
-                />
-                <button type="button" @click="togglePasswordVisibility('confirm')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                  <svg v-if="showConfirmPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                </button>
+              <div class="space-y-2">
+                <Label class="text-slate-300">New Password</Label>
+                <div class="relative">
+                  <Input 
+                    :type="showNewPassword ? 'text' : 'password'"
+                    v-model="password.new"
+                    placeholder="Enter new password"
+                    class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
+                  />
+                  <button type="button" @click="togglePasswordVisibility('new')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <svg v-if="showNewPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  </button>
+                </div>
+                <div class="flex gap-1 h-1 mt-2">
+                  <div v-for="n in 5" :key="n" class="flex-1 rounded-full transition-all duration-300" 
+                      :class="getStrengthColor(n)"></div>
+                </div>
+                <p class="text-xs text-right text-slate-400 mt-1">{{ passwordStrengthLabel }}</p>
               </div>
-              <p v-if="passwordMismatch" class="text-xs text-red-400">Passwords do not match</p>
-            </div>
 
-            <Button type="submit" :disabled="!canChangePassword || passwordLoading" class="w-full bg-slate-700 hover:bg-slate-600 text-white">
-              {{ passwordLoading ? 'Changing...' : 'Change Password' }}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div class="space-y-2">
+                <Label class="text-slate-300">Confirm Password</Label>
+                <div class="relative">
+                  <Input 
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    v-model="password.confirm"
+                    placeholder="Confirm new password"
+                    class="bg-slate-900/50 border-slate-700 text-slate-100 pr-10 focus-visible:ring-indigo-500/50"
+                    :class="{ 'border-red-500/50': passwordMismatch }"
+                  />
+                  <button type="button" @click="togglePasswordVisibility('confirm')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <svg v-if="showConfirmPassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  </button>
+                </div>
+                <p v-if="passwordMismatch" class="text-xs text-red-400">Passwords do not match</p>
+              </div>
+
+              <Button type="submit" :disabled="!canChangePassword || passwordLoading" class="w-full bg-slate-700 hover:bg-slate-600 text-white">
+                {{ passwordLoading ? 'Changing...' : 'Change Password' }}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card class="bg-slate-800/40 border-slate-700/30 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2 text-white">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              Payment Details (GCash)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="updateGcash" class="space-y-4">
+              <div class="space-y-2">
+                <Label class="text-slate-300">GCash Mobile Number</Label>
+                <div class="relative">
+                  <Input 
+                    v-model="gcashNumber" 
+                    @input="handleGcashInput" 
+                    type="text" 
+                    maxlength="11"
+                    placeholder="09123456789" 
+                    class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" 
+                  />
+                </div>
+                <p class="text-xs text-slate-500">Provide an active number for refund or payment purposes (e.g., 09123456789).</p>
+              </div>
+
+              <Button type="submit" :disabled="!gcashHasChanges || gcashLoading" class="w-full bg-slate-700 hover:bg-slate-600 text-white">
+                <svg v-if="gcashLoading" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ gcashLoading ? 'Saving...' : 'Save GCash Number' }}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card class="col-span-1 lg:col-span-3 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm mt-2">
         <CardHeader class="flex flex-col md:flex-row items-start md:items-center justify-between pb-6 border-b border-slate-700/30">
@@ -647,6 +686,12 @@ export default {
         serviceRequests: 0,
         activeProjects: 0
       },
+
+      // GCash States
+      gcashNumber: '',
+      originalGcashNumber: '',
+      gcashHasChanges: false,
+      gcashLoading: false,
       
       // Wizard Configuration
       currentStep: 0,
@@ -913,6 +958,7 @@ export default {
           this.originalUser = JSON.parse(JSON.stringify(this.user))
           this.hasChanges = false
           await this.loadIdVerificationData()
+          await this.fetchGcashNumber() 
           this.showNotification('Profile loaded successfully!', 'success')
         } else {
           throw new Error('Failed to load profile data')
@@ -933,6 +979,69 @@ export default {
             this.initMap();
           }
         });
+      }
+    },
+
+    // GCash Settings Fetch & Save
+    async fetchGcashNumber() {
+      try {
+        const response = await axios.get('/client/payment-settings')
+        if (response.data.success && response.data.data) {
+          this.gcashNumber = response.data.data.gcash_number || ''
+          this.originalGcashNumber = this.gcashNumber
+        }
+      } catch (error) {
+        console.error('Failed to fetch GCash settings', error)
+      }
+    },
+
+    // Handle GCash Input (Strict numbers, max 11, starts with 0)
+    handleGcashInput(event) {
+      // Remove all non-numeric characters immediately
+      let val = event.target.value.replace(/\D/g, '');
+      
+      // Force the string to start with '0' if the user typed something else
+      if (val.length > 0 && val.charAt(0) !== '0') {
+        val = '0' + val;
+      }
+      
+      // Limit to exactly 11 digits
+      val = val.substring(0, 11);
+      
+      this.gcashNumber = val;
+      event.target.value = val; // Force update DOM
+      
+      this.markGcashChanged();
+    },
+
+    markGcashChanged() {
+      this.gcashHasChanges = this.gcashNumber !== this.originalGcashNumber
+    },
+
+    async updateGcash() {
+      if (!this.gcashHasChanges || this.gcashLoading) return
+      
+      if (this.gcashNumber && this.gcashNumber.length !== 11) {
+        this.showNotification('GCash number must be exactly 11 digits (e.g., 09123456789).', 'error')
+        return
+      }
+
+      this.gcashLoading = true
+      try {
+        const response = await axios.put('/client/payment-settings', {
+          gcash_number: this.gcashNumber
+        })
+        if (response.data.success) {
+          this.originalGcashNumber = this.gcashNumber
+          this.gcashHasChanges = false
+          this.showNotification('GCash number saved successfully!', 'success')
+        } else {
+          throw new Error('Failed to update')
+        }
+      } catch (error) {
+        this.showNotification(error.response?.data?.message || 'Failed to update GCash number', 'error')
+      } finally {
+        this.gcashLoading = false
       }
     },
     
@@ -956,7 +1065,6 @@ export default {
           }
           this.updateWizardFromStatus()
         }
-        // Removed the premature initMap from here since DOM isn't ready
       } catch (error) {
         console.error('Error loading ID verification data:', error)
       }

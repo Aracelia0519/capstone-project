@@ -339,6 +339,7 @@
                 </Label>
                 <Input 
                   v-model="bookingForm.contact_number" 
+                  @input="bookingForm.contact_number = $event.target.value.replace(/[^0-9]/g, '').slice(0, 11)"
                   placeholder="e.g. 09123456789" 
                   class="border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm h-12 bg-white"
                 />
@@ -685,6 +686,12 @@ const goToMyBookings = () => {
 const submitServiceRequest = async () => {
   if (!bookingForm.value.description || !bookingForm.value.preferred_date || !bookingForm.value.time_preference || !bookingForm.value.contact_number) {
     toast.error('Missing Information', { description: 'Please fill in all required fields.' })
+    return
+  }
+
+  // FIX: Frontend Validation Check before sending request
+  if (!/^0[0-9]{10}$/.test(bookingForm.value.contact_number)) {
+    toast.error('Invalid Contact Number', { description: 'Contact number must be exactly 11 digits and start with 0 (e.g. 09123456789).' })
     return
   }
 

@@ -210,10 +210,20 @@ class ProcurementController extends Controller
                         $companyName = SupplierRequirements::where('user_id', $partner->supplier_id)->value('company_name');
                     } catch (\Exception $e) {}
                     
+                    // Fetch Payment Settings for the specific Supplier
+                    $paymentSettings = DB::table('supplier_payment_settings')->where('supplier_id', $partner->supplier_id)->first();
+
                     return [
                         'id' => $partner->supplier_id,
                         'name' => $companyName ? $companyName : $supplierName,
-                        'value' => $companyName ? $companyName : $supplierName
+                        'value' => $companyName ? $companyName : $supplierName,
+                        'payment_settings' => $paymentSettings ? [
+                            'is_cod_enabled' => (bool)$paymentSettings->is_cod_enabled,
+                            'is_gcash_enabled' => (bool)$paymentSettings->is_gcash_enabled,
+                        ] : [
+                            'is_cod_enabled' => true, // default fallback
+                            'is_gcash_enabled' => false
+                        ]
                     ];
                 })
                 ->filter()
@@ -258,11 +268,11 @@ class ProcurementController extends Controller
                 'supplier' => 'required|string|max:255',
                 'items' => 'required|array|min:1',
                 'items.*.id' => 'required|exists:supplier_raw_materials,id',
-                'items.*.quantity' => 'required|integer|min:1', // Removed the hard max limit to check DB later
+                'items.*.quantity' => 'required|integer|min:1',
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
                 'shipping_method' => 'nullable|string|in:standard,express,pickup',
-                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance',
+                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance,gcash', // Added gcash support
                 'instructions' => 'nullable|string',
                 'required_by_date' => 'nullable|date|after:today'
             ]);
@@ -319,7 +329,7 @@ class ProcurementController extends Controller
                     'priority' => $request->priority,
                     'status' => 'pending',
                     'shipping_method' => $request->shipping_method ?? 'standard',
-                    'payment_terms' => $request->payment_terms ?? 'net30',
+                    'payment_terms' => $request->payment_terms ?? 'cod', // Updated default
                     'delivery_address' => $request->delivery_address,
                     'instructions' => $request->instructions,
                     'required_by_date' => $request->required_by_date,
@@ -392,7 +402,7 @@ class ProcurementController extends Controller
             $updatableFields = [];
             
             if ($procurementRequest->status === 'pending') {
-                $updatableFields = ['delivery_address', 'instructions', 'required_by_date', 'shipping_method'];
+                $updatableFields = ['delivery_address', 'instructions', 'required_by_date', 'shipping_method', 'payment_terms'];
             }
             
             if ($request->has('status')) {

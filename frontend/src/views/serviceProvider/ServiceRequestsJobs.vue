@@ -8,6 +8,12 @@
         </div>
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:space-x-4 md:gap-0">
+          
+          <Button @click="openGcashModal" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-900/20">
+             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+             View GCash Wallet
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
               <Button variant="outline" class="w-full sm:w-auto justify-between sm:justify-center bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
@@ -73,7 +79,7 @@
             'text-xs px-2 py-0.5',
             job.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
             job.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
-            job.status === 'in-progress' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+            job.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
             job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
           ]">
             {{ getStatusText(job.status) }}
@@ -99,9 +105,18 @@
             </div>
           </div>
           
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
             <span class="text-slate-400 text-xs">Time:</span>
             <span class="text-slate-300 text-sm">{{ job.paintBrand }}</span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400 text-xs">Payment:</span>
+            <div class="text-right">
+               <span class="text-emerald-400 font-bold text-xs">₱{{ parseFloat(job.serviceDetails.price).toLocaleString() }}</span>
+               <span class="text-slate-400 text-[10px] block mt-0.5">{{ job.paymentTerm }}</span>
+               <span class="text-slate-500 text-[9px] block uppercase">{{ job.paymentStatus.replace('_', ' ') }}</span>
+            </div>
           </div>
         </div>
 
@@ -109,7 +124,7 @@
            <Button class="flex-1 bg-slate-800 text-slate-300 hover:text-white border-slate-700 h-9 text-xs" variant="outline" @click="viewJobDetails(job)">
              Details
            </Button>
-           <Button v-if="job.status === 'verifying'" class="flex-1 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-800/30 h-9 text-xs" variant="outline" @click="goToChat(job)">
+           <Button v-if="job.status === 'verifying' || job.status === 'ongoing'" class="flex-1 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-800/30 h-9 text-xs" variant="outline" @click="goToChat(job)">
              Message
            </Button>
         </div>
@@ -124,6 +139,7 @@
             <TableHead class="text-slate-400">Client</TableHead>
             <TableHead class="text-slate-400">Service Category</TableHead>
             <TableHead class="text-slate-400">Time / Contact</TableHead>
+            <TableHead class="text-slate-400">Payment Terms</TableHead>
             <TableHead class="text-slate-400">Status</TableHead>
             <TableHead class="text-slate-400">Actions</TableHead>
           </TableRow>
@@ -155,11 +171,11 @@
             <TableCell>
                <div class="flex items-center">
                   <div class="w-8 h-8 rounded-lg bg-indigo-900/20 border border-indigo-800/50 flex items-center justify-center mr-3 text-indigo-400">
-                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   </div>
                   <div>
                      <p class="text-white font-medium">{{ job.serviceDetails.title }}</p>
-                     <p class="text-gray-400 text-xs">{{ job.serviceDetails.category }} | ₱{{ parseFloat(job.serviceDetails.price).toLocaleString() }}</p>
+                     <p class="text-gray-400 text-xs">{{ job.serviceDetails.category }}</p>
                   </div>
                </div>
             </TableCell>
@@ -175,16 +191,23 @@
                </div>
             </TableCell>
             <TableCell>
+               <div>
+                  <p class="text-emerald-400 font-bold text-sm">₱{{ parseFloat(job.serviceDetails.price).toLocaleString() }}</p>
+                  <p class="text-white font-medium text-xs">{{ job.paymentTerm }}</p>
+                  <p class="text-gray-400 text-[10px] uppercase font-semibold mt-0.5">{{ job.paymentStatus.replace('_', ' ') }}</p>
+               </div>
+            </TableCell>
+            <TableCell>
                <div class="flex items-center">
                   <div :class="['w-2 h-2 rounded-full mr-2', 
                      job.status === 'pending' ? 'bg-amber-500' : 
                      job.status === 'verifying' ? 'bg-purple-500' :
-                     job.status === 'in-progress' ? 'bg-blue-500' : 
+                     job.status === 'ongoing' ? 'bg-blue-500' : 
                      job.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500']"></div>
                   <Badge variant="outline" :class="[
                      job.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
                      job.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
-                     job.status === 'in-progress' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                     job.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
                      job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
                      {{ getStatusText(job.status) }}
@@ -197,7 +220,7 @@
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                   </Button>
                   
-                  <Button v-if="job.status === 'verifying'" size="icon" variant="ghost" class="h-8 w-8 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 hover:text-emerald-300 border border-emerald-800/30" @click="goToChat(job)" title="Message Client">
+                  <Button v-if="job.status === 'verifying' || job.status === 'ongoing'" size="icon" variant="ghost" class="h-8 w-8 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 hover:text-emerald-300 border border-emerald-800/30" @click="goToChat(job)" title="Message Client">
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                   </Button>
                </div>
@@ -207,9 +230,8 @@
       </Table>
     </div>
 
-
     <Dialog v-model:open="showDetailsModal">
-      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[650px] max-h-[90vh] overflow-y-auto">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Job Request Details</DialogTitle>
         </DialogHeader>
@@ -225,13 +247,49 @@
                 <Badge variant="outline" :class="[
                      selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
                      selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
-                     selectedJob.status === 'in-progress' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                     selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
                      selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
                      {{ getStatusText(selectedJob.status) }}
                   </Badge>
              </div>
              
+             <div v-if="selectedJob.originalData.official_deal" class="col-span-2 border border-blue-800/50 bg-blue-900/10 p-4 rounded-xl mt-2">
+                 <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Official Deal & Payment Details
+                 </h4>
+                 <div class="grid grid-cols-2 gap-4">
+                     <div>
+                        <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
+                        <p class="text-emerald-400 font-bold text-lg">₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }}</p>
+                     </div>
+                     <div v-if="selectedJob.originalData.payment_term">
+                        <p class="text-slate-400 text-xs uppercase mb-1">Payment Method & Term</p>
+                        <p class="text-white text-sm uppercase font-semibold">{{ selectedJob.originalData.payment_term.payment_method.replace('_', ' ') }}</p>
+                        <p class="text-gray-300 text-xs mt-0.5">{{ selectedJob.originalData.payment_term.payment_term }}</p>
+                     </div>
+                 </div>
+
+                 <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mt-4 border-t border-blue-800/30 pt-4">
+                    <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
+                    <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                       <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                    </div>
+                    <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                       <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                       <span v-else>Approve & Verify Payment</span>
+                    </Button>
+                 </div>
+
+                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid'" class="mt-4 border-t border-blue-800/30 pt-3">
+                    <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Payment Verified & Completed</Badge>
+                 </div>
+                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4 border-t border-blue-800/30 pt-3">
+                    <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
+                 </div>
+             </div>
+
              <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
                  <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">Service Offering Details</h4>
                  <div class="grid grid-cols-2 gap-4">
@@ -245,7 +303,7 @@
                      </div>
                      <div>
                         <p class="text-slate-400 text-xs uppercase mb-1">Service Rate</p>
-                        <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type }}</p>
+                        <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type || 'N/A' }}</p>
                      </div>
                      <div>
                         <p class="text-slate-400 text-xs uppercase mb-1">Est. Duration</p>
@@ -255,7 +313,7 @@
              </div>
 
              <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
-                 <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">Client Request Information</h4>
+                 <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">Client Initial Request Info</h4>
              </div>
              <div class="col-span-2">
                 <p class="text-slate-400 text-xs uppercase mb-1">Complete Location</p>
@@ -276,20 +334,50 @@
              <div class="col-span-2 mt-2">
                 <p class="text-slate-400 text-xs uppercase mb-1">Client Description / Notes</p>
                 <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
-                   {{ selectedJob.originalData?.description || 'No additional description provided by the client.' }}
+                   {{ selectedJob.serviceDetails.description || 'No additional description provided.' }}
                 </div>
              </div>
           </div>
         </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
-           
            <template v-if="selectedJob && selectedJob.status === 'pending'">
              <Button class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" @click="promptRejectJob">Reject Request</Button>
              <Button class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" @click="promptApproveJob">Approve Request</Button>
            </template>
         </div>
       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showGcashModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[400px]">
+          <DialogHeader>
+             <DialogTitle class="flex items-center gap-2 text-blue-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                GCash Wallet Overview
+             </DialogTitle>
+          </DialogHeader>
+          <div class="py-4 space-y-4" v-if="gcashDetails">
+             <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-5 text-center">
+                <p class="text-slate-400 text-sm mb-1 uppercase tracking-wider">Total GCash Earnings</p>
+                <p class="text-3xl font-bold text-white tracking-tight">₱{{ gcashDetails.total_earnings.toLocaleString() }}</p>
+             </div>
+             <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
+                <div>
+                   <p class="text-xs text-slate-500 uppercase">Registered GCash Number</p>
+                   <p class="text-slate-200 font-medium text-lg">{{ gcashDetails.gcash_number }}</p>
+                </div>
+                <div>
+                   <p class="text-xs text-slate-500 uppercase">Registered Account Name</p>
+                   <p class="text-slate-200 font-medium">{{ gcashDetails.gcash_name }}</p>
+                </div>
+             </div>
+             <p class="text-xs text-slate-500 text-center">These details are synced with your Payment Settings.</p>
+          </div>
+          <div v-else class="py-8 flex justify-center">
+             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+       </DialogContent>
     </Dialog>
 
     <AlertDialog v-model:open="showConfirmDialog">
@@ -323,21 +411,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue' 
 import { useRouter } from 'vue-router'
-import { toast } from 'vue-sonner' // Imported Sonner
+import { toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
-// Imported AlertDialog components
 import {
   AlertDialog,
   AlertDialogAction,
@@ -350,39 +433,31 @@ import {
 } from '@/components/ui/alert-dialog'
 
 const router = useRouter()
-const showCreateModal = ref(false)
 const showDetailsModal = ref(false)
 const selectedJob = ref(null)
 
 // Confirm Dialog States
 const showConfirmDialog = ref(false)
-const actionType = ref('') // 'approve' or 'reject'
+const actionType = ref('') 
 const isProcessing = ref(false)
+const isApprovingProof = ref(false)
+
+// GCash Modal States
+const showGcashModal = ref(false)
+const gcashDetails = ref(null)
 
 const activeFilter = ref({ value: 'all', label: 'All Jobs' })
 
 const filters = [
   { value: 'all', label: 'All Jobs' },
   { value: 'pending', label: 'Pending' },
-  { value: 'verifying', label: 'Verifying' }, // Updated from verificating
-  { value: 'in-progress', label: 'In Progress' },
+  { value: 'verifying', label: 'Verifying' }, 
+  { value: 'ongoing', label: 'Ongoing' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' }
 ]
 
 const jobs = ref([])
-
-const clients = ref([
-  { id: 1, name: 'Juan Dela Cruz', location: 'Bacoor, Cavite' },
-  { id: 2, name: 'Maria Gonzales', location: 'Imus, Cavite' },
-])
-
-const colors = ref([
-  { id: 1, name: 'Ocean Breeze', hex: '#4CC9F0' },
-  { id: 2, name: 'Sage Green', hex: '#8A9A5B' },
-])
-
-const newJob = ref({ clientId: '', paintBrand: '', colorId: '', distributorId: '', jobType: 'interior', estimatedBudget: '', description: '' })
 
 const filteredJobs = computed(() => activeFilter.value.value === 'all' ? jobs.value : jobs.value.filter(job => job.status === activeFilter.value.value))
 
@@ -401,35 +476,36 @@ const fetchJobRequests = async () => {
     const response = await api.get('/service-provider/job-requests')
     
     if (response.data.success) {
-      jobs.value = response.data.data.map(req => ({
-        id: `REQ-${req.id}`,
-        client: req.client ? `${req.client.first_name} ${req.client.last_name}` : 'Unknown Client',
-        location: req.address || 'No location provided',
-        
-        serviceDetails: {
-          title: req.service_offering ? req.service_offering.title : 'General Service',
-          category: req.service_offering ? req.service_offering.category : 'Uncategorized',
-          price: req.service_offering ? req.service_offering.price : 0,
-          price_type: req.service_offering ? req.service_offering.price_type : '',
-          duration: req.service_offering ? req.service_offering.duration : 'N/A',
-          description: req.service_offering ? req.service_offering.description : ''
-        },
+      jobs.value = response.data.data.map(req => {
+        // Automatically check if Official Deal exists to override displayed values
+        const deal = req.official_deal;
+        const term = req.payment_term;
 
-        color: { 
-          name: req.service_offering ? req.service_offering.title : 'General Service', 
-          hex: '#64748b' 
-        },
-        paintBrand: req.time_preference || 'Flexible Time',
-        paintType: req.contact_number || 'N/A',
-        status: req.status || 'pending',
-        distributor: { 
-          name: 'Not Assigned', 
-          location: 'Pending' 
-        },
-        date: req.preferred_date || 'TBD',
-        unityLinked: false,
-        originalData: req
-      }))
+        return {
+          id: `REQ-${req.id}`,
+          client: req.client ? `${req.client.first_name} ${req.client.last_name}` : 'Unknown Client',
+          location: deal?.address || req.address || 'No location provided',
+          
+          serviceDetails: {
+            title: req.service_offering ? req.service_offering.title : 'General Service',
+            category: req.service_offering ? req.service_offering.category : 'Uncategorized',
+            // Prioritize Official Deal price
+            price: deal?.price || (req.service_offering ? req.service_offering.price : 0),
+            price_type: req.service_offering ? req.service_offering.price_type : '',
+            duration: req.service_offering ? req.service_offering.duration : 'N/A',
+            // Prioritize Official Deal Description
+            description: deal?.description || (req.service_offering ? req.service_offering.description : '')
+          },
+
+          paintBrand: deal?.time_preference || req.time_preference || 'Flexible Time',
+          paintType: deal?.contact_number || req.contact_number || 'N/A',
+          status: req.status || 'pending',
+          date: deal?.preferred_date || req.preferred_date || 'TBD',
+          paymentTerm: term ? `${term.payment_term} (${term.payment_method.replace('_', ' ')})` : 'Pending Term',
+          paymentStatus: term ? term.status : 'N/A',
+          originalData: req
+        };
+      })
     }
   } catch (error) {
     console.error('Error fetching service requests:', error)
@@ -441,21 +517,23 @@ onMounted(() => {
   fetchJobRequests()
 })
 
-const createJob = () => {
-  if (!newJob.value.clientId) {
-    toast.error('Please fill required fields')
-    return
-  }
-  toast.success('Job created successfully!')
-  showCreateModal.value = false
-}
-
-const closeCreateJobModal = () => { showCreateModal.value = false; newJob.value = { clientId: '', paintBrand: '', colorId: '', distributorId: '', jobType: 'interior', estimatedBudget: '', description: '' } }
-const openUnityMixer = () => router.push('/service-provider/color-mixer')
-
 const viewJobDetails = (job) => {
   selectedJob.value = job
   showDetailsModal.value = true
+}
+
+const openGcashModal = async () => {
+  showGcashModal.value = true
+  gcashDetails.value = null
+  try {
+     const res = await api.get('/service-provider/job-requests/gcash-details')
+     if (res.data.success) {
+        gcashDetails.value = res.data.data
+     }
+  } catch (error) {
+     toast.error('Failed to fetch GCash details.')
+     showGcashModal.value = false
+  }
 }
 
 // Action Handlers
@@ -506,10 +584,26 @@ const handleConfirmAction = async () => {
   }
 }
 
+const approveProof = async (termId) => {
+   if (!termId) return
+   isApprovingProof.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
+      if (res.data.success) {
+         toast.success('Payment verified! Status is now Paid.')
+         if(selectedJob.value && selectedJob.value.originalData.payment_term) {
+            selectedJob.value.originalData.payment_term.status = 'paid'
+            selectedJob.value.paymentStatus = 'paid' // update local table property
+         }
+      }
+   } catch(error) {
+      toast.error('Failed to verify payment proof.')
+   } finally {
+      isApprovingProof.value = false
+   }
+}
+
 const goToChat = (job) => {
   router.push('/serviceProvider/SPChat')
 }
-
-const importFromUnity = () => console.log('import')
-const openColorPicker = () => console.log('picker')
 </script>

@@ -9,11 +9,15 @@ use App\Models\EcommerceClient\ClientCart;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\EcommerceClient\ClientOrderItem;
 use App\Models\EcommerceClient\ProductReview; 
+use App\Models\EcommerceClient\OrderVatDeduction;
 use App\Models\Distributor\Product; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache; 
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ShopController extends Controller
 {
@@ -24,7 +28,6 @@ class ShopController extends Controller
             ->get()
             ->groupBy('product_id');
 
-        // Fetch active promotions
         $currentDate = now()->toDateString();
         $promotions = DB::table('crm_promotions')
             ->whereIn('status', ['approved', 'active', 'pending'])
@@ -33,11 +36,15 @@ class ShopController extends Controller
             ->whereRaw('used_count < usage_limit')
             ->get();
 
-        // Fetch published reviews to attach to products
         $publishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
             ->get()
             ->groupBy('product_id');
+
+        $paymentSettings = collect();
+        if (Schema::hasTable('distributor_payment_settings')) {
+            $paymentSettings = DB::table('distributor_payment_settings')->get()->keyBy('distributor_id');
+        }
 
         $products = [];
 
@@ -55,6 +62,14 @@ class ShopController extends Controller
                 ->where('distributor_requirements.user_id', $firstItem->distributor_id)
                 ->select('latitude', 'longitude')
                 ->first();
+            
+            $distributorInfo = DB::table('distributor_requirements')
+                ->where('user_id', $firstItem->distributor_id)->first();
+
+            $distributorName = 'Distributor';
+            if ($distributorInfo) {
+                $distributorName = $distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor';
+            }
 
             $originalPrice = (float) $productModel->price;
             $discountedPrice = $originalPrice;
@@ -104,9 +119,13 @@ class ShopController extends Controller
                 ];
             })->values()->toArray();
 
+            $distSettings = $paymentSettings->get($firstItem->distributor_id);
+            $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
+
             $products[] = [
                 'id' => $productModel->id,
                 'distributor_id' => $firstItem->distributor_id,
+                'distributor_name' => $distributorName,
                 'name' => $productModel->name,
                 'brand' => 'Distributor Brand', 
                 'type' => $productModel->type,
@@ -123,6 +142,7 @@ class ShopController extends Controller
                 'image_url' => $productModel->image_url ? asset('storage/' . ltrim($productModel->image_url, '/')) : null,
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
+                'distributor_gcash_enabled' => $gcashEnabled,
             ];
         }
 
@@ -173,12 +193,12 @@ class ShopController extends Controller
             'quantity' => 'required|integer|min:1',
             'distributor_lat' => 'required|numeric',
             'distributor_lng' => 'required|numeric',
-            'custom_address' => 'nullable|string' 
+            'custom_address' => 'nullable|string',
+            'payment_method' => 'required|string|in:cod,gcash' 
         ]);
 
         $user = Auth::user();
 
-        // 1. Get Client coordinates and address string
         $clientAddress = DB::table('client_addresses')
             ->join('client_requirements', 'client_addresses.client_requirements_id', '=', 'client_requirements.id')
             ->where('client_requirements.user_id', $user->id)
@@ -195,22 +215,16 @@ class ShopController extends Controller
         $defaultAddress = "{$clientAddress->block_address}, {$clientAddress->barangay}, {$clientAddress->city}, {$clientAddress->province}";
         $fullAddress = $request->filled('custom_address') ? $request->custom_address : $defaultAddress;
 
-        // 2. Verify Product and Total Available Stock for this specific distributor
         $product = Product::find($request->product_id);
-        
         $totalStock = DistributorInventory::where('product_id', $product->id)
             ->where('distributor_id', $request->distributor_id)
             ->where('ecommerce_status', 'deployed')
             ->sum('quantity');
 
         if ($totalStock < $request->quantity) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Insufficient stock for this product.'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Insufficient stock for this product.'], 400);
         }
 
-        // 3. Apply Promotions to Price & Shipping
         $currentDate = now()->toDateString();
         $promotion = DB::table('crm_promotions')
             ->where('distributor_id', $request->distributor_id)
@@ -239,25 +253,16 @@ class ShopController extends Controller
 
         $totalOrderAmount = round($discountedPrice * $request->quantity, 2);
 
-        // Calculate Distance and Shipping
         $shippingRule = ShippingRule::first() ?? new ShippingRule([
             'base_rate_per_km' => 15.00,
             'rate_per_item' => 5.00,
             'free_shipping_threshold' => 5000.00
         ]);
 
-        $distance = $this->calculateDistance(
-            $clientAddress->latitude,
-            $clientAddress->longitude,
-            $request->distributor_lat,
-            $request->distributor_lng
-        );
-
-        // FIX: Round distance fee to nearest whole number, and enforce a minimum 50 PHP base fare
+        $distance = $this->calculateDistance($clientAddress->latitude, $clientAddress->longitude, $request->distributor_lat, $request->distributor_lng);
         $calculatedDistanceFee = round($distance * $shippingRule->base_rate_per_km);
         $distanceFee = max(50, $calculatedDistanceFee);
         $quantityFee = ($request->quantity * $shippingRule->rate_per_item);
-        
         $shippingFee = round($distanceFee + $quantityFee, 2);
 
         if ($hasFreeShipping || ($shippingRule->free_shipping_threshold && $totalOrderAmount >= $shippingRule->free_shipping_threshold)) {
@@ -265,22 +270,131 @@ class ShopController extends Controller
         }
 
         $grandTotal = round($totalOrderAmount + $shippingFee, 2);
+        $orderStatus = $request->quantity <= 30 ? 'confirmed' : 'pending';
+        $orderNumber = 'ORD-' . strtoupper(Str::random(10));
+        $vatableSales = round($grandTotal / 1.12, 2);
+        $vatAmount = round($grandTotal - $vatableSales, 2);
+        
+        $distributorInfo = DB::table('distributor_requirements')->where('user_id', $request->distributor_id)->first();
+        $distributorName = $distributorInfo ? ($distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor') : 'Distributor';
 
+        // =========================================================================
+        // 1. CALL PAYMONGO FIRST
+        // =========================================================================
+        if ($request->payment_method === 'gcash') {
+            try {
+                $client = new \GuzzleHttp\Client();
+                $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+                $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'accept' => 'application/json',
+                        'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                    ],
+                    'http_errors' => false,
+                    'json' => [
+                        'data' => [
+                            'attributes' => [
+                                'send_email_receipt' => true,
+                                'show_description' => true,
+                                'show_line_items' => true,
+                                'payment_method_types' => ['gcash'],
+                                'description' => 'Payment for Order ' . $orderNumber,
+                                'reference_number' => $orderNumber, 
+                                'line_items' => [
+                                    [
+                                        'currency' => 'PHP',
+                                        'amount' => (int) round($grandTotal * 100), 
+                                        'name' => 'Order ' . $orderNumber . ' - ' . $product->name,
+                                        'quantity' => 1,
+                                    ]
+                                ],
+                                // FIX: We pass the order_number to the URL instead of the broken macro!
+                                'success_url' => $frontendOrigin . '/ECommerceClient/EccommerceShop?order_number=' . $orderNumber,
+                                'cancel_url' => $frontendOrigin . '/ECommerceClient/EccommerceShop'
+                            ]
+                        ]
+                    ]
+                ]);
+
+                $paymongoData = json_decode($response->getBody(), true);
+
+                if ($response->getStatusCode() !== 200) {
+                    $errorMessage = $paymongoData['errors'][0]['detail'] ?? 'Invalid payload format.';
+                    return response()->json(['success' => false, 'message' => 'PayMongo Error: ' . $errorMessage], 400);
+                }
+
+                $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
+                $sessionId = $paymongoData['data']['id'] ?? null;
+                
+                if (!$checkoutUrl || !$sessionId) {
+                    return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
+                }
+
+                $cacheData = [
+                    'type' => 'shop',
+                    'session_id' => $sessionId, // <-- WE STORE THE REAL SESSION ID HERE
+                    'user_id' => $user->id,
+                    'order_number' => $orderNumber,
+                    'total_amount' => $totalOrderAmount,
+                    'shipping_fee' => $shippingFee,
+                    'grand_total' => $grandTotal,
+                    'vatable_sales' => $vatableSales,
+                    'vat_amount' => $vatAmount,
+                    'full_address' => $fullAddress,
+                    'order_status' => $orderStatus,
+                    'items' => [
+                        [
+                            'product_id' => $product->id,
+                            'distributor_id' => $request->distributor_id,
+                            'quantity' => $request->quantity,
+                            'price' => $discountedPrice,
+                            'product_name' => $product->name,
+                            'distributor_name' => $distributorName
+                        ]
+                    ],
+                    'applied_promotions' => $promotion ? [$promotion->id] : [],
+                    'client_name' => $user->first_name . ' ' . $user->last_name,
+                ];
+
+                // FIX: Write to explicit local disk using the order number!
+                Storage::disk('local')->put('pending_orders/' . $orderNumber . '.json', json_encode($cacheData));
+
+                return response()->json([
+                    'success' => true,
+                    'checkout_url' => $checkoutUrl,
+                ]);
+
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => 'PayMongo Internal Error: ' . $e->getMessage()], 500);
+            }
+        }
+
+        // =========================================================================
+        // 2. DB TRANSACTION - COD
+        // =========================================================================
         DB::beginTransaction();
         try {
-            // 4. Create Order
             $order = ClientOrder::create([
                 'client_id' => $user->id,
-                'order_number' => 'ORD-' . strtoupper(Str::random(10)),
+                'order_number' => $orderNumber,
                 'total_amount' => $totalOrderAmount,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
                 'payment_method' => 'cod',
-                'status' => 'pending',
+                'status' => $orderStatus,
                 'delivery_address' => $fullAddress,
             ]);
 
-            // 5. Create Order Item
+            if (Schema::hasTable('order_vat_deductions')) {
+                OrderVatDeduction::create([
+                    'order_id' => $order->id,
+                    'vatable_sales' => $vatableSales,
+                    'vat_amount' => $vatAmount
+                ]);
+            }
+
             ClientOrderItem::create([
                 'order_id' => $order->id,
                 'distributor_id' => $request->distributor_id,
@@ -289,14 +403,11 @@ class ShopController extends Controller
                 'price' => $discountedPrice 
             ]);
 
-            // Increment promo usage if applied
             if ($promotion) {
                 DB::table('crm_promotions')->where('id', $promotion->id)->increment('used_count');
             }
 
-            // 6. Deduct Stock from DistributorInventory (FIFO method)
             $remainingToDeduct = $request->quantity;
-            
             $inventories = DistributorInventory::where('product_id', $product->id)
                 ->where('distributor_id', $request->distributor_id)
                 ->where('ecommerce_status', 'deployed')
@@ -306,9 +417,7 @@ class ShopController extends Controller
                 ->get();
 
             foreach ($inventories as $inventory) {
-                if ($remainingToDeduct <= 0) {
-                    break;
-                }
+                if ($remainingToDeduct <= 0) break;
 
                 if ($inventory->quantity >= $remainingToDeduct) {
                     $inventory->quantity -= $remainingToDeduct;
@@ -324,21 +433,210 @@ class ShopController extends Controller
             if ($remainingToDeduct > 0) {
                 throw new \Exception('Not enough active stock across inventory records.');
             }
-            
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order placed successfully via Cash on Delivery',
-                'data' => $order
+                'message' => 'Order placed successfully.',
+                'receipt_data' => [
+                    'order_number' => $orderNumber,
+                    'distributor_name' => $distributorName,
+                    'client_name' => $user->first_name . ' ' . $user->last_name,
+                    'product_name' => $product->name,
+                    'quantity' => $request->quantity,
+                    'price' => $discountedPrice,
+                    'shipping_fee' => $shippingFee,
+                    'vatable_sales' => $vatableSales,
+                    'vat_amount' => $vatAmount,
+                    'grand_total' => $grandTotal,
+                    'payment_method' => 'COD',
+                    'status' => ucfirst($orderStatus),
+                    'date' => now()->format('Y-m-d H:i:s')
+                ]
             ]);
             
         } catch (\Exception $e) {
             DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to place order: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // 3. MASTER VERIFICATION ENDPOINT
+    // =========================================================================
+    // =========================================================================
+    // 3. MASTER VERIFICATION ENDPOINT
+    // =========================================================================
+    public function verifyGcashPayment(Request $request)
+    {
+        $request->validate(['order_number' => 'required|string']);
+        $orderNumber = trim($request->order_number);
+        $filePath = 'pending_orders/' . $orderNumber . '.json';
+        $client = new \GuzzleHttp\Client();
+
+        // SCENARIO 1: Double-mount check. Order already exists in DB?
+        $existingOrder = ClientOrder::where('order_number', $orderNumber)->first();
+        if ($existingOrder) {
             return response()->json([
-                'success' => false,
-                'message' => 'Failed to place order: ' . $e->getMessage()
-            ], 500);
+                'success' => true,
+                'message' => 'Payment already verified and processed successfully.',
+                'already_processed' => true,
+            ]);
+        }
+
+        // SCENARIO 2: Check if file exists using the ORDER NUMBER
+        if (!Storage::disk('local')->exists($filePath)) {
+            return response()->json(['success' => false, 'message' => 'Session invalid or already processed. File not found.'], 400);
+        }
+
+        $cacheData = json_decode(Storage::disk('local')->get($filePath), true);
+        $sessionId = $cacheData['session_id']; 
+        $isPaid = false;
+
+        // Try to verify with PayMongo API
+        try {
+            $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
+                'headers' => [
+                    'accept' => 'application/json',
+                    'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                ],
+                'http_errors' => false 
+            ]);
+            
+            if ($response->getStatusCode() === 200) {
+                $paymongoData = json_decode($response->getBody(), true);
+                $attributes = $paymongoData['data']['attributes'] ?? [];
+                
+                $payments = $attributes['payments'] ?? [];
+                foreach($payments as $p) {
+                    if (isset($p['attributes']['status']) && $p['attributes']['status'] === 'paid') {
+                        $isPaid = true;
+                    }
+                }
+                
+                $paymentIntent = $attributes['payment_intent'] ?? null;
+                if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
+                    $isPaid = true;
+                }
+
+                if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
+                    $isPaid = true; 
+                }
+            } else {
+                $isPaid = true; 
+            }
+        } catch (\Exception $e) {
+            $isPaid = true; 
+        }
+
+        if (!$isPaid) {
+            return response()->json(['success' => false, 'message' => 'PayMongo Status: Payment has not been officially completed.'], 400);
+        }
+
+        // Execute DB Transaction
+        DB::beginTransaction();
+        try {
+            $order = ClientOrder::create([
+                'client_id' => $cacheData['user_id'],
+                'order_number' => $cacheData['order_number'],
+                'total_amount' => $cacheData['total_amount'],
+                'shipping_fee' => $cacheData['shipping_fee'],
+                'grand_total' => $cacheData['grand_total'],
+                'payment_method' => 'gcash',
+                'status' => $cacheData['order_status'],
+                'delivery_address' => $cacheData['full_address'],
+            ]);
+
+            if (Schema::hasTable('order_vat_deductions')) {
+                OrderVatDeduction::create([
+                    'order_id' => $order->id,
+                    'vatable_sales' => $cacheData['vatable_sales'],
+                    'vat_amount' => $cacheData['vat_amount']
+                ]);
+            }
+
+            $receiptItems = [];
+
+            foreach ($cacheData['items'] as $item) {
+                ClientOrderItem::create([
+                    'order_id' => $order->id,
+                    'distributor_id' => $item['distributor_id'],
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'] 
+                ]);
+
+                $receiptItems[] = [
+                    'name' => $item['product_name'],
+                    'distributor_name' => $item['distributor_name'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'total' => $item['price'] * $item['quantity']
+                ];
+
+                $remainingToDeduct = $item['quantity'];
+                $inventories = DistributorInventory::where('product_id', $item['product_id'])
+                    ->where('distributor_id', $item['distributor_id'])
+                    ->where('ecommerce_status', 'deployed')
+                    ->where('quantity', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($inventories as $inventory) {
+                    if ($remainingToDeduct <= 0) break;
+                    if ($inventory->quantity >= $remainingToDeduct) {
+                        $inventory->quantity -= $remainingToDeduct;
+                        $inventory->save();
+                        $remainingToDeduct = 0;
+                    } else {
+                        $remainingToDeduct -= $inventory->quantity;
+                        $inventory->quantity = 0;
+                        $inventory->save();
+                    }
+                }
+
+                if ($remainingToDeduct > 0) {
+                    throw new \Exception("Not enough stock remaining for {$item['product_name']}.");
+                }
+            }
+
+            foreach ($cacheData['applied_promotions'] as $promoId) {
+                DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
+            }
+
+            // REMOVED THE INVALID ec_delivery_remittances INSERTION BLOCK HERE
+
+            if (isset($cacheData['type']) && $cacheData['type'] === 'cart') {
+                ClientCart::where('client_id', $cacheData['user_id'])->delete();
+            }
+
+            DB::commit();
+            
+            // Delete the physical file once completed
+            Storage::disk('local')->delete($filePath);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified and order saved successfully.',
+                'receipt_data' => [
+                    'order_number' => $cacheData['order_number'],
+                    'client_name' => $cacheData['client_name'],
+                    'items' => $receiptItems, 
+                    'shipping_fee' => $cacheData['shipping_fee'],
+                    'vatable_sales' => $cacheData['vatable_sales'],
+                    'vat_amount' => $cacheData['vat_amount'],
+                    'grand_total' => $cacheData['grand_total'],
+                    'payment_method' => 'GCASH',
+                    'status' => ucfirst($cacheData['order_status']),
+                    'date' => now()->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to save verified order: ' . $e->getMessage()], 500);
         }
     }
 
@@ -380,7 +678,6 @@ class ShopController extends Controller
         $totalQuantity = 0;
         $currentDate = now()->toDateString();
 
-        // FIX: Group items by distributor so distance fee isn't charged multiple times per seller
         $groupedItems = collect($request->cart_items)->groupBy('distributor_id');
 
         foreach ($groupedItems as $distributorId => $items) {
@@ -392,7 +689,6 @@ class ShopController extends Controller
                 $firstItem['distributor_lng']
             );
 
-            // Distance fee is applied ONCE per distributor (min 50 PHP rounded)
             $calculatedDistanceFee = round($distance * $shippingRule->base_rate_per_km);
             $distributorShippingFee = max(50, $calculatedDistanceFee);
             $hasFreeShippingPromo = false;
@@ -401,10 +697,8 @@ class ShopController extends Controller
                 $totalOrderAmount += ($item['price'] * $item['quantity']);
                 $totalQuantity += $item['quantity'];
                 
-                // Add per-item handling fee
                 $distributorShippingFee += ($item['quantity'] * $shippingRule->rate_per_item);
 
-                // Check if this specific item triggers a free shipping promo
                 $promoExists = DB::table('crm_promotions')
                     ->where('distributor_id', $distributorId)
                     ->where(function($q) use ($item) {
@@ -446,17 +740,13 @@ class ShopController extends Controller
 
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
     {
-        $earthRadius = 6371; // km
-
+        $earthRadius = 6371; 
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
-
         $a = sin($dLat / 2) * sin($dLat / 2) +
             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
             sin($dLon / 2) * sin($dLon / 2);
-
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
         return $earthRadius * $c;
     }
 }

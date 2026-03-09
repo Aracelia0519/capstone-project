@@ -93,6 +93,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
+
+        // -----------------------------------------------------
+        // CLIENT PAYMENT SETTINGS (GCash)
+        // -----------------------------------------------------
+        Route::prefix('payment-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Client\ClientPaymentSettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Client\ClientPaymentSettingController::class, 'update']);
+        });
+
         // -----------------------------------------------------
         // CHATS: galing sa selected Servive Provider ng Client
         // -----------------------------------------------------
@@ -102,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/send', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'sendMessage']);
             
             Route::post('/deals/{dealId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToDeal']);
+            Route::post('/payment-terms/{termId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToPaymentTerm']); // NEW
         });
 
         Route::prefix('requirements')->group(function () {
@@ -125,6 +135,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('services')->group(function () {
             Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
             Route::get('/my-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'index']);
+
+            // NEW PAYMENT ROUTES FOR OFFICIAL TERMS
+            Route::post('/payment-terms/{termId}/upload-proof', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'uploadProof']);
+            Route::post('/payment-terms/{termId}/pay-gcash', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'payWithGcash']);
+            Route::post('/payment-terms/verify-gcash', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'verifyGcashPayment']);
         });
 
         // E-Commerce Client Shop & Cart Routes
@@ -133,6 +148,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
             Route::post('/cart', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'addToCart']);
             Route::post('/order-now', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'orderNow']);
+
+            Route::post('/verify-gcash', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'verifyGcashPayment']);
 
             // Cart Management Endpoints (Actions)
             Route::put('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'update']);
@@ -171,6 +188,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/messages/{clientId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getMessages']);
             Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
         });
+
+        Route::get('/job-requests/gcash-details', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'getGcashDetails']);
+        Route::post('/job-requests/payment-terms/{termId}/approve', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'approvePaymentProof']);
 
         Route::get('/job-requests', [ServiceJobController::class, 'index']);
         Route::post('/job-requests/{id}/approve', [ServiceJobController::class, 'approve']);
@@ -421,6 +441,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'reject']);
+            Route::post('/verify-gcash', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'verifyGcashPayment']);
         });
 
         Route::prefix('procurement')->group(function () {

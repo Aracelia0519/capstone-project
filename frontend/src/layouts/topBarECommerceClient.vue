@@ -176,9 +176,7 @@ const navItems = [
 ]
 
 const profileMenuItems = [
-  { id: 'profile', label: 'My Profile', route: '/ECommerceClient/EccommerceProfile', icon: UserCircle },
-  { id: 'settings', label: 'Settings', route: '/ECommerceClient/EccommerceProfile?tab=preferences', icon: Settings },
-  { id: 'help', label: 'Support', route: '/ECommerceClient/EccommerceProfile?tab=account', icon: HelpCircle }
+  { id: 'profile', label: 'My Profile', route: '/Clients/profileC', icon: UserCircle },
 ]
 
 const handleLogout = async () => {
