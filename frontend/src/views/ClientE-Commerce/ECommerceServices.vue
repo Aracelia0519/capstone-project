@@ -167,8 +167,14 @@
 
             <CardContent class="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <h3 class="font-bold text-lg leading-tight text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{{ service.title }}</h3>
+                <h3 class="font-bold text-lg leading-tight text-gray-900 mb-1.5 line-clamp-2 group-hover:text-blue-600 transition-colors">{{ service.title }}</h3>
                 
+                <div class="flex items-center mb-3">
+                  <Star class="w-4 h-4 text-amber-500 fill-amber-500 mr-1" />
+                  <span class="text-sm font-bold text-gray-800">{{ service.average_rating > 0 ? service.average_rating.toFixed(1) : 'No rating' }}</span>
+                  <span v-if="service.total_reviews > 0" class="text-xs text-gray-400 font-medium ml-1">({{ service.total_reviews }} reviews)</span>
+                </div>
+
                 <div class="flex items-center text-sm text-gray-600 mb-3 bg-gray-50 px-2.5 py-1.5 rounded-lg w-max border border-gray-100">
                   <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
                   <span class="font-medium truncate max-w-[150px]">{{ service.provider_name }}</span>
@@ -224,7 +230,7 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="showServiceModal || isAuthAlertOpen" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
+        <div v-if="showServiceModal || isAuthAlertOpen || replyModalOpen" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
       </transition>
 
       <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
@@ -247,6 +253,38 @@
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog :open="replyModalOpen" @update:open="(val) => !val && (replyModalOpen = false)">
+        <DialogContent class="bg-white rounded-2xl shadow-2xl w-full max-w-md border-0 z-[10001]">
+           <DialogHeader>
+              <DialogTitle class="text-gray-900 font-bold flex items-center gap-2">
+                 <Reply class="w-5 h-5 text-blue-500" />
+                 Reply to Provider
+              </DialogTitle>
+           </DialogHeader>
+           <div class="py-4 space-y-4">
+              <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                 <p class="text-[10px] font-bold text-gray-500 uppercase mb-1">Provider's Note:</p>
+                 <p class="text-sm text-gray-700 italic">"{{ reviewToReply?.reply }}"</p>
+              </div>
+              <div>
+                 <Label class="text-xs font-bold text-gray-600 uppercase mb-2 block">Your Final Response</Label>
+                 <Textarea 
+                    v-model="clientReplyText" 
+                    placeholder="Type your response here..." 
+                    class="w-full resize-none min-h-[100px] border-gray-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl"
+                 />
+              </div>
+           </div>
+           <div class="flex justify-end gap-2">
+              <Button variant="outline" @click="replyModalOpen = false" class="border-gray-200">Cancel</Button>
+              <Button @click="submitClientReply" :disabled="isSubmittingReply || !clientReplyText.trim()" class="bg-blue-600 hover:bg-blue-700 text-white">
+                 <span v-if="isSubmittingReply" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Sending...</span>
+                 <span v-else>Post Reply</span>
+              </Button>
+           </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog :open="showServiceModal" @update:open="(val) => !val && closeServiceModal()">
         <DialogContent class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 border-0 z-[9999]">
           
@@ -255,6 +293,12 @@
               <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight">{{ selectedService?.title }}</DialogTitle>
               <DialogDescription class="text-gray-500 font-medium mt-1 flex items-center">
                  By <span class="text-blue-600 ml-1 font-bold">{{ selectedService?.provider_name }}</span>
+                 
+                 <span v-if="selectedService?.total_reviews > 0" class="ml-3 flex items-center text-amber-500 text-xs font-bold border-l border-gray-300 pl-3">
+                    <Star class="w-3.5 h-3.5 fill-amber-500 mr-1" />
+                    {{ selectedService.average_rating.toFixed(1) }} 
+                    <span class="text-gray-400 font-medium ml-1">({{ selectedService.total_reviews }} reviews)</span>
+                 </span>
               </DialogDescription>
             </div>
             <button @click="closeServiceModal" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors shrink-0 border border-gray-200 shadow-sm">
@@ -383,6 +427,52 @@
                 </div>
               </div>
             </div>
+
+            <div class="mt-10 border-t border-gray-200 pt-8">
+              <h3 class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
+                <Star class="w-5 h-5 text-amber-500 fill-amber-500" /> 
+                Client Reviews ({{ selectedService?.total_reviews || 0 }})
+              </h3>
+              
+              <div v-if="!selectedService?.reviews || selectedService.reviews.length === 0" class="text-center py-8 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <MessageSquare class="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                <p class="text-sm font-medium text-gray-500">No reviews yet for this service.</p>
+              </div>
+              
+              <div v-else class="space-y-4">
+                <div v-for="review in selectedService.reviews" :key="review.id" class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                  <div class="flex justify-between items-start mb-3">
+                    <div>
+                      <p class="font-bold text-gray-900 text-sm">{{ review.client_name }}</p>
+                      <div class="flex items-center gap-0.5 mt-1">
+                        <Star v-for="n in 5" :key="n" :class="['w-3.5 h-3.5', n <= review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-200']" />
+                      </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{{ formatDate(review.created_at) }}</p>
+                  </div>
+                  <p class="text-sm text-gray-600 leading-relaxed">"{{ review.comment || 'No specific comment provided.' }}"</p>
+                  
+                  <div v-if="review.reply" class="mt-4 bg-blue-50/50 border border-blue-100 rounded-lg p-3.5 relative ml-2 md:ml-4">
+                    <div class="absolute -left-3.5 top-3 text-blue-200"><CornerDownRight class="w-5 h-5" /></div>
+                    <p class="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1">Response from Provider</p>
+                    <p class="text-xs text-gray-700 leading-relaxed">{{ review.reply }}</p>
+                  </div>
+
+                  <div v-if="props.user && props.user.id === review.client_id && review.reply && !review.client_reply" class="mt-3 ml-6 md:ml-8">
+                     <Button size="sm" variant="outline" class="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-50" @click="openClientReplyModal(review)">
+                        <Reply class="w-3 h-3 mr-1" /> Reply to Provider
+                     </Button>
+                  </div>
+
+                  <div v-else-if="review.client_reply" class="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 relative ml-6 md:ml-8">
+                    <div class="absolute -left-3.5 top-3 text-gray-300"><CornerDownRight class="w-5 h-5" /></div>
+                    <p class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Client Follow-up</p>
+                    <p class="text-xs text-gray-600 leading-relaxed">{{ review.client_reply }}</p>
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0">
@@ -419,7 +509,11 @@ import {
   DollarSign,
   PaintRoller,
   ClipboardList,
-  Search
+  Search,
+  Star,
+  MessageSquare,
+  CornerDownRight,
+  Reply
 } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
@@ -466,6 +560,12 @@ const isLoading = ref(true)
 const showServiceModal = ref(false)
 const selectedService = ref(null)
 const isSubmitting = ref(false)
+
+// Reply Modal State
+const replyModalOpen = ref(false)
+const reviewToReply = ref(null)
+const clientReplyText = ref('')
+const isSubmittingReply = ref(false)
 
 // Authentication Modal State
 const isAuthAlertOpen = ref(false)
@@ -520,21 +620,13 @@ const hasActiveFilters = computed(() => {
 // FIX: Robust Dynamic Image URL Generator
 const getImageUrl = (path) => {
   if (!path) return '';
-  
-  // 1. Get the true base URL from .env, fallback to localhost
   const baseUrl = import.meta.env.VITE_API_URL 
       ? import.meta.env.VITE_API_URL.replace('/api', '') 
       : 'http://localhost:8000';
-  
-  // 2. Fix old DB records that accidentally hardcoded localhost:8000
   if (path.includes('localhost:8000')) {
       path = path.replace('http://localhost:8000', baseUrl);
   }
-  
-  // 3. If it's already a full HTTP URL (like S3 or after our replacement), return it directly
   if (path.startsWith('http')) return path;
-  
-  // 4. Handle new DB records that correctly only saved the relative path ('service_offerings/xyz.jpg')
   const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
   return `${baseUrl}/storage/${cleanPath}`;
 }
@@ -556,6 +648,12 @@ const formatPriceType = (type) => {
   if (type === 'Hourly') return 'Hour'
   if (type === 'Per Sqm') return 'Sqm'
   return type
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString('en-US', options);
 }
 
 const fetchServices = async () => {
@@ -591,14 +689,10 @@ const prevImage = (service) => {
   }
 }
 
-// Filter Logic
 const toggleFilter = (filterId) => {
   const index = activeFilters.value.indexOf(filterId)
-  if (index > -1) {
-    activeFilters.value.splice(index, 1)
-  } else {
-    activeFilters.value.push(filterId)
-  }
+  if (index > -1) activeFilters.value.splice(index, 1)
+  else activeFilters.value.push(filterId)
 }
 
 const clearFilters = () => {
@@ -675,6 +769,34 @@ const closeServiceModal = () => {
   }, 300)
 }
 
+const openClientReplyModal = (review) => {
+  reviewToReply.value = review
+  clientReplyText.value = ''
+  replyModalOpen.value = true
+}
+
+const submitClientReply = async () => {
+  if (!clientReplyText.value.trim() || !reviewToReply.value) return;
+  
+  isSubmittingReply.value = true;
+  try {
+     const response = await api.post(`/client/services/reviews/${reviewToReply.value.id}/reply`, {
+        client_reply: clientReplyText.value
+     });
+
+     if (response.data.success) {
+        toast.success('Reply submitted successfully!');
+        // Update UI locally to reflect the change immediately
+        reviewToReply.value.client_reply = clientReplyText.value;
+        replyModalOpen.value = false;
+     }
+  } catch (error) {
+     toast.error(error.response?.data?.message || 'Failed to submit reply');
+  } finally {
+     isSubmittingReply.value = false;
+  }
+}
+
 const goToMyBookings = () => {
   if (!props.user) {
     isAuthAlertOpen.value = true;
@@ -689,7 +811,6 @@ const submitServiceRequest = async () => {
     return
   }
 
-  // FIX: Frontend Validation Check before sending request
   if (!/^0[0-9]{10}$/.test(bookingForm.value.contact_number)) {
     toast.error('Invalid Contact Number', { description: 'Contact number must be exactly 11 digits and start with 0 (e.g. 09123456789).' })
     return

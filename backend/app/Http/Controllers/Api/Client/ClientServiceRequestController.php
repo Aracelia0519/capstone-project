@@ -8,6 +8,8 @@ use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm;
 use App\Models\ServiceProvider\ServicePaymentTransaction; 
+use App\Models\ServiceProvider\ServiceJobCompletion;
+use App\Models\ServiceProvider\ServiceReview;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -45,13 +47,39 @@ class ClientServiceRequestController extends Controller
             $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
             $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->latest()->first() : null;
             
-            if ($paymentTerm && $paymentTerm->proof_of_payment) {
-                 $cleanProof = preg_replace('/^\/?storage\//', '', $paymentTerm->proof_of_payment);
-                 $paymentTerm->proof_of_payment_url = $baseUrl . '/storage/' . ltrim($cleanProof, '/');
+            if ($paymentTerm) {
+                if ($paymentTerm->proof_of_payment) {
+                    $cleanProof = preg_replace('/^\/?storage\//', '', $paymentTerm->proof_of_payment);
+                    $paymentTerm->proof_of_payment_url = $baseUrl . '/storage/' . ltrim($cleanProof, '/');
+                }
+
+                // DYNAMIC BALANCE CALCULATION: Sum all completed transactions for THIS DEAL
+                $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+                $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
+                    ->where('status', 'completed')
+                    ->sum('amount');
+                
+                $paymentTerm->total_paid = $totalPaid;
+                $paymentTerm->balance = max(0, $deal->price - $totalPaid);
             }
+
+            // Fetch Latest Completion Proofs
+            $latestCompletion = ServiceJobCompletion::where('client_service_request_id', $req->id)->latest()->first();
+            if ($latestCompletion && !empty($latestCompletion->proof_images)) {
+                $formattedProofs = array_map(function ($path) use ($baseUrl) {
+                    $cleanPath = preg_replace('/^\/?storage\//', '', $path);
+                    return $baseUrl . '/storage/' . ltrim($cleanPath, '/');
+                }, $latestCompletion->proof_images);
+                $latestCompletion->proof_images_url = $formattedProofs;
+            }
+
+            // Fetch Review if already submitted
+            $review = ServiceReview::where('client_service_request_id', $req->id)->first();
 
             $req->official_deal = $deal;
             $req->payment_term = $paymentTerm;
+            $req->latest_completion = $latestCompletion;
+            $req->service_review = $review;
             
             return $req;
         });
@@ -76,17 +104,32 @@ class ClientServiceRequestController extends Controller
             $term->status = 'awaiting_proof_approval'; 
             $term->save();
 
-            // Calculate exact amount
+            // Calculate exact amount dynamically
             $deal = $term->deal;
             $amount = (float) $deal->price;
-            $percentage = 100;
-            if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
-                $percentage = (float) $matches[1];
-            }
-            $payableAmount = ($amount * ($percentage / 100));
+            
+            $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+            $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
+                ->where('status', 'completed')
+                ->sum('amount');
 
-            // Record the transaction as pending (Awaiting SP Approval)
-            $transaction = ServicePaymentTransaction::firstOrNew(['payment_term_id' => $term->id]);
+            $remainingBalance = $amount - $totalPaid;
+
+            if ($totalPaid > 0) {
+                // Paying the remaining balance
+                $payableAmount = $remainingBalance;
+            } else {
+                // Initial percentage payment
+                $percentage = 100;
+                if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
+                    $percentage = (float) $matches[1];
+                }
+                $payableAmount = ($amount * ($percentage / 100));
+            }
+
+            // Create a NEW transaction record (Do NOT use firstOrNew so it doesn't overwrite completed ones)
+            $transaction = new ServicePaymentTransaction();
+            $transaction->payment_term_id = $term->id;
             $transaction->client_id = $term->client_id;
             $transaction->provider_id = $term->provider_id;
             $transaction->amount = $payableAmount;
@@ -107,18 +150,34 @@ class ClientServiceRequestController extends Controller
         $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
         $amount = (float) $deal->price;
 
-        // Extract percentage if indicated in string (e.g. "50% payment first")
-        $percentage = 100;
-        if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
-            $percentage = (float) $matches[1];
+        // Dynamic Balance Checking
+        $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+        $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
+            ->where('status', 'completed')
+            ->sum('amount');
+
+        $remainingBalance = $amount - $totalPaid;
+
+        if ($remainingBalance <= 0) {
+            return response()->json(['success' => false, 'message' => 'This deal is already fully paid.'], 400);
         }
-        $payableAmount = ($amount * ($percentage / 100));
+
+        if ($totalPaid > 0) {
+            // Second payment for balance
+            $payableAmount = $remainingBalance;
+            $paymentName = $serviceName . ' (Remaining Balance)';
+        } else {
+            // First payment based on percentage
+            $percentage = 100;
+            if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
+                $percentage = (float) $matches[1];
+            }
+            $payableAmount = ($amount * ($percentage / 100));
+            $paymentName = $serviceName . ' (' . $percentage . '% Payment)';
+        }
 
         try {
             $client = new \GuzzleHttp\Client();
-            
-            // FIX: Using exactly the same approach as ShopController
-            // Notice the exact spelling and casing to match your Vue Router: '/Clients/myServiceRequest'
             $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
             $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
@@ -141,11 +200,10 @@ class ClientServiceRequestController extends Controller
                                 [
                                     'currency' => 'PHP',
                                     'amount' => (int) round($payableAmount * 100), 
-                                    'name' => $serviceName . ' (' . $percentage . '% Payment)',
+                                    'name' => $paymentName,
                                     'quantity' => 1,
                                 ]
                             ],
-                            // FIXED ROUTE URL
                             'success_url' => $frontendOrigin . '/Clients/myServiceRequest?service_payment_term_id=' . $term->id,
                             'cancel_url' => $frontendOrigin . '/Clients/myServiceRequest'
                         ]
@@ -157,7 +215,7 @@ class ClientServiceRequestController extends Controller
             $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
             $sessionId = $paymongoData['data']['id'] ?? null;
 
-            if (!$checkoutUrl || !$sessionId) {
+            if (!$checkoutUrl || (!$sessionId)) {
                 return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
             }
 
@@ -187,12 +245,9 @@ class ClientServiceRequestController extends Controller
         $term = OfficialPaymentTerm::find($termId);
         if (!$term) return response()->json(['success' => false, 'message' => 'Payment term not found'], 404);
 
-        if ($term->status === 'paid') {
-            return response()->json(['success' => true, 'message' => 'Payment already verified.', 'already_processed' => true]);
-        }
-
         if (!Storage::disk('local')->exists($filePath)) {
-            return response()->json(['success' => false, 'message' => 'Session invalid or already processed.'], 400);
+            // If it's already verified, just ignore quietly so UI isn't interrupted
+            return response()->json(['success' => true, 'message' => 'Payment already verified.', 'already_processed' => true]);
         }
 
         $cacheData = json_decode(Storage::disk('local')->get($filePath), true);
@@ -241,11 +296,7 @@ class ClientServiceRequestController extends Controller
 
         DB::beginTransaction();
         try {
-            // Official Update to Paid
-            $term->status = 'paid';
-            $term->save();
-            
-            // Record the transaction as successfully Completed
+            // Record the transaction as successfully Completed FIRST
             ServicePaymentTransaction::create([
                 'payment_term_id' => $term->id,
                 'client_id' => $term->client_id,
@@ -256,6 +307,10 @@ class ClientServiceRequestController extends Controller
                 'status' => 'completed'
             ]);
 
+            // Always set current term to paid. The UI will determine if it's fully paid based on balance
+            $term->status = 'paid';
+            $term->save();
+
             Storage::disk('local')->delete($filePath);
             DB::commit();
 
@@ -264,5 +319,113 @@ class ClientServiceRequestController extends Controller
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed to log the transaction.'], 500);
         }
+    }
+
+    public function approveCompletion($id)
+    {
+        DB::beginTransaction();
+        try {
+            $job = ClientServiceRequest::where('client_id', Auth::id())->findOrFail($id);
+            $completion = ServiceJobCompletion::where('client_service_request_id', $job->id)->latest()->first();
+            
+            if ($completion) {
+                $completion->status = 'approved';
+                $completion->save();
+            }
+
+            $job->status = 'completed';
+            $job->save();
+
+            $deal = OfficialDeal::where('client_service_request_id', $job->id)->latest()->first();
+            if ($deal) {
+                $deal->status = 'completed';
+                $deal->save();
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Service job has been marked as officially completed.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to approve job completion.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function rejectCompletion(Request $request, $id)
+    {
+        $request->validate(['rejection_reason' => 'required|string']);
+        
+        DB::beginTransaction();
+        try {
+            $job = ClientServiceRequest::where('client_id', Auth::id())->findOrFail($id);
+            $completion = ServiceJobCompletion::where('client_service_request_id', $job->id)->latest()->first();
+            
+            if ($completion) {
+                $completion->status = 'rejected';
+                $completion->rejection_reason = $request->rejection_reason;
+                $completion->save();
+            }
+
+            // Return to ongoing state
+            $job->status = 'ongoing';
+            $job->save();
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Completion rejected and reason sent to Provider.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to reject job completion.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function submitReview(Request $request, $id)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string'
+        ]);
+
+        $job = ClientServiceRequest::where('client_id', Auth::id())->findOrFail($id);
+
+        if ($job->status !== 'completed') {
+            return response()->json(['success' => false, 'message' => 'You can only leave a review for completed services.'], 400);
+        }
+
+        $existingReview = ServiceReview::where('client_service_request_id', $job->id)->first();
+        if ($existingReview) {
+            return response()->json(['success' => false, 'message' => 'You have already reviewed this service.'], 400);
+        }
+
+        ServiceReview::create([
+            'client_service_request_id' => $job->id,
+            'provider_id' => $job->provider_id,
+            'client_id' => Auth::id(),
+            'rating' => $request->rating,
+            'comment' => $request->comment
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Thank you! Your review has been submitted successfully.']);
+    }
+    
+    public function submitClientReply(Request $request, $id)
+    {
+        $request->validate([
+            'client_reply' => 'required|string|max:1000'
+        ]);
+
+        // Securely find the review ensuring the logged-in user is the original author
+        $review = ServiceReview::where('client_id', Auth::id())->findOrFail($id);
+
+        if (!$review->reply) {
+            return response()->json(['success' => false, 'message' => 'You can only reply after the service provider has responded.'], 400);
+        }
+
+        if ($review->client_reply) {
+            return response()->json(['success' => false, 'message' => 'You have already replied to this thread.'], 400);
+        }
+
+        $review->client_reply = $request->client_reply;
+        $review->save();
+
+        return response()->json(['success' => true, 'message' => 'Your reply has been posted successfully.']);
     }
 }

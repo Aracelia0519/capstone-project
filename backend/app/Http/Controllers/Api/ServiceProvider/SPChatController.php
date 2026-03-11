@@ -114,8 +114,17 @@ class SPChatController extends Controller
 
         // NEW: Handle Payment Term Creation
         if ($request->type === 'payment_term') {
+            // FIX: Fetch the active deal tied to THIS specific service request
+            $activeDeal = OfficialDeal::where('client_service_request_id', $request->service_request_id)
+                                      ->latest()
+                                      ->first();
+
+            if (!$activeDeal) {
+                return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);
+            }
+
             $term = OfficialPaymentTerm::create([
-                'official_deal_id' => $payload['deal_id'],
+                'official_deal_id' => $activeDeal->id, // Use the verified Deal ID
                 'provider_id' => Auth::id(),
                 'client_id' => $request->receiver_id,
                 'payment_method' => $payload['payment_method'],
@@ -123,6 +132,8 @@ class SPChatController extends Controller
                 'status' => 'pending'
             ]);
 
+            // Update the payload to ensure the broadcast sends the correct Deal ID back to the chat
+            $payload['deal_id'] = $activeDeal->id; 
             $payload['term_id'] = $term->id;
             $payload['term_status'] = 'pending';
         }

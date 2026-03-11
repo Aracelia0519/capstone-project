@@ -47,6 +47,7 @@ import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
 import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
 import SPChat from '@/views/serviceProvider/SPChat.vue'
 import SPPaymentSettings from '@/views/serviceProvider/SPPaymentSettings.vue'
+import SPCRM from '@/views/serviceProvider/SPCRM.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -694,6 +695,11 @@ const routes = [
         path: 'SPPaymentSettings',
         name: 'SPPaymentSettings',
         component: SPPaymentSettings
+      },
+      {
+        path: 'SPCRM',
+        name: 'SPCRM',
+        component: SPCRM
       },
     ]
   },

@@ -133,6 +133,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // ECOMMERCE SERVICES: Actions requiring Auth
         // -----------------------------------------------------
         Route::prefix('services')->group(function () {
+            // NEW: Reviews Route
+            Route::post('/requests/{id}/review', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitReview']);
+            // NEW: Client Reply Route
+            Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitClientReply']);
             Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
             Route::get('/my-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'index']);
 
@@ -140,6 +144,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/payment-terms/{termId}/upload-proof', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'uploadProof']);
             Route::post('/payment-terms/{termId}/pay-gcash', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'payWithGcash']);
             Route::post('/payment-terms/verify-gcash', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'verifyGcashPayment']);
+            
+            // NEW COMPLETION REVIEW ROUTES
+            Route::post('/requests/{id}/approve-completion', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'approveCompletion']);
+            Route::post('/requests/{id}/reject-completion', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'rejectCompletion']);
+            
+            // NEW: Reviews Route
+            Route::post('/requests/{id}/review', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitReview']);
         });
 
         // E-Commerce Client Shop & Cart Routes
@@ -189,12 +200,22 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
         });
 
+        // -----------------------------------------------------
+        // NEW CRM ROUTES (Reviews & Feedback)
+        // -----------------------------------------------------
+        Route::prefix('crm')->group(function () {
+            Route::get('/reviews', [\App\Http\Controllers\Api\ServiceProvider\SPCRMController::class, 'getReviews']);
+            Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Api\ServiceProvider\SPCRMController::class, 'replyToReview']);
+            Route::patch('/reviews/{id}/toggle-visibility', [\App\Http\Controllers\Api\ServiceProvider\SPCRMController::class, 'toggleVisibility']);
+        });
+
         Route::get('/job-requests/gcash-details', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'getGcashDetails']);
         Route::post('/job-requests/payment-terms/{termId}/approve', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'approvePaymentProof']);
 
         Route::get('/job-requests', [ServiceJobController::class, 'index']);
         Route::post('/job-requests/{id}/approve', [ServiceJobController::class, 'approve']);
         Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
+        Route::post('/job-requests/{id}/complete', [ServiceJobController::class, 'submitCompletion']); // NEW
 
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);

@@ -22,6 +22,7 @@
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="verifying">Verifying</SelectItem>
               <SelectItem value="ongoing">Ongoing</SelectItem>
+              <SelectItem value="completion_review">Awaiting Approval</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
@@ -100,7 +101,18 @@
             
             <div class="flex justify-end sm:justify-start mt-3 sm:mt-0 sm:self-center gap-2">
               <Button 
-                v-if="request.status === 'pending' || request.status === 'completed' || request.status === 'rejected'"
+                v-if="request.status === 'completion_review'"
+                variant="default" 
+                size="sm"
+                @click="viewDetails(request)"
+                class="bg-pink-600 hover:bg-pink-700 text-white rounded-xl gap-2 shadow-lg shadow-pink-900/20 animate-pulse-slow"
+              >
+                <Eye class="w-4 h-4" />
+                Review Work
+              </Button>
+
+              <Button 
+                v-if="request.status === 'pending' || request.status === 'completed' || request.status === 'rejected' || request.status === 'ongoing'"
                 variant="outline" 
                 size="sm"
                 @click="viewDetails(request)"
@@ -109,9 +121,20 @@
                 <Eye class="w-4 h-4" />
                 Details
               </Button>
+
+              <Button 
+                v-if="request.status === 'completed' && !request.raw.service_review"
+                variant="default" 
+                size="sm"
+                @click="openReviewModal(request)"
+                class="bg-amber-500 hover:bg-amber-600 text-white rounded-xl gap-2 shadow-lg shadow-amber-900/20"
+              >
+                <Star class="w-4 h-4 fill-current" />
+                Leave Review
+              </Button>
               
               <Button 
-                v-if="request.status === 'verifying' || request.status === 'ongoing'"
+                v-if="request.status === 'verifying' || request.status === 'ongoing' || request.status === 'completion_review'"
                 variant="default" 
                 size="sm"
                 @click="goToChat"
@@ -184,6 +207,36 @@
         </div>
         
         <div v-if="selectedRequest" class="px-6 py-5 space-y-6">
+
+           <div v-if="selectedRequest.status === 'completion_review'" class="bg-gradient-to-br from-pink-900/20 to-pink-800/20 rounded-2xl p-5 border border-pink-700/50 shadow-inner">
+             <h4 class="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+               <CheckCircle2 class="w-4 h-4" />
+               Provider Submitted Proof of Completion
+             </h4>
+             <p class="text-xs text-gray-300 mb-4">The service provider has marked this job as finished. Please review the attached proofs below.</p>
+             
+             <div class="grid grid-cols-2 gap-2 mb-4">
+                <div v-for="(img, idx) in selectedRequest.raw.latest_completion?.proof_images_url" :key="idx" class="h-32 rounded-lg overflow-hidden border border-slate-700">
+                   <img :src="img" class="w-full h-full object-cover hover:scale-105 transition-transform" />
+                </div>
+             </div>
+
+             <div class="flex gap-3 pt-2">
+                <Button @click="openRejectModal" class="flex-1 bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30">
+                   Reject & Request Fix
+                </Button>
+                <Button @click="approveCompletion" :disabled="isApprovingWork" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
+                   <span v-if="isApprovingWork" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                   <span v-else>Approve & Finish Job</span>
+                </Button>
+             </div>
+           </div>
+
+           <div v-if="selectedRequest.status === 'ongoing' && selectedRequest.raw.latest_completion && selectedRequest.raw.latest_completion.status === 'rejected'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
+             <p class="text-sm font-bold text-red-400 mb-1">You rejected the previous completion proof</p>
+             <p class="text-xs text-gray-300 italic border-l-2 border-red-500/50 pl-2">"{{ selectedRequest.raw.latest_completion.rejection_reason }}"</p>
+             <p class="text-xs text-gray-400 mt-2">The provider is currently working to address your feedback.</p>
+           </div>
            
            <div v-if="selectedRequest.raw.payment_term" class="bg-gradient-to-br from-yellow-900/10 to-yellow-800/20 rounded-2xl p-5 border border-yellow-700/50 shadow-inner">
              <h4 class="text-sm font-bold text-yellow-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
@@ -202,22 +255,43 @@
                </div>
              </div>
 
-             <div v-if="selectedRequest.raw.payment_term.status === 'agreed'">
+             <div class="grid grid-cols-2 gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700 mb-4 shadow-sm">
+               <div>
+                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid So Far</p>
+                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
+               </div>
+               <div>
+                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
+                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
+               </div>
+             </div>
+
+             <div v-if="selectedRequest.raw.payment_term.status === 'agreed' || (selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0)">
+                
+                <div v-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0" class="mb-4 text-center border-b border-gray-800 pb-3">
+                   <p class="text-sm text-emerald-400 font-bold mb-1 flex items-center justify-center gap-1.5"><CheckCircle2 class="w-4 h-4"/> Initial payment settled!</p>
+                   <p class="text-xs text-gray-400">You can now pay the remaining balance to fully settle the account.</p>
+                </div>
+
                 <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-2">
-                   <p class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please proceed with the payment.</p>
+                   <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please proceed with the payment.</p>
                    <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
                       <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                      <span v-else>Pay via GCash (PayMongo)</span>
+                      <span v-else>
+                        {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Pay Remaining Balance via GCash' : 'Pay via GCash (PayMongo)' }}
+                      </span>
                    </Button>
                 </div>
                 
                 <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-2">
-                   <p class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please hand the payment physically and upload the receipt/proof here.</p>
+                   <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please hand the payment physically and upload the receipt/proof here.</p>
                    <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
                    
                    <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
                       <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
-                      <span v-else>Upload Proof of Payment</span>
+                      <span v-else>
+                         {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Upload Proof for Remaining Balance' : 'Upload Proof of Payment' }}
+                      </span>
                    </Button>
                 </div>
              </div>
@@ -233,17 +307,50 @@
                 </div>
              </div>
 
-             <div v-else-if="selectedRequest.raw.payment_term.status === 'paid'" class="text-center pt-2">
+             <div v-else-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance <= 0" class="text-center pt-2">
                 <div class="bg-emerald-900/30 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-center gap-2">
                    <CheckCircle2 class="w-5 h-5 text-emerald-400" />
-                   <p class="text-sm font-bold text-emerald-400">Payment Verified & Completed!</p>
+                   <p class="text-sm font-bold text-emerald-400">Fully Paid & Completed!</p>
                 </div>
              </div>
 
              <div v-else-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
                 Awaiting your agreement in the chat section.
              </div>
+           </div>
 
+           <div v-if="selectedRequest.raw.service_review" class="bg-gradient-to-br from-amber-900/10 to-amber-800/20 border border-amber-800/30 p-5 rounded-2xl shadow-inner">
+              <h4 class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <Star class="w-4 h-4 fill-amber-400" />
+                Your Submitted Review
+              </h4>
+              <div class="flex items-center gap-1 mb-3">
+                 <Star v-for="n in 5" :key="n" :class="['w-4 h-4', n <= selectedRequest.raw.service_review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600']" />
+                 <span class="text-xs font-bold text-amber-500 ml-2 bg-amber-500/10 px-2 py-0.5 rounded-full">{{ selectedRequest.raw.service_review.rating }}.0</span>
+              </div>
+              <p class="text-sm text-gray-300 italic bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">"{{ selectedRequest.raw.service_review.comment || 'No specific comment provided.' }}"</p>
+
+              <div v-if="selectedRequest.raw.service_review.reply" class="mt-4 bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 relative ml-4">
+                 <div class="absolute -left-3 top-3 text-blue-500"><CornerDownRight class="w-4 h-4" /></div>
+                 <p class="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Provider's Response</p>
+                 <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.reply }}</p>
+              </div>
+
+              <div v-if="selectedRequest.raw.service_review.reply && !selectedRequest.raw.service_review.client_reply" class="mt-3 ml-8">
+                 <div class="flex flex-col gap-2">
+                    <textarea v-model="clientReplyText" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-amber-500 focus:outline-none" placeholder="Type your final response to the provider..."></textarea>
+                    <Button size="sm" class="self-end bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs" :disabled="isSubmittingReply || !clientReplyText.trim()" @click="submitClientReply(selectedRequest.raw.service_review.id)">
+                       <span v-if="isSubmittingReply">Sending...</span>
+                       <span v-else>Post Reply</span>
+                    </Button>
+                 </div>
+              </div>
+
+              <div v-else-if="selectedRequest.raw.service_review.client_reply" class="mt-3 bg-slate-800/50 border border-slate-700 rounded-lg p-3 relative ml-8">
+                 <div class="absolute -left-3 top-3 text-slate-500"><CornerDownRight class="w-4 h-4" /></div>
+                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Your Reply</p>
+                 <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.client_reply }}</p>
+              </div>
            </div>
 
            <div v-if="selectedRequest.raw.service_offering" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
@@ -339,6 +446,62 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="showReviewModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[450px]">
+          <DialogTitle class="text-amber-400 font-bold mb-2 flex items-center gap-2">
+             <Star class="w-5 h-5 fill-amber-400" /> Rate Service Provider
+          </DialogTitle>
+          <div class="py-2 space-y-4">
+             <p class="text-sm text-gray-300">How was your experience with the service provided by <strong>{{ jobToReview?.serviceProvider }}</strong>?</p>
+             
+             <div class="flex flex-col items-center my-6">
+                <div class="flex items-center gap-2 mb-2">
+                   <button 
+                      v-for="n in 5" 
+                      :key="n" 
+                      @click="reviewForm.rating = n" 
+                      class="focus:outline-none hover:scale-110 transition-transform p-1"
+                   >
+                      <Star :class="['w-10 h-10 transition-colors', n <= reviewForm.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-700']" />
+                   </button>
+                </div>
+                <span class="text-xs text-amber-500 font-bold tracking-wider uppercase">
+                   {{ reviewForm.rating === 5 ? 'Excellent!' : reviewForm.rating === 4 ? 'Very Good' : reviewForm.rating === 3 ? 'Average' : reviewForm.rating === 2 ? 'Poor' : 'Terrible' }}
+                </span>
+             </div>
+
+             <div class="space-y-1">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Additional Feedback (Optional)</p>
+                <textarea v-model="reviewForm.comment" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-amber-500/50 shadow-inner" placeholder="Tell us more about what you liked or how they can improve..."></textarea>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showReviewModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
+             <Button @click="submitReview" :disabled="isSubmittingReview" class="bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-900/20">
+                <span v-if="isSubmittingReview" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Submitting...</span>
+                <span v-else>Submit Review</span>
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showRejectModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[450px]">
+          <DialogTitle class="text-red-400 font-bold mb-2">Reject Work Completion</DialogTitle>
+          <div class="py-2 space-y-3">
+             <p class="text-sm text-gray-300">Please provide a clear reason why the work is not accepted so the provider can address the issue.</p>
+             <textarea v-model="rejectionReason" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-red-500/50" placeholder="e.g. The edge near the window frame is not fully painted..."></textarea>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showRejectModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
+             <Button @click="rejectCompletion" :disabled="isRejectingWork || !rejectionReason.trim()" class="bg-red-600 hover:bg-red-700 text-white">
+                <span v-if="isRejectingWork" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                <span v-else>Submit Rejection</span>
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -356,7 +519,7 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -375,6 +538,22 @@ const proofInput = ref(null)
 const isUploadingProof = ref(false)
 const isPaying = ref(false)
 
+// Work Completion State
+const isApprovingWork = ref(false)
+const showRejectModal = ref(false)
+const rejectionReason = ref('')
+const isRejectingWork = ref(false)
+
+// Review State
+const showReviewModal = ref(false)
+const jobToReview = ref(null)
+const reviewForm = ref({ rating: 5, comment: '' })
+const isSubmittingReview = ref(false)
+
+// Reply State
+const clientReplyText = ref('')
+const isSubmittingReply = ref(false)
+
 // --- Data Fetching ---
 const fetchRequests = async () => {
   isLoading.value = true
@@ -386,10 +565,14 @@ const fetchRequests = async () => {
         if (req.status === 'verifying') progress = 30;
         else if (req.status === 'approved') progress = 50;
         else if (req.status === 'ongoing') progress = 70;
+        else if (req.status === 'completion_review') progress = 85;
         else if (req.status === 'completed' || req.status === 'rejected') progress = 100;
 
         const cId = req.id
         const generatedColor = ['#3B82F6', '#10B981', '#6B7280', '#F59E0B', '#8B5CF6', '#059669', '#ec4899'][cId % 7]
+
+        let statusLabel = req.status.charAt(0).toUpperCase() + req.status.slice(1).replace('-', ' ')
+        if (req.status === 'completion_review') statusLabel = 'Under Review'
 
         return {
           id: req.id,
@@ -400,7 +583,7 @@ const fetchRequests = async () => {
           colorCode: generatedColor,
           imageUrl: req.service_offering?.image_paths?.length > 0 ? req.service_offering.image_paths[0] : null,
           status: req.status,
-          statusLabel: req.status.charAt(0).toUpperCase() + req.status.slice(1).replace('-', ' '),
+          statusLabel: statusLabel,
           date: new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           requestedDate: req.preferred_date || 'N/A',
           currentStageDate: new Date(req.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -475,6 +658,96 @@ const verifyServicePayment = async (termId) => {
   }
 }
 
+// --- Completion Actions ---
+const approveCompletion = async () => {
+   if(!selectedRequest.value) return
+   isApprovingWork.value = true
+   try {
+      const res = await api.post(`/client/services/requests/${selectedRequest.value.id}/approve-completion`)
+      if (res.data.success) {
+         toast.success(res.data.message)
+         isModalOpen.value = false
+         fetchRequests()
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to approve completion.")
+   } finally {
+      isApprovingWork.value = false
+   }
+}
+
+const openRejectModal = () => {
+   rejectionReason.value = ''
+   showRejectModal.value = true
+}
+
+const rejectCompletion = async () => {
+   if(!selectedRequest.value || !rejectionReason.value.trim()) return
+   isRejectingWork.value = true
+   try {
+      const res = await api.post(`/client/services/requests/${selectedRequest.value.id}/reject-completion`, {
+         rejection_reason: rejectionReason.value
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showRejectModal.value = false
+         isModalOpen.value = false
+         fetchRequests()
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to reject completion.")
+   } finally {
+      isRejectingWork.value = false
+   }
+}
+
+// --- Review Actions ---
+const openReviewModal = (request) => {
+  jobToReview.value = request
+  reviewForm.value = { rating: 5, comment: '' }
+  showReviewModal.value = true
+}
+
+const submitReview = async () => {
+  if (!jobToReview.value) return
+  isSubmittingReview.value = true
+  try {
+    const res = await api.post(`/client/services/requests/${jobToReview.value.id}/review`, reviewForm.value)
+    if (res.data.success) {
+      toast.success(res.data.message)
+      showReviewModal.value = false
+      fetchRequests()
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Failed to submit review.")
+  } finally {
+    isSubmittingReview.value = false
+  }
+}
+
+const submitClientReply = async (reviewId) => {
+  if (!clientReplyText.value.trim() || !reviewId) return;
+  
+  isSubmittingReply.value = true;
+  try {
+     const response = await api.post(`/client/services/reviews/${reviewId}/reply`, {
+        client_reply: clientReplyText.value
+     });
+
+     if (response.data.success) {
+        toast.success('Reply submitted successfully!');
+        selectedRequest.value.raw.service_review.client_reply = clientReplyText.value;
+        clientReplyText.value = '';
+        fetchRequests(); // Reload data
+     }
+  } catch (error) {
+     toast.error(error.response?.data?.message || 'Failed to submit reply');
+  } finally {
+     isSubmittingReply.value = false;
+  }
+}
+
+
 onMounted(async () => {
   await fetchRequests()
   
@@ -514,8 +787,8 @@ const statsCards = computed(() => [
     icon: Zap 
   },
   { 
-    label: 'Pending/Verifying', 
-    value: (statusCounts.value['pending'] || 0) + (statusCounts.value['verifying'] || 0), 
+    label: 'Review/Pending', 
+    value: (statusCounts.value['pending'] || 0) + (statusCounts.value['verifying'] || 0) + (statusCounts.value['completion_review'] || 0), 
     colorClass: 'text-amber-300', 
     bgClass: 'bg-amber-500/10', 
     iconClass: 'text-amber-400', 
@@ -537,6 +810,7 @@ const getStatusClasses = (status) => {
     'pending': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     'verifying': 'bg-blue-500/10 text-blue-400 border-blue-500/30',
     'ongoing': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    'completion_review': 'bg-pink-500/10 text-pink-400 border-pink-500/30',
     'completed': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     'rejected': 'bg-red-500/10 text-red-400 border-red-500/30'
   }
@@ -547,6 +821,7 @@ const getIndicatorColor = (status) => {
   if (status === 'pending') return 'bg-amber-500'
   if (status === 'verifying') return 'bg-blue-500'
   if (status === 'ongoing') return 'bg-cyan-500'
+  if (status === 'completion_review') return 'bg-pink-500'
   if (status === 'rejected') return 'bg-red-500'
   return 'bg-emerald-500'
 }
@@ -555,6 +830,7 @@ const getStatusTextColor = (status) => {
   if (status === 'pending') return 'text-amber-400'
   if (status === 'verifying') return 'text-blue-400'
   if (status === 'ongoing') return 'text-cyan-400'
+  if (status === 'completion_review') return 'text-pink-400'
   if (status === 'rejected') return 'text-red-400'
   return 'text-emerald-400'
 }
@@ -563,6 +839,7 @@ const getProgressBarTheme = (status) => {
   if (status === 'pending') return '[&>div]:bg-amber-500'
   if (status === 'verifying') return '[&>div]:bg-blue-500'
   if (status === 'ongoing') return '[&>div]:bg-cyan-500'
+  if (status === 'completion_review') return '[&>div]:bg-pink-500'
   if (status === 'rejected') return '[&>div]:bg-red-500'
   return '[&>div]:bg-emerald-500'
 }
@@ -572,6 +849,7 @@ const getStatusMessage = (status) => {
     'pending': 'Awaiting confirmation',
     'verifying': 'Awaiting official deal',
     'ongoing': 'Ongoing project',
+    'completion_review': 'Review submitted work',
     'completed': 'Successfully completed',
     'rejected': 'Request declined'
   }
@@ -595,6 +873,7 @@ const goToChat = () => {
 .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #38bdf8, #0ea5e9); border-radius: 3px; }
 
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

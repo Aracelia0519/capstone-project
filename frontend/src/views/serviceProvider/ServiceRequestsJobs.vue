@@ -80,6 +80,7 @@
             job.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
             job.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
             job.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+            job.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
             job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
           ]">
             {{ getStatusText(job.status) }}
@@ -120,12 +121,15 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800">
            <Button class="flex-1 bg-slate-800 text-slate-300 hover:text-white border-slate-700 h-9 text-xs" variant="outline" @click="viewJobDetails(job)">
              Details
            </Button>
-           <Button v-if="job.status === 'verifying' || job.status === 'ongoing'" class="flex-1 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-800/30 h-9 text-xs" variant="outline" @click="goToChat(job)">
+           <Button v-if="job.status === 'verifying' || job.status === 'ongoing' || job.status === 'completion_review'" class="flex-1 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 border-emerald-800/30 h-9 text-xs" variant="outline" @click="goToChat(job)">
              Message
+           </Button>
+           <Button v-if="job.status === 'ongoing'" class="w-full bg-blue-600 hover:bg-blue-700 text-white border-blue-700 h-9 text-xs mt-2" @click="promptCompleteJob(job)">
+             Mark as Complete
            </Button>
         </div>
       </div>
@@ -203,11 +207,13 @@
                      job.status === 'pending' ? 'bg-amber-500' : 
                      job.status === 'verifying' ? 'bg-purple-500' :
                      job.status === 'ongoing' ? 'bg-blue-500' : 
+                     job.status === 'completion_review' ? 'bg-pink-500' :
                      job.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500']"></div>
                   <Badge variant="outline" :class="[
                      job.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
                      job.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
                      job.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                     job.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
                      job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
                      {{ getStatusText(job.status) }}
@@ -220,8 +226,12 @@
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                   </Button>
                   
-                  <Button v-if="job.status === 'verifying' || job.status === 'ongoing'" size="icon" variant="ghost" class="h-8 w-8 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 hover:text-emerald-300 border border-emerald-800/30" @click="goToChat(job)" title="Message Client">
+                  <Button v-if="job.status === 'verifying' || job.status === 'ongoing' || job.status === 'completion_review'" size="icon" variant="ghost" class="h-8 w-8 bg-emerald-900/20 text-emerald-400 hover:bg-emerald-900/40 hover:text-emerald-300 border border-emerald-800/30" @click="goToChat(job)" title="Message Client">
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                  </Button>
+
+                  <Button v-if="job.status === 'ongoing'" size="icon" variant="ghost" class="h-8 w-8 bg-indigo-900/20 text-indigo-400 hover:bg-indigo-900/40 hover:text-indigo-300 border border-indigo-800/30" @click="promptCompleteJob(job)" title="Mark as Complete">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                   </Button>
                </div>
             </TableCell>
@@ -237,6 +247,28 @@
         </DialogHeader>
         
         <div v-if="selectedJob" class="py-4 space-y-6">
+
+          <div v-if="selectedJob.originalData.latest_completion && selectedJob.originalData.latest_completion.status === 'rejected'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
+             <h4 class="text-sm font-bold text-red-400 flex items-center gap-2 mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Client rejected the previous completion proof
+             </h4>
+             <p class="text-gray-300 text-sm italic border-l-2 border-red-500/50 pl-3">"{{ selectedJob.originalData.latest_completion.rejection_reason }}"</p>
+          </div>
+
+          <div v-if="selectedJob.status === 'completion_review'" class="bg-blue-900/20 border border-blue-800/50 p-4 rounded-xl">
+             <h4 class="text-sm font-bold text-blue-400 flex items-center gap-2 mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Waiting for Client Approval
+             </h4>
+             <p class="text-gray-300 text-sm mb-3">You have submitted proof that this job is completed. The client is currently reviewing your submission.</p>
+             <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                <div v-for="(img, idx) in selectedJob.originalData.latest_completion?.proof_images_url" :key="idx" class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border border-slate-700">
+                   <img :src="img" class="w-full h-full object-cover hover:scale-105 transition-transform" />
+                </div>
+             </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-5">
              <div>
                 <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
@@ -248,6 +280,7 @@
                      selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
                      selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
                      selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                     selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
                      selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
                      {{ getStatusText(selectedJob.status) }}
@@ -271,6 +304,17 @@
                      </div>
                  </div>
 
+                 <div v-if="selectedJob.originalData.payment_term" class="grid grid-cols-2 gap-4 bg-slate-950 p-3 rounded-xl border border-slate-800 mb-4 mt-3">
+                   <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid By Client</p>
+                     <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.total_paid || 0).toLocaleString() }}</p>
+                   </div>
+                   <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
+                     <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.balance || 0).toLocaleString() }}</p>
+                   </div>
+                 </div>
+
                  <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mt-4 border-t border-blue-800/30 pt-4">
                     <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
                     <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
@@ -282,8 +326,11 @@
                     </Button>
                  </div>
 
-                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid'" class="mt-4 border-t border-blue-800/30 pt-3">
-                    <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Payment Verified & Completed</Badge>
+                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4 border-t border-blue-800/30 pt-3">
+                    <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">Fully Paid & Completed</Badge>
+                 </div>
+                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-3">
+                    <Badge class="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">Initial Payment Verified - Pending Balance</Badge>
                  </div>
                  <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4 border-t border-blue-800/30 pt-3">
                     <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
@@ -345,8 +392,30 @@
              <Button class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" @click="promptRejectJob">Reject Request</Button>
              <Button class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" @click="promptApproveJob">Approve Request</Button>
            </template>
+           <template v-if="selectedJob && selectedJob.status === 'ongoing'">
+             <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="promptCompleteJob(selectedJob)">Submit Proof of Completion</Button>
+           </template>
         </div>
       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showCompleteModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] md:max-w-[500px]">
+          <DialogHeader>
+             <DialogTitle>Mark Job as Complete</DialogTitle>
+          </DialogHeader>
+          <div class="py-4">
+             <p class="text-sm text-gray-400 mb-4">Please upload images showing the completed work. The client will review these to finalize the job.</p>
+             <input type="file" ref="completionProofInput" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 mb-3 cursor-pointer" />
+          </div>
+          <div class="flex justify-end gap-3 mt-4">
+             <Button variant="ghost" @click="showCompleteModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
+             <Button @click="submitCompletion" :disabled="isCompleting" class="bg-blue-600 hover:bg-blue-700 text-white">
+                <span v-if="isCompleting" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                <span v-else>Submit & Request Approval</span>
+             </Button>
+          </div>
+       </DialogContent>
     </Dialog>
 
     <Dialog v-model:open="showGcashModal">
@@ -442,6 +511,12 @@ const actionType = ref('')
 const isProcessing = ref(false)
 const isApprovingProof = ref(false)
 
+// Completion Proof states
+const showCompleteModal = ref(false)
+const completionProofInput = ref(null)
+const isCompleting = ref(false)
+const jobToComplete = ref(null)
+
 // GCash Modal States
 const showGcashModal = ref(false)
 const gcashDetails = ref(null)
@@ -453,6 +528,7 @@ const filters = [
   { value: 'pending', label: 'Pending' },
   { value: 'verifying', label: 'Verifying' }, 
   { value: 'ongoing', label: 'Ongoing' },
+  { value: 'completion_review', label: 'Under Review' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' }
 ]
@@ -468,6 +544,7 @@ const getInitials = (name) => {
 
 const getStatusText = (status) => {
   if (!status) return 'Unknown'
+  if (status === 'completion_review') return 'Under Review'
   return status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
@@ -520,6 +597,41 @@ onMounted(() => {
 const viewJobDetails = (job) => {
   selectedJob.value = job
   showDetailsModal.value = true
+}
+
+const promptCompleteJob = (job) => {
+   jobToComplete.value = job
+   showCompleteModal.value = true
+}
+
+const submitCompletion = async () => {
+   if (!completionProofInput.value || completionProofInput.value.files.length === 0) {
+      toast.error('Please select at least one image.')
+      return
+   }
+
+   const formData = new FormData()
+   for (let i = 0; i < completionProofInput.value.files.length; i++) {
+      formData.append('proof_images[]', completionProofInput.value.files[i])
+   }
+
+   isCompleting.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/${jobToComplete.value.originalData.id}/complete`, formData, {
+         headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showCompleteModal.value = false
+         showDetailsModal.value = false
+         fetchJobRequests() // Re-fetch to get updated status and proof data
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to submit proof.')
+   } finally {
+      isCompleting.value = false
+      if (completionProofInput.value) completionProofInput.value.value = null
+   }
 }
 
 const openGcashModal = async () => {
@@ -590,10 +702,15 @@ const approveProof = async (termId) => {
    try {
       const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
       if (res.data.success) {
-         toast.success('Payment verified! Status is now Paid.')
-         if(selectedJob.value && selectedJob.value.originalData.payment_term) {
-            selectedJob.value.originalData.payment_term.status = 'paid'
-            selectedJob.value.paymentStatus = 'paid' // update local table property
+         toast.success('Payment verified successfully!')
+         await fetchJobRequests() // Get the updated total paid and balance
+         
+         // Dynamically update the selected job in the modal without closing it
+         if (selectedJob.value) {
+            const updatedJob = jobs.value.find(j => j.id === selectedJob.value.id)
+            if (updatedJob) {
+               selectedJob.value = updatedJob
+            }
          }
       }
    } catch(error) {
@@ -607,3 +724,9 @@ const goToChat = (job) => {
   router.push('/serviceProvider/SPChat')
 }
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to right, #3b82f6, #0ea5e9); border-radius: 3px; }
+</style>

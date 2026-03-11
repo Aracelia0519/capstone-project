@@ -11,20 +11,36 @@ use App\Models\EcommerceClient\ClientServiceRequest;
 
 class ClientServiceController extends Controller
 {
-    /**
-     * Fetch all active service offerings from all providers
-     */
     public function getServices(Request $request)
     {
-        // Dynamically get the base URL of the device/domain making the request
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+
+        // Fetch visible reviews grouped by service_offering_id including client_id and client_reply
+        $reviews = DB::table('service_reviews')
+            ->join('client_service_requests', 'service_reviews.client_service_request_id', '=', 'client_service_requests.id')
+            ->join('users', 'service_reviews.client_id', '=', 'users.id')
+            ->where('service_reviews.is_hidden', false)
+            ->select(
+                'service_reviews.id',
+                'service_reviews.client_id',
+                'service_reviews.rating',
+                'service_reviews.comment',
+                'service_reviews.reply',
+                'service_reviews.client_reply',
+                'service_reviews.created_at',
+                'client_service_requests.service_offering_id',
+                'users.first_name',
+                'users.last_name'
+            )
+            ->get()
+            ->groupBy('service_offering_id');
 
         $services = ServiceOffering::with('provider')
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $formattedServices = $services->map(function ($service) use ($baseUrl) {
+        $formattedServices = $services->map(function ($service) use ($baseUrl, $reviews) {
             $providerName = 'Independent Provider';
             if ($service->provider) {
                 $providerName = trim(($service->provider->first_name ?? '') . ' ' . ($service->provider->last_name ?? ''));
@@ -33,7 +49,6 @@ class ClientServiceController extends Controller
                 }
             }
 
-            // Dynamically format image paths to use the live domain instead of localhost
             $formattedPaths = [];
             if (!empty($service->image_paths)) {
                 $formattedPaths = array_map(function ($path) use ($baseUrl) {
@@ -41,13 +56,26 @@ class ClientServiceController extends Controller
                         $parsedUrl = parse_url($path);
                         $path = $parsedUrl['path'] ?? $path; 
                     }
-                    
                     $cleanPath = preg_replace('/^\/?storage\//', '', $path);
-                    $cleanPath = ltrim($cleanPath, '/');
-                    
-                    return $baseUrl . '/storage/' . $cleanPath;
+                    return $baseUrl . '/storage/' . ltrim($cleanPath, '/');
                 }, $service->image_paths);
             }
+
+            $serviceReviews = $reviews->get($service->id, collect());
+            $avgRating = $serviceReviews->count() > 0 ? round($serviceReviews->avg('rating'), 1) : 0;
+            
+            $mappedReviews = $serviceReviews->map(function($r) {
+                return [
+                    'id' => $r->id,
+                    'client_id' => $r->client_id,
+                    'client_name' => trim($r->first_name . ' ' . $r->last_name),
+                    'rating' => (int) $r->rating,
+                    'comment' => $r->comment,
+                    'reply' => $r->reply,
+                    'client_reply' => $r->client_reply,
+                    'created_at' => $r->created_at
+                ];
+            })->sortByDesc('created_at')->values()->toArray();
 
             return [
                 'id' => $service->id,
@@ -59,7 +87,10 @@ class ClientServiceController extends Controller
                 'price_type' => $service->price_type,
                 'duration' => $service->duration,
                 'description' => $service->description,
-                'image_paths' => $formattedPaths, 
+                'image_paths' => $formattedPaths,
+                'reviews' => $mappedReviews,
+                'average_rating' => $avgRating,
+                'total_reviews' => count($mappedReviews)
             ];
         });
 
@@ -69,12 +100,8 @@ class ClientServiceController extends Controller
         ]);
     }
 
-    /**
-     * Submit a new service request
-     */
     public function requestService(Request $request)
     {
-        // Added regex validation: Must start with 0 and exactly 11 digits
         $validated = $request->validate([
             'service_offering_id' => 'required|exists:service_offerings,id',
             'provider_id' => 'required|exists:users,id',
@@ -89,7 +116,6 @@ class ClientServiceController extends Controller
 
         $userId = Auth::id();
 
-        // VALIDATION: Prevent duplicate pending requests for the same service and provider
         $existingPendingRequest = ClientServiceRequest::where('client_id', $userId)
             ->where('service_offering_id', $validated['service_offering_id'])
             ->where('provider_id', $validated['provider_id'])
@@ -103,14 +129,10 @@ class ClientServiceController extends Controller
             ], 400);
         }
 
-        // Intercept the "default" string and replace it with the user's actual address via client_requirements
         if ($validated['address'] === 'default') {
-            
-            // First fetch the client requirement record for this user
             $clientReq = DB::table('client_requirements')->where('user_id', $userId)->first();
             $addressRecord = null;
 
-            // If a requirement exists, fetch the linked address
             if ($clientReq) {
                 $addressRecord = DB::table('client_addresses')
                     ->where('client_requirements_id', $clientReq->id)
@@ -118,7 +140,6 @@ class ClientServiceController extends Controller
             }
 
             if ($addressRecord) {
-                // Piece together the address dynamically based on your ClientAddress model
                 $addressParts = array_filter([
                     $addressRecord->block_address ?? null,
                     $addressRecord->barangay ?? null,
@@ -128,7 +149,6 @@ class ClientServiceController extends Controller
                 
                 $validated['address'] = implode(', ', $addressParts);
                 
-                // Fallback just in case they have a blank record
                 if (empty(trim($validated['address']))) {
                     $validated['address'] = 'Registered Address (Details missing in profile)';
                 }
