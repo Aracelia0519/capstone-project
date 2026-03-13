@@ -1,8 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+
+// Fix for default Leaflet icon paths in Vue
+// @ts-ignore
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+// @ts-ignore
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+// @ts-ignore
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow
+})
 
 // Shadcn UI Components
 import { Button } from '@/components/ui/button'
@@ -33,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 // Icons
 import { 
@@ -53,7 +71,14 @@ import {
   CreditCard,
   Loader2,
   X,
-  Star 
+  Star,
+  Camera,
+  Upload,
+  Navigation,
+  AlertTriangle,
+  Banknote,
+  Menu,
+  Info
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -105,6 +130,7 @@ const isLoading = ref(true)
 const statusFilter = ref('all')
 const displayedOrders = ref(5)
 const selectedOrder = ref<Order | null>(null)
+const isDetailsModalOpen = ref(false)
 const isRefreshing = ref(false)
 const isAuthAlertOpen = ref(false)
 
@@ -119,15 +145,36 @@ const reviewForm = ref({
   comment: ''
 })
 
-// --- Dialog State Management ---
-const isModalOpen = computed({
-  get: () => selectedOrder.value !== null,
-  set: (isOpen) => {
-    if (!isOpen) {
-      selectedOrder.value = null
-    }
-  }
+// --- Pick-Up Tracking State ---
+const isPickUpTrackingActive = ref(false)
+const isFetchingPickUp = ref(false)
+const isSubmittingPickUp = ref(false)
+const isMapDrawerOpen = ref(true)
+const trackedOrder = ref<Order | null>(null)
+
+// Location & Map State
+const locationGranted = ref(false)
+const locationError = ref('')
+const currentPosition = ref<{lat: number, lng: number} | null>(null)
+let watchId: number | null = null
+let leafletMap: L.Map | null = null
+let userMarker: L.Marker | null = null
+let targetMarker: L.Marker | null = null
+let routeLine: L.Polyline | null = null
+let lastRoutedPosition: {lat: number, lng: number} | null = null
+
+const pickUpDetails = ref({
+  preparation_proof: null as string | null,
+  distributor_lat: null as number | null,
+  distributor_lng: null as number | null,
+  distributor_address: null as string | null
 })
+
+// File States for Map UI
+const pickupProofFile = ref<File | null>(null)
+const pickupProofPreview = ref<string | null>(null)
+const paymentProofFile = ref<File | null>(null)
+const paymentProofPreview = ref<string | null>(null)
 
 // --- Fetch Data ---
 const fetchOrders = async () => {
@@ -148,18 +195,22 @@ onMounted(() => {
   fetchOrders()
 })
 
-// --- Computed Stats ---
+onUnmounted(() => {
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+  if (leafletMap) leafletMap.remove()
+})
+
+// --- Computed Stats & Filters ---
 const pendingCount = computed(() => orders.value.filter(o => o.status === 'pending').length)
-const processingCount = computed(() => orders.value.filter(o => ['confirmed', 'prepared'].includes(o.status)).length)
+const processingCount = computed(() => orders.value.filter(o => ['confirmed', 'prepared', 'ready_for_pickup'].includes(o.status)).length)
 const completedCount = computed(() => orders.value.filter(o => o.status === 'delivered').length)
 
-// --- Computed Filters ---
 const filteredOrders = computed(() => {
   let filtered = orders.value
 
   if (statusFilter.value !== 'all') {
     if (statusFilter.value === 'processing') {
-      filtered = filtered.filter(order => ['confirmed', 'prepared'].includes(order.status))
+      filtered = filtered.filter(order => ['confirmed', 'prepared', 'ready_for_pickup'].includes(order.status))
     } else {
       filtered = filtered.filter(order => order.status === statusFilter.value)
     }
@@ -168,26 +219,291 @@ const filteredOrders = computed(() => {
   return filtered.slice(0, displayedOrders.value)
 })
 
-// --- Methods ---
+// --- Pick-Up Distance & Map Logic ---
+const distanceToTarget = computed(() => {
+  if (!currentPosition.value || !pickUpDetails.value.distributor_lat || !pickUpDetails.value.distributor_lng) return null
+  return calculateDistance(
+    currentPosition.value.lat, 
+    currentPosition.value.lng, 
+    pickUpDetails.value.distributor_lat, 
+    pickUpDetails.value.distributor_lng
+  )
+})
+
+const isWithinRange = computed(() => {
+  if (distanceToTarget.value === null) return false
+  return distanceToTarget.value <= 500 // 500 meters
+})
+
+const currentCoordsDisplay = computed(() => {
+  if (!currentPosition.value) return 'Locating...'
+  return `${currentPosition.value.lat.toFixed(5)}, ${currentPosition.value.lng.toFixed(5)}`
+})
+
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3 // Radius of Earth in meters
+  const p1 = lat1 * Math.PI / 180
+  const p2 = lat2 * Math.PI / 180
+  const dp = (lat2 - lat1) * Math.PI / 180
+  const dl = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  return R * c
+}
+
+const openPickUpTracking = async (order: Order) => {
+  if (!props.user) { isAuthAlertOpen.value = true; return; }
+  
+  trackedOrder.value = order
+  isPickUpTrackingActive.value = true
+  isFetchingPickUp.value = true
+  isMapDrawerOpen.value = true
+
+  // Reset states
+  pickUpDetails.value = { preparation_proof: null, distributor_lat: null, distributor_lng: null, distributor_address: null }
+  removePickupProof()
+  removePaymentProof()
+
+  try {
+    const response = await api.get(`/client/orders/${order.id}/pickup-details`)
+    if (response.data.success) {
+      pickUpDetails.value.preparation_proof = response.data.preparation_proof
+      pickUpDetails.value.distributor_lat = response.data.distributor_lat
+      pickUpDetails.value.distributor_lng = response.data.distributor_lng
+      pickUpDetails.value.distributor_address = response.data.distributor_address
+      requestLocationAndStartTracking()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Failed to fetch pick-up details.')
+  } finally {
+    isFetchingPickUp.value = false
+  }
+}
+
+const closePickUpTracking = () => {
+  isPickUpTrackingActive.value = false
+  trackedOrder.value = null
+  locationGranted.value = false
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId)
+    watchId = null
+  }
+  if (leafletMap) {
+    leafletMap.remove()
+    leafletMap = null
+  }
+}
+
+const requestLocationAndStartTracking = () => {
+  locationError.value = ''
+  if (!navigator.geolocation) {
+    locationError.value = "Geolocation is not supported by your browser."
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      locationGranted.value = true
+      currentPosition.value = { lat: position.coords.latitude, lng: position.coords.longitude }
+      
+      nextTick(() => {
+        initMap()
+        startTracking()
+      })
+    },
+    (error) => {
+      locationError.value = "Location access denied. Please enable location to verify pickup."
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  )
+}
+
+const startTracking = () => {
+  let isFirstLoad = true
+
+  watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const newPos = { lat: position.coords.latitude, lng: position.coords.longitude }
+      currentPosition.value = newPos
+      
+      if (userMarker) {
+        userMarker.setLatLng([newPos.lat, newPos.lng])
+        drawRoute(false) 
+        
+        if (isFirstLoad) {
+          if(leafletMap && pickUpDetails.value.distributor_lat) {
+            const bounds = L.latLngBounds(
+              [newPos.lat, newPos.lng],
+              [pickUpDetails.value.distributor_lat, pickUpDetails.value.distributor_lng!]
+            )
+            leafletMap.fitBounds(bounds, { padding: [50, 50] })
+          }
+          isFirstLoad = false
+        }
+      }
+    },
+    (error) => console.error("Tracking error:", error),
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+  )
+}
+
+const initMap = () => {
+  if (!currentPosition.value || leafletMap) return
+
+  leafletMap = L.map('pickup-map', { zoomControl: false }).setView([currentPosition.value.lat, currentPosition.value.lng], 15)
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(leafletMap)
+
+  const userIcon = L.divIcon({
+    html: `
+      <div class="h-10 w-10 bg-white rounded-full border-2 border-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.7)] relative">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600">
+            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+            <path d="M15 18H9"/>
+            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+            <circle cx="17" cy="18" r="2"/>
+            <circle cx="7" cy="18" r="2"/>
+        </svg>
+        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-blue-600"></div>
+      </div>
+    `,
+    className: 'bg-transparent',
+    iconSize: [40, 48],
+    iconAnchor: [20, 48]
+  })
+
+  userMarker = L.marker([currentPosition.value.lat, currentPosition.value.lng], { icon: userIcon }).addTo(leafletMap)
+
+  if (pickUpDetails.value.distributor_lat && pickUpDetails.value.distributor_lng) {
+      const targetIcon = L.divIcon({
+        html: `<div class="h-8 w-8 bg-green-500 rounded-full border-2 border-white flex items-center justify-center shadow-[0_0_20px_rgba(34,197,94,0.6)]"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>`,
+        className: 'bg-transparent',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      })
+      
+      targetMarker = L.marker([pickUpDetails.value.distributor_lat, pickUpDetails.value.distributor_lng], { icon: targetIcon }).addTo(leafletMap)
+      targetMarker.bindPopup(`<b class="text-gray-900">Distributor Shop</b><br><span class="text-gray-600">${pickUpDetails.value.distributor_address}</span>`)
+  }
+
+  drawRoute(true)
+}
+
+const drawRoute = async (force = false) => {
+  if (!leafletMap || !currentPosition.value || !pickUpDetails.value.distributor_lat || !pickUpDetails.value.distributor_lng) return
+
+  if (!force && lastRoutedPosition) {
+    const distMoved = calculateDistance(
+      currentPosition.value.lat, currentPosition.value.lng,
+      lastRoutedPosition.lat, lastRoutedPosition.lng
+    )
+    if (distMoved < 20) return // Skip fetch to save API limits
+  }
+
+  lastRoutedPosition = { lat: currentPosition.value.lat, lng: currentPosition.value.lng }
+  const color = '#22c55e'
+
+  try {
+    const startLng = currentPosition.value.lng
+    const startLat = currentPosition.value.lat
+    const endLng = pickUpDetails.value.distributor_lng
+    const endLat = pickUpDetails.value.distributor_lat
+
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
+    const data = await response.json()
+
+    if (data.code === 'Ok' && data.routes.length > 0) {
+      if (routeLine) leafletMap.removeLayer(routeLine)
+      
+      const coords = data.routes[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]])
+      
+      routeLine = L.polyline(coords, { color: color, weight: 5, opacity: 0.8, lineCap: 'round', lineJoin: 'round' }).addTo(leafletMap)
+    } else {
+      drawFallbackRoute(color)
+    }
+  } catch (error) {
+    drawFallbackRoute(color)
+  }
+}
+
+const drawFallbackRoute = (color: string) => {
+  if (routeLine && leafletMap) leafletMap.removeLayer(routeLine)
+  if (leafletMap && currentPosition.value && pickUpDetails.value.distributor_lat) {
+      routeLine = L.polyline(
+        [[currentPosition.value.lat, currentPosition.value.lng], [pickUpDetails.value.distributor_lat, pickUpDetails.value.distributor_lng!]], 
+        { color: color, weight: 4, dashArray: '10, 10', opacity: 0.8, lineCap: 'round', lineJoin: 'round' }
+      ).addTo(leafletMap)
+  }
+}
+
+// --- Upload Proof Handlers ---
+const handlePickupUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    pickupProofFile.value = target.files[0]
+    pickupProofPreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+const removePickupProof = () => {
+  pickupProofFile.value = null
+  if (pickupProofPreview.value) { URL.revokeObjectURL(pickupProofPreview.value); pickupProofPreview.value = null }
+}
+
+const handlePaymentUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    paymentProofFile.value = target.files[0]
+    paymentProofPreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+const removePaymentProof = () => {
+  paymentProofFile.value = null
+  if (paymentProofPreview.value) { URL.revokeObjectURL(paymentProofPreview.value); paymentProofPreview.value = null }
+}
+
+const submitPickUp = async () => {
+  if (!trackedOrder.value) return
+  if (!pickupProofFile.value || !paymentProofFile.value) {
+    toast.error('Both Proof of Pick-Up and Proof of Payment are required.')
+    return
+  }
+
+  isSubmittingPickUp.value = true
+  const formData = new FormData()
+  formData.append('proof_of_pickup', pickupProofFile.value)
+  formData.append('proof_of_payment', paymentProofFile.value)
+
+  try {
+    const response = await api.post(`/client/orders/${trackedOrder.value.id}/pickup-submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (response.data.success) {
+      toast.success('Pick-up confirmed successfully!')
+      closePickUpTracking()
+      fetchOrders()
+    }
+  } catch (error) {
+    console.error('Pick-up submit error', error)
+    toast.error('Failed to submit pick-up. Please try again.')
+  } finally {
+    isSubmittingPickUp.value = false
+  }
+}
+
+// --- Generic Methods ---
 const formatCurrency = (amount: string | number) => {
-  return new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP'
-  }).format(Number(amount))
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(amount))
 }
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '' 
   const date = new Date(dateString)
   if (isNaN(date.getTime())) return '' 
-  
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(date)
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
 const getStatusConfig = (status: string) => {
@@ -195,6 +511,7 @@ const getStatusConfig = (status: string) => {
     pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', text: 'Pending' },
     confirmed: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', text: 'Confirmed' },
     prepared: { color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400', text: 'Prepared' },
+    ready_for_pickup: { color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400', text: 'Ready For Pick-Up' },
     shipped: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', text: 'Shipped' },
     delivered: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', text: 'Delivered' },
     cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', text: 'Cancelled' },
@@ -207,6 +524,7 @@ const getProgressData = (status: string) => {
     case 'pending': return { value: 25, text: 'Order Placed', color: '[&>div]:bg-yellow-500' }
     case 'confirmed':
     case 'prepared': return { value: 50, text: 'Preparing your order', color: '[&>div]:bg-blue-500' }
+    case 'ready_for_pickup': return { value: 75, text: 'Waiting for pick-up', color: '[&>div]:bg-teal-500' }
     case 'shipped': return { value: 75, text: 'On the way to you', color: '[&>div]:bg-purple-500' }
     case 'delivered': return { value: 100, text: 'Delivered successfully', color: '[&>div]:bg-green-500' }
     default: return { value: 0, text: '', color: '[&>div]:bg-gray-500' }
@@ -229,6 +547,7 @@ const toggleOrderDetails = (orderId: number) => {
 
 const viewOrderDetails = (order: Order) => {
   selectedOrder.value = order
+  isDetailsModalOpen.value = true 
 }
 
 const cancelOrder = (orderId: number) => {
@@ -306,7 +625,7 @@ const submitReview = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen ">
+  <div class="min-h-screen">
     <div class="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
       <div class="container mx-auto px-4 md:px-8 py-6">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -316,7 +635,7 @@ const submitReview = async () => {
           </div>
           
           <div class="flex items-center space-x-3 w-full md:w-auto">
-            <div class="flex-1 md:w-[200px]">
+            <div class="flex-1 md:w-50">
               <Select v-model="statusFilter">
                 <SelectTrigger class="w-full bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                   <SelectValue placeholder="Filter by status" />
@@ -324,7 +643,7 @@ const submitReview = async () => {
                 <SelectContent>
                   <SelectItem value="all">All Orders</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing (Confirmed/Prepared)</SelectItem>
+                  <SelectItem value="processing">Processing (Confirmed/Prepared/Pick-Up)</SelectItem>
                   <SelectItem value="shipped">Shipped</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -514,7 +833,7 @@ const submitReview = async () => {
                   </div>
                   <div class="bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100 dark:border-gray-800">
                     <MapPin class="w-4 h-4 text-gray-500" />
-                    <span class="font-medium text-gray-900 dark:text-gray-200 max-w-[150px] truncate">{{ order.delivery_address }}</span>
+                    <span class="font-medium text-gray-900 dark:text-gray-200 max-w-37.5 truncate">{{ order.delivery_address }}</span>
                   </div>
                 </div>
                 
@@ -531,7 +850,11 @@ const submitReview = async () => {
                     <RefreshCw class="w-4 h-4 mr-2" /> Reorder
                   </Button>
                   
-                  <Button v-if="order.status === 'shipped'" @click="trackOrder(order.id)" class="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none">
+                  <Button v-if="(order.payment_method === 'pick-up' || order.payment_method === 'pickup') && (order.status === 'ready_for_pickup' || order.status === 'prepared')" @click="openPickUpTracking(order)" class="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none">
+                    <MapPin class="w-4 h-4 mr-2" /> View Pick-Up
+                  </Button>
+                  
+                  <Button v-else-if="order.status === 'shipped'" @click="trackOrder(order.id)" class="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none">
                     <Truck class="w-4 h-4 mr-2" /> Track
                   </Button>
                 </div>
@@ -551,7 +874,9 @@ const submitReview = async () => {
                 <div class="flex justify-between mt-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                   <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 25}">Placed</span>
                   <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 50}">Processing</span>
-                  <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 75}">Shipped</span>
+                  <span :class="{'text-teal-600 dark:text-teal-400': getProgressData(order.status).value >= 75 && (order.payment_method === 'pick-up' || order.payment_method === 'pickup'), 'text-purple-600 dark:text-purple-400': getProgressData(order.status).value >= 75 && order.payment_method !== 'pick-up' && order.payment_method !== 'pickup'}">
+                    {{ (order.payment_method === 'pick-up' || order.payment_method === 'pickup') ? 'Ready' : 'Shipped' }}
+                  </span>
                   <span :class="{'text-green-600 dark:text-green-400': getProgressData(order.status).value === 100}">Delivered</span>
                 </div>
               </div>
@@ -568,8 +893,179 @@ const submitReview = async () => {
       </div>
     </div>
 
-    <Dialog v-model:open="isModalOpen">
-      <DialogContent class="sm:max-w-[800px] md:max-w-[950px] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto w-[95vw] p-0 gap-0 rounded-2xl bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800" style="max-width: 1100px;">
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        
+        <div v-if="isPickUpTrackingActive" class="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-gray-900 text-gray-100 font-sans">
+          
+          <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
+              <Loader2 v-if="isFetchingPickUp" class="w-16 h-16 text-blue-500 animate-spin" />
+              <div v-else class="relative">
+                <div class="absolute -inset-4 bg-teal-500/20 rounded-full animate-pulse blur-xl"></div>
+                <div class="bg-gray-900/40 p-6 rounded-full relative shadow-inner border border-teal-500/30">
+                  <MapPin class="w-16 h-16 text-teal-400" />
+                </div>
+              </div>
+              
+              <div class="space-y-2">
+                <h1 class="text-3xl font-black tracking-tight text-white">{{ isFetchingPickUp ? 'Loading Tracker' : 'Location Required' }}</h1>
+                <p class="text-gray-400 text-sm md:text-base px-4">
+                  To trace your path to the shop and validate your pick-up, GPS access is needed.
+                </p>
+              </div>
+
+              <Alert v-if="locationError" variant="destructive" class="text-left w-full bg-red-900/20 border-red-900/50 text-red-300">
+                <AlertTriangle class="h-4 w-4" />
+                <AlertTitle>Access Denied</AlertTitle>
+                <AlertDescription>{{ locationError }}</AlertDescription>
+              </Alert>
+
+              <div class="flex gap-4 w-full sm:w-auto">
+                 <Button @click="closePickUpTracking" variant="outline" size="lg" class="bg-gray-800 text-white hover:bg-gray-700 border-gray-700">Cancel</Button>
+                 <Button @click="requestLocationAndStartTracking" size="lg" :disabled="isFetchingPickUp" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20">
+                   <Navigation class="mr-2 h-5 w-5" /> Enable GPS Access
+                 </Button>
+              </div>
+            </div>
+          </div>
+
+          <div id="pickup-map" class="absolute inset-0 z-0"></div>
+
+          <div v-if="locationGranted" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+             
+             <div class="p-4 md:p-6 pt-12 md:pt-6 flex justify-between items-start w-full">
+                <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
+                  <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2 w-max">
+                    <div class="relative flex h-2.5 w-2.5 shrink-0">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
+                    </div>
+                    <span class="text-xs font-medium text-gray-200 truncate font-mono">{{ currentCoordsDisplay }}</span>
+                  </div>
+
+                  <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
+                    <div class="bg-teal-500/20 p-2 rounded-lg shrink-0">
+                      <Package class="h-5 w-5 text-teal-400" />
+                    </div>
+                    <div class="min-w-0">
+                      <h1 class="font-bold text-white text-sm md:text-base truncate">Pick-Up Order</h1>
+                      <p class="text-xs text-gray-400 truncate">{{ trackedOrder?.order_number }}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="pointer-events-auto flex flex-col gap-2 items-end">
+                   <Button @click="closePickUpTracking" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full mb-2">
+                     <X class="w-6 h-6" />
+                   </Button>
+
+                   <Button @click="isMapDrawerOpen = !isMapDrawerOpen" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full">
+                     <Menu v-if="!isMapDrawerOpen" class="w-6 h-6" />
+                     <ChevronDown v-else class="w-6 h-6" />
+                   </Button>
+                </div>
+             </div>
+
+             <div 
+               class="bg-gray-900/95 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-transform duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] absolute bottom-0 left-0 right-0 z-20 h-[85vh] md:h-[70vh]"
+               :style="{ transform: isMapDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }"
+             >
+                <div class="pt-6 pb-2 px-4 flex justify-between items-center border-b border-gray-800 mx-4 md:mx-6 shrink-0">
+                   <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                      <MapPin class="h-5 w-5 text-teal-500" /> Shop Location & Handover
+                   </h2>
+                   <Button variant="ghost" size="icon" @click="isMapDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8">
+                     <X class="w-4 h-4" />
+                   </Button>
+                </div>
+
+                <ScrollArea class="flex-1 min-h-0 px-4 md:px-6 py-4 w-full max-w-4xl mx-auto">
+                   <div class="space-y-6 pb-8">
+                      
+                      <div class="flex justify-between items-start">
+                         <div>
+                            <h2 class="text-2xl font-black text-white leading-tight">Distributor Shop</h2>
+                            <p class="text-sm text-gray-400 mt-1 max-w-sm">{{ pickUpDetails.distributor_address || 'Address unavailable' }}</p>
+                         </div>
+                         <Badge v-if="distanceToTarget !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 text-sm shrink-0">
+                            {{ distanceToTarget < 1000 ? Math.round(distanceToTarget) + 'm' : (distanceToTarget/1000).toFixed(1) + 'km' }} away
+                         </Badge>
+                      </div>
+
+                      <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                         <AlertTriangle class="h-5 w-5" />
+                         <AlertDescription class="text-sm ml-2 leading-tight">You must be within 500 meters of the shop to complete this pick-up.</AlertDescription>
+                      </Alert>
+
+                      <div class="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50">
+                         <p class="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+                           <Package class="h-4 w-4 text-indigo-400" /> Your Prepared Order
+                         </p>
+                         <div class="rounded-xl overflow-hidden bg-gray-900 h-40 relative flex items-center justify-center border border-gray-800">
+                           <img v-if="pickUpDetails.preparation_proof" :src="pickUpDetails.preparation_proof" class="w-full h-full object-cover" />
+                           <div v-else class="text-gray-500 text-sm flex flex-col items-center"><ImageIcon class="h-8 w-8 mb-2 opacity-50"/> No preparation image.</div>
+                         </div>
+                      </div>
+
+                      <div class="space-y-5">
+                          <div>
+                             <label class="text-sm font-semibold text-gray-300 mb-2 block">Upload Proof of Received Goods <span class="text-red-400">*</span></label>
+                             <div class="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="pickupProofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'">
+                                <input v-if="!pickupProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePickupUpload" :disabled="!isWithinRange" />
+                                <div v-if="!pickupProofPreview" class="text-center pointer-events-none">
+                                   <Camera class="h-8 w-8 text-gray-500 mx-auto mb-3" />
+                                   <p class="text-sm font-medium text-gray-300">Tap to snap Package</p>
+                                </div>
+                                <div v-else class="relative w-full flex justify-center">
+                                   <img :src="pickupProofPreview" class="max-h-56 rounded-xl border border-gray-700 object-cover shadow-lg" />
+                                   <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePickupProof">
+                                      <X class="h-4 w-4" />
+                                   </Button>
+                                </div>
+                             </div>
+                          </div>
+
+                          <div>
+                             <label class="text-sm font-semibold text-green-400 mb-2 block">Upload Proof of Payment <span class="text-red-400">*</span></label>
+                             <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="paymentProofPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
+                                <input v-if="!paymentProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" :disabled="!isWithinRange" />
+                                <div v-if="!paymentProofPreview" class="text-center pointer-events-none">
+                                   <Banknote class="h-8 w-8 text-green-600/50 mx-auto mb-3" />
+                                   <p class="text-sm font-medium text-green-400">Tap to snap Receipt or Cash Handover</p>
+                                </div>
+                                <div v-else class="relative w-full flex justify-center">
+                                   <img :src="paymentProofPreview" class="max-h-56 rounded-xl border border-green-800/50 object-cover shadow-lg" />
+                                   <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePaymentProof">
+                                      <X class="h-4 w-4" />
+                                   </Button>
+                                </div>
+                             </div>
+                          </div>
+
+                          <Button 
+                            @click="submitPickUp" 
+                            :disabled="!isWithinRange || !pickupProofFile || !paymentProofFile || isSubmittingPickUp" 
+                            class="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
+                            size="lg"
+                          >
+                              <Loader2 v-if="isSubmittingPickUp" class="mr-2 h-5 w-5 animate-spin" />
+                              <CheckCircle2 v-else class="mr-2 h-5 w-5" /> 
+                              Confirm Item Picked Up
+                          </Button>
+                      </div>
+
+                   </div>
+                </ScrollArea>
+             </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
+
+    <Dialog v-model:open="isDetailsModalOpen">
+      <DialogContent class="sm:max-w-[800px] md:max-w-[950px] lg:max-w-[1100px] max-h-[90vh] overflow-y-auto w-[95vw] p-0 gap-0 rounded-2xl bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
         
         <div class="bg-white dark:bg-gray-800 p-6 md:p-8 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 flex justify-between items-start gap-4">
           <DialogHeader class="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -587,7 +1083,7 @@ const submitReview = async () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            @click="isModalOpen = false" 
+            @click="isDetailsModalOpen = false" 
             class="shrink-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
           >
             <X class="w-5 h-5" />
@@ -788,3 +1284,10 @@ const submitReview = async () => {
 
   </div>
 </template>
+
+<style scoped>
+/* Hides default Leaflet UI controls for cleaner overlay */
+:deep(.leaflet-control-container) {
+  display: none; 
+}
+</style>

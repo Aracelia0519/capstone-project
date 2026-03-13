@@ -211,14 +211,54 @@ class ECommerceDeliveryController extends Controller
             $delivery->status = 'delivered'; // Final state for EC Delivery tracking
             $delivery->save();
 
-            // Insert into the new Remittance table for the Distributor's tracking
+            // Calculate Order Financials (VAT & Total Sales)
+            $distributorId = $employee->parent_distributor_id;
+            $distGrandTotal = $delivery->order ? $delivery->order->grand_total : 0;
+            $distVatableSales = round($distGrandTotal / 1.12, 2);
+            $distVatAmount = round($distGrandTotal - $distVatableSales, 2);
+
+            // 1. Insert into the new Remittance table for the Distributor's tracking
             ECDeliveryRemittance::create([
-                'distributor_id' => $employee->parent_distributor_id,
+                'distributor_id' => $distributorId,
                 'delivery_personnel_id' => $employee->id,
                 'order_id' => $delivery->order_id,
-                'amount' => $delivery->order ? $delivery->order->grand_total : 0,
+                'amount' => $distGrandTotal,
                 'remittance_proof_path' => $delivery->remittance_proof_path,
             ]);
+
+            // 2. Log exact financial metrics for this completed COD order
+            DB::table('ec_order_financials')->insert([
+                'order_id' => $delivery->order_id,
+                'distributor_id' => $distributorId,
+                'amount' => $distGrandTotal,
+                'vat_deduction' => $distVatAmount,
+                'total_sales' => $distVatableSales,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 3. Keep running tally of distributor's cumulative sales
+            $overallSales = DB::table('distributor_overall_sales')
+                ->where('distributor_id', $distributorId)
+                ->first();
+
+            if ($overallSales) {
+                DB::table('distributor_overall_sales')
+                    ->where('distributor_id', $distributorId)
+                    ->update([
+                        'total_revenue' => $overallSales->total_revenue + $distVatableSales,
+                        'total_sales_count' => $overallSales->total_sales_count + 1,
+                        'updated_at' => now(),
+                    ]);
+            } else {
+                DB::table('distributor_overall_sales')->insert([
+                    'distributor_id' => $distributorId,
+                    'total_revenue' => $distVatableSales,
+                    'total_sales_count' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             DB::commit();
             return response()->json(['message' => 'Funds remitted and delivery cycle completed!']);

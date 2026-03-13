@@ -222,7 +222,7 @@
                 <Button
                   @click="openCheckoutModal"
                   :disabled="selectedItems.length === 0 || isUpdating || isCalculatingShipping"
-                  class="w-full h-14 mt-6 rounded-xl font-bold text-base bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 border-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full h-14 mt-6 rounded-xl font-bold text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 border-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Proceed to Checkout
                   <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -250,11 +250,11 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-9999 bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
       
       <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-10000">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
               <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -276,7 +276,7 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isCheckoutModalOpen" class="fixed inset-0 z-9990 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+        <div v-if="isCheckoutModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
             <div v-if="isCheckoutModalOpen" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5">
               <div class="px-6 py-5 border-b border-gray-50 flex justify-between items-center bg-white z-10">
@@ -383,7 +383,7 @@
 
               <div class="p-6 bg-white border-t border-gray-50 flex gap-3 z-10">
                 <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-14 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-base">Cancel</Button>
-                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim())" class="flex-2 rounded-xl h-14 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 border-0 transition-all">
+                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim())" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 border-0 transition-all">
                   Confirm Purchase
                 </Button>
               </div>
@@ -395,11 +395,11 @@
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isCheckoutAlertOpen" class="fixed inset-0 z-9999 bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+        <div v-if="isCheckoutAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
 
       <AlertDialog :open="isCheckoutAlertOpen" @update:open="isCheckoutAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-10000">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
               <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -487,7 +487,7 @@ const productItems = computed(() => cartItems.value.filter(item => item.type ===
 // Filter logic exclusively based on user selections
 const selectedItems = computed(() => productItems.value.filter(item => selectedItemIds.value.includes(item.id)))
 
-// Select all Toggle (FIXED SYNTAX ERROR HERE)
+// Select all Toggle
 const isAllSelected = computed({
   get() {
     return productItems.value.length > 0 && selectedItemIds.value.length === productItems.value.length
@@ -821,17 +821,18 @@ const confirmCheckout = async () => {
 }
 
 // ==========================================
-// GCASH SESSION VERIFIER HOOK
+// GCASH CART SESSION VERIFIER HOOK
 // ==========================================
 const verifyGcashPayment = async (orderNumber) => {
   isLoading.value = true
   toast.info('Verifying GCash Payment... Please wait.')
   
-  // ADDED: 2.5 second buffer to let PayMongo's test server sync and avoid the 400 Error!
+  // ADDED: 2.5 second buffer to let PayMongo's test server sync and avoid the 400 Error
   await new Promise(resolve => setTimeout(resolve, 2500));
   
   try {
-    const response = await api.post('/client/shop/verify-gcash', { order_number: orderNumber }) // <-- NOW SENDS ORDER NUMBER
+    // MODIFIED: Specifically hits the cart-items route to group the financials properly by distributor
+    const response = await api.post('/client/shop/cart-items/verify-gcash', { order_number: orderNumber }) 
     if (response.data.success) {
       toast.success('Payment Confirmed!', { description: 'Your order has been recorded successfully.' })
       
@@ -851,7 +852,7 @@ const verifyGcashPayment = async (orderNumber) => {
 
 onMounted(() => {
   // INTERCEPT THE REDIRECT FROM PAYMONGO
-  if (route.query.order_number) { // <-- NOW LISTENS FOR ORDER NUMBER IN THE URL
+  if (route.query.order_number) { 
     verifyGcashPayment(route.query.order_number)
   } else {
     fetchCartItems()

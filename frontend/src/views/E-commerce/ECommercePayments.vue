@@ -69,6 +69,7 @@
                     <path v-if="method.name === 'GCash'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     <path v-else-if="method.name === 'PayMaya'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     <path v-else-if="method.name === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path v-else-if="method.name === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                 </div>
@@ -117,6 +118,7 @@
                   <SelectItem value="all_methods_placeholder">All Methods</SelectItem>
                   <SelectItem value="COD">COD</SelectItem>
                   <SelectItem value="GCash">GCash</SelectItem>
+                  <SelectItem value="Pick-Up">Pick-Up</SelectItem>
                   <SelectItem value="Bank Transfer" disabled>Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
@@ -199,6 +201,7 @@
                     ]">
                       <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path v-if="payment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path v-else-if="payment.method === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                         <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
                     </div>
@@ -291,6 +294,7 @@
                       ]">
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path v-if="selectedPayment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          <path v-else-if="selectedPayment.method === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                           <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
@@ -373,6 +377,17 @@
             <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
               <input type="checkbox" v-model="settingsForm.is_cod_enabled" class="sr-only peer">
               <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+
+          <div class="flex items-center justify-between bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+            <div>
+              <h4 class="font-medium text-white">Pick-Up Order</h4>
+              <p class="text-sm text-gray-400">Allow customers to pick up and pay at the store.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+              <input type="checkbox" v-model="settingsForm.is_pickup_enabled" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
             </label>
           </div>
 
@@ -468,6 +483,7 @@ const isSavingSettings = ref(false)
 const settingsForm = ref({
   is_cod_enabled: true,
   is_gcash_enabled: false,
+  is_pickup_enabled: false,
   gcash_number: ''
 })
 
@@ -482,7 +498,8 @@ const methodColors = {
   'GCash': 'bg-gradient-to-r from-emerald-500 to-teal-500',
   'PayMaya': 'bg-gradient-to-r from-blue-500 to-cyan-500',
   'Bank Transfer': 'bg-gradient-to-r from-indigo-500 to-purple-500',
-  'COD': 'bg-gradient-to-r from-gray-600 to-gray-700'
+  'COD': 'bg-gradient-to-r from-gray-600 to-gray-700',
+  'Pick-Up': 'bg-gradient-to-r from-amber-500 to-orange-500'
 }
 
 // Fetch Backend Data
@@ -508,6 +525,7 @@ const fetchPaymentSettings = async () => {
       settingsForm.value = {
         is_cod_enabled: !!response.data.data.is_cod_enabled,
         is_gcash_enabled: !!response.data.data.is_gcash_enabled,
+        is_pickup_enabled: !!response.data.data.is_pickup_enabled,
         gcash_number: response.data.data.gcash_number || ''
       }
     }

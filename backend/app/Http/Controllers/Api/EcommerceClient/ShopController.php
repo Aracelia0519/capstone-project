@@ -121,6 +121,7 @@ class ShopController extends Controller
 
             $distSettings = $paymentSettings->get($firstItem->distributor_id);
             $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
+            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
 
             $products[] = [
                 'id' => $productModel->id,
@@ -143,6 +144,7 @@ class ShopController extends Controller
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
                 'distributor_gcash_enabled' => $gcashEnabled,
+                'distributor_pickup_enabled' => $pickupEnabled,
             ];
         }
 
@@ -194,7 +196,7 @@ class ShopController extends Controller
             'distributor_lat' => 'required|numeric',
             'distributor_lng' => 'required|numeric',
             'custom_address' => 'nullable|string',
-            'payment_method' => 'required|string|in:cod,gcash' 
+            'payment_method' => 'required|string|in:cod,gcash,pick-up' 
         ]);
 
         $user = Auth::user();
@@ -269,6 +271,12 @@ class ShopController extends Controller
             $shippingFee = 0;
         }
 
+        // FORCE SHIPPING FEE TO 0 IF PICKUP
+        if ($request->payment_method === 'pick-up') {
+            $shippingFee = 0;
+            $fullAddress = "Store Pick-Up";
+        }
+
         $grandTotal = round($totalOrderAmount + $shippingFee, 2);
         $orderStatus = $request->quantity <= 30 ? 'confirmed' : 'pending';
         $orderNumber = 'ORD-' . strtoupper(Str::random(10));
@@ -279,7 +287,7 @@ class ShopController extends Controller
         $distributorName = $distributorInfo ? ($distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor') : 'Distributor';
 
         // =========================================================================
-        // 1. CALL PAYMONGO FIRST
+        // 1. CALL PAYMONGO FIRST (GCASH ONLY)
         // =========================================================================
         if ($request->payment_method === 'gcash') {
             try {
@@ -372,7 +380,7 @@ class ShopController extends Controller
         }
 
         // =========================================================================
-        // 2. DB TRANSACTION - COD
+        // 2. DB TRANSACTION - COD & PICK-UP
         // =========================================================================
         DB::beginTransaction();
         try {
@@ -382,7 +390,7 @@ class ShopController extends Controller
                 'total_amount' => $totalOrderAmount,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
-                'payment_method' => 'cod',
+                'payment_method' => $request->payment_method, // Handles cod and pick-up
                 'status' => $orderStatus,
                 'delivery_address' => $fullAddress,
             ]);
@@ -450,7 +458,7 @@ class ShopController extends Controller
                     'vatable_sales' => $vatableSales,
                     'vat_amount' => $vatAmount,
                     'grand_total' => $grandTotal,
-                    'payment_method' => 'COD',
+                    'payment_method' => strtoupper($request->payment_method),
                     'status' => ucfirst($orderStatus),
                     'date' => now()->format('Y-m-d H:i:s')
                 ]
@@ -462,12 +470,6 @@ class ShopController extends Controller
         }
     }
 
-    // =========================================================================
-    // 3. MASTER VERIFICATION ENDPOINT
-    // =========================================================================
-    // =========================================================================
-    // 3. MASTER VERIFICATION ENDPOINT
-    // =========================================================================
     public function verifyGcashPayment(Request $request)
     {
         $request->validate(['order_number' => 'required|string']);
@@ -557,6 +559,7 @@ class ShopController extends Controller
             }
 
             $receiptItems = [];
+            $distributorIdToCredit = null;
 
             foreach ($cacheData['items'] as $item) {
                 ClientOrderItem::create([
@@ -566,6 +569,9 @@ class ShopController extends Controller
                     'quantity' => $item['quantity'],
                     'price' => $item['price'] 
                 ]);
+
+                // We track the distributor to credit funds (assuming 1 checkout = 1 distributor for direct order)
+                $distributorIdToCredit = $item['distributor_id'];
 
                 $receiptItems[] = [
                     'name' => $item['product_name'],
@@ -602,11 +608,60 @@ class ShopController extends Controller
                 }
             }
 
+            // ========================================================================
+            // INSERT REMITTANCE AND FINANCIAL RECORDS
+            // ========================================================================
+            if ($distributorIdToCredit) {
+                // 1. Insert Remittance
+                DB::table('ec_delivery_remittances')->insert([
+                    'distributor_id' => $distributorIdToCredit,
+                    'delivery_personnel_id' => null, // Remitted by System
+                    'order_id' => $order->id,
+                    'amount' => $cacheData['grand_total'],
+                    'remittance_proof_path' => 'System Auto-GCash (PayMongo)',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // 2. Insert Order Financials tracking
+                DB::table('ec_order_financials')->insert([
+                    'order_id' => $order->id,
+                    'distributor_id' => $distributorIdToCredit,
+                    'amount' => $cacheData['grand_total'],
+                    'vat_deduction' => $cacheData['vat_amount'],
+                    'total_sales' => $cacheData['vatable_sales'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // 3. Update or Insert Distributor's Overall Sales
+                $overallSales = DB::table('distributor_overall_sales')
+                    ->where('distributor_id', $distributorIdToCredit)
+                    ->first();
+
+                if ($overallSales) {
+                    DB::table('distributor_overall_sales')
+                        ->where('distributor_id', $distributorIdToCredit)
+                        ->update([
+                            'total_revenue' => $overallSales->total_revenue + $cacheData['vatable_sales'],
+                            'total_sales_count' => $overallSales->total_sales_count + 1,
+                            'updated_at' => now(),
+                        ]);
+                } else {
+                    DB::table('distributor_overall_sales')->insert([
+                        'distributor_id' => $distributorIdToCredit,
+                        'total_revenue' => $cacheData['vatable_sales'],
+                        'total_sales_count' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+            // ========================================================================
+
             foreach ($cacheData['applied_promotions'] as $promoId) {
                 DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
             }
-
-            // REMOVED THE INVALID ec_delivery_remittances INSERTION BLOCK HERE
 
             if (isset($cacheData['type']) && $cacheData['type'] === 'cart') {
                 ClientCart::where('client_id', $cacheData['user_id'])->delete();

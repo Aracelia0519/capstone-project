@@ -16,12 +16,14 @@ class DistributorPaymentSetting extends Model
         'distributor_id',
         'is_cod_enabled',
         'is_gcash_enabled',
+        'is_pickup_enabled',
         'gcash_number',
     ];
 
     protected $casts = [
         'is_cod_enabled' => 'boolean',
         'is_gcash_enabled' => 'boolean',
+        'is_pickup_enabled' => 'boolean',
     ];
 
     public function distributor()

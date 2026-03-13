@@ -1,5 +1,5 @@
 <template>
-  <div class="budget-release min-h-screen p-4 md:p-6 text-slate-900 bg-slate-50/50">
+  <div class="budget-release min-h-screen p-4 md:p-6 text-slate-900 ">
     <Teleport to="body">
       <Toaster
         position="top-right"

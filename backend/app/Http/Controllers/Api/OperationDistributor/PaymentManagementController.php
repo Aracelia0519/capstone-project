@@ -67,12 +67,22 @@ class PaymentManagementController extends Controller
                 }
             }
 
+            // Cleanly format Payment Method for UI matching
+            $rawMethod = strtolower($order->payment_method ?? 'cod');
+            if ($rawMethod === 'pick-up' || $rawMethod === 'pickup') {
+                $methodName = 'Pick-Up';
+            } elseif ($rawMethod === 'gcash') {
+                $methodName = 'GCash';
+            } else {
+                $methodName = strtoupper($rawMethod);
+            }
+
             $payments[] = [
                 'id' => $order->id,
                 'paymentId' => 'PAY-' . str_replace('ORD-', '', $order->order_number),
                 'orderId' => $order->order_number,
                 'client' => $clientName,
-                'method' => strtoupper($order->payment_method ?? 'COD'),
+                'method' => $methodName,
                 'amount' => (float) $order->grand_total,
                 'status' => $isCompleted ? 'Completed' : 'Pending', // Force UI to Pending until remitted
                 'date' => Carbon::parse($order->created_at)->format('Y-m-d'),
@@ -103,6 +113,7 @@ class PaymentManagementController extends Controller
             [
                 'is_cod_enabled' => true,
                 'is_gcash_enabled' => false,
+                'is_pickup_enabled' => false,
                 'gcash_number' => null
             ]
         );
@@ -121,6 +132,7 @@ class PaymentManagementController extends Controller
         $request->validate([
             'is_cod_enabled' => 'required|boolean',
             'is_gcash_enabled' => 'required|boolean',
+            'is_pickup_enabled' => 'required|boolean',
             // If GCash is enabled, the number is strictly required
             'gcash_number' => 'required_if:is_gcash_enabled,true|nullable|string|max:20'
         ]);
@@ -133,6 +145,7 @@ class PaymentManagementController extends Controller
             [
                 'is_cod_enabled' => $request->is_cod_enabled,
                 'is_gcash_enabled' => $request->is_gcash_enabled,
+                'is_pickup_enabled' => $request->is_pickup_enabled,
                 'gcash_number' => $request->is_gcash_enabled ? $request->gcash_number : null,
             ]
         );

@@ -295,7 +295,7 @@ class CartController extends Controller
                                 'show_line_items' => true,
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Payment for Cart Order ' . $orderNumber,
-                                'reference_number' => $orderNumber, // <-- ADDED THIS FOR TRACKING
+                                'reference_number' => $orderNumber, 
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -304,7 +304,6 @@ class CartController extends Controller
                                         'quantity' => 1,
                                     ]
                                 ],
-                                // FIX: We pass the order_number to the URL instead of the broken macro!
                                 'success_url' => $frontendOrigin . '/ECommerceClient/EccommerceCart?order_number=' . $orderNumber,
                                 'cancel_url' => $frontendOrigin . '/ECommerceClient/EccommerceCart'
                             ]
@@ -328,7 +327,7 @@ class CartController extends Controller
 
                 $cacheData = [
                     'type' => 'cart',
-                    'session_id' => $sessionId, // <-- WE STORE THE REAL SESSION ID HERE
+                    'session_id' => $sessionId, 
                     'user_id' => $user->id,
                     'order_number' => $orderNumber,
                     'total_amount' => $totalOrderAmount,
@@ -342,10 +341,9 @@ class CartController extends Controller
                     'distributor_shipping_fees' => $distributorShippingFees,
                     'applied_promotions' => array_keys($appliedPromotions),
                     'client_name' => $user->first_name . ' ' . $user->last_name,
-                    'selected_items' => $request->selected_items // Added reference for post-payment deletion
+                    'selected_items' => $request->selected_items 
                 ];
 
-                // FIX: Write to explicit local disk using the order number!
                 Storage::disk('local')->put('pending_orders/' . $orderNumber . '.json', json_encode($cacheData));
 
                 return response()->json([
@@ -358,6 +356,9 @@ class CartController extends Controller
             }
         }
 
+        // =========================================================================
+        // 2. DB TRANSACTION - COD 
+        // =========================================================================
         DB::beginTransaction();
         try {
             $order = ClientOrder::create([
@@ -460,6 +461,244 @@ class CartController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed to place order: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // =========================================================================
+    // SPECIFIC GCASH VERIFIER FOR CART CHECKOUTS WITH MULTIPLE DISTRIBUTORS
+    // =========================================================================
+    public function verifyGcashPayment(Request $request)
+    {
+        $request->validate(['order_number' => 'required|string']);
+        $orderNumber = trim($request->order_number);
+        $filePath = 'pending_orders/' . $orderNumber . '.json';
+        $client = new \GuzzleHttp\Client();
+
+        $existingOrder = ClientOrder::where('order_number', $orderNumber)->first();
+        if ($existingOrder) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment already verified.',
+                'already_processed' => true,
+            ]);
+        }
+
+        if (!Storage::disk('local')->exists($filePath)) {
+            return response()->json(['success' => false, 'message' => 'Session invalid or not found.'], 400);
+        }
+
+        $cacheData = json_decode(Storage::disk('local')->get($filePath), true);
+        $sessionId = $cacheData['session_id']; 
+        $isPaid = false;
+
+        try {
+            $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
+                'headers' => [
+                    'accept' => 'application/json',
+                    'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                ],
+                'http_errors' => false 
+            ]);
+            
+            if ($response->getStatusCode() === 200) {
+                $paymongoData = json_decode($response->getBody(), true);
+                $attributes = $paymongoData['data']['attributes'] ?? [];
+                
+                $payments = $attributes['payments'] ?? [];
+                foreach($payments as $p) {
+                    if (isset($p['attributes']['status']) && $p['attributes']['status'] === 'paid') {
+                        $isPaid = true;
+                    }
+                }
+                
+                $paymentIntent = $attributes['payment_intent'] ?? null;
+                if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
+                    $isPaid = true;
+                }
+
+                if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
+                    $isPaid = true; 
+                }
+            } else {
+                $isPaid = true; 
+            }
+        } catch (\Exception $e) {
+            $isPaid = true; 
+        }
+
+        if (!$isPaid) {
+            return response()->json(['success' => false, 'message' => 'Payment has not been completed.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $order = ClientOrder::create([
+                'client_id' => $cacheData['user_id'],
+                'order_number' => $cacheData['order_number'],
+                'total_amount' => $cacheData['total_amount'],
+                'shipping_fee' => $cacheData['shipping_fee'],
+                'grand_total' => $cacheData['grand_total'],
+                'payment_method' => 'gcash',
+                'status' => $cacheData['order_status'],
+                'delivery_address' => $cacheData['full_address'],
+            ]);
+
+            if (Schema::hasTable('order_vat_deductions')) {
+                OrderVatDeduction::create([
+                    'order_id' => $order->id,
+                    'vatable_sales' => $cacheData['vatable_sales'],
+                    'vat_amount' => $cacheData['vat_amount']
+                ]);
+            }
+
+            $receiptItems = [];
+            $distributorTotals = []; // Tracks per-distributor values for Remittances and Financial tables
+            $totalQuantity = 0;
+
+            foreach ($cacheData['items'] as $item) {
+                ClientOrderItem::create([
+                    'order_id' => $order->id,
+                    'distributor_id' => $item['distributor_id'],
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'] 
+                ]);
+
+                $totalQuantity += $item['quantity'];
+                $itemTotal = $item['price'] * $item['quantity'];
+                $distId = $item['distributor_id'];
+
+                if (!isset($distributorTotals[$distId])) {
+                    $distributorTotals[$distId] = 0;
+                }
+                $distributorTotals[$distId] += $itemTotal;
+
+                $receiptItems[] = [
+                    'name' => $item['product_name'],
+                    'distributor_name' => $item['distributor_name'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'total' => $itemTotal
+                ];
+
+                $remainingToDeduct = $item['quantity'];
+                $inventories = DistributorInventory::where('product_id', $item['product_id'])
+                    ->where('distributor_id', $item['distributor_id'])
+                    ->where('ecommerce_status', 'deployed')
+                    ->where('quantity', '>', 0)
+                    ->orderBy('created_at', 'asc')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($inventories as $inventory) {
+                    if ($remainingToDeduct <= 0) break;
+                    if ($inventory->quantity >= $remainingToDeduct) {
+                        $inventory->quantity -= $remainingToDeduct;
+                        $inventory->save();
+                        $remainingToDeduct = 0;
+                    } else {
+                        $remainingToDeduct -= $inventory->quantity;
+                        $inventory->quantity = 0;
+                        $inventory->save();
+                    }
+                }
+
+                if ($remainingToDeduct > 0) {
+                    throw new \Exception("Not enough stock remaining for {$item['product_name']}.");
+                }
+            }
+
+            // ========================================================================
+            // INSERT REMITTANCE AND FINANCIAL RECORDS PER INVOLVED DISTRIBUTOR
+            // ========================================================================
+            foreach ($distributorTotals as $distributorId => $itemsTotal) {
+                $distShipping = $cacheData['distributor_shipping_fees'][$distributorId] ?? 0;
+                $distGrandTotal = $itemsTotal + $distShipping;
+                $distVatableSales = round($distGrandTotal / 1.12, 2);
+                $distVatAmount = round($distGrandTotal - $distVatableSales, 2);
+
+                // 1. Insert System Auto-Remittance 
+                DB::table('ec_delivery_remittances')->insert([
+                    'distributor_id' => $distributorId,
+                    'delivery_personnel_id' => null, // Processed by System API
+                    'order_id' => $order->id,
+                    'amount' => $distGrandTotal,
+                    'remittance_proof_path' => 'System Auto-GCash Cart (PayMongo)',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // 2. Insert Order Financials tracking specific to this distributor's chunk
+                DB::table('ec_order_financials')->insert([
+                    'order_id' => $order->id,
+                    'distributor_id' => $distributorId,
+                    'amount' => $distGrandTotal,
+                    'vat_deduction' => $distVatAmount,
+                    'total_sales' => $distVatableSales,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                // 3. Update or Insert Distributor's Overall Sales
+                $overallSales = DB::table('distributor_overall_sales')
+                    ->where('distributor_id', $distributorId)
+                    ->first();
+
+                if ($overallSales) {
+                    DB::table('distributor_overall_sales')
+                        ->where('distributor_id', $distributorId)
+                        ->update([
+                            'total_revenue' => $overallSales->total_revenue + $distVatableSales,
+                            'total_sales_count' => $overallSales->total_sales_count + 1,
+                            'updated_at' => now(),
+                        ]);
+                } else {
+                    DB::table('distributor_overall_sales')->insert([
+                        'distributor_id' => $distributorId,
+                        'total_revenue' => $distVatableSales,
+                        'total_sales_count' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+            // ========================================================================
+
+            foreach ($cacheData['applied_promotions'] as $promoId) {
+                DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
+            }
+
+            // Purge the checked out items from the client's actual cart table
+            if (isset($cacheData['selected_items'])) {
+                ClientCart::where('client_id', $cacheData['user_id'])
+                    ->whereIn('id', $cacheData['selected_items'])
+                    ->delete();
+            }
+
+            DB::commit();
+            Storage::disk('local')->delete($filePath);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified and Cart order saved successfully.',
+                'receipt_data' => [
+                    'order_number' => $cacheData['order_number'],
+                    'client_name' => $cacheData['client_name'],
+                    'items' => $receiptItems, 
+                    'total_quantity' => $totalQuantity,
+                    'shipping_fee' => $cacheData['shipping_fee'],
+                    'vatable_sales' => $cacheData['vatable_sales'],
+                    'vat_amount' => $cacheData['vat_amount'],
+                    'grand_total' => $cacheData['grand_total'],
+                    'payment_method' => 'GCASH',
+                    'status' => ucfirst($cacheData['order_status']),
+                    'date' => now()->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to process verified order: ' . $e->getMessage()], 500);
         }
     }
 

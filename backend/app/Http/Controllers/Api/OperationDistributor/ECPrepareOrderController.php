@@ -95,7 +95,8 @@ class ECPrepareOrderController extends Controller
             $distributorId = $user->id;
         }
 
-        $query = ClientOrder::with(['client', 'items.product'])->whereIn('status', ['confirmed', 'prepared']);
+        // Added 'ready_for_pickup' so it doesn't disappear from history after processing
+        $query = ClientOrder::with(['client', 'items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
 
         // Scope to distributor if context is found
         if ($distributorId) {
@@ -190,30 +191,40 @@ class ECPrepareOrderController extends Controller
             return response()->json(['message' => 'Access Denied: You do not have permission to dispatch orders.'], 403);
         }
 
-        $request->validate([
-            'delivery_personnel_id' => 'required|exists:hr_employees,id',
-            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
-        ]);
-
         $order = ClientOrder::findOrFail($id);
+        
+        // Determine if it's a Pick-Up Order
+        $isPickUp = in_array(strtolower($order->payment_method), ['pick-up', 'pickup']);
+
+        $rules = [
+            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
+        ];
+
+        // Conditionally require delivery personnel if it is NOT a pick-up
+        if (!$isPickUp) {
+            $rules['delivery_personnel_id'] = 'required|exists:hr_employees,id';
+        }
+
+        $request->validate($rules);
 
         if ($request->hasFile('proof_file')) {
             $file = $request->file('proof_file');
             $filename = 'ec_preparation_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('ec_preparations', $filename, 'public');
 
-            // Create Delivery Record
+            // Create Delivery/Proof Record
             ECOrderDelivery::create([
                 'order_id' => $order->id,
-                'delivery_personnel_id' => $request->delivery_personnel_id,
+                'delivery_personnel_id' => $isPickUp ? null : $request->delivery_personnel_id,
                 'preparation_proof_path' => 'storage/' . $path,
-                'status' => 'assigned'
+                'status' => $isPickUp ? 'ready_for_pickup' : 'assigned'
             ]);
 
-            // Mark the order as prepared
-            $order->update(['status' => 'prepared']);
+            // Mark the order as prepared or ready for pickup
+            $newStatus = $isPickUp ? 'ready_for_pickup' : 'prepared';
+            $order->update(['status' => $newStatus]);
 
-            return response()->json(['message' => 'Order prepared and dispatched successfully.']);
+            return response()->json(['message' => 'Order processed successfully.']);
         }
 
         return response()->json(['message' => 'Proof image is required.'], 400);

@@ -167,6 +167,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/cart-items/{id}', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'destroy']);
             Route::delete('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'clear']);
             Route::post('/cart-items/checkout', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'checkout']);
+            
+            // NEW: Dedicated verify-gcash specifically for Cart checkouts
+            Route::post('/cart-items/verify-gcash', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'verifyGcashPayment']);
         });
 
         Route::post('/save-color', [\App\Http\Controllers\Api\Client\ColorController::class, 'saveColor']);
@@ -177,7 +180,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/color-stats', [\App\Http\Controllers\Api\Client\ColorController::class, 'getColorStats']);
         
         // E-Commerce Protected Order Actions
-        Route::post('/orders/reviews', [ECommerceOrderController::class, 'submitReview']);
+        Route::prefix('orders')->group(function () {
+            Route::post('/reviews', [ECommerceOrderController::class, 'submitReview']);
+            Route::get('/{id}/pickup-details', [ECommerceOrderController::class, 'getPickUpDetails']);
+            Route::post('/{id}/pickup-submit', [ECommerceOrderController::class, 'submitPickUp']);
+        });
     });
 
     // Service Provider Requirements - ID Verification

@@ -129,7 +129,15 @@ const selectedOrder = computed(() =>
   mockOrders.value.find(o => o.id === selectedOrderId.value)
 )
 
+const isPickUp = computed(() => {
+  const method = selectedOrder.value?.payment_method?.toLowerCase() || '';
+  return method === 'pick-up' || method === 'pickup';
+})
+
 const canSubmit = computed(() => {
+  if (isPickUp.value) {
+    return proofFile.value !== null
+  }
   return selectedDeliveryMan.value !== '' && proofFile.value !== null
 })
 
@@ -138,6 +146,7 @@ const statusIcon = (status: string) => {
     case 'pending': return Package
     case 'confirmed': return Check
     case 'prepared': return Package
+    case 'ready_for_pickup': return Package
     case 'shipped': return Truck
     default: return Package
   }
@@ -226,7 +235,12 @@ const submitPreparation = async () => {
   isSubmitting.value = true
   
   const formData = new FormData()
-  formData.append('delivery_personnel_id', selectedDeliveryMan.value)
+  
+  // Only append delivery man ID if it is NOT a pick-up order
+  if (!isPickUp.value) {
+    formData.append('delivery_personnel_id', selectedDeliveryMan.value)
+  }
+
   if (proofFile.value) {
     formData.append('proof_file', proofFile.value)
   }
@@ -239,7 +253,9 @@ const submitPreparation = async () => {
     })
 
     toast.success('Order processed successfully!', {
-      description: `Order ${selectedOrder.value?.order_number} is now prepared and assigned for delivery.`
+      description: isPickUp.value 
+        ? `Order ${selectedOrder.value?.order_number} is now ready for pick-up.` 
+        : `Order ${selectedOrder.value?.order_number} is now prepared and assigned for delivery.`
     })
     
     // Refresh Data smoothly to move the card to processed column
@@ -253,7 +269,7 @@ const submitPreparation = async () => {
     if (error.response?.status === 403) {
       toast.error('Action Restricted', { description: error.response.data.message || 'You do not have permission to dispatch orders.' })
     } else {
-      toast.error('Failed to process and dispatch the order.')
+      toast.error('Failed to process the order.')
     }
   } finally {
     isSubmitting.value = false
@@ -337,7 +353,7 @@ const formatDate = (dateString: string) => {
                 >
                   <div class="flex items-center gap-2">
                     <Badge class="capitalize text-[8px] px-1 py-0 h-4 bg-gray-800 text-gray-300 border-gray-700">
-                      {{ order.status }}
+                      {{ order.status === 'ready_for_pickup' ? 'Ready for Pick-Up' : order.status }}
                     </Badge>
                     <span class="text-gray-300">{{ order.order_number }}</span>
                   </div>
@@ -440,7 +456,7 @@ const formatDate = (dateString: string) => {
                </CardHeader>
                <CardContent class="space-y-6 pt-6">
                   
-                  <div class="space-y-2">
+                  <div class="space-y-2" v-if="!isPickUp">
                      <Label class="text-gray-300 font-semibold">Assign Delivery Personnel <span class="text-red-400">*</span></Label>
                      <p class="text-xs text-gray-500">Select the person who will deliver this order to the client.</p>
                      <div class="relative">
@@ -461,11 +477,11 @@ const formatDate = (dateString: string) => {
                      </div>
                   </div>
 
-                  <Separator class="bg-gray-800" />
+                  <Separator class="bg-gray-800" v-if="!isPickUp" />
 
                   <div class="space-y-2">
                      <Label class="text-gray-300 font-semibold">Proof of Prepared Order <span class="text-red-400">*</span></Label>
-                     <p class="text-xs text-gray-500">Upload a photo of the packed items ready for dispatch.</p>
+                     <p class="text-xs text-gray-500">Upload a photo of the packed items ready for {{ isPickUp ? 'pick-up' : 'dispatch' }}.</p>
                      
                      <div 
                         class="mt-2 border-2 border-dashed border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center transition-colors relative"
@@ -510,8 +526,9 @@ const formatDate = (dateString: string) => {
                     size="lg"
                   >
                      <Loader2 v-if="isSubmitting" class="mr-2 h-5 w-5 animate-spin" />
-                     <Truck v-else class="mr-2 h-5 w-5" />
-                     {{ isSubmitting ? 'Processing Order...' : 'Dispatch Order' }}
+                     <Truck v-else-if="!isPickUp" class="mr-2 h-5 w-5" />
+                     <Package v-else class="mr-2 h-5 w-5" />
+                     {{ isSubmitting ? 'Processing Order...' : (isPickUp ? 'Ready for Pick-Up' : 'Dispatch Order') }}
                   </Button>
                </CardFooter>
             </Card>
@@ -654,7 +671,7 @@ const formatDate = (dateString: string) => {
              </CardHeader>
              <CardContent class="space-y-4 pt-4">
                 
-                <div class="space-y-2">
+                <div class="space-y-2" v-if="!isPickUp">
                    <Label class="text-gray-300 text-xs">Assign Delivery Personnel *</Label>
                    <div class="relative">
                       <select 
@@ -704,8 +721,9 @@ const formatDate = (dateString: string) => {
                   size="lg"
                 >
                    <Loader2 v-if="isSubmitting" class="mr-2 h-4 w-4 animate-spin" />
-                   <Truck v-else class="mr-2 h-4 w-4" />
-                   {{ isSubmitting ? 'Processing...' : 'Dispatch Order' }}
+                   <Truck v-else-if="!isPickUp" class="mr-2 h-4 w-4" />
+                   <Package v-else class="mr-2 h-4 w-4" />
+                   {{ isSubmitting ? 'Processing...' : (isPickUp ? 'Ready for Pick-Up' : 'Dispatch Order') }}
                 </Button>
              </CardFooter>
           </Card>
