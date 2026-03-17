@@ -11,9 +11,9 @@ import { toast } from 'vue-sonner'
 const contacts = ref([
   {
     id: 1,
-    name: 'Maria Santos',
+    name: 'Maria DB',
     avatar: 'https://i.pravatar.cc/150?u=maria',
-    initials: 'MS',
+    initials: 'MD',
     lastMessage: 'Do you have the Boysen Matte Black in gallons?',
     time: '10:42 AM',
     unread: 2,
@@ -21,9 +21,9 @@ const contacts = ref([
   },
   {
     id: 2,
-    name: 'Juan Dela Cruz',
+    name: 'Julian Namoc',
     avatar: 'https://i.pravatar.cc/150?u=juan',
-    initials: 'JD',
+    initials: 'JN',
     lastMessage: 'Thanks! The epoxy primer arrived today.',
     time: 'Yesterday',
     unread: 0,
@@ -31,9 +31,9 @@ const contacts = ref([
   },
   {
     id: 3,
-    name: 'Elena Garcia',
+    name: 'MangKanor',
     avatar: 'https://i.pravatar.cc/150?u=elena',
-    initials: 'EG',
+    initials: 'MK',
     lastMessage: 'Can you mix a custom teal color for me?',
     time: 'Tuesday',
     unread: 0,

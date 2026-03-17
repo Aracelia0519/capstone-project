@@ -22,11 +22,11 @@
             color: 'black',
             border: 'none',
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',          // slightly smaller padding
-            fontSize: '15px',              // slightly smaller font
-            minWidth: '280px',             // smaller width
+            padding: '16px 20px',
+            fontSize: '15px',
+            minWidth: '280px',
             maxWidth: '400px',
-            borderRadius: '10px',          // slightly smaller rounding
+            borderRadius: '10px',
             pointerEvents: 'auto',
           },
         }"
@@ -48,7 +48,19 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <Card class="bg-white border-emerald-200 shadow-sm ring-1 ring-emerald-50">
+        <CardContent class="p-5 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center border border-emerald-200">
+            <Coins class="w-6 h-6 text-emerald-700" />
+          </div>
+          <div>
+            <div class="text-xl lg:text-2xl font-bold text-emerald-700">₱{{ availableBudget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div>
+            <div class="text-sm font-medium text-emerald-600/80">Available Budget</div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card class="bg-white border-slate-200 shadow-sm">
         <CardContent class="p-5 flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
@@ -80,7 +92,7 @@
           </div>
           <div>
             <div class="text-2xl font-bold text-slate-900">{{ requests.filter(r => r.status === 'ready').length }}</div>
-            <div class="text-sm font-medium text-slate-500">Budget Released (Ready)</div>
+            <div class="text-sm font-medium text-slate-500">Budget Released</div>
           </div>
         </CardContent>
       </Card>
@@ -194,8 +206,8 @@
               </CardContent>
             </Card>
 
-            <Card class="bg-white border-slate-200 shadow-sm">
-              <CardContent class="p-5 flex flex-col justify-center h-full">
+            <Card class="bg-white border-slate-200 shadow-sm flex flex-col">
+              <CardContent class="p-5 flex flex-col justify-center flex-1">
                 <h4 class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-2">Total Budget Required</h4>
                 <div class="text-3xl font-black text-emerald-600 mb-1">
                   ₱{{ selectedRequest.totalAmount.toLocaleString() }}
@@ -210,6 +222,14 @@
                 </Badge>
               </CardContent>
             </Card>
+          </div>
+
+          <div v-if="selectedRequest.status === 'd-approved' && selectedRequest.totalAmount > availableBudget" class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 shadow-sm">
+            <AlertCircle class="w-5 h-5 shrink-0 mt-0.5" />
+            <div>
+              <p class="font-bold text-sm">Insufficient Available Budget</p>
+              <p class="text-sm mt-1">This request requires <span class="font-bold">₱{{ selectedRequest.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 }) }}</span>, but the business only has <span class="font-bold">₱{{ availableBudget.toLocaleString(undefined, { minimumFractionDigits: 2 }) }}</span> available.</p>
+            </div>
           </div>
 
           <div>
@@ -266,7 +286,9 @@
                       <Button variant="outline" @click="requirePermission('update', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
                          Reject Request
                       </Button>
-                      <Button :class="['w-full sm:w-auto shadow-sm text-white', selectedRequest.payment_terms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700']" @click="requirePermission('update', initiateApprove)">
+                      <Button :class="['w-full sm:w-auto shadow-sm text-white', selectedRequest.payment_terms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700', {'opacity-50 cursor-not-allowed': selectedRequest.totalAmount > availableBudget}]" 
+                              @click="requirePermission('update', initiateApprove)"
+                              :disabled="selectedRequest.totalAmount > availableBudget">
                          <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4 mr-2" />
                          <Coins v-else class="w-4 h-4 mr-2" />
                          {{ selectedRequest.payment_terms === 'gcash' ? 'Proceed to GCash' : 'Release Budget & Approve' }}
@@ -345,6 +367,7 @@ const route = useRoute()
 const loading = ref(false)
 const isProcessing = ref(false)
 const requests = ref([])
+const availableBudget = ref(0)
 const selectedRequest = ref(null)
 
 // Modal actions state
@@ -416,8 +439,14 @@ const fetchRequests = async () => {
     // Process updated response wrapper for RBAC
     if (response.data.success !== undefined) {
       requests.value = response.data.data
+      
       if (response.data.permissions) {
         permissions.value = response.data.permissions
+      }
+      
+      // Load available budget returned from the new backend query
+      if (response.data.available_budget !== undefined) {
+        availableBudget.value = response.data.available_budget
       }
     } else {
       requests.value = response.data // Fallback in case of old endpoint signature
@@ -477,6 +506,12 @@ const closeModal = () => {
 }
 
 const initiateApprove = () => {
+  // Extra layer of validation
+  if (selectedRequest.value.totalAmount > availableBudget.value) {
+    toast.error('Insufficient available budget to release these funds.')
+    return
+  }
+
   pendingAction.value = 'approve'
   const isGcash = selectedRequest.value.payment_terms === 'gcash'
   
@@ -546,6 +581,8 @@ const markAsApproved = async () => {
   } catch (error) {
     if (error.response?.status === 403) {
       toast.error('Access denied', { description: 'You cannot approve budget releases.' })
+    } else if (error.response?.status === 400) {
+      toast.error('Cannot approve', { description: error.response?.data?.message || 'Insufficient budget.' })
     } else {
       toast.error('Error', { description: error.response?.data?.message || 'Failed to release budget.' })
     }

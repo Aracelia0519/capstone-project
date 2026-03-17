@@ -99,6 +99,17 @@ class ProcurementBudgetReleaseController extends Controller
 
         $distributorId = $this->getDistributorId($user);
 
+        // Calculate Available Budget
+        $totalRevenue = DB::table('distributor_overall_sales')
+            ->where('distributor_id', $distributorId)
+            ->sum('total_revenue');
+
+        $totalDeducted = DB::table('budget_deduction_logs')
+            ->where('distributor_id', $distributorId)
+            ->sum('amount');
+
+        $availableBudget = $totalRevenue - $totalDeducted;
+
         // Fetches requests mapped to the authorized distributor
         $requests = ProcurementRequest::with(['requester', 'distributor'])
             ->where('distributor_id', $distributorId)
@@ -137,6 +148,7 @@ class ProcurementBudgetReleaseController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formatted,
+            'available_budget' => $availableBudget,
             'permissions' => $permissions
         ]);
     }
@@ -159,6 +171,24 @@ class ProcurementBudgetReleaseController extends Controller
 
         if ($procurement->status !== 'd-approved') {
             return response()->json(['message' => 'Only Distributor Approved (d-approved) requests can have their budget released.'], 400);
+        }
+
+        // Budget Validation
+        $distributorId = $this->getDistributorId($user);
+        $totalRevenue = DB::table('distributor_overall_sales')
+            ->where('distributor_id', $distributorId)
+            ->sum('total_revenue');
+        $totalDeducted = DB::table('budget_deduction_logs')
+            ->where('distributor_id', $distributorId)
+            ->sum('amount');
+            
+        $availableBudget = $totalRevenue - $totalDeducted;
+
+        if ($procurement->total_cost > $availableBudget) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Insufficient available budget to approve this request.'
+            ], 400);
         }
 
         // =========================================================================

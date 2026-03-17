@@ -184,6 +184,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/reviews', [ECommerceOrderController::class, 'submitReview']);
             Route::get('/{id}/pickup-details', [ECommerceOrderController::class, 'getPickUpDetails']);
             Route::post('/{id}/pickup-submit', [ECommerceOrderController::class, 'submitPickUp']);
+
+            Route::post('/return-request', [ECommerceOrderController::class, 'submitReturnRequest']);
+            Route::get('/items/{itemId}/return-chat', [ECommerceOrderController::class, 'getReturnChat']);
+            Route::post('/returns/{id}/message', [ECommerceOrderController::class, 'sendReturnMessage']);
+            Route::post('/returns/{id}/tracking', [ECommerceOrderController::class, 'submitReturnTracking']);
         });
     });
 
@@ -264,6 +269,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
+        
+
         Route::prefix('procurement-approvals')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\DistributorProcurementApprovalController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Distributor\DistributorProcurementApprovalController::class, 'approve']);
@@ -309,6 +316,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{id}', [OperationalDistributorController::class, 'destroy']);
             Route::post('/{id}/activate', [OperationalDistributorController::class, 'activate']);
             Route::post('/{id}/deactivate', [OperationalDistributorController::class, 'deactivate']);
+
+            
         });
 
         // HR Managers Routes
@@ -465,11 +474,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Finance Procurement Routes
     Route::prefix('finance')->middleware(['auth:sanctum'])->group(function () {
+        Route::prefix('transactions')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'index']);
+            Route::post('/refund/{id}/process', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'processRefund']);
+            Route::post('/refund/verify-gcash', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'verifyGcashPayment']);
+            Route::post('/refund/{id}/reject', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'rejectRefund']);
+        });
+        
         Route::prefix('budget-release')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'reject']);
             Route::post('/verify-gcash', [\App\Http\Controllers\Api\Finance\ProcurementBudgetReleaseController::class, 'verifyGcashPayment']);
+
+            
         });
 
         Route::prefix('procurement')->group(function () {
@@ -662,6 +680,15 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::get('/ecommerce-dashboard', [ECommerceDashboardController::class, 'index']);
+
+        Route::prefix('returns')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'index']);
+            Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'approveReturn']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'rejectReturn']);
+            Route::post('/{id}/receive-refund', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'receiveItemAndRequestRefund']);
+            Route::get('/{id}/chat', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'getReturnChat']);
+            Route::post('/{id}/chat', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'sendReturnMessage']);
+        });
 
     });
 
