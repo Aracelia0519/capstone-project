@@ -391,22 +391,34 @@ const fetchArrivedItems = async () => {
     isLoading.value = true
     const response = await api.get('/operation-distributor/arrived-items')
     
-    if (response.data && response.data.data) {
-        arrivedItems.value = response.data.data
-        if (response.data.permissions) {
-            permissions.value = response.data.permissions
-        }
-    } else {
-        arrivedItems.value = response.data
+    // THE FIX: Check if Hostinger sent a string, and force it into an object
+    let responseData = response.data;
+    if (typeof responseData === 'string') {
+      try {
+        responseData = JSON.parse(responseData);
+      } catch (e) {
+        console.error('Failed to parse Hostinger response:', e);
+      }
     }
+
+    // Now proceed with the safely parsed data
+    if (responseData && responseData.data) {
+        arrivedItems.value = responseData.data
+        if (responseData.permissions) {
+            permissions.value = responseData.permissions
+        }
+    } else if (Array.isArray(responseData)) {
+        arrivedItems.value = responseData
+    } else {
+        arrivedItems.value = [] // Fallback to empty array to prevent reduce() crash
+    }
+    
   } catch (error: any) {
     if (error.response?.status === 403) {
         toast.error('Unauthorized: Access to arrived items is restricted.')
     } else {
         console.error('Failed to fetch arrived items:', error)
-        toast.error('Failed to load arrived items', {
-          description: 'Could not fetch data from the server. Please try again later.'
-        })
+        toast.error('Failed to load arrived items')
     }
   } finally {
     isLoading.value = false
