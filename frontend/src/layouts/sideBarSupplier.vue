@@ -135,7 +135,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Truck, Factory,
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
   Loader2, ScrollText, Container, Handshake, ClipboardList, 
-  PackageCheck, Users, UserPlus, ShieldCheck  
+  PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -239,6 +239,13 @@ const navigation = [
         path: '/supplier/OrderHistory', 
         icon: ScrollText, 
         color: 'text-indigo-400', 
+        requiresVerify: true 
+      },
+      { 
+        name: 'Returns', 
+        path: '/supplier/SupplierReturns', 
+        icon: RotateCcw, 
+        color: 'text-rose-400', 
         requiresVerify: true 
       }
     ]

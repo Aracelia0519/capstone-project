@@ -1,379 +1,559 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-    <!-- Hero Section -->
-    <section class="relative overflow-hidden py-12 md:py-20 px-4 sm:px-6 lg:px-8">
-      <!-- Background Elements -->
-      <div class="absolute inset-0">
-        <div class="absolute top-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl"></div>
-        <div class="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl"></div>
+  <main class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 font-sans antialiased overflow-x-hidden">
+    
+    <div class="w-full min-h-screen bg-slate-900/20 backdrop-blur-3xl flex flex-col relative overflow-hidden">
+      
+      <!-- CaviteGo Paint Header - ENLARGED -->
+      <div class="px-8 lg:px-12 pt-10 pb-6 flex flex-col gap-6 border-b border-slate-700/30">
+        <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+          <div class="flex items-center gap-4">
+            
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              CAVITEGO PAINT
+            </h1>
+          </div>
+        </div>
+        <div class="max-w-4xl">
+          <p class="text-base md:text-lg lg:text-xl text-slate-300 leading-relaxed border-l-4 border-cyan-500 pl-6">
+            An Integrated Management System for paint distributors and service providers in Cavite, 
+            featuring Decision Support System, Virtual Color Mixing, and companion mobile application.
+          </p>
+        </div>
+        <div class="flex gap-3 mt-2 flex-wrap">
+          <span class="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs font-bold text-cyan-400">IMS</span>
+          <span class="px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-full text-xs font-bold text-purple-400">DSS</span>
+          <span class="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-full text-xs font-bold text-blue-400">VR Mixing</span>
+          <span class="px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-full text-xs font-bold text-pink-400">Mobile App</span>
+          <span class="px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-xs font-bold text-amber-400">HR</span>
+          <span class="px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full text-xs font-bold text-green-400">Finance</span>
+        </div>
       </div>
       
-      <div class="relative max-w-7xl mx-auto">
-        <!-- Main Content -->
-        <div class="grid lg:grid-cols-2 gap-12 items-center">
-          <!-- Left Column - Text Content -->
-          <div class="space-y-8">
-            <!-- Title and Badge -->
-            <div class="space-y-4">
-              <div class="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-                <svg class="w-4 h-4 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                <span class="text-sm font-medium text-blue-300">Integrated Management System</span>
+      <!-- Hero Section with IMS Value Proposition - Full width, no top padding -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-8 lg:p-10 flex-grow">
+        
+        <div class="lg:col-span-8 relative min-h-[500px] rounded-[45px] overflow-hidden border border-slate-700/50 shadow-inner group">
+          <img 
+            src="/hero-paint-store.jpg" 
+            alt="Cavite Paint Industry" 
+            class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[2s]"
+          />
+          <div class="absolute inset-0 bg-gradient-to-br from-slate-950/80 via-transparent to-purple-900/20"></div>
+          
+          <div class="absolute left-10 top-1/2 -translate-y-1/2 flex flex-col gap-6 z-10">
+            <div v-for="(module, i) in coreModules" :key="i" class="w-14 h-14 rounded-2xl border border-white/10 backdrop-blur-xl flex items-center justify-center text-white font-bold text-xs bg-slate-800/40 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300 cursor-pointer group relative">
+              {{ module.short }}
+              <span class="absolute left-16 bg-slate-800 text-[8px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity border border-slate-700">
+                {{ module.name }}
+              </span>
+            </div>
+          </div>
+
+          <div class="absolute bottom-12 left-1/2 -translate-x-1/2 z-20">
+            <button @click="$router.push('/virtual-mixing')" class="bg-gradient-to-br from-blue-600 to-purple-600 text-white w-28 h-28 rounded-full flex flex-col items-center justify-center font-black text-[10px] uppercase tracking-widest border-[6px] border-slate-950 shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:scale-110 transition-transform active:scale-95">
+              <span class="text-3xl mb-1">
+                <img src="/favicon.svg" class="w-15 h-15" alt="icon" />
+              </span>
+              Try Virtual Mix
+            </button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 flex flex-col gap-6">
+          <!-- Decision Support System Module -->
+          <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
+            <img src="/dss-analytics.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:opacity-30 transition-opacity duration-700" />
+            <div class="relative z-10">
+              <div class="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center mb-4 border border-blue-500/30">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
               </div>
-              
-              <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                <span class="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  CaviteGo Paint
-                </span>
-                <span class="block text-white mt-2">Color Intelligence Platform</span>
-              </h1>
-              
-              <p class="text-xl text-gray-300 leading-relaxed">
-                A comprehensive platform integrating virtual paint visualization with intelligent distribution management for Cavite's paint industry.
+              <span class="text-[10px] font-black tracking-[0.3em] uppercase text-blue-400">DSS Module</span>
+              <h3 class="text-3xl font-bold mt-2 text-white">Decision Support System</h3>
+              <p class="text-xs text-slate-400 mt-2">Analytics & forecasting for Cavite market trends</p>
+            </div>
+            <span class="absolute top-8 right-8 text-2xl text-slate-700 group-hover:text-blue-400 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </span>
+          </div>
+
+          <!-- Mobile Application Module -->
+          <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
+             <img src="/mobile-app.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-110 transition-transform duration-1000" />
+            <div class="relative z-10">
+              <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mb-4 border border-purple-500/30">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span class="text-[10px] font-black tracking-[0.3em] uppercase text-purple-400">Mobile App</span>
+              <h3 class="text-3xl font-bold mt-2 text-white">On-The-Go Access</h3>
+              <p class="text-xs text-slate-400 mt-2">Android companion app for field operations</p>
+            </div>
+            <span class="absolute top-8 right-8 text-2xl text-slate-700 group-hover:text-purple-400 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Business Modules Section - Three Column Layout -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-12 p-8 lg:p-10">
+        
+        <!-- LEFT COLUMN - SCM and CRM Modules -->
+        <div class="lg:col-span-4 space-y-6">
+          <!-- Supply Chain Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-blue-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">SCM Module</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Supply Chain</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">End-to-end tracking from supplier to service provider.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Configure</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] group-hover:bg-blue-600/20 transition-all"></div>
+            <img src="/scm-meeting.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+
+          <!-- CRM & Chat Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-purple-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">CRM + Chat</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Client Engagement</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Customer profiles, service history & real-time messaging.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Connect</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] group-hover:bg-purple-600/20 transition-all"></div>
+            <img src="/crm-engagement.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+          <!-- Logistics Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-orange-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">Logistics</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Delivery Management</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Manage delivery schedules, transportation, and order fulfillment.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Track</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-orange-600/10 rounded-full blur-[80px] group-hover:bg-orange-600/20 transition-all"></div>
+            <img src="/logistics-truck.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+
+          <!-- Material Procurement Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-indigo-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">Procurement</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Material Requirements</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Identify needed products and send requests to suppliers.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Order</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] group-hover:bg-indigo-600/20 transition-all"></div>
+            <!-- Industrial warehouse with raw materials -->
+            <img src="/procurement-warehouse.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+        </div>
+
+        <!-- MIDDLE COLUMN - IMS Description and Developer Info -->
+        <div class="lg:col-span-4 space-y-8">
+          <div class="space-y-4">
+            <p class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400 text-center">Cavite Paint IMS</p>
+            <!-- Mobile Responsive Heading -->
+            <h1
+              class="font-bold text-center leading-tight
+                    text-3xl sm:text-4xl md:text-5xl lg:text-6xl
+                    px-4 break-words">
+              Integrated
+              <br class="sm:hidden" />
+              Management
+              <br class="sm:hidden" />
+              System
+            </h1>
+          </div>
+          <p class="text-sm sm:text-base text-slate-500 leading-relaxed max-w-sm">
+            A centralized platform for paint distributors and service providers in Cavite, integrating 12 core modules for seamless operations.
+          </p>
+          
+          <!-- Developer Info Cards -->
+          <div class="flex flex-col gap-4">
+            <div class="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 bg-cyan-600/20 rounded-lg flex items-center justify-center">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <span class="text-xs font-bold text-slate-300">Developed by NCST Researchers</span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                J. Namoc · M. Isanan · D. Prado · G. Pellazar · A. Ermita
               </p>
             </div>
-
-            <!-- Key Features -->
-            <div class="grid grid-cols-2 gap-4">
-              <div class="flex items-center space-x-3 p-4 rounded-xl bg-gray-800/50 backdrop-blur-sm border border-gray-700">
-                <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                  </svg>
-                </div>
-                <span class="text-sm font-medium text-gray-200">Color Matching</span>
-              </div>
-              
-              <div class="flex items-center space-x-3 p-4 rounded-xl bg-gray-800/50 backdrop-blur-sm border border-gray-700">
-                <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                  </svg>
-                </div>
-                <span class="text-sm font-medium text-gray-200">Virtual Try-On</span>
-              </div>
-              
-              <div class="flex items-center space-x-3 p-4 rounded-xl bg-gray-800/50 backdrop-blur-sm border border-gray-700">
-                <div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                  </svg>
-                </div>
-                <span class="text-sm font-medium text-gray-200">Real-time Analytics</span>
-              </div>
-              
-              <div class="flex items-center space-x-3 p-4 rounded-xl bg-gray-800/50 backdrop-blur-sm border border-gray-700">
-                <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                </div>
-                <span class="text-sm font-medium text-gray-200">24/7 Support</span>
-              </div>
-            </div>
-
-            <!-- CTA Buttons -->
-            <div class="flex flex-col sm:flex-row gap-4 pt-4">
-              <button 
-                @click="$router.push('/explore-colors')"
-                class="group px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-3"
-              >
-                <svg class="w-5 h-5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
-                </svg>
-                <span>Explore Paint Colors</span>
-              </button>
-              
-              <div class="flex gap-3">
-                <button 
-                  @click="$router.push('/Landing/logIn')"
-                  class="flex-1 px-6 py-4 border-2 border-gray-700 text-gray-300 rounded-xl font-semibold hover:bg-gray-800/50 transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                  </svg>
-                  <span>Login</span>
-                </button>
-                
-                <button 
-                  @click="$router.push('/Landing/signUp')"
-                  class="flex-1 px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-semibold hover:bg-gray-700 transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                  </svg>
-                  <span>Register</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column - Visualization -->
-          <div class="relative">
-            <!-- House Preview -->
-            <div class="relative rounded-2xl overflow-hidden shadow-2xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900">
-              <div class="p-6">
-                <!-- House Structure -->
-                <div class="relative h-64 md:h-80 w-full mx-auto">
-                  <!-- Roof -->
-                  <div class="absolute top-0 left-1/4 w-1/2 h-12 bg-gradient-to-r from-gray-700 to-gray-800 rounded-t-lg transform -translate-x-1/2"></div>
-                  
-                  <!-- House Body -->
-                  <div class="absolute top-12 left-1/2 transform -translate-x-1/2 w-3/4 h-48 bg-gradient-to-b from-gray-800 to-gray-900 rounded-lg border border-gray-700">
-                    <!-- Wall Sections with Color Preview -->
-                    <div class="absolute top-4 left-4 w-16 h-32 rounded bg-gradient-to-br from-blue-500/20 to-blue-700/20 border border-blue-500/30">
-                      <div class="absolute inset-0 bg-gradient-to-b from-blue-400/40 to-transparent"></div>
-                    </div>
-                    <div class="absolute top-4 right-4 w-16 h-32 rounded bg-gradient-to-br from-purple-500/20 to-purple-700/20 border border-purple-500/30">
-                      <div class="absolute inset-0 bg-gradient-to-b from-purple-400/40 to-transparent"></div>
-                    </div>
-                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-24 h-16 rounded bg-gradient-to-br from-pink-500/20 to-pink-700/20 border border-pink-500/30">
-                      <div class="absolute inset-0 bg-gradient-to-b from-pink-400/40 to-transparent"></div>
-                    </div>
-                  </div>
-                  
-                  <!-- Windows -->
-                  <div class="absolute top-20 left-1/4 w-6 h-8 bg-blue-400/20 rounded border border-blue-400/30"></div>
-                  <div class="absolute top-20 right-1/4 w-6 h-8 bg-blue-400/20 rounded border border-blue-400/30"></div>
-                  
-                  <!-- Door -->
-                  <div class="absolute bottom-12 left-1/2 transform -translate-x-1/2 w-12 h-20 bg-gradient-to-b from-gray-700 to-gray-800 rounded-t-lg"></div>
-                </div>
-                
-                <!-- Color Picker Controls -->
-                <div class="mt-8 space-y-4">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-300">Wall Color Preview</span>
-                    <div class="flex items-center space-x-2">
-                      <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <div class="w-3 h-3 rounded-full bg-purple-500"></div>
-                      <div class="w-3 h-3 rounded-full bg-pink-500"></div>
-                    </div>
-                  </div>
-                  
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="text-center">
-                      <div class="w-full h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 mb-2"></div>
-                      <span class="text-xs text-blue-300">Blue Tones</span>
-                    </div>
-                    <div class="text-center">
-                      <div class="w-full h-2 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 mb-2"></div>
-                      <span class="text-xs text-purple-300">Purple Tones</span>
-                    </div>
-                    <div class="text-center">
-                      <div class="w-full h-2 rounded-full bg-gradient-to-r from-pink-400 to-pink-600 mb-2"></div>
-                      <span class="text-xs text-pink-300">Pink Tones</span>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    @click="$router.push('/virtual-try-on')"
-                    class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>Launch Virtual Try-On</span>
-                  </button>
-                </div>
-              </div>
-            </div>
             
-            <!-- Floating Stats Cards -->
-            <div class="absolute -bottom-6 left-0 right-0 flex justify-center gap-4">
-              <div class="px-4 py-3 bg-gradient-to-r from-blue-500/10 to-blue-600/10 backdrop-blur-sm rounded-xl border border-blue-500/20 shadow-lg">
-                <div class="flex items-center space-x-2">
-                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                  </svg>
-                  <span class="text-sm font-medium text-blue-300">50+ Distributors</span>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="flex -space-x-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 border-2 border-slate-900 flex items-center justify-center text-[10px] font-bold text-white">NCST</div>
                 </div>
+                <span class="text-[10px] text-white">BSIT Capstone 2026</span>
               </div>
-              <div class="px-4 py-3 bg-gradient-to-r from-purple-500/10 to-purple-600/10 backdrop-blur-sm rounded-xl border border-purple-500/20 shadow-lg">
-                <div class="flex items-center space-x-2">
-                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                  </svg>
-                  <span class="text-sm font-medium text-purple-300">1000+ Colors</span>
-                </div>
+              <div class="text-[10px] text-white bg-slate-800/30 px-3 py-1.5 rounded-full border border-slate-700/30">
+                ⚡ v1.0.0
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- Quick Stats Section -->
-    <section class="py-12 px-4 sm:px-6 lg:px-8">
-      <div class="max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Stats Card 1 -->
-          <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-blue-500/30 transition-all duration-300">
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-gray-400">Active Service Providers</p>
-                <p class="text-3xl font-bold text-white mt-2">128</p>
-                <div class="flex items-center mt-2">
-                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                  </svg>
-                  <span class="text-sm text-green-400 ml-1">+12% this month</span>
-                </div>
-              </div>
-              <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-              </div>
-            </div>
+        <!-- RIGHT COLUMN - Additional Modules (Now positioned at the middle) -->
+        <div class="lg:col-span-4 space-y-6">
+          <!-- Section Header -->
+          <div class="mb-12">
+            <span class="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Additional Modules</span>
+            <div class="w-12 h-0.5 bg-gradient-to-r from-cyan-500 to-purple-500 mt-2"></div>
           </div>
           
-          <!-- Stats Card 2 -->
-          <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-purple-500/30 transition-all duration-300">
-            <div class="flex items-start justify-between">
+          <!-- HR Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-amber-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
-                <p class="text-sm text-gray-400">Color Mixes Generated</p>
-                <p class="text-3xl font-bold text-white mt-2">2,847</p>
-                <div class="flex items-center mt-2">
-                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                  </svg>
-                  <span class="text-sm text-green-400 ml-1">+24% this month</span>
-                </div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">HR Module</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Human Resources</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Employee records, roles, and performance monitoring for distributors.</p>
               </div>
-              <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
-                </svg>
-              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Manage</button>
             </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-amber-600/10 rounded-full blur-[80px] group-hover:bg-amber-600/20 transition-all"></div>
+            <img src="/hr-team.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
+
+          <!-- Finance Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-green-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">Finance Module</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Financial Management</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Track sales, expenses, revenue and profitability analytics.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">View</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-green-600/10 rounded-full blur-[80px] group-hover:bg-green-600/20 transition-all"></div>
+            <img src="/finance-calculator.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+
+          <!-- E-Commerce Module -->
+          <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-pink-500/30 transition-colors">
+            <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
+              <div>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">E-Commerce</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Online Store</h4>
+                <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Browse products, check availability, and place orders online.</p>
+              </div>
+              <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Shop</button>
+            </div>
+            <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-pink-600/10 rounded-full blur-[80px] group-hover:bg-pink-600/20 transition-all"></div>
+            <img src="/ecommerce-store.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
+          </div>
+
           
-          <!-- Stats Card 3 -->
-          <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-pink-500/30 transition-all duration-300">
-            <div class="flex items-start justify-between">
-              <div>
-                <p class="text-sm text-gray-400">Recommendations</p>
-                <p class="text-3xl font-bold text-white mt-2">5,623</p>
-                <div class="flex items-center mt-2">
-                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                  </svg>
-                  <span class="text-sm text-green-400 ml-1">+18% this month</span>
-                </div>
-              </div>
-              <div class="w-12 h-12 rounded-xl bg-pink-500/10 flex items-center justify-center">
-                <svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                </svg>
-              </div>
-            </div>
+        </div>
+      </section>
+
+      <!-- System Features Grid with SVG Icons -->
+      <div class="bg-slate-950/50 border-t border-slate-700/30 p-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div v-for="(feature, i) in systemFeatures" :key="i" class="flex flex-col items-center group cursor-pointer">
+          <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-slate-700 group-hover:border-cyan-400 flex items-center justify-center mb-3 transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-cyan-500/20">
+            <component :is="feature.icon" class="w-8 h-8 text-slate-400 group-hover:text-cyan-400 transition-colors" />
           </div>
+          <span class="text-[9px] font-black uppercase tracking-widest text-center text-slate-500 group-hover:text-cyan-400 transition-colors">{{ feature.name }}</span>
         </div>
       </div>
-    </section>
-  </div>
+
+      
+    </div>
+  </main>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { h } from 'vue';
 
-const router = useRouter()
-
-// You can add any reactive data or methods here if needed
-// For example, animation triggers or data fetching
-
-const features = [
-  {
-    title: 'Virtual Paint Mixing',
-    description: 'Real-time color visualization using Unity WebGL',
-    icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01'
-  },
-  {
-    title: 'Decision Support System',
-    description: 'AI-powered color recommendations and analytics',
-    icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'
-  },
-  {
-    title: 'Mobile Integration',
-    description: 'Cross-platform mobile app using Capacitor',
-    icon: 'M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z'
+// SVG Icon Components (same as before - keeping them for brevity)
+const InventoryIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'
+      })
+    ]);
   }
-]
+};
+
+const DSSIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
+      })
+    ]);
+  }
+};
+
+const VirtualMixIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01'
+      })
+    ]);
+  }
+};
+
+const MobileIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z'
+      })
+    ]);
+  }
+};
+
+const HRIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z'
+      })
+    ]);
+  }
+};
+
+const FinanceIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+      })
+    ]);
+  }
+};
+
+const SCMIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4'
+      })
+    ]);
+  }
+};
+
+const CRMIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5'
+      })
+    ]);
+  }
+};
+
+const ChatIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'
+      })
+    ]);
+  }
+};
+
+const EcommerceIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z'
+      })
+    ]);
+  }
+};
+
+const ProcurementIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'
+      })
+    ]);
+  }
+};
+
+const LogisticsIcon = {
+  render() {
+    return h('svg', {
+      class: 'w-8 h-8',
+      fill: 'none',
+      stroke: 'currentColor',
+      viewBox: '0 0 24 24'
+    }, [
+      h('path', {
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        'stroke-width': '2',
+        d: 'M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM9 17h10M5 17h2m3-4h6m-9-4h6m-6 4h2M5 9h14M3 3l2 2m0 0l-2 2m2-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z'
+      })
+    ]);
+  }
+};
+
+const coreModules = [
+  { short: 'IMS', name: 'Integrated Management System' },
+  { short: 'DSS', name: 'Decision Support System' },
+  { short: 'VR', name: 'Virtual Color Mixing' },
+  { short: 'APP', name: 'Mobile Application' },
+  { short: 'HR', name: 'Human Resources' },
+  { short: 'FIN', name: 'Finance Module' },
+  { short: 'SCM', name: 'Supply Chain' },
+  { short: 'CRM', name: 'Customer Relations' }
+];
+
+const systemFeatures = [
+  { name: 'Inventory Management', icon: InventoryIcon },
+  { name: 'Decision Support System', icon: DSSIcon },
+  { name: 'Virtual Color Mixing', icon: VirtualMixIcon },
+  { name: 'Mobile Application', icon: MobileIcon },
+  { name: 'Human Resources', icon: HRIcon },
+  { name: 'Finance Module', icon: FinanceIcon },
+  { name: 'Supply Chain Mgmt', icon: SCMIcon },
+  { name: 'Customer Relations', icon: CRMIcon },
+  { name: 'Chat System', icon: ChatIcon },
+  { name: 'E-Commerce', icon: EcommerceIcon },
+  { name: 'Material Procurement', icon: ProcurementIcon },
+  { name: 'Logistics', icon: LogisticsIcon }
+];
 </script>
 
 <style scoped>
-/* Custom animations */
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+
+main {
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* Gradient text animation */
-.gradient-text {
-  background-size: 200% 200%;
-  animation: gradient 3s ease infinite;
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Glass morphism effect */
-.glass-effect {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-/* Smooth transitions */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Hover effects */
-.hover-lift {
-  transition: transform 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px);
-}
-
-/* Custom scrollbar */
+/* Custom Scrollbar to match Color Lab */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.4);
+  background: #020617;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
-  border-radius: 4px;
+  background: #1e293b;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #2563eb, #7c3aed);
+@media (max-width: 360px) {
+  h1 {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
 }
 </style>

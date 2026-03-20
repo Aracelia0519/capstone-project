@@ -44,11 +44,14 @@
         </div>
 
         <div v-else class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card v-for="order in preparedOrders" :key="order.id" class="flex flex-col">
+          <Card v-for="order in preparedOrders" :key="order.unique_id" class="flex flex-col">
             <CardHeader>
               <div class="flex justify-between items-start">
                 <div>
-                  <CardTitle>{{ order.display_id }}</CardTitle>
+                  <CardTitle class="flex items-center gap-2">
+                    {{ order.display_id }}
+                    <Badge v-if="order.type === 'return'" variant="destructive" class="text-[10px] bg-red-500">Replacement</Badge>
+                  </CardTitle>
                   <CardDescription>{{ order.customer }}</CardDescription>
                 </div>
                 <Badge variant="outline" class="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
@@ -88,17 +91,17 @@
                   <Label class="mb-2 block">Proof of Readiness (Image)</Label>
                   
                   <div v-if="!order.previewImage" class="flex items-center justify-center w-full">
-                    <label :for="'file-upload-' + order.id" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <label :for="'file-upload-' + order.unique_id" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
                       <div class="flex flex-col items-center justify-center pt-5 pb-6">
                         <UploadCloud class="w-8 h-8 mb-2 text-gray-400" />
                         <p class="text-xs text-gray-500">Click to upload image</p>
                       </div>
                       <input 
-                        :id="'file-upload-' + order.id" 
+                        :id="'file-upload-' + order.unique_id" 
                         type="file" 
                         class="hidden" 
                         accept="image/*"
-                        @change="(e) => handleImageSelect(e, order.id)"
+                        @change="(e) => handleImageSelect(e, order.unique_id)"
                       />
                     </label>
                   </div>
@@ -109,7 +112,7 @@
                       variant="destructive" 
                       size="icon" 
                       class="absolute top-2 right-2 h-6 w-6 shadow-sm"
-                      @click="removeImage(order.id)"
+                      @click="removeImage(order.unique_id)"
                     >
                       <X class="h-4 w-4" />
                     </Button>
@@ -133,14 +136,14 @@
                     <AlertDialogTitle>Confirm Assignment & Shipment</AlertDialogTitle>
                     <AlertDialogDescription>
                       Are you sure you want to assign 
-                      <strong>{{ getPersonnelName(order.selectedPersonnelId) }}</strong> to deliver order <strong>{{ order.display_id }}</strong>?
+                      <strong>{{ getPersonnelName(order.selectedPersonnelId) }}</strong> to deliver {{ order.type === 'return' ? 'replacement' : 'order' }} <strong>{{ order.display_id }}</strong>?
                       <br><br>
-                      This will notify the distributor and mark the order as in transit.
+                      This will notify the distributor and mark the {{ order.type === 'return' ? 'replacement' : 'order' }} as in transit.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction @click="submitShipment(order.id)">Continue to Ship</AlertDialogAction>
+                    <AlertDialogAction @click="submitShipment(order.unique_id)">Continue to Ship</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -160,7 +163,7 @@
                 No delivery history yet.
             </div>
             <div v-else class="space-y-4">
-              <div v-for="order in shippedOrders" :key="order.id" class="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
+              <div v-for="order in shippedOrders" :key="order.unique_id" class="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
                 <div class="flex items-center gap-4">
                   <div :class="[
                       'h-10 w-10 rounded-full flex items-center justify-center', 
@@ -171,7 +174,10 @@
                     <Truck v-else class="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p class="font-medium">{{ order.display_id }}</p>
+                    <div class="flex items-center gap-2">
+                      <p class="font-medium">{{ order.display_id }}</p>
+                      <Badge v-if="order.type === 'return'" variant="destructive" class="text-[10px] h-4 py-0">Replacement</Badge>
+                    </div>
                     <p class="text-sm text-muted-foreground">To: {{ order.customer }}</p>
                     <p class="text-xs text-muted-foreground">Items: {{ order.items }}</p>
                   </div>
@@ -264,7 +270,7 @@ onMounted(() => {
 })
 
 // Handle File Selection locally
-const handleImageSelect = (event, orderId) => {
+const handleImageSelect = (event, uniqueId) => {
   const file = event.target.files[0]
   if (!file) return
 
@@ -280,7 +286,7 @@ const handleImageSelect = (event, orderId) => {
 
   const imageUrl = URL.createObjectURL(file)
   
-  const orderIndex = preparedOrders.value.findIndex(o => o.id === orderId)
+  const orderIndex = preparedOrders.value.findIndex(o => o.unique_id === uniqueId)
   if (orderIndex !== -1) {
     preparedOrders.value[orderIndex].previewImage = imageUrl
     preparedOrders.value[orderIndex].fileObject = file
@@ -289,8 +295,8 @@ const handleImageSelect = (event, orderId) => {
 }
 
 // Remove selected image locally
-const removeImage = (orderId) => {
-  const orderIndex = preparedOrders.value.findIndex(o => o.id === orderId)
+const removeImage = (uniqueId) => {
+  const orderIndex = preparedOrders.value.findIndex(o => o.unique_id === uniqueId)
   if (orderIndex !== -1) {
     preparedOrders.value[orderIndex].previewImage = null
     preparedOrders.value[orderIndex].fileObject = null
@@ -299,8 +305,8 @@ const removeImage = (orderId) => {
 }
 
 // Send to Backend
-const submitShipment = async (orderId) => {
-  const order = preparedOrders.value.find(o => o.id === orderId)
+const submitShipment = async (uniqueId) => {
+  const order = preparedOrders.value.find(o => o.unique_id === uniqueId)
   
   if (!order || !order.fileObject) {
     toast.error("Please upload a proof image before shipping.")
@@ -318,10 +324,11 @@ const submitShipment = async (orderId) => {
   const formData = new FormData()
   formData.append('image', order.fileObject)
   formData.append('delivery_personnel_id', order.selectedPersonnelId) 
+  formData.append('type', order.type)
   formData.append('_method', 'POST') 
 
   try {
-    await axios.post(`/supplier/shipments/${orderId}/ship`, formData, {
+    await axios.post(`/supplier/shipments/${order.id}/ship`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data'
         }
@@ -329,7 +336,7 @@ const submitShipment = async (orderId) => {
     
     await fetchShipments()
     
-    toast.success(`Order ${order.display_id} is now In Transit!`, {
+    toast.success(`${order.type === 'return' ? 'Replacement' : 'Order'} ${order.display_id} is now In Transit!`, {
       id: toastId
     })
 

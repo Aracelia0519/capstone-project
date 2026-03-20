@@ -65,6 +65,19 @@ class SupplierDeliveryController extends Controller
                     }
                 }
 
+                // Detect if this is a replacement delivery by checking active returns or notes
+                $isReplacement = false;
+                if ($req) {
+                    $hasActiveReturn = DB::table('procurement_returns')
+                        ->where('procurement_request_id', $req->id)
+                        ->whereNotIn('status', ['completed', 'rejected'])
+                        ->exists();
+                    
+                    if ($hasActiveReturn || str_contains($d->notes ?? '', '[REPLACEMENT DELIVERY]')) {
+                        $isReplacement = true;
+                    }
+                }
+
                 return [
                     'id' => $d->id,
                     'code' => $req ? $req->request_code : 'Unknown',
@@ -76,12 +89,15 @@ class SupplierDeliveryController extends Controller
                     'supplierLongitude' => $supplierLongitude,
                     'itemCount' => $req ? $req->quantity : 0,
                     'productName' => $req ? $req->product_name : 'Unknown Product',
-                    'paymentTerms' => $req ? strtoupper($req->payment_terms) : 'NON-COD',
-                    'totalAmount' => $req ? $req->total_cost : 0,
+                    // Bypass COD terms if it's a replacement
+                    'paymentTerms' => $isReplacement ? 'NON-COD' : ($req ? strtoupper($req->payment_terms) : 'NON-COD'),
+                    // Zero out the amount to collect if it's a replacement
+                    'totalAmount' => $isReplacement ? 0 : ($req ? $req->total_cost : 0),
                     'status' => $d->status,
                     'notes' => $d->notes ?? ($req ? $req->instructions : ''),
                     'timestamp' => $d->delivered_at ? date('M d, Y h:i A', strtotime($d->delivered_at)) : null,
-                    'arrivalProof' => $d->arrival_proof_path ? asset($d->arrival_proof_path) : null
+                    'arrivalProof' => $d->arrival_proof_path ? asset($d->arrival_proof_path) : null,
+                    'isReplacement' => $isReplacement
                 ];
             });
 
@@ -95,14 +111,34 @@ class SupplierDeliveryController extends Controller
     {
         $delivery = SupplierDelivery::findOrFail($id);
         
+        // Use 'in_transit' to satisfy the ENUM constraint on supplier_deliveries table
         $delivery->status = 'in_transit'; 
         $delivery->save();
 
         if ($delivery->procurement_request_id) {
-            $req = ProcurementRequest::find($delivery->procurement_request_id);
-            if ($req) {
-                $req->status = 'in_transit'; 
-                $req->save();
+            
+            // Check if there is an active return for this procurement request
+            $activeReturn = DB::table('procurement_returns')
+                ->where('procurement_request_id', $delivery->procurement_request_id)
+                ->whereNotIn('status', ['completed', 'rejected'])
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($activeReturn) {
+                // Update return table status to out_for_delivery specifically
+                DB::table('procurement_returns')
+                    ->where('id', $activeReturn->id)
+                    ->update([
+                        'status' => 'out_for_delivery',
+                        'updated_at' => now()
+                    ]);
+            } else {
+                // Standard delivery update
+                $req = ProcurementRequest::find($delivery->procurement_request_id);
+                if ($req) {
+                    $req->status = 'in_transit'; 
+                    $req->save();
+                }
             }
         }
 
@@ -117,7 +153,15 @@ class SupplierDeliveryController extends Controller
         $delivery = SupplierDelivery::findOrFail($id);
         $req = ProcurementRequest::find($delivery->procurement_request_id);
         
-        $isCOD = ($req && strtoupper($req->payment_terms) === 'COD');
+        // Determine if replacement to skip COD logic
+        $activeReturn = DB::table('procurement_returns')
+            ->where('procurement_request_id', $delivery->procurement_request_id)
+            ->whereNotIn('status', ['completed', 'rejected'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        $isReplacement = $activeReturn ? true : str_contains($delivery->notes ?? '', '[REPLACEMENT DELIVERY]');
+        $isCOD = (!$isReplacement && $req && strtoupper($req->payment_terms) === 'COD');
 
         $rules = [
             'latitude' => 'required|numeric',
@@ -171,11 +215,22 @@ class SupplierDeliveryController extends Controller
             $delivery->delivered_at = now();
             $delivery->save();
 
-            // The procurement request itself is successfully delivered to the distributor either way
-            if ($req) {
-                $req->status = 'delivered';
-                $req->delivered_at = now();
-                $req->save();
+            // Update respective core tables
+            if ($activeReturn) {
+                // Finalize return process delivery specifically
+                DB::table('procurement_returns')
+                    ->where('id', $activeReturn->id)
+                    ->update([
+                        'status' => 'delivered',
+                        'updated_at' => now()
+                    ]);
+            } else {
+                // Finalize standard procurement delivery
+                if ($req) {
+                    $req->status = 'delivered';
+                    $req->delivered_at = now();
+                    $req->save();
+                }
             }
 
             DB::commit();

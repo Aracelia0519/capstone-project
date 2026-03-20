@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Supplier;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\OperationDistributor\ProcurementRequest;
+use App\Models\OperationDistributor\ProcurementReturn;
 use App\Models\Supplier\SupplierDelivery;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -52,47 +53,97 @@ class SupplierShipmentController extends Controller
                 ];
             });
 
-        // Fetch Prepared Orders (Ready to be shipped out)
+        // 1. FETCH PREPARED ORDERS
         $preparedOrders = ProcurementRequest::with(['distributor', 'product'])
             ->where('supplier_id', $supplierId)
             ->where('status', 'prepared')
-            ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function ($order) {
                 return [
-                    'id' => $order->id, 
+                    'unique_id' => 'order_' . $order->id,
+                    'id' => $order->id,
+                    'type' => 'order',
                     'display_id' => $order->request_code, 
                     'customer' => $order->distributor ? $order->distributor->full_name : 'Unknown Distributor',
                     'items' => $order->quantity . 'x ' . $order->product_name,
                     'weight' => $order->quantity . ' Units', 
                     'status' => ucfirst($order->status),
                     'delivery_address' => $order->delivery_address,
-                    'proofImage' => null
+                    'proofImage' => null,
+                    'updated_at' => $order->updated_at
                 ];
             });
 
-        // Fetch Shipped/In-Transit/Delivered History
+        // 1b. FETCH PREPARED RETURNS
+        $preparedReturns = ProcurementReturn::with(['procurementRequest', 'distributor'])
+            ->where('supplier_id', $supplierId)
+            ->where('status', 'prepared')
+            ->get()
+            ->map(function ($ret) {
+                return [
+                    'unique_id' => 'return_' . $ret->id,
+                    'id' => $ret->id,
+                    'type' => 'return',
+                    'display_id' => $ret->procurementRequest ? $ret->procurementRequest->request_code . '-REP' : 'REP-' . $ret->id, 
+                    'customer' => $ret->distributor ? $ret->distributor->full_name : 'Unknown Distributor',
+                    'items' => $ret->quantity_returned . 'x ' . ($ret->procurementRequest ? $ret->procurementRequest->product_name : 'Unknown Product'),
+                    'weight' => $ret->quantity_returned . ' Units', 
+                    'status' => 'Replacement Prepared',
+                    'delivery_address' => $ret->procurementRequest ? $ret->procurementRequest->delivery_address : null,
+                    'proofImage' => null,
+                    'updated_at' => $ret->updated_at
+                ];
+            });
+
+        // Combine and Sort Prepared
+        $allPrepared = $preparedOrders->concat($preparedReturns)->sortByDesc('updated_at')->values();
+
+        // 2. FETCH SHIPPED ORDERS
         $shippedOrders = ProcurementRequest::with(['distributor', 'product'])
             ->where('supplier_id', $supplierId)
             ->whereIn('status', ['shipped', 'in_transit', 'delivered'])
-            ->orderBy('updated_at', 'desc')
             ->take(20) 
             ->get()
             ->map(function ($order) {
                 return [
+                    'unique_id' => 'order_' . $order->id,
                     'id' => $order->id,
+                    'type' => 'order',
                     'display_id' => $order->request_code,
                     'customer' => $order->distributor ? $order->distributor->full_name : 'Unknown Distributor',
                     'items' => $order->quantity . 'x ' . $order->product_name,
-                    // Converts "in_transit" to "In Transit" visually
                     'status' => ucwords(str_replace('_', ' ', $order->status)), 
-                    'shipped_at' => $order->shipped_at ? date('M d, Y', strtotime($order->shipped_at)) : 'N/A'
+                    'shipped_at' => $order->shipped_at ? date('M d, Y', strtotime($order->shipped_at)) : 'N/A',
+                    'updated_at' => $order->updated_at
                 ];
             });
 
+        // 2b. FETCH SHIPPED RETURNS
+        $shippedReturns = ProcurementReturn::with(['procurementRequest', 'distributor'])
+            ->where('supplier_id', $supplierId)
+            ->whereIn('status', ['shipped', 'in_transit', 'delivered'])
+            ->take(20) 
+            ->get()
+            ->map(function ($ret) {
+                return [
+                    'unique_id' => 'return_' . $ret->id,
+                    'id' => $ret->id,
+                    'type' => 'return',
+                    'display_id' => $ret->procurementRequest ? $ret->procurementRequest->request_code . '-REP' : 'REP-' . $ret->id,
+                    'customer' => $ret->distributor ? $ret->distributor->full_name : 'Unknown Distributor',
+                    'items' => $ret->quantity_returned . 'x ' . ($ret->procurementRequest ? $ret->procurementRequest->product_name : 'Unknown Product'),
+                    'status' => ucwords(str_replace('_', ' ', $ret->status)), 
+                    'shipped_at' => $ret->updated_at ? date('M d, Y', strtotime($ret->updated_at)) : 'N/A',
+                    'updated_at' => $ret->updated_at
+                ];
+            });
+
+        // Combine and Sort Shipped
+        $allShipped = $shippedOrders->concat($shippedReturns)->sortByDesc('updated_at')->take(20)->values();
+
         return response()->json([
-            'prepared_orders' => $preparedOrders,
-            'shipped_orders' => $shippedOrders,
+            'prepared_orders' => $allPrepared,
+            'shipped_orders' => $allShipped,
             'delivery_personnel' => $deliveryPersonnel
         ]);
     }
@@ -100,20 +151,14 @@ class SupplierShipmentController extends Controller
     public function ship(Request $request, $id)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // Max 5MB
-            'delivery_personnel_id' => 'required|exists:supplier_personnels,id'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', 
+            'delivery_personnel_id' => 'required|exists:supplier_personnels,id',
+            'type' => 'required|string|in:order,return'
         ]);
 
         $user = $request->user();
         $supplierId = $this->resolveSupplierId($user);
-
-        $procurementRequest = ProcurementRequest::where('id', $id)
-            ->where('supplier_id', $supplierId)
-            ->firstOrFail();
-
-        if ($procurementRequest->status !== 'prepared') {
-            return response()->json(['message' => 'Order is not in prepared status.'], 400);
-        }
+        $type = $request->input('type');
 
         try {
             DB::beginTransaction();
@@ -121,29 +166,61 @@ class SupplierShipmentController extends Controller
             $imagePath = null;
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
-                $filename = 'shipping_proof_' . $procurementRequest->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filename = 'shipping_proof_' . $type . '_' . $id . '_' . time() . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('supplier/shipping_proofs', $filename, 'public');
                 $imagePath = 'storage/' . $path;
             }
 
-            // Create Supplier Delivery Record
-            SupplierDelivery::create([
-                'procurement_request_id' => $procurementRequest->id,
-                'delivery_personnel_id' => $request->delivery_personnel_id,
-                'shipping_proof_path' => $imagePath,
-                'status' => 'assigned',
-                'assigned_at' => now(),
-            ]);
+            if ($type === 'order') {
+                $procurementRequest = ProcurementRequest::where('id', $id)
+                    ->where('supplier_id', $supplierId)
+                    ->firstOrFail();
 
-            // Update Procurement Request Status to 'in_transit' instead of 'shipped'
-            $procurementRequest->status = 'in_transit';
-            $procurementRequest->shipped_at = now();
-            $procurementRequest->save();
+                if ($procurementRequest->status !== 'prepared') {
+                    return response()->json(['message' => 'Order is not in prepared status.'], 400);
+                }
+
+                SupplierDelivery::create([
+                    'procurement_request_id' => $procurementRequest->id,
+                    'delivery_personnel_id' => $request->delivery_personnel_id,
+                    'shipping_proof_path' => $imagePath,
+                    'status' => 'assigned',
+                    'assigned_at' => now(),
+                ]);
+
+                $procurementRequest->status = 'in_transit';
+                $procurementRequest->shipped_at = now();
+                $procurementRequest->save();
+
+            } elseif ($type === 'return') {
+                $returnReq = ProcurementReturn::where('id', $id)
+                    ->where('supplier_id', $supplierId)
+                    ->firstOrFail();
+
+                if ($returnReq->status !== 'prepared') {
+                    return response()->json(['message' => 'Return is not in prepared status.'], 400);
+                }
+
+                // Explicit DB insertion to bypass mass-assignment issues if 'notes' isn't fillable
+                DB::table('supplier_deliveries')->insert([
+                    'procurement_request_id' => $returnReq->procurement_request_id,
+                    'delivery_personnel_id' => $request->delivery_personnel_id,
+                    'shipping_proof_path' => $imagePath,
+                    'status' => 'assigned',
+                    'notes' => '[REPLACEMENT DELIVERY] For Return Request #' . $returnReq->id,
+                    'assigned_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $returnReq->status = 'in_transit';
+                $returnReq->save();
+            }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Order assigned to delivery personnel and is now in transit!',
+                'message' => ucfirst($type) . ' assigned to delivery personnel and is now in transit!',
                 'image_url' => asset($imagePath)
             ]);
 

@@ -104,11 +104,11 @@
               @click="showLogoutModal = true"
               :disabled="isLoggingOut"
             >
-              <div class="shrink-0 flex items-center justify-center w-6 h-6">
+              <div class="shrink-0 flex items-center justify-center w-6 h-6 text-white">
                 <LogOut v-if="!isLoggingOut" class="w-5 h-5" />
                 <Loader2 v-else class="w-5 h-5 animate-spin" />
               </div>
-              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">
+              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip text-white">
                 {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
               </span>
             </Button>

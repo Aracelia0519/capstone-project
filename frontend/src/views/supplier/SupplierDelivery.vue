@@ -638,7 +638,10 @@ onUnmounted(() => {
             >
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
-                  <h3 class="font-bold text-gray-100 text-lg truncate">{{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.customer }}</h3>
+                  <h3 class="font-bold text-gray-100 text-lg truncate">
+                    {{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.customer }}
+                    <span v-if="delivery.isReplacement && delivery.status !== 'remitting'" class="ml-2 text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full uppercase tracking-widest border border-indigo-500/30">Replacement</span>
+                  </h3>
                   <p class="text-xs text-gray-500 font-mono mt-0.5">{{ delivery.code }}</p>
                 </div>
                 <Badge :class="{
@@ -646,7 +649,7 @@ onUnmounted(() => {
                   'bg-blue-500/20 text-blue-400 border-0': delivery.status === 'in_transit',
                   'bg-amber-500/20 text-amber-400 border-0': delivery.status === 'assigned'
                 }">
-                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'In Transit' : 'Assigned') }}
+                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned') }}
                 </Badge>
               </div>
               <p class="text-sm text-gray-400 mt-2 flex items-start gap-2">
@@ -660,10 +663,15 @@ onUnmounted(() => {
             
             <div class="flex justify-between items-start">
                <div>
-                  <h2 class="text-2xl font-black text-white leading-tight">{{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.customer }}</h2>
-                  <p class="text-sm text-gray-400 font-mono mt-1">{{ activeDelivery.code }}</p>
+                  <h2 class="text-2xl font-black text-white leading-tight">
+                    {{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.customer }}
+                  </h2>
+                  <div class="flex items-center gap-2 mt-1">
+                    <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.code }}</p>
+                    <Badge v-if="activeDelivery.isReplacement" class="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30">Return Replacement</Badge>
+                  </div>
                </div>
-               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1">
+               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
                   {{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away
                </Badge>
             </div>
@@ -689,7 +697,7 @@ onUnmounted(() => {
                 </p>
             </div>
 
-            <div v-if="activeDelivery.paymentTerms === 'COD' && activeDelivery.status !== 'remitting'" class="bg-green-900/20 rounded-xl p-4 border border-green-800/50">
+            <div v-if="activeDelivery.paymentTerms === 'COD' && activeDelivery.status !== 'remitting' && !activeDelivery.isReplacement" class="bg-green-900/20 rounded-xl p-4 border border-green-800/50">
                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                  <span class="text-sm font-semibold text-green-400 flex items-center gap-2">
                     <Banknote class="h-4 w-4"/> Cash on Delivery (COD)
@@ -729,7 +737,7 @@ onUnmounted(() => {
                    </div>
                 </div>
 
-                <div v-if="activeDelivery.paymentTerms === 'COD'">
+                <div v-if="activeDelivery.paymentTerms === 'COD' && !activeDelivery.isReplacement">
                    <label class="text-sm font-semibold text-green-400 mb-2 block">Upload Proof of Payment Received <span class="text-red-400">*</span></label>
                    <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="paymentProofPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
                       <input v-if="!paymentProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" />
@@ -748,13 +756,13 @@ onUnmounted(() => {
 
                 <Button 
                   @click="arriveAndComplete" 
-                  :disabled="!isWithinRange || !arrivalProofFile || (activeDelivery.paymentTerms === 'COD' && !paymentProofFile) || isProcessing" 
+                  :disabled="!isWithinRange || !arrivalProofFile || (activeDelivery.paymentTerms === 'COD' && !activeDelivery.isReplacement && !paymentProofFile) || isProcessing" 
                   class="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >
                     <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
                     <CheckCircle2 v-else class="mr-2 h-5 w-5" /> 
-                    {{ activeDelivery.paymentTerms === 'COD' ? 'Confirm Arrival & Payment' : 'Complete Delivery' }}
+                    {{ (activeDelivery.paymentTerms === 'COD' && !activeDelivery.isReplacement) ? 'Confirm Arrival & Payment' : 'Complete Delivery' }}
                 </Button>
             </div>
 

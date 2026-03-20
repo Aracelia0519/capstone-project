@@ -146,6 +146,7 @@ import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
 
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
+import SupplierReturns from '@/views/supplier/SupplierReturns.vue'
 
 
 const routes = [
@@ -1078,7 +1079,12 @@ const routes = [
         path: 'SupplierPayments',
         name: 'SupplierPayments',
         component: SupplierPayments
-      },      
+      },     
+      {
+        path: 'SupplierReturns',
+        name: 'SupplierReturns',
+        component: SupplierReturns
+      }, 
     ]
   },
   

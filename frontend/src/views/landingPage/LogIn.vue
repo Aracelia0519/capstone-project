@@ -63,9 +63,7 @@
               <div class="absolute -inset-4 bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-xl animate-pulse-glow"></div>
               
               <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 shadow-2xl flex items-center justify-center transform transition-all duration-500 hover:rotate-[360deg] hover:scale-110 animate-soft-spin">
-                <svg class="w-12 h-12 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
-                </svg>
+                <img src="/favicon.svg" class="w-20 h-20" alt="icon" />
                 
                 <div class="absolute bottom-0 w-2 h-4 bg-gradient-to-t from-blue-400 to-transparent rounded-b-full animate-drip"></div>
               </div>

@@ -183,6 +183,74 @@ class ECInventoryController extends Controller
     }
 
     /**
+     * Display a listing of INACTIVE inventory items.
+     */
+    public function getInactive()
+    {
+        try {
+            $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_view');
+
+            if (!$accessData['has_access']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized to view inactive inventory.'
+                ], 403);
+            }
+            
+            $distributorId = $accessData['distributor_id'];
+
+            $query = DB::table('inactive_distributor_inventories')
+                ->join('distributor_products', 'inactive_distributor_inventories.product_id', '=', 'distributor_products.id')
+                ->select(
+                    'inactive_distributor_inventories.id',
+                    'inactive_distributor_inventories.quantity',
+                    'inactive_distributor_inventories.previous_ecommerce_status',
+                    'distributor_products.id as product_id',
+                    'distributor_products.name',
+                    'distributor_products.sku_code',
+                    'distributor_products.category',
+                    'distributor_products.type',
+                    'distributor_products.size',
+                    'distributor_products.color_code',
+                    'distributor_products.price',
+                    'distributor_products.min_stock_level',
+                    'distributor_products.max_stock_level',
+                    'distributor_products.description',
+                    'distributor_products.image_url'
+                );
+
+            if ($user->role !== 'admin') {
+                $query->where('inactive_distributor_inventories.distributor_id', $distributorId);
+            }
+
+            $inactiveItems = $query->get()->map(function ($item) {
+                // Format image URL properly
+                $imageUrl = $item->image_url;
+                if ($imageUrl && !filter_var($imageUrl, FILTER_VALIDATE_URL) && !str_starts_with($imageUrl, 'data:')) {
+                    $imageUrl = asset('storage/' . ltrim($imageUrl, '/'));
+                }
+                
+                $item->image_url = $imageUrl;
+                $item->ecommerce_status = 'inactive'; // Override status for UI consistency
+                return $item;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $inactiveItems
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load inactive inventory',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Request a product to be deployed to the E-Commerce store.
      */
     public function requestDeployment($id)
@@ -232,6 +300,162 @@ class ECInventoryController extends Controller
                 'message' => 'Failed to request deployment',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Move a specified quantity of an active inventory item to the Inactive table.
+     */
+    public function moveToInactive(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_update');
+
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Access Denied.'], 403);
+            }
+
+            $request->validate([
+                'quantity' => 'required|integer|min:1'
+            ]);
+
+            $qtyToDeactivate = $request->quantity;
+            $inventory = DistributorInventory::findOrFail($id);
+
+            if ($user->role !== 'admin' && $inventory->distributor_id !== $accessData['distributor_id']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized to deactivate this item.'], 403);
+            }
+
+            if ($qtyToDeactivate > $inventory->quantity) {
+                return response()->json(['success' => false, 'message' => 'Quantity exceeds available stock.'], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Check if an inactive record already exists for this specific product
+            $existingInactive = DB::table('inactive_distributor_inventories')
+                ->where('distributor_id', $inventory->distributor_id)
+                ->where('product_id', $inventory->product_id)
+                ->first();
+
+            if ($existingInactive) {
+                // Increment the quantity in the existing inactive record
+                DB::table('inactive_distributor_inventories')
+                    ->where('id', $existingInactive->id)
+                    ->update([
+                        'quantity' => $existingInactive->quantity + $qtyToDeactivate,
+                        'updated_at' => now()
+                    ]);
+            } else {
+                // Insert a new inactive record
+                DB::table('inactive_distributor_inventories')->insert([
+                    'distributor_id' => $inventory->distributor_id,
+                    'product_id' => $inventory->product_id,
+                    'quantity' => $qtyToDeactivate,
+                    'previous_ecommerce_status' => $inventory->ecommerce_status,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Deduct the quantity from active inventory
+            $inventory->quantity -= $qtyToDeactivate;
+
+            if ($inventory->quantity <= 0) {
+                $inventory->delete();
+            } else {
+                $inventory->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product quantity moved to inactive successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to deactivate product', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Move a specified quantity of an inactive product back to the Active inventory.
+     */
+    public function reactivate(Request $request, $id)
+    {
+        try {
+            $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_update');
+
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Access Denied.'], 403);
+            }
+
+            $request->validate([
+                'quantity' => 'required|integer|min:1'
+            ]);
+
+            $qtyToReactivate = $request->quantity;
+            $inactiveItem = DB::table('inactive_distributor_inventories')->where('id', $id)->first();
+
+            if (!$inactiveItem) {
+                return response()->json(['success' => false, 'message' => 'Inactive item not found.'], 404);
+            }
+
+            if ($user->role !== 'admin' && $inactiveItem->distributor_id !== $accessData['distributor_id']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized to reactivate this item.'], 403);
+            }
+
+            if ($qtyToReactivate > $inactiveItem->quantity) {
+                return response()->json(['success' => false, 'message' => 'Quantity exceeds inactive stock.'], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Check if active inventory record exists for this product
+            $activeInventory = DistributorInventory::where('distributor_id', $inactiveItem->distributor_id)
+                ->where('product_id', $inactiveItem->product_id)
+                ->first();
+
+            if ($activeInventory) {
+                $activeInventory->quantity += $qtyToReactivate;
+                $activeInventory->save();
+            } else {
+                DistributorInventory::create([
+                    'distributor_id' => $inactiveItem->distributor_id,
+                    'product_id' => $inactiveItem->product_id,
+                    'quantity' => $qtyToReactivate,
+                    'ecommerce_status' => $inactiveItem->previous_ecommerce_status ?? 'not_deployed'
+                ]);
+            }
+
+            // Deduct the quantity from the inactive inventory
+            $newInactiveQty = $inactiveItem->quantity - $qtyToReactivate;
+
+            if ($newInactiveQty <= 0) {
+                DB::table('inactive_distributor_inventories')->where('id', $id)->delete();
+            } else {
+                DB::table('inactive_distributor_inventories')
+                    ->where('id', $id)
+                    ->update([
+                        'quantity' => $newInactiveQty,
+                        'updated_at' => now()
+                    ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product quantity successfully reactivated and restored.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Failed to reactivate product', 'error' => $e->getMessage()], 500);
         }
     }
 }

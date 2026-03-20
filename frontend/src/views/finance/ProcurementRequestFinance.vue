@@ -35,7 +35,12 @@
           <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-10">
             <div>
               <h2 class="text-lg font-semibold text-gray-800">Pending Requests</h2>
-              <p class="text-sm text-gray-500 mt-1">Click on a request to review details</p>
+              <p class="text-sm font-medium text-blue-600 mt-1 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                Select a request below to review details
+              </p>
             </div>
             <Button variant="outline" size="sm" @click="refreshData" class="flex items-center">
                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,16 +56,21 @@
                 v-for="request in pendingRequests" 
                 :key="request.id"
                 @click="selectRequest(request.id)"
-                :class="['p-4 hover:bg-gray-50 cursor-pointer transition-colors', selectedRequestId === request.id ? 'bg-blue-50' : '']"
+                :class="[
+                  'p-4 cursor-pointer transition-all duration-200 border-l-4 group', 
+                  selectedRequestId === request.id 
+                    ? 'bg-blue-50 border-blue-600 shadow-sm' 
+                    : 'border-transparent hover:border-blue-300 hover:bg-gray-50'
+                ]"
               >
                 <div class="flex justify-between items-start">
-                  <div>
+                  <div class="flex-1">
                     <div class="flex items-center mb-2 gap-2">
                       <Badge variant="secondary" class="bg-blue-100 text-blue-800 hover:bg-blue-100">{{ request.request_code }}</Badge>
                       <Badge variant="outline" :class="getCategoryClass(request.category)">{{ request.category }}</Badge>
                     </div>
                     <h3 class="font-medium text-gray-900 mb-1">{{ request.product_name }}</h3>
-                    <p class="text-sm text-gray-600 mb-2">Submitted by {{ request.requester?.full_name }} • {{ request.department || 'No department' }}</p>
+                    <p class="text-sm text-gray-600 mb-2">Submitted by {{ request.requester?.full_name }}</p>
                     <div class="flex items-center text-sm text-gray-500">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -72,19 +82,23 @@
                       <span>₱{{ formatCurrency(request.total_cost) }}</span>
                     </div>
                   </div>
-                  <div class="text-right flex flex-col items-end gap-2">
+                  <div class="text-right flex flex-col items-end gap-2 ml-4">
                     <div class="flex items-center justify-end">
                       <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-2">
                         <span class="text-xs font-medium text-blue-800">{{ getInitials(request.requester?.full_name) }}</span>
                       </div>
-                      <span class="text-sm text-gray-600">{{ request.requester?.full_name }}</span>
+                      <span class="text-sm text-gray-600 hidden sm:inline-block">{{ request.requester?.full_name }}</span>
                     </div>
-                    <Badge variant="secondary" class="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 flex w-fit items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    
+                    <div 
+                      class="mt-2 flex items-center text-sm font-bold transition-all duration-200 rounded-full px-3 py-1"
+                      :class="selectedRequestId === request.id ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 group-hover:bg-blue-100 group-hover:text-blue-700'"
+                    >
+                      {{ selectedRequestId === request.id ? 'Reviewing' : 'Review' }}
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1 transition-transform duration-200" :class="selectedRequestId === request.id ? 'translate-x-1' : 'group-hover:translate-x-1'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                       </svg>
-                      {{ request.formatted_status }}
-                    </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -241,10 +255,6 @@
                   <p class="font-medium">{{ selectedRequest.requester?.full_name }}</p>
                 </div>
                 <div>
-                  <p class="text-sm text-gray-500">Department</p>
-                  <p class="font-medium">{{ selectedRequest.department || 'N/A' }}</p>
-                </div>
-                <div>
                   <p class="text-sm text-gray-500">Submission Date</p>
                   <p class="font-medium">{{ formatDate(selectedRequest.request_date) }}</p>
                 </div>
@@ -283,22 +293,18 @@
 
             <div>
               <h4 class="font-medium text-gray-900 mb-3">Budget Information</h4>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 gap-4">
                 <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p class="text-sm text-gray-500 mb-1">Department Budget</p>
-                  <p class="text-lg font-medium text-gray-900">₱{{ formatCurrency(budgetInfo.department_budget) }}</p>
-                </div>
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <p class="text-sm text-gray-500 mb-1">Remaining Balance</p>
-                  <p class="text-lg font-medium text-gray-900">₱{{ formatCurrency(budgetInfo.remaining_balance) }}</p>
+                  <p class="text-sm text-gray-500 mb-1">Budget</p>
+                  <p class="text-lg font-medium text-gray-900">₱{{ formatCurrency(budgetInfo.budget) }}</p>
                 </div>
               </div>
-              <div v-if="budgetInfo.can_afford === false" class="mt-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
+              <div v-if="!budgetInfo.can_afford" class="mt-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 <p class="text-sm text-red-600 font-medium">
-                  This request exceeds the available budget.
+                  This request exceeds the available budget and cannot be approved.
                 </p>
               </div>
             </div>
@@ -320,8 +326,9 @@
                 <div class="flex space-x-4">
                   <Button 
                     @click="requirePermission('update', approveRequest)"
-                    :disabled="processing"
-                    class="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    :disabled="processing || !budgetInfo.can_afford"
+                    class="flex-1 text-white"
+                    :class="!budgetInfo.can_afford ? 'bg-gray-400 opacity-50 cursor-not-allowed hover:bg-gray-400' : 'bg-green-600 hover:bg-green-700'"
                   >
                     <svg v-if="!processing" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -363,31 +370,14 @@
         </Card>
 
         <Card v-else class="overflow-hidden h-fit">
-          <div class="p-8 text-center">
-            <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <div class="p-8 text-center border-2 border-dashed border-gray-200 m-4 rounded-xl bg-gray-50/50">
+            <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
               </svg>
             </div>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">No Request Selected</h3>
-            <p class="text-gray-500 mb-6">Select a request from the list to review details and make a decision.</p>
-            <div class="text-sm text-gray-500 flex flex-col items-center">
-              <p class="mb-2">Use the buttons below to:</p>
-              <ul class="text-left inline-block space-y-1">
-                <li class="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Approve requests that meet budget requirements
-                </li>
-                <li class="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Reject requests that don't comply with policies
-                </li>
-              </ul>
-            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Awaiting Selection</h3>
+            <p class="text-gray-500 mb-6 text-sm">Please click on a <span class="font-semibold text-blue-600">Pending Request</span> from the list on the left to review its details and budget information.</p>
           </div>
         </Card>
 
@@ -475,9 +465,7 @@ const statistics = ref({
   total_requests: 0
 });
 const budgetInfo = ref({
-  department_budget: 0,
-  remaining_balance: 0,
-  budget_utilization: '0%',
+  budget: 0,
   can_afford: true
 });
 const loading = ref(false);
@@ -620,6 +608,8 @@ const approveRequest = async () => {
   } catch (error) {
     if (error.response?.status === 403) {
       toast.error('Action Not Allowed', { description: 'You do not have permission to approve requests.' });
+    } else if (error.response?.status === 400) {
+      toast.error('Budget Exceeded', { description: error.response.data.message });
     } else {
       console.error('Error approving request:', error);
       toast.error('Error', { description: 'Failed to approve request.' });

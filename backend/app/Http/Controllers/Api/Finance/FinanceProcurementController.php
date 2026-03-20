@@ -122,7 +122,7 @@ class FinanceProcurementController extends Controller
             // Get pending requests for listing
             $pendingRequests = $query->where('status', 'pending')->paginate($perPage);
             
-            // FIX: Get recently processed requests based on Finance timestamps, NOT current status.
+            // Get recently processed requests based on Finance timestamps
             $recentlyProcessed = ProcurementRequest::with(['requester', 'product'])
                 ->where('distributor_id', $distributorId)
                 ->where(function($q) {
@@ -134,7 +134,7 @@ class FinanceProcurementController extends Controller
                 ->limit(10)
                 ->get();
 
-            // FIX: Get statistics based on Finance actions for the current month
+            // Get statistics based on Finance actions for the current month
             $currentMonth = now()->format('Y-m');
             $statistics = ProcurementRequest::select(
                 DB::raw('COUNT(*) as total_requests'),
@@ -213,7 +213,7 @@ class FinanceProcurementController extends Controller
                 ], 404);
             }
 
-            // Get department budget information (you can replace this with actual budget logic)
+            // Get budget information dynamically
             $budgetInfo = $this->getDepartmentBudgetInfo($request);
 
             return response()->json([
@@ -284,10 +284,19 @@ class FinanceProcurementController extends Controller
                 ], 404);
             }
 
+            // Verify Budget strictly before approving
+            $budgetInfo = $this->getDepartmentBudgetInfo($procurementRequest);
+            if (!$budgetInfo['can_afford']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Action Denied: The request total cost exceeds the available budget.'
+                ], 400);
+            }
+
             // Start transaction
             DB::beginTransaction();
 
-            // Update request status
+            // Update request status (NO DEDUCTION FROM SALES TABLE HAPPENS HERE)
             $procurementRequest->status = 'approved';
             $procurementRequest->finance_approved_by = $user->id;
             $procurementRequest->finance_approved_at = now();
@@ -295,7 +304,6 @@ class FinanceProcurementController extends Controller
             
             // Save comments if provided
             if ($request->has('comments') && $request->comments) {
-                // Store finance comments
                 $procurementRequest->instructions = ($procurementRequest->instructions ? $procurementRequest->instructions . "\n\n" : '') . 
                                                     "Finance Comments: " . $request->comments;
             }
@@ -423,7 +431,7 @@ class FinanceProcurementController extends Controller
                 ], 404);
             }
 
-            // FIX: Get monthly statistics based on timestamps
+            // Get monthly statistics based on timestamps
             $monthlyStats = ProcurementRequest::select(
                 DB::raw('DATE_FORMAT(request_date, "%Y-%m") as month'),
                 DB::raw('COUNT(*) as total_requests'),
@@ -451,7 +459,7 @@ class FinanceProcurementController extends Controller
             ->groupBy('category')
             ->get();
 
-            // FIX: Get today's stats based on timestamps
+            // Get today's stats based on timestamps
             $todayStats = ProcurementRequest::select(
                 DB::raw('COUNT(*) as total'),
                 DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved'),
@@ -481,16 +489,21 @@ class FinanceProcurementController extends Controller
     }
 
     /**
-     * Helper function to get department budget information
-     * Replace this with your actual budget logic
+     * Helper function to get budget information dynamically from distributor_overall_sales
      */
     private function getDepartmentBudgetInfo($procurementRequest)
     {
+        // Query the distributor_overall_sales table for this specific distributor
+        $salesRecord = DB::table('distributor_overall_sales')
+            ->where('distributor_id', $procurementRequest->distributor_id)
+            ->first();
+
+        // Used 'total_revenue' based on the provided capstone001.sql dump
+        $budget = $salesRecord ? ($salesRecord->total_revenue ?? 0) : 0;
+
         return [
-            'department_budget' => 45000.00,
-            'remaining_balance' => 32250.00,
-            'budget_utilization' => '28.33%',
-            'can_afford' => $procurementRequest->total_cost <= 32250.00
+            'budget' => (float) $budget,
+            'can_afford' => $procurementRequest->total_cost <= $budget
         ];
     }
 

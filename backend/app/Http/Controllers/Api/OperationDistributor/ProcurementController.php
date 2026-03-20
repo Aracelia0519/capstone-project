@@ -17,6 +17,7 @@ use App\Models\Distributor\DistributorAddress;
 use App\Models\Supplier\SupplierRawMaterial;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
+use App\Models\Supplier\ProcurementFulfillment; // Import Fulfillment Model
 
 class ProcurementController extends Controller
 {
@@ -118,17 +119,14 @@ class ProcurementController extends Controller
                 $query->where('distributor_id', $accessData['distributor_id']);
             }
             
-            // FIX: Changed from has() to filled()
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
             
-            // FIX: Changed from has() to filled()
             if ($request->filled('priority')) {
                 $query->where('priority', $request->priority);
             }
             
-            // FIX: Changed from has() to filled()
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
@@ -144,6 +142,13 @@ class ProcurementController extends Controller
             
             $perPage = $request->get('per_page', 15);
             $requests = $query->with(['requester', 'distributor', 'selectedSupplier'])->paginate($perPage);
+
+            // Fetch and append Supplier Fulfillment (Receipts/Proofs) safely
+            $fulfillments = ProcurementFulfillment::whereIn('procurement_request_id', $requests->pluck('id'))->get()->keyBy('procurement_request_id');
+            $requests->getCollection()->transform(function ($req) use ($fulfillments) {
+                $req->fulfillment = $fulfillments->get($req->id);
+                return $req;
+            });
             
             return response()->json([
                 'success' => true,
@@ -272,7 +277,7 @@ class ProcurementController extends Controller
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
                 'shipping_method' => 'nullable|string|in:standard,express,pickup',
-                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance,gcash', // Added gcash support
+                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance,gcash',
                 'instructions' => 'nullable|string',
                 'required_by_date' => 'nullable|date|after:today'
             ]);
@@ -285,7 +290,9 @@ class ProcurementController extends Controller
                 ], 422);
             }
             
-            // DB Specific Validations for min and max orders
+            // DB Specific Validations for min/max orders and total cost accumulation
+            $totalRequestedCost = 0;
+
             foreach ($request->items as $item) {
                 $material = SupplierRawMaterial::findOrFail($item['id']);
                 $minOrder = $material->min_order ?? 1;
@@ -305,7 +312,26 @@ class ProcurementController extends Controller
                         'errors' => ['items' => ["Quantity for {$material->name} cannot exceed {$material->max_order}."]]
                     ], 422);
                 }
+
+                $totalRequestedCost += ($material->price * $item['quantity']);
             }
+
+            // ==========================================
+            // STRICT BUDGET VERIFICATION
+            // ==========================================
+            $salesRecord = DB::table('distributor_overall_sales')
+                ->where('distributor_id', $distributorId)
+                ->first();
+            
+            $availableBudget = $salesRecord ? ($salesRecord->total_revenue ?? 0) : 0;
+
+            if ($totalRequestedCost > $availableBudget) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient budget to complete this request. The total amount exceeds your available funds.'
+                ], 400); 
+            }
+            // ==========================================
 
             DB::beginTransaction();
             $createdRequests = [];
@@ -329,7 +355,7 @@ class ProcurementController extends Controller
                     'priority' => $request->priority,
                     'status' => 'pending',
                     'shipping_method' => $request->shipping_method ?? 'standard',
-                    'payment_terms' => $request->payment_terms ?? 'cod', // Updated default
+                    'payment_terms' => $request->payment_terms ?? 'cod',
                     'delivery_address' => $request->delivery_address,
                     'instructions' => $request->instructions,
                     'required_by_date' => $request->required_by_date,
@@ -370,6 +396,9 @@ class ProcurementController extends Controller
                     'message' => 'Unauthorized to view this request'
                 ], 403);
             }
+
+            // Fetch and attach Fulfillment data safely
+            $request->fulfillment = ProcurementFulfillment::where('procurement_request_id', $request->id)->first();
             
             return response()->json([
                 'success' => true,

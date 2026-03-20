@@ -3,7 +3,7 @@
     <nav class="container mx-auto px-4 h-20 flex items-center justify-between">
       <router-link to="/" class="flex items-center space-x-3 group">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
-          <Paintbrush class="w-5 h-5 text-white" />
+          <img src="/favicon.svg" class="w-15 h-15" alt="icon" />
         </div>
         <div>
           <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -88,9 +88,7 @@ const mobileMenuOpen = ref(false)
 
 const navItems = [
   { id: 'home', label: 'Home', route: '/Landing/homeLanding' },
-  { id: 'how-it-works', label: 'How It Works', route: '/Landing/HowItWorks' },
   { id: 'explore-colors', label: 'Explore Colors', route: '/Landing/exploreColors' },
-  { id: 'services', label: 'Services', route: '/Landing/servicesLanding' },
   { id: 'ecommerce', label: 'E-Commerce', route: '/ECommerceClient/EccommerceShop' }
 ]
 

@@ -580,6 +580,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/prepare', [\App\Http\Controllers\Api\Supplier\SupplierOrderProcessingController::class, 'store']);
         });
 
+        // ===============================================
+        // SUPPLIER DEDICATED RETURNS MANAGEMENT
+        // ===============================================
+        Route::prefix('returns-management')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierReturnController::class, 'index']);
+            Route::post('/{id}/accept', [\App\Http\Controllers\Api\Supplier\SupplierReturnController::class, 'accept']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Supplier\SupplierReturnController::class, 'reject']);
+        });
+
         Route::prefix('shipments')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'index']);
             Route::post('/{id}/ship', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'ship']);
@@ -662,11 +671,20 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         Route::get('/arrived-items', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'index']);
+        Route::get('/arrived-items/returns', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'getReturns']);
         Route::post('/arrived-items/{id}/move-to-inventory', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'moveToInventory']);
+        Route::post('/arrived-items/{id}/return', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'returnItem']);
+        Route::post('/arrived-items/returns/{id}/move-to-inventory', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'moveReplacementToInventory']);
+        
 
         // EC Inventory Routes to bitch
         Route::get('/ec-inventory', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'index']);
+        // INACTIVE INVENTORY NEW ROUTES
+        Route::get('/ec-inventory/inactive', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'getInactive']);
         Route::post('/ec-inventory/{id}/request-deployment', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'requestDeployment']);
+        // DEACTIVATE AND REACTIVATE
+        Route::post('/ec-inventory/{id}/deactivate', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'moveToInactive']);
+        Route::post('/ec-inventory/inactive/{id}/reactivate', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'reactivate']);
 
         Route::prefix('ecommerce-orders')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECOrderController::class, 'index']);

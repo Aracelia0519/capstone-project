@@ -4,7 +4,7 @@
       
       <router-link to="/ECommerceClient" class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <ShoppingBag class="w-5 h-5 text-white" />
+          <img src="/favicon.svg" class="w-15 h-15" alt="icon" />
         </div>
         <div class="hidden sm:block">
           <h1 class="text-lg font-bold tracking-tight text-slate-900">Paint Store</h1>
