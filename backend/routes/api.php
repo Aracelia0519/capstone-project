@@ -62,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
 
+    
+
     Route::prefix('special-rbac')->group(function () {
         Route::get('/sidebar', [\App\Http\Controllers\Api\SpecialRBAC\SpecialRBACSidebarController::class, 'getSidebarAccess']);
     });
@@ -93,6 +95,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
+
+        Route::prefix('subscription')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'getCurrentSubscription']);
+            Route::post('/subscribe', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'subscribe']);
+            Route::post('/verify', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'verifyGcashPayment']);
+        });
 
         // -----------------------------------------------------
         // CLIENT PAYMENT SETTINGS (GCash)

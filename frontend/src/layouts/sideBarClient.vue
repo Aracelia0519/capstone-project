@@ -168,7 +168,7 @@ const navigation = [
   {
     title: 'Visualization',
     items: [
-      { name: 'Color Preview', path: '/Clients/colorPreview', icon: Palette, color: 'text-purple-400', badge: 'Unity', requiresVerify: true },
+      { name: 'Color Preview', path: '/Clients/colorPreview', icon: Palette, color: 'text-purple-400', badge: 'Mixer', requiresVerify: true },
       { name: 'Color History', path: '/Clients/ColorHistoryC', icon: History, color: 'text-indigo-400', badge: '5', requiresVerify: true }
     ]
   },

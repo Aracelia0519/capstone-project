@@ -1,33 +1,28 @@
 <template>
-  <div class="client-dashboard min-h-screen p-4 md:p-6 lg:p-10 bg-[#0f172a] text-slate-200">
+  <div class="client-dashboard min-h-screen p-4 md:p-6 lg:p-10 text-slate-200 font-sans antialiased overflow-x-hidden relative">
     
-    <section class="hero-section relative overflow-hidden rounded-3xl border border-sky-500/10 bg-gradient-to-br from-slate-800/80 to-slate-900/90 p-6 md:p-10 mb-8 shadow-2xl">
-      <div class="hero-gradient absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(56,189,248,0.1),transparent_70%)]"></div>
+    <div v-if="isProcessingPayment" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-sky-500 mb-4"></div>
+      <p class="text-white font-bold text-lg">Processing your subscription...</p>
+    </div>
+
+    <section class="hero-section relative overflow-hidden rounded-3xl border border-sky-500/10 bg-gradient-to-br from-slate-800/80 to-slate-900/90 p-6 md:p-10 mb-10 shadow-2xl">
+      <div class="hero-gradient absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(56,189,248,0.15),transparent_70%)]"></div>
       
       <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
         <div class="hero-left text-center md:text-left">
+          <Badge class="bg-sky-500/20 text-sky-400 border-sky-500/30 mb-4 px-3 py-1">Welcome back, Client</Badge>
           <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight mb-4">
             <span class="block">Transform Your Space</span>
             <span class="block bg-gradient-to-r from-sky-400 via-sky-500 to-sky-700 bg-clip-text text-transparent">With Perfect Colors</span>
           </h1>
-          <p class="text-slate-400 text-lg mb-6 max-w-xl">Visualize, select, and track your paint projects with real-time updates</p>
+          <p class="text-slate-400 text-lg mb-6 max-w-xl">Visualize, select, and track your paint projects with real-time updates across the CaviteGo network.</p>
           
-          <div class="flex flex-wrap justify-center md:justify-start items-center gap-4 mb-6">
+          <div class="flex flex-wrap justify-center md:justify-start items-center gap-4">
             <Button @click="goToShop" class="bg-sky-500 hover:bg-sky-600 text-white rounded-full px-6 py-5 shadow-lg shadow-sky-500/20 border-0 font-semibold text-base transition-all">
               <ShoppingCart class="w-5 h-5 mr-2" />
               Visit E-Commerce Shop
             </Button>
-          </div>
-
-          <div class="flex flex-wrap justify-center md:justify-start gap-3">
-            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md text-white">
-              <CheckCircle2 class="w-4 h-4 mr-2 text-sky-400" />
-              {{ dashboardStats.activeProjects }} Active Projects
-            </Badge>
-            <Badge variant="outline" class="bg-white/5 border-sky-500/20 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md text-white">
-              <Palette class="w-4 h-4 mr-2 text-sky-400" />
-              {{ dashboardStats.colorsSelected }} Colors Selected
-            </Badge>
           </div>
         </div>
 
@@ -41,192 +36,317 @@
       </div>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-      
-      <Card class="lg:col-span-7 bg-slate-800/40 border-slate-700/50 backdrop-blur-xl">
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-6">
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20">
-              <ClipboardList class="w-5 h-5 text-white" />
-            </div>
-            <CardTitle class="text-xl font-bold text-slate-100">Current Service Requests</CardTitle>
-          </div>
-          <Badge class="bg-sky-500/10 text-sky-400 border-sky-500/20">{{ serviceRequests.length }} Active</Badge>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <div v-for="request in serviceRequests" :key="request.id" class="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-slate-900/50 border border-slate-700/30 hover:border-sky-500/30 transition-all">
-            <div class="mb-4 md:mb-0">
-              <h4 class="font-semibold text-slate-200 mb-1">{{ request.type }}</h4>
-              <div class="flex items-center text-sm text-slate-400 gap-4">
-                <span class="flex items-center"><User class="w-3 h-3 mr-1" /> {{ request.serviceProvider }}</span>
-                <span>{{ formatDate(request.date) }}</span>
-              </div>
-            </div>
-            <div class="flex flex-col items-start md:items-end gap-2 w-full md:w-40">
-              <Badge :class="getStatusClass(request.status)">{{ formatStatus(request.status) }}</Badge>
-              <div class="flex items-center gap-2 w-full">
-                <Progress :model-value="request.progress" class="h-1.5 flex-1 bg-slate-700" />
-                <span class="text-xs text-slate-400 w-8 text-right">{{ request.progress }}%</span>
-              </div>
-            </div>
-          </div>
-          <Button variant="ghost" class="w-full mt-2 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300">
-            View All Requests <ChevronRight class="w-4 h-4 ml-1" />
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card class="lg:col-span-5 bg-slate-800/40 border-slate-700/50 backdrop-blur-xl">
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-6">
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20">
-              <Paintbrush2 class="w-5 h-5 text-white" />
-            </div>
-            <CardTitle class="text-xl font-bold text-slate-100">Selected Colors</CardTitle>
-          </div>
-          <Badge variant="secondary" class="bg-slate-700 text-slate-300">Latest</Badge>
-        </CardHeader>
-        <CardContent>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div v-for="color in selectedColors" :key="color.id" class="overflow-hidden rounded-xl bg-slate-900/50 border border-slate-700/30">
-              <div class="h-20 flex items-center justify-center relative" :style="{ backgroundColor: color.hex }">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                <span class="relative z-10 text-white font-bold text-sm drop-shadow-md">{{ color.name }}</span>
-              </div>
-              <div class="p-3 text-[10px] md:text-xs">
-                <div class="flex justify-between text-slate-400 mb-1">
-                  <span>HEX: {{ color.hex }}</span>
-                  <span>{{ color.date }}</span>
-                </div>
-                <div class="text-slate-500 truncate">{{ color.project }}</div>
-              </div>
-            </div>
-          </div>
-          <Button variant="ghost" class="w-full text-sky-400 hover:bg-sky-500/10">
-            View Color History <ChevronRight class="w-4 h-4 ml-1" />
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card class="lg:col-span-4 bg-slate-800/40 border-slate-700/50 backdrop-blur-xl">
-        <CardHeader>
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20">
-              <Users class="w-5 h-5 text-white" />
-            </div>
-            <CardTitle class="text-xl font-bold text-slate-100">Providers</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <div v-for="provider in serviceProviders" :key="provider.id" class="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-700/30 transition-colors">
-            <div class="relative">
-              <Avatar class="w-12 h-12 border-2 border-slate-700 bg-sky-500 text-white font-bold">
-                <AvatarFallback>{{ provider.initials }}</AvatarFallback>
-              </Avatar>
-              <span :class="['absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800', provider.status === 'online' ? 'bg-emerald-500' : 'bg-slate-500']"></span>
-            </div>
-            <div class="flex-1 min-w-0">
-              <h4 class="font-medium truncate text-slate-200">{{ provider.name }}</h4>
-              <div class="flex items-center text-yellow-500 text-xs">
-                <Star v-for="n in 5" :key="n" :class="['w-3 h-3', n <= Math.floor(provider.rating) ? 'fill-current' : 'text-slate-600']" />
-                <span class="ml-1 text-slate-400">{{ provider.rating }}</span>
-              </div>
-              <p class="text-[11px] text-slate-500 truncate">{{ provider.specialty }}</p>
-            </div>
-            <Button size="icon" variant="outline" class="border-sky-500/20 bg-sky-500/5 text-sky-400 hover:bg-sky-500 hover:text-white">
-              <Mail class="w-4 h-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="lg:col-span-8 bg-slate-800/40 border-slate-700/50 backdrop-blur-xl overflow-hidden">
-        <CardHeader>
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20">
-              <History class="w-5 h-5 text-white" />
-            </div>
-            <CardTitle class="text-xl font-bold text-slate-100">Recent Activity</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent class="p-0">
-          <Table>
-            <TableHeader class="bg-slate-900/40">
-              <TableRow class="border-slate-700/50">
-                <TableHead class="text-slate-400 px-6">Activity</TableHead>
-                <TableHead class="text-slate-400">Project</TableHead>
-                <TableHead class="text-slate-400">Date</TableHead>
-                <TableHead class="text-slate-400 text-right pr-6">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="activity in recentActivity" :key="activity.id" class="border-slate-700/50 hover:bg-slate-700/20">
-                <TableCell class="px-6 font-medium">
-                  <div class="flex items-center gap-3">
-                    <div :class="getActivityIconClass(activity.type)">
-                      <Palette v-if="activity.type === 'color'" class="w-4 h-4" />
-                      <FileText v-else-if="activity.type === 'request'" class="w-4 h-4" />
-                      <Info v-else class="w-4 h-4" />
-                    </div>
-                    {{ activity.description }}
-                  </div>
-                </TableCell>
-                <TableCell class="text-slate-400">{{ activity.project }}</TableCell>
-                <TableCell class="text-slate-400 text-xs">{{ activity.date }}</TableCell>
-                <TableCell class="text-right pr-6">
-                  <span :class="['text-[10px] font-bold uppercase tracking-wider', activity.status === 'completed' ? 'text-emerald-400' : activity.status === 'in-progress' ? 'text-sky-400' : 'text-amber-400']">
-                    {{ activity.status }}
-                  </span>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-
-    <div class="quick-actions">
-      <h3 class="text-lg font-bold mb-4 text-slate-200">Quick Actions</h3>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Button 
-          v-for="action in quickActionList" 
-          :key="action.label"
-          variant="secondary"
-          class="h-auto flex-col gap-4 p-6 bg-slate-800/40 border-slate-700/50 hover:border-sky-500/40 transition-all hover:bg-slate-800/60"
-          @click="action.handler"
-        >
-          <div :class="['p-3 rounded-2xl shadow-lg text-white', action.color]">
-            <component :is="action.icon" class="w-6 h-6" />
-          </div>
-          <span class="font-semibold text-white">{{ action.label }}</span>
-        </Button>
+    <section class="mb-12">
+      <div class="text-center mb-8">
+        <h2 class="text-3xl md:text-4xl font-black tracking-tighter bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 bg-clip-text text-transparent inline-flex items-center gap-3">
+          <Sparkles class="w-8 h-8 text-pink-400" />
+          Color Mixing Lab Pro
+        </h2>
+        <p class="text-slate-400 mt-3 max-w-2xl mx-auto">Unlock advanced virtual color mixing, precision harmony palettes, and deep influence analysis to visualize your perfect blend before you buy.</p>
+        <p v-if="currentSubscription" class="mt-4 inline-block bg-slate-800 text-sky-400 font-bold px-4 py-2 rounded-full border border-slate-700">
+          Current Plan: <span class="uppercase tracking-wider">{{ currentSubscription.plan_name.replace('_', ' ') }}</span>
+          <span class="text-xs text-slate-400 font-normal ml-2">Valid until {{ formatDate(currentSubscription.end_date) }}</span>
+        </p>
       </div>
-    </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card class="bg-slate-900/60 border-slate-700/50 backdrop-blur-xl relative overflow-hidden group hover:border-slate-500 transition-all" :class="{'ring-2 ring-slate-400': isPlanActive('starter')}">
+          <CardHeader>
+            <CardTitle class="text-xl text-slate-200">Starter</CardTitle>
+            <div class="text-3xl font-bold text-white mt-2">Free<span class="text-sm text-slate-500 font-normal"> / 30 days</span></div>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-emerald-400" /> 3-Color Weighted Blending</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-emerald-400" /> Real-time HEX & RGB Output</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-emerald-400" /> Save up to 5 Colors</li>
+            </ul>
+            <Button 
+              @click="handleSubscribe('starter')" 
+              :disabled="hasSubscription"
+              class="w-full mt-6 border transition-all"
+              :class="isPlanActive('starter') ? 'bg-slate-700 text-white cursor-default' : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-600'">
+              {{ isPlanActive('starter') ? 'Current Plan' : (hasSubscription ? 'Unavailable' : 'Start Trial') }}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card class="bg-slate-900/60 border-slate-700/50 backdrop-blur-xl relative overflow-hidden group hover:border-purple-500/50 transition-all" :class="{'ring-2 ring-purple-500': isPlanActive('monthly')}">
+          <CardHeader>
+            <CardTitle class="text-xl text-purple-300">Monthly</CardTitle>
+            <div class="text-3xl font-bold text-white mt-2">₱49<span class="text-sm text-slate-500 font-normal"> / month</span></div>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-purple-400" /> All Starter Features</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-purple-400" /> Harmony Palettes (Mono, Analog, Comp)</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-purple-400" /> Color Influence Progress Analysis</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-purple-400" /> Save up to 100 Colors</li>
+            </ul>
+            <Button 
+              @click="handleSubscribe('monthly')"
+              :disabled="isPlanActive('monthly') || isPlanHigherThan('monthly')"
+              class="w-full mt-6 border transition-all"
+              :class="isPlanActive('monthly') ? 'bg-purple-600 text-white cursor-default' : 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border-purple-500/30'">
+              {{ isPlanActive('monthly') ? 'Current Plan' : (isPlanHigherThan('monthly') ? 'Included in Plan' : (isPlanActive('starter') ? 'Upgrade to Monthly' : 'Subscribe Monthly')) }}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card class="bg-gradient-to-b from-slate-800 to-slate-900 border-sky-500/50 backdrop-blur-xl relative overflow-hidden shadow-[0_0_30px_rgba(14,165,233,0.15)] transform md:-translate-y-2 z-10" :class="{'ring-2 ring-sky-400': isPlanActive('half_year')}">
+          <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-sky-400 to-blue-600"></div>
+          <Badge class="absolute top-4 right-4 bg-sky-500 text-white border-0">Most Popular</Badge>
+          <CardHeader>
+            <CardTitle class="text-xl text-sky-400">Half-Year</CardTitle>
+            <div class="text-3xl font-bold text-white mt-2">₱149<span class="text-sm text-slate-500 font-normal"> / 6 mos</span></div>
+            <p class="text-xs text-sky-400/80 mt-1">Save roughly ₱145 annually!</p>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <ul class="space-y-2 text-sm text-slate-300">
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-sky-400" /> All Monthly Features</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-sky-400" /> Luminance & Readability Check</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-sky-400" /> Temperature & Color Family Data</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-sky-400" /> Unlimited Color Saves</li>
+            </ul>
+            <Button 
+              @click="handleSubscribe('half_year')"
+              :disabled="isPlanActive('half_year') || isPlanHigherThan('half_year')"
+              class="w-full mt-6 shadow-lg border-0 transition-all"
+              :class="isPlanActive('half_year') ? 'bg-sky-600 text-white cursor-default' : 'bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white'">
+              {{ isPlanActive('half_year') ? 'Current Plan' : (isPlanHigherThan('half_year') ? 'Included in Plan' : 'Upgrade to Half-Year') }}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card class="bg-slate-900/60 border-slate-700/50 backdrop-blur-xl relative overflow-hidden group hover:border-amber-500/50 transition-all" :class="{'ring-2 ring-amber-500': isPlanActive('annual')}">
+          <CardHeader>
+            <CardTitle class="text-xl text-amber-400">Annual</CardTitle>
+            <div class="text-3xl font-bold text-white mt-2">₱349<span class="text-sm text-slate-500 font-normal"> / 12 mos</span></div>
+            <p class="text-xs text-amber-500/60 mt-1">Best value for long-term projects</p>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-amber-400" /> All 6-Month Features</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-amber-400" /> Interactive Orbit Visualizer</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-amber-400" /> Advanced Mixing Insights & Tips</li>
+              <li class="flex items-center gap-2"><Check class="w-4 h-4 text-amber-400" /> Unlimited Color Saves</li>
+            </ul>
+            <Button 
+              @click="handleSubscribe('annual')"
+              :disabled="isPlanActive('annual')"
+              class="w-full mt-6 border transition-all"
+              :class="isPlanActive('annual') ? 'bg-amber-600 text-white cursor-default' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'">
+              {{ isPlanActive('annual') ? 'Current Plan' : 'Upgrade to Annual' }}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+
+    <section class="border-t border-slate-800 pt-12 pb-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div class="max-w-3xl">
+          <p class="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-500 mb-2">Your Dashboard</p>
+          <h2 class="text-3xl md:text-5xl font-bold text-white mb-4">Everything You Need for Your Project</h2>
+          <p class="text-slate-400 leading-relaxed border-l-2 border-cyan-500 pl-4">
+            Experience a seamless journey from choosing the perfect shade to having the paint delivered to your home. Everything is designed to make your renovation project as easy as possible.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <div class="bg-slate-900/40 rounded-3xl p-8 relative overflow-hidden group border border-slate-800 hover:border-blue-500/30 transition-colors">
+          <div class="relative z-10">
+            <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 border border-blue-500/20">
+              <Truck class="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <span class="text-[10px] font-black text-slate-500 tracking-widest uppercase">Live Tracking</span>
+            <h4 class="text-xl font-bold mt-1 text-white">Track Your Deliveries</h4>
+            <p class="text-sm text-slate-400 mt-3 leading-relaxed">Watch your paint and materials move from the store directly to your doorstep in real-time, so you know exactly when to expect them.</p>
+          </div>
+          <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-blue-600/10 rounded-full blur-[60px] group-hover:bg-blue-600/20 transition-all"></div>
+        </div>
+
+        <div class="bg-slate-900/40 rounded-3xl p-8 relative overflow-hidden group border border-slate-800 hover:border-purple-500/30 transition-colors">
+          <div class="relative z-10">
+            <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-6 border border-purple-500/20">
+              <MessageSquare class="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <span class="text-[10px] font-black text-slate-500 tracking-widest uppercase">Direct Comms</span>
+            <h4 class="text-xl font-bold mt-1 text-white">Talk to Experts</h4>
+            <p class="text-sm text-slate-400 mt-3 leading-relaxed">Chat directly with professional painters or service provider. Keep all your project questions, quotes, and history safely stored in one place.</p>
+          </div>
+          <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-purple-600/10 rounded-full blur-[60px] group-hover:bg-purple-600/20 transition-all"></div>
+        </div>
+
+        <div class="bg-slate-900/40 rounded-3xl p-8 relative overflow-hidden group border border-slate-800 hover:border-cyan-500/30 transition-colors">
+          <div class="relative z-10">
+            <div class="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-6 border border-cyan-500/20">
+              <LineChart class="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <span class="text-[10px] font-black text-slate-500 tracking-widest uppercase">Smart Insights</span>
+            <h4 class="text-xl font-bold mt-1 text-white">Get Color Inspiration</h4>
+            <p class="text-sm text-slate-400 mt-3 leading-relaxed">Not sure what to pick? Discover trending colors, popular palettes, and design ideas selected by other homeowners in your area.</p>
+          </div>
+          <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-cyan-600/10 rounded-full blur-[60px] group-hover:bg-cyan-600/20 transition-all"></div>
+        </div>
+
+        <div class="bg-slate-900/40 rounded-3xl p-8 relative overflow-hidden group border border-slate-800 hover:border-emerald-500/30 transition-colors">
+          <div class="relative z-10">
+            <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6 border border-emerald-500/20">
+              <Smartphone class="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <span class="text-[10px] font-black text-slate-500 tracking-widest uppercase">Anywhere Access</span>
+            <h4 class="text-xl font-bold mt-1 text-white">Mobile Companion App</h4>
+            <p class="text-sm text-slate-400 mt-3 leading-relaxed">Download our app to approve service quotes, track your orders, and play with the Color Lab directly from your smartphone.</p>
+          </div>
+          <div class="absolute -right-12 -bottom-12 w-48 h-48 bg-emerald-600/10 rounded-full blur-[60px] group-hover:bg-emerald-600/20 transition-all"></div>
+        </div>
+
+        <div class="bg-slate-900/40 rounded-3xl p-8 relative overflow-hidden group border border-slate-800 hover:border-pink-500/30 transition-colors md:col-span-2 lg:col-span-2">
+          <div class="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
+            <div class="flex-1">
+              <div class="w-12 h-12 bg-pink-500/10 rounded-xl flex items-center justify-center mb-4 border border-pink-500/20">
+                <ShoppingCart class="w-6 h-6 text-pink-400 group-hover:scale-110 transition-transform" />
+              </div>
+              <span class="text-[10px] font-black text-slate-500 tracking-widest uppercase">E-Commerce Ready</span>
+              <h4 class="text-2xl font-bold mt-1 text-white">Integrated Paint Store</h4>
+              <p class="text-sm text-slate-400 mt-3 leading-relaxed max-w-lg">
+                Calculate exactly how much paint you need, check real-time store availability, and place your orders directly. Get everything required for your project without ever leaving the dashboard.
+              </p>
+            </div>
+            <div class="mt-4 md:mt-0">
+               <Button @click="goToShop" variant="outline" class="border-pink-500/30 text-pink-400 hover:bg-pink-500 hover:text-white rounded-full px-6 py-5">
+                 Visit E-Commerce <ChevronRight class="w-4 h-4 ml-2" />
+               </Button>
+            </div>
+          </div>
+          <div class="absolute -left-12 -bottom-12 w-64 h-64 bg-pink-600/10 rounded-full blur-[80px] group-hover:bg-pink-600/20 transition-all"></div>
+        </div>
+
+      </div>
+    </section>
+
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { 
-  Card, CardContent, CardHeader, CardTitle 
-} from '@/components/ui/card'
+import { reactive, ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/utils/axios'
+import { toast } from 'vue-sonner'
+
+// shadcn-vue Components
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+// Lucide Icons
 import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
-} from '@/components/ui/table'
-import { 
-  CheckCircle2, Palette, ClipboardList, ChevronRight, 
-  User, Paintbrush2, Users, Star, Mail, History, 
-  FileText, Info, Plus, Eye, Lightbulb, ShoppingCart
+  Palette, ClipboardList, ChevronRight, 
+  User, Paintbrush2, History, FileText, Info, 
+  ShoppingCart, Sparkles, Check, Truck, MessageSquare, 
+  LineChart, Smartphone
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 
-// --- Script Logic (Preserved and Reactive) ---
+// --- SUBSCRIPTION STATE ---
+const currentSubscription = ref(null)
+const isProcessingPayment = ref(false)
+
+const planHierarchy = {
+  'starter': 1,
+  'monthly': 2,
+  'half_year': 3,
+  'annual': 4
+};
+
+const hasSubscription = computed(() => !!currentSubscription.value)
+
+const isPlanActive = (planKey) => {
+  return currentSubscription.value?.plan_name === planKey
+}
+
+const isPlanHigherThan = (planKey) => {
+  if (!currentSubscription.value) return false;
+  const currentRank = planHierarchy[currentSubscription.value.plan_name];
+  const compareRank = planHierarchy[planKey];
+  return currentRank > compareRank;
+}
+
+// --- INITIALIZE ---
+onMounted(() => {
+  if (route.query.subscription_ref) {
+    verifyGcashPayment(route.query.subscription_ref)
+  } else {
+    fetchCurrentSubscription()
+  }
+})
+
+// --- API METHODS ---
+
+const fetchCurrentSubscription = async () => {
+  try {
+    const response = await api.get('/client/subscription')
+    if (response.data.success) {
+      currentSubscription.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Error fetching subscription:', error)
+  }
+}
+
+const handleSubscribe = async (planKey) => {
+  isProcessingPayment.value = true;
+  try {
+    const response = await api.post('/client/subscription/subscribe', { plan_name: planKey });
+    
+    if (response.data.success) {
+      if (response.data.checkout_url) {
+        toast.info('Redirecting to PayMongo for GCash checkout...');
+        setTimeout(() => {
+          window.location.href = response.data.checkout_url;
+        }, 1500);
+      } else {
+        toast.success(response.data.message);
+        await fetchCurrentSubscription();
+        isProcessingPayment.value = false;
+      }
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to process subscription');
+    isProcessingPayment.value = false;
+  }
+}
+
+const verifyGcashPayment = async (referenceNumber) => {
+  isProcessingPayment.value = true;
+  toast.info('Verifying GCash Payment... Please wait.');
+  
+  await new Promise(resolve => setTimeout(resolve, 2500)); // Buffer for PayMongo Sync
+
+  try {
+    const response = await api.post('/client/subscription/verify', { reference_number: referenceNumber });
+    if (response.data.success) {
+      toast.success('Subscription Activated!', { description: response.data.message });
+      router.replace({ query: {} }); // Strip the params
+      await fetchCurrentSubscription();
+    }
+  } catch (error) {
+    toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'Payment could not be verified.' });
+    router.replace({ query: {} });
+    await fetchCurrentSubscription();
+  } finally {
+    isProcessingPayment.value = false;
+  }
+}
+
+// --- Original Existing Data State ---
 
 const dashboardStats = reactive({
   activeProjects: 3,
@@ -248,27 +368,21 @@ const selectedColors = reactive([
   { id: 4, name: 'Forest Green', hex: '#10b981', rgb: '16, 185, 129', project: 'Study Room', date: 'Mar 15' }
 ])
 
-const serviceProviders = reactive([
-  { id: 1, initials: 'JM', name: 'John Paint Masters', rating: 4.8, specialty: 'Interior & Exterior', status: 'online' },
-  { id: 2, initials: 'CP', name: 'Cavite Pro Painters', rating: 4.6, specialty: 'Commercial Projects', status: 'offline' },
-  { id: 3, initials: 'CE', name: 'Color Experts PH', rating: 4.9, specialty: 'Color Consultation', status: 'online' }
-])
-
 const recentActivity = reactive([
-  { id: 1, type: 'color', description: 'Selected new color for bedroom', project: 'Bedroom Renovation', date: 'Today, 10:30 AM', status: 'completed' },
+  { id: 1, type: 'color', description: 'Saved "Sunset Glow" to Lab', project: 'Kitchen Accent', date: 'Today, 10:30 AM', status: 'completed' },
   { id: 2, type: 'request', description: 'Service request submitted', project: 'Kitchen Cabinet Paint', date: 'Mar 18, 2:15 PM', status: 'in-progress' },
   { id: 3, type: 'update', description: 'Project status updated', project: 'Living Room Painting', date: 'Mar 17, 4:45 PM', status: 'pending' },
-  { id: 4, type: 'color', description: 'Color preview generated', project: 'Study Room', date: 'Mar 16, 11:20 AM', status: 'completed' },
-  { id: 5, type: 'request', description: 'New service inquiry', project: 'Exterior House Paint', date: 'Mar 15, 9:00 AM', status: 'pending' }
+  { id: 4, type: 'color', description: 'Generated Analogous Palette', project: 'Study Room', date: 'Mar 16, 11:20 AM', status: 'completed' },
 ])
 
-// --- Methods ---
+// --- Helper Methods ---
 
 const goToShop = () => {
   router.push('/ECommerceClient/EccommerceShop')
 }
 
 const formatDate = (date) => {
+  if (!date) return '';
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   })
@@ -291,19 +405,9 @@ const getActivityIconClass = (type) => {
   if (type === 'request') return base + "bg-sky-500/10 text-sky-400 border-sky-500/20"
   return base + "bg-amber-500/10 text-amber-400 border-amber-500/20"
 }
-
-// Quick Action Configurations (Added E-Commerce Shop to the start)
-const quickActionList = [
-  { label: 'E-Commerce Shop', icon: ShoppingCart, color: 'bg-gradient-to-br from-emerald-500 to-teal-400', handler: goToShop },
-  { label: 'New Service Request', icon: Plus, color: 'bg-gradient-to-br from-blue-500 to-cyan-400', handler: () => console.log('New service') },
-  { label: 'Browse Colors', icon: Palette, color: 'bg-gradient-to-br from-purple-500 to-pink-400', handler: () => console.log('Browse colors') },
-  { label: 'Color Preview', icon: Eye, color: 'bg-gradient-to-br from-indigo-500 to-violet-400', handler: () => console.log('Preview') },
-  { label: 'Recommendations', icon: Lightbulb, color: 'bg-gradient-to-br from-amber-500 to-orange-400', handler: () => console.log('Recommendations') }
-]
 </script>
 
 <style scoped>
-/* Keyframe animations that Tailwind doesn't handle natively */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

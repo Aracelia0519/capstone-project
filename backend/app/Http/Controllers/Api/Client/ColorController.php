@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client\ClientSavedColor;
+use App\Models\Client\ClientSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ColorController extends Controller
 {
@@ -46,6 +48,38 @@ class ColorController extends Controller
             }
 
             $user = Auth::user();
+
+            // Check Active Subscription
+            $subscription = ClientSubscription::where('client_id', $user->id)
+                ->where('status', 'active')
+                ->where('end_date', '>', Carbon::now())
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (!$subscription) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Active subscription required to save colors.'
+                ], 403);
+            }
+
+            // Subscription Restrictions
+            $plan = $subscription->plan_name;
+            $maxColors = match($plan) {
+                'starter' => 5,
+                'monthly' => 100,
+                default => -1 // unlimited for half_year and annual
+            };
+
+            if ($maxColors !== -1) {
+                $currentCount = ClientSavedColor::where('user_id', $user->id)->count();
+                if ($currentCount >= $maxColors) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Save limit reached. Your {$plan} plan allows up to {$maxColors} saved colors."
+                    ], 403);
+                }
+            }
 
             // Check if color with same hex already exists for this user
             $existingColor = ClientSavedColor::where('user_id', $user->id)

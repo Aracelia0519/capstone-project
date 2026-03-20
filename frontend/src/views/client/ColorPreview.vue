@@ -2,8 +2,8 @@
   <div class="min-h-screen bg-gradient-to-br p-4 sm:p-6 text-slate-200">
     <header class="text-center mb-8 sm:mb-12">
       <div class="inline-flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 flex items-center justify-center animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-          <Beaker class="w-6 h-6 text-white" />
+        <div class="w-12 h-12 rounded-full flex items-center justify-center animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+          <img src="/favicon.svg" class="w-15 h-15" alt="icon" />
         </div>
         <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-rose-300">
           Color Mixing Lab
@@ -12,9 +12,30 @@
       <p class="text-gray-400 text-lg">Create and explore color combinations with advanced visualization tools</p>
     </header>
 
-    <main class="max-w-6xl mx-auto">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mb-4"></div>
+      <p class="text-slate-400 animate-pulse">Verifying Subscription Details...</p>
+    </div>
+
+    <div v-else-if="!currentPlan" class="max-w-2xl mx-auto text-center py-20 bg-slate-900/60 border border-slate-700 rounded-3xl backdrop-blur-xl shadow-2xl">
+      <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-700 shadow-inner">
+        <Lock class="w-10 h-10 text-slate-400" />
+      </div>
+      <h2 class="text-3xl font-bold text-white mb-4">Subscription Required</h2>
+      <p class="text-slate-400 mb-8 max-w-md mx-auto">You need an active subscription plan to access the Color Mixing Lab. Visit your dashboard to explore and activate our plans.</p>
+      <Button @click="$router.push('/Clients/dashboardC')" class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-8 py-6 rounded-full text-lg shadow-lg">
+        Go to Dashboard
+      </Button>
+    </div>
+
+    <main v-else class="max-w-6xl mx-auto">
+      <div class="mb-6 flex justify-end">
+        <Badge class="bg-purple-500/20 text-purple-300 border-purple-500/30 px-3 py-1.5 uppercase tracking-widest text-xs">
+          Plan: {{ currentPlan.replace('_', ' ') }}
+        </Badge>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-        
         <div class="lg:col-span-2 space-y-6 sm:space-y-8">
           
           <Card class="bg-slate-900/40 border-slate-700/50 backdrop-blur-xl border">
@@ -111,7 +132,7 @@
                         <div class="absolute inset-0 rounded-full border border-white/20"></div>
                       </div>
 
-                      <div v-for="(color, i) in colors" :key="i" v-show="color.active"
+                      <div v-for="(color, i) in colors" :key="i" v-show="color.active && canUseOrbitInsights"
                            class="absolute rounded-full border border-white/10 animate-orbit"
                            :style="{ 
                              width: 180 + i*40 + 'px', 
@@ -134,7 +155,7 @@
                     </div>
                   </div>
 
-                  <div class="space-y-4 bg-black/20 p-4 rounded-xl border border-white/5">
+                  <div v-if="canUseInfluenceAnalysis" class="space-y-4 bg-black/20 p-4 rounded-xl border border-white/5">
                     <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                       <Zap class="w-3 h-3" /> Influence Analysis
                     </h4>
@@ -171,7 +192,7 @@
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-3">
+                  <div v-if="canUseLuminanceTemp" class="grid grid-cols-2 gap-3">
                     <div class="bg-slate-800/40 p-3 rounded-xl border border-white/5 flex items-center justify-between">
                       <span class="text-[10px] text-slate-400">Temp</span>
                       <Badge variant="outline" :class="mixedColor.temperature.includes('Warm') ? 'text-orange-400 border-orange-400/20' : 'text-blue-400 border-blue-400/20'">
@@ -188,7 +209,7 @@
                     <Save class="w-4 h-4 mr-2" /> Save to Collection
                   </Button>
 
-                  <div class="p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 flex items-start gap-3">
+                  <div v-if="canUseLuminanceTemp" class="p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 flex items-start gap-3">
                     <Info class="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
                     <p class="text-[10px] text-blue-300 leading-relaxed">
                       Luminance: <strong>{{ mixedColor.luminance }}%</strong>. Readability: 
@@ -218,7 +239,7 @@
             </CardContent>
           </Card>
 
-          <Card class="bg-slate-900/40 border-slate-700/50 backdrop-blur-xl border">
+          <Card v-if="canUseHarmonyPalettes" class="bg-slate-900/40 border-slate-700/50 backdrop-blur-xl border">
             <CardHeader>
               <CardTitle class="text-lg font-bold text-white flex items-center gap-2">
                 <Palette class="w-5 h-5 text-cyan-400" /> Harmony Palettes
@@ -242,7 +263,7 @@
             </CardContent>
           </Card>
 
-          <div class="bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/30 p-6 rounded-2xl space-y-4">
+          <div v-if="canUseOrbitInsights" class="bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/30 p-6 rounded-2xl space-y-4">
             <div class="flex items-center gap-3">
               <Lightbulb class="w-5 h-5 text-purple-400" />
               <h4 class="font-bold text-purple-100">Mixing Insights</h4>
@@ -259,8 +280,9 @@
     <div v-if="showCopyNotification || showSaveNotification" 
          class="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
       <div class="bg-slate-900 border border-emerald-500/30 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
-        <CheckCircle2 class="w-5 h-5 text-emerald-500" />
-        <span class="text-sm font-bold text-white">{{ notificationText }}</span>
+        <CheckCircle2 v-if="!isErrorNotification" class="w-5 h-5 text-emerald-500" />
+        <Info v-else class="w-5 h-5 text-red-500" />
+        <span class="text-sm font-bold" :class="isErrorNotification ? 'text-red-400' : 'text-white'">{{ notificationText }}</span>
       </div>
     </div>
   </div>
@@ -280,11 +302,40 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Beaker, Settings2, Sparkles, RefreshCcw, Scale, Undo2, 
-  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap 
+  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap, Lock 
 } from 'lucide-vue-next'
 import api from '@/utils/axios'
+import { useRouter } from 'vue-router'
 
-// --- State ---
+const router = useRouter()
+
+// --- Subscription State ---
+const currentPlan = ref(null)
+const isLoading = ref(true)
+
+const fetchSubscription = async () => {
+  try {
+    const response = await api.get('/client/subscription')
+    if (response.data.success && response.data.data) {
+      currentPlan.value = response.data.data.plan_name
+    } else {
+      currentPlan.value = null
+    }
+  } catch (error) {
+    currentPlan.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Plan Feature Computeds
+const canUseHarmonyPalettes = computed(() => ['monthly', 'half_year', 'annual'].includes(currentPlan.value))
+const canUseInfluenceAnalysis = computed(() => ['monthly', 'half_year', 'annual'].includes(currentPlan.value))
+const canUseLuminanceTemp = computed(() => ['half_year', 'annual'].includes(currentPlan.value))
+const canUseOrbitInsights = computed(() => currentPlan.value === 'annual')
+
+
+// --- Mixer State ---
 const colors = ref([
   { id: 1, name: 'Vibrant Red', hex: '#FF3636', rgb: '255, 54, 54', active: true, weight: 34 },
   { id: 2, name: 'Sunshine Yellow', hex: '#FFE436', rgb: '255, 228, 54', active: true, weight: 33 },
@@ -316,6 +367,7 @@ const tips = [
 const currentTip = ref(0)
 const showCopyNotification = ref(false)
 const showSaveNotification = ref(false)
+const isErrorNotification = ref(false)
 const notificationText = ref('')
 
 // --- Computeds ---
@@ -401,7 +453,6 @@ const calculateMixedColor = () => {
     tr += r * c.weight; tg += g * c.weight; tb += b * c.weight; tw += c.weight;
   });
 
-  // Prevent divide by zero if weights somehow reach 0
   tw = tw || 1;
 
   const r = Math.round(tr / tw), g = Math.round(tg / tw), b = Math.round(tb / tw);
@@ -443,39 +494,29 @@ const generateComplementary = () => {
   return [h, (h + 180) % 360].map(hue => hslToHex(hue, s*100, l*100));
 }
 
-// --- Methods ---
-
 const toggleActive = (index, isActive) => {
   colors.value[index].active = isActive;
-  balanceWeights(); // Always re-balance to 100% when checking/unchecking
+  balanceWeights(); 
 }
 
-// Smart Weight Adjustment System
 const updateWeight = (index, newVal) => {
   const color = colors.value[index];
   if (!color.active) return;
   
-  // 1. Identify other active colors
   const otherActive = colors.value.filter((c, i) => c.active && i !== index);
   
-  // Edge Case: If this is the only active color, it MUST be 100%.
   if (otherActive.length === 0) {
     color.weight = 100;
     return;
   }
 
-  // 2. Clamp the new value (must leave at least 0% for others, though logic handles it)
-  // Actually, max value for this one is 100.
   let validVal = Math.max(0, Math.min(100, newVal));
-  
   color.weight = validVal;
   
-  // 3. Distribute the remaining percentage among other active colors
   const remainingSpace = 100 - validVal;
   const currentOthersSum = otherActive.reduce((sum, c) => sum + c.weight, 0);
   
   if (currentOthersSum === 0) {
-    // If others were all 0, distribute equally
     const split = Math.floor(remainingSpace / otherActive.length);
     let remainder = remainingSpace % otherActive.length;
     
@@ -484,10 +525,7 @@ const updateWeight = (index, newVal) => {
       if (remainder > 0) remainder--;
     });
   } else {
-    // Distribute proportionally based on their current weights
     let distributed = 0;
-    
-    // We iterate through all but the last one to assign proportional weights
     for (let i = 0; i < otherActive.length - 1; i++) {
       const c = otherActive[i];
       const ratio = c.weight / currentOthersSum;
@@ -495,8 +533,6 @@ const updateWeight = (index, newVal) => {
       c.weight = newWeight;
       distributed += newWeight;
     }
-    
-    // Assign the exact remainder to the last one to ensure sum is exactly 100
     otherActive[otherActive.length - 1].weight = remainingSpace - distributed;
   }
 }
@@ -515,7 +551,6 @@ const randomizeColors = () => {
     const r = parseInt(c.hex.slice(1,3), 16), g = parseInt(c.hex.slice(3,5), 16), b = parseInt(c.hex.slice(5,7), 16);
     c.rgb = `${r}, ${g}, ${b}`;
   });
-  // Note: We do NOT need to re-balance here because weights didn't change, only HEX values.
 }
 
 const balanceWeights = () => {
@@ -543,6 +578,7 @@ const resetColors = () => location.reload()
 
 const copyColor = (hex) => {
   navigator.clipboard.writeText(hex);
+  isErrorNotification.value = false;
   notificationText.value = 'Color Copied!';
   showCopyNotification.value = true;
   setTimeout(() => showCopyNotification.value = false, 2000);
@@ -569,14 +605,15 @@ const saveMixedColor = async () => {
     };
 
     await api.post('/client/save-color', payload);
+    isErrorNotification.value = false;
     notificationText.value = 'Saved to Collection!';
     showSaveNotification.value = true;
     setTimeout(() => showSaveNotification.value = false, 2000);
   } catch (error) {
-    console.error('Validation Error Details:', error.response?.data?.errors);
-    notificationText.value = 'Save Failed - Check Console';
+    isErrorNotification.value = true;
+    notificationText.value = error.response?.data?.message || 'Save Failed - Check Console';
     showSaveNotification.value = true;
-    setTimeout(() => showSaveNotification.value = false, 2000);
+    setTimeout(() => showSaveNotification.value = false, 3500);
   }
 }
 
@@ -584,7 +621,6 @@ const applySuggestion = (s) => {
   const target = colors.value.find(c => !c.active) || colors.value[0];
   target.hex = s.hex;
   
-  // If target was inactive, activate it and rebalance
   if (!target.active) {
     target.active = true;
     balanceWeights();
@@ -598,7 +634,8 @@ const nextTip = () => currentTip.value = (currentTip.value + 1) % tips.length
 
 watch(colors, calculateMixedColor, { deep: true })
 onMounted(() => {
-  balanceWeights(); // Ensure strictly 100% on load
+  fetchSubscription();
+  balanceWeights();
   calculateMixedColor();
 })
 </script>
