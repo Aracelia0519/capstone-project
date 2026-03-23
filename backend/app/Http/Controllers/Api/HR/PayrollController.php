@@ -18,7 +18,7 @@ use Carbon\Carbon;
 class PayrollController extends Controller
 {
     /**
-     * Check RBAC Permissions for HR Modules (Specifically payroll_management)
+     * Check RBAC Permissions for HR Modules (Level-Based)
      */
     private function checkAccess($user, $action = 'can_view')
     {
@@ -27,7 +27,7 @@ class PayrollController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => null,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -36,7 +36,7 @@ class PayrollController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => $user->id,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -47,7 +47,7 @@ class PayrollController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         } 
@@ -70,9 +70,8 @@ class PayrollController extends Controller
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -80,9 +79,8 @@ class PayrollController extends Controller
                                 'distributor_id' => $employee->parent_distributor_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -94,7 +92,7 @@ class PayrollController extends Controller
         return [
             'has_access' => false,
             'distributor_id' => null,
-            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
         ];
     }
 
@@ -117,7 +115,8 @@ class PayrollController extends Controller
     public function calculate(Request $request)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_view');
+        // Just need view/manage access to preview calculation
+        $accessData = $this->checkAccess($user, 'can_view'); 
         
         if (!$accessData['has_access']) {
             return response()->json(['error' => 'Unauthorized. You do not have permission to calculate payrolls.'], 403);
@@ -523,10 +522,12 @@ class PayrollController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_create');
+        
+        // Final action of processing and releasing payroll needs APPROVE level
+        $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
-            return response()->json(['error' => 'Unauthorized. You do not have permission to create/process payroll.'], 403);
+            return response()->json(['error' => 'Unauthorized. You do not have permission to approve/process payroll.'], 403);
         }
 
         $request->validate([

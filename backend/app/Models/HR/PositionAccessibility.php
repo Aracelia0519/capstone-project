@@ -15,17 +15,15 @@ class PositionAccessibility extends Model
         'permission_label',
         'is_granted',
         'can_view',
-        'can_create',
-        'can_update',
-        'can_delete'
+        'can_manage',
+        'can_approve'
     ];
 
     protected $casts = [
         'is_granted' => 'boolean',
         'can_view' => 'boolean',
-        'can_create' => 'boolean',
-        'can_update' => 'boolean',
-        'can_delete' => 'boolean'
+        'can_manage' => 'boolean',
+        'can_approve' => 'boolean'
     ];
 
     /**
@@ -105,11 +103,10 @@ class PositionAccessibility extends Model
     }
 
     /**
-     * Update accessibility for a position (supports CRUD granular control).
+     * Update accessibility for a position (supports level-based granular control).
      */
     public static function updateForPosition(Position $position, array $accessibilityData): void
     {
-        // Delete existing accessibility for this position to replace fresh
         self::where('position_id', $position->id)->delete();
 
         if (!in_array($position->department, Position::RBAC_DEPARTMENTS) || empty($accessibilityData)) {
@@ -123,12 +120,12 @@ class PositionAccessibility extends Model
             // Backward compatibility for standard flat arrays ['dashboard', 'employee_list']
             if (is_numeric($key) && is_string($value)) {
                 $permissionKey = $value;
-                $crud = ['view' => true, 'create' => true, 'update' => true, 'delete' => true]; // Fallback to all access
+                $levels = ['view' => true, 'manage' => true, 'approve' => true]; // Fallback to all access
             } 
-            // New object-based format: 'dashboard' => ['view' => true, 'create' => false, ...]
+            // New object-based format: 'dashboard' => ['view' => true, 'manage' => false, ...]
             else {
                 $permissionKey = $key;
-                $crud = $value;
+                $levels = $value;
             }
 
             if (isset($permissionMap[$permissionKey])) {
@@ -137,18 +134,14 @@ class PositionAccessibility extends Model
                     'permission_key' => $permissionKey,
                     'permission_label' => $permissionMap[$permissionKey],
                     'is_granted' => true,
-                    'can_view' => $crud['can_view'] ?? $crud['view'] ?? false,
-                    'can_create' => $crud['can_create'] ?? $crud['create'] ?? false,
-                    'can_update' => $crud['can_update'] ?? $crud['update'] ?? false,
-                    'can_delete' => $crud['can_delete'] ?? $crud['delete'] ?? false,
+                    'can_view' => $levels['can_view'] ?? $levels['view'] ?? false,
+                    'can_manage' => $levels['can_manage'] ?? $levels['manage'] ?? false,
+                    'can_approve' => $levels['can_approve'] ?? $levels['approve'] ?? false,
                 ]);
             }
         }
     }
 
-    /**
-     * Get accessibility for a position.
-     */
     public static function getForPosition(Position $position): array
     {
         if (!in_array($position->department, Position::RBAC_DEPARTMENTS)) {
@@ -161,9 +154,6 @@ class PositionAccessibility extends Model
             ->toArray();
     }
 
-    /**
-     * Check if a position has specific permission.
-     */
     public static function hasPermission(Position $position, string $permissionKey): bool
     {
         if (!in_array($position->department, Position::RBAC_DEPARTMENTS)) {

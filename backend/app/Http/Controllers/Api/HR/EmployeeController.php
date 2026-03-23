@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
 class EmployeeController extends Controller
 {
     /**
-     * Check RBAC Permissions for HR Modules
+     * Check RBAC Permissions for HR Modules (Level-Based)
      */
     private function checkAccess($user, $action = 'can_view')
     {
@@ -32,9 +32,8 @@ class EmployeeController extends Controller
                     'hr_manager_id' => $hrManager->id,
                     'permissions' => [
                         'can_view' => true,
-                        'can_create' => true,
-                        'can_update' => true,
-                        'can_delete' => true,
+                        'can_manage' => true,
+                        'can_approve' => true,
                     ]
                 ];
             }
@@ -56,9 +55,8 @@ class EmployeeController extends Controller
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -67,9 +65,8 @@ class EmployeeController extends Controller
                                 'hr_manager_id' => $employee->hr_manager_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -82,9 +79,8 @@ class EmployeeController extends Controller
             'has_access' => false,
             'permissions' => [
                 'can_view' => false,
-                'can_create' => false,
-                'can_update' => false,
-                'can_delete' => false,
+                'can_manage' => false,
+                'can_approve' => false,
             ]
         ];
     }
@@ -346,7 +342,7 @@ class EmployeeController extends Controller
             $user = Auth::user();
             
             // RBAC Access Check
-            $accessData = $this->checkAccess($user, 'can_create');
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
@@ -355,7 +351,7 @@ class EmployeeController extends Controller
             }
             
             $parentDistributorId = $accessData['parent_distributor_id'];
-            $hrManagerId = $accessData['hr_manager_id']; // This could be null if employee creates another, which is valid based on DB schema
+            $hrManagerId = $accessData['hr_manager_id']; 
             
             // Define custom error messages
             $messages = [
@@ -579,7 +575,7 @@ class EmployeeController extends Controller
             $user = Auth::user();
             
             // RBAC Access Check
-            $accessData = $this->checkAccess($user, 'can_update');
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
@@ -681,7 +677,7 @@ class EmployeeController extends Controller
             $user = Auth::user();
             
             // RBAC Access Check
-            $accessData = $this->checkAccess($user, 'can_delete');
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',
@@ -731,7 +727,7 @@ class EmployeeController extends Controller
             $user = Auth::user();
             
             // RBAC Access Check
-            $accessData = $this->checkAccess($user, 'can_update');
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json([
                     'status' => 'error',

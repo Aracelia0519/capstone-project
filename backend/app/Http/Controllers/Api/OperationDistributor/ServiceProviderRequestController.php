@@ -21,18 +21,16 @@ class ServiceProviderRequestController extends Controller
     {
         $defaults = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         // Main distributors and head operational distributors automatically have full access
         if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
             return [
                 'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
+                'can_manage' => true,
+                'can_approve' => true
             ];
         }
 
@@ -55,9 +53,8 @@ class ServiceProviderRequestController extends Controller
             if ($access) {
                 return [
                     'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
+                    'can_manage' => (bool) $access->can_manage,
+                    'can_approve' => (bool) $access->can_approve,
                 ];
             }
         }
@@ -153,8 +150,8 @@ class ServiceProviderRequestController extends Controller
         try {
             $user = Auth::user();
 
-            // Hard backend RBAC check for updating
-            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_update')) {
+            // Hard backend RBAC check for approving
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_approve')) {
                 return response()->json(['message' => 'Access Denied: You do not have permission to approve partnership requests.'], 403);
             }
 
@@ -232,8 +229,8 @@ class ServiceProviderRequestController extends Controller
         try {
             $user = Auth::user();
 
-            // Hard backend RBAC check for updating/rejecting
-            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_update')) {
+            // Hard backend RBAC check for rejecting (using can_approve)
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_approve')) {
                 return response()->json(['message' => 'Access Denied: You do not have permission to reject partnership requests.'], 403);
             }
 

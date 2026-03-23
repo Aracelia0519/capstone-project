@@ -5,7 +5,7 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Procurement Requests</h1>
-          <p class="text-gray-300">Request bulk products directly from your partnered suppliers</p>
+          <h2 class="text-gray-300">Request bulk products directly from your partnered suppliers</h2>
         </div>
         <div class="flex items-center space-x-4 mt-4 md:mt-0">
           <button @click="fetchStatistics" class="px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center">
@@ -14,7 +14,7 @@
             </svg>
             Refresh Stats
           </button>
-          <button @click="requirePermission('create', openRequestModal)" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
+          <button @click="requirePermission('manage', openRequestModal)" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
@@ -117,14 +117,14 @@
             </tr>
             <tr v-else v-for="request in requests" :key="request.id" class="border-t border-gray-800 hover:bg-white/5">
               <td class="py-4 px-6">
-                <span class="text-indigo-300 font-mono text-sm">{{ request.request_code }}</span>
+                <h2 class="text-indigo-300 font-mono text-sm">{{ request.request_code }}</h2>
               </td>
               <td class="py-4 px-6">
                 <div class="flex items-center space-x-4">
                   
                   <div>
                     <h4 class="text-white font-medium">{{ request.product_name }}</h4>
-                    <p class="text-xs text-gray-400 mt-1">
+                    <p class="text-xs text-white mt-1">
                       {{ request.category }} 
                       <span v-if="request.raw_material_details">
                         | {{ request.raw_material_details.type }} | {{ request.raw_material_details.size }}
@@ -419,12 +419,11 @@ const selectedSupplierSettings = computed(() => {
   return supplier?.payment_settings || { is_cod_enabled: true, is_gcash_enabled: false }
 })
 
-// User Permissions setup via RBAC
+// Updated to the new Level-Based framework
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

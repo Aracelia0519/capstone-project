@@ -96,11 +96,11 @@
               </TableCell>
             </TableRow>
             <TableRow v-for="req in filteredRequests" :key="req.id" class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-              <TableCell class="font-medium text-indigo-400 py-4">{{ req.request_code }}</TableCell>
-              <TableCell class="text-gray-300 py-4">{{ req.supplier }}</TableCell>
-              <TableCell class="text-gray-300 py-4">{{ req.quantity }} Units</TableCell>
-              <TableCell class="text-gray-300 py-4">₱{{ formatNumber(req.total_cost) }}</TableCell>
-              <TableCell class="text-gray-400 py-4 text-sm">{{ formatDate(req.request_date) }}</TableCell>
+              <TableCell class="font-medium text-indigo-600 py-4">{{ req.request_code }}</TableCell>
+              <TableCell class="text-white py-4">{{ req.supplier }}</TableCell>
+              <TableCell class="text-white py-4">{{ req.quantity }} Units</TableCell>
+              <TableCell class="text-white py-4">₱{{ formatNumber(req.total_cost) }}</TableCell>
+              <TableCell class="text-white py-4 text-sm">{{ formatDate(req.request_date) }}</TableCell>
               <TableCell class="py-4">
                 <Badge :class="getStatusColor(req.status)" class="rounded-full px-2.5 py-0.5 border-0 font-medium capitalize">
                   {{ req.status }}
@@ -126,7 +126,7 @@
       
       <div class="flex items-center justify-between p-4 md:p-6 border-b border-gray-800 bg-gray-900 shrink-0">
         <div>
-          <h2 class="text-lg font-bold text-white">{{ selectedRequest.request_code }}</h2>
+          <div class="text-lg font-bold text-white">{{ selectedRequest.request_code }}</div>
           <p class="text-sm text-gray-400 mt-0.5">Tracking Details</p>
         </div>
         <button @click="closeDetails" class="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
@@ -136,7 +136,7 @@
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="p-4 md:p-6 border-b border-gray-800 bg-gray-950/50">
-          <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-6">Status Timeline</h3>
+          <div class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-6">Status Timeline</div>
           <div class="relative pl-3 space-y-6">
             <div class="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-800"></div>
             <div v-for="(status, index) in statusHistory" :key="index" class="relative flex items-start gap-4">
@@ -150,7 +150,7 @@
         </div>
 
         <div class="p-4 md:p-6 border-b border-gray-800">
-          <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Order Information</h3>
+          <div class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Order Information</div>
           <div class="space-y-3 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-500">Supplier</span>
@@ -249,7 +249,7 @@
         </div>
 
         <div class="p-4 md:p-6">
-          <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Product Overview</h3>
+          <div class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Product Overview</div>
           <div class="flex items-center gap-4 bg-gray-950 p-3 rounded-xl border border-gray-800">
              <div class="w-12 h-12 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0 overflow-hidden">
                <img v-if="getProductImage(selectedRequest)" :src="getImageUrl(getProductImage(selectedRequest))" class="w-full h-full object-cover" />

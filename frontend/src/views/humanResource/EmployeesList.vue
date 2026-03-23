@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="mt-4 md:mt-0 flex space-x-3">
-        <button @click="requirePermission('create', () => showAddModal = true)" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
+        <button @click="requirePermission('manage', () => showAddModal = true)" class="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -209,17 +209,17 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                   </button>
-                  <button @click="requirePermission('update', () => editEmployee(employee.id))" class="text-yellow-600 hover:text-yellow-900 transform hover:scale-110 transition-transform" title="Edit">
+                  <button @click="requirePermission('manage', () => editEmployee(employee.id))" class="text-yellow-600 hover:text-yellow-900 transform hover:scale-110 transition-transform" title="Edit">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
-                  <button v-if="employee.employment_status === 'probationary'" @click="requirePermission('update', () => regularizeEmployee(employee.id))" class="text-green-600 hover:text-green-900 transform hover:scale-110 transition-transform" title="Regularize">
+                  <button v-if="employee.employment_status === 'probationary'" @click="requirePermission('manage', () => regularizeEmployee(employee.id))" class="text-green-600 hover:text-green-900 transform hover:scale-110 transition-transform" title="Regularize">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </button>
-                  <button @click="requirePermission('update', () => uploadDocument(employee.id))" class="text-purple-600 hover:text-purple-900 transform hover:scale-110 transition-transform" title="Upload Documents">
+                  <button @click="requirePermission('manage', () => uploadDocument(employee.id))" class="text-purple-600 hover:text-purple-900 transform hover:scale-110 transition-transform" title="Upload Documents">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -238,7 +238,7 @@
         <h3 class="mt-4 text-lg font-medium text-gray-900">No employees found</h3>
         <p class="mt-2 text-gray-500">Get started by creating your first employee.</p>
         <div class="mt-6">
-          <button @click="requirePermission('create', () => showAddModal = true)" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
+          <button @click="requirePermission('manage', () => showAddModal = true)" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -1347,9 +1347,8 @@ const showPassword = ref(false)
 // User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 const today = computed(() => new Date().toISOString().split('T')[0])

@@ -79,12 +79,11 @@ const paymentForm = ref({
   notes: ''
 })
 
-// User Permissions setup via RBAC
+// Updated Level-Based Permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
@@ -378,7 +377,7 @@ onMounted(() => {
                     v-if="payroll.status.toLowerCase() === 'approved'" 
                     size="sm" 
                     class="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                    @click="requirePermission('update', () => openPaymentDialog(payroll))"
+                    @click="requirePermission('approve', () => openPaymentDialog(payroll))"
                   >
                     Pay Now
                   </Button>

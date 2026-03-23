@@ -180,7 +180,7 @@
                       class="h-8 bg-green-50 text-green-700 hover:bg-green-100 border-green-200 shadow-none"
                       variant="outline"
                       :disabled="isProcessing === request.id"
-                      @click="requirePermission('update', () => handleAction(request.id, 'approve'))"
+                      @click="requirePermission('approve', () => handleAction(request.id, 'approve'))"
                     >
                       <span v-if="isProcessing === request.id" class="animate-spin mr-1">...</span>
                       <Check v-else class="h-4 w-4 mr-1" /> 
@@ -191,7 +191,7 @@
                       class="h-8 bg-red-50 text-red-700 hover:bg-red-100 border-red-200 shadow-none"
                       variant="outline"
                       :disabled="isProcessing === request.id"
-                      @click="requirePermission('update', () => handleAction(request.id, 'reject'))"
+                      @click="requirePermission('approve', () => handleAction(request.id, 'reject'))"
                     >
                       <X v-if="isProcessing !== request.id" class="h-4 w-4 mr-1" /> 
                       Reject
@@ -312,12 +312,11 @@ const searchQuery = ref('')
 const filterStatus = ref<'All' | RequestStatus | string>('All')
 const loadingStatus = ref('Initializing...')
 
-// User Permissions setup via RBAC
+// Updated to the new RBAC Levels
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

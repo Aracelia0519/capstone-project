@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Toaster, toast } from 'vue-sonner' // Added Toaster for rendering notifications
+import { Toaster, toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
 import { 
   Check, 
@@ -88,15 +88,14 @@ const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
 const showMobileSheet = ref(false)
 
-// User Permissions setup via RBAC
+// Updated to the new Level-Based Permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
-// RBAC Action Interceptor (Matches ProcurementRequests/Orders paradigm)
+// RBAC Action Interceptor
 const requirePermission = (action: string, callback: Function) => {
   const permKey = `can_${action}` as keyof typeof permissions.value;
   
@@ -432,9 +431,9 @@ const formatDate = (dateString: string) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent class="pt-4">
-                  <p class="text-sm text-gray-300 leading-relaxed font-medium">
+                  <h2 class="text-sm text-gray-300 leading-relaxed font-medium">
                       {{ selectedOrder.delivery_address || 'No address provided.' }}
-                  </p>
+                  </h2>
                 </CardContent>
               </Card>
             </div>
@@ -455,7 +454,7 @@ const formatDate = (dateString: string) => {
                        <TableRow v-for="item in selectedOrder.items" :key="item.id" class="border-gray-800 hover:bg-gray-800/30">
                           <TableCell>
                              <div class="font-medium text-gray-200">{{ item.name }}</div>
-                             <div class="text-xs text-gray-500">{{ item.category }}</div>
+                             <h2 class="text-xs text-gray-500">{{ item.category }}</h2>
                           </TableCell>
                           <TableCell class="text-right font-bold text-gray-200 text-lg">{{ item.quantity }}</TableCell>
                        </TableRow>
@@ -474,7 +473,7 @@ const formatDate = (dateString: string) => {
                   
                   <div class="space-y-2" v-if="!isPickUp">
                      <Label class="text-gray-300 font-semibold">Assign Delivery Personnel <span class="text-red-400">*</span></Label>
-                     <p class="text-xs text-gray-500">Select the person who will deliver this order to the client.</p>
+                     <h2 class="text-xs text-gray-500">Select the person who will deliver this order to the client.</h2>
                      <div class="relative">
                         <select 
                           v-model="selectedDeliveryMan" 
@@ -496,8 +495,8 @@ const formatDate = (dateString: string) => {
                   <Separator class="bg-gray-800" v-if="!isPickUp" />
 
                   <div class="space-y-2">
-                     <Label class="text-gray-300 font-semibold">Proof of Prepared Order <span class="text-red-400">*</span></Label>
-                     <p class="text-xs text-gray-500">Upload a photo of the packed items ready for {{ isPickUp ? 'pick-up' : 'dispatch' }}.</p>
+                     <Label class="text-white font-semibold">Proof of Prepared Order <span class="text-red-400">*</span></Label>
+                     <h2 class="text-xs text-gray-500">Upload a photo of the packed items ready for {{ isPickUp ? 'pick-up' : 'dispatch' }}.</h2>
                      
                      <div 
                         class="mt-2 border-2 border-dashed border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center transition-colors relative"
@@ -516,7 +515,7 @@ const formatDate = (dateString: string) => {
                               <ImageIcon class="h-6 w-6 text-gray-400" />
                            </div>
                            <p class="text-sm font-medium text-gray-300">Click or drag image to upload</p>
-                           <p class="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                           <h2 class="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</h2>
                         </div>
                         
                         <div v-else class="relative w-full flex justify-center">
@@ -536,7 +535,7 @@ const formatDate = (dateString: string) => {
                </CardContent>
                <CardFooter class="bg-transparent p-5 border-t border-gray-800 flex justify-end">
                   <Button 
-                    @click="requirePermission('update', submitPreparation)" 
+                    @click="requirePermission('manage', submitPreparation)" 
                     :disabled="!canSubmit || isSubmitting" 
                     class="w-full sm:w-auto px-8 bg-blue-600 hover:bg-blue-700 text-white transition-all"
                     size="lg"
@@ -744,7 +743,7 @@ const formatDate = (dateString: string) => {
              </CardContent>
              <CardFooter class="bg-transparent p-4 border-t border-gray-800">
                 <Button 
-                  @click="requirePermission('update', submitPreparation)" 
+                  @click="requirePermission('manage', submitPreparation)" 
                   :disabled="!canSubmit || isSubmitting" 
                   class="w-full bg-blue-600 hover:bg-blue-700 text-white"
                   size="lg"

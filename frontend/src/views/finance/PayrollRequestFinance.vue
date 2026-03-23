@@ -72,12 +72,11 @@ const isAlertOpen = ref(false)
 const alertAction = ref(null) // 'approve' | 'reject'
 const alertTargetId = ref(null)
 
-// User Permissions setup via RBAC
+// Updated to the new Level-Based framework
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
@@ -155,18 +154,18 @@ const openDetails = (request) => {
   })
 }
 
-// 1. Trigger Alert for Approval
+// 1. Trigger Alert for Approval (Requires Approve Level)
 const initiateApprove = (id) => {
-  requirePermission('update', () => {
+  requirePermission('approve', () => {
     alertTargetId.value = id
     alertAction.value = 'approve'
     isAlertOpen.value = true
   })
 }
 
-// 2. Trigger Alert for Rejection
+// 2. Trigger Alert for Rejection (Requires Approve Level)
 const initiateReject = (id) => {
-  requirePermission('update', () => {
+  requirePermission('approve', () => {
     alertTargetId.value = id
     alertAction.value = 'reject'
     isAlertOpen.value = true

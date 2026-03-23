@@ -76,15 +76,15 @@
                     {{ supplier.category }}
                  </Badge>
                  <span class="text-xs text-slate-600">•</span>
-                 <span class="text-xs text-slate-500 flex items-center gap-1">
+                 <h2 class="text-xs text-slate-500 flex items-center gap-1">
                     <i class="fas fa-map-marker-alt"></i> {{ supplier.location }}
-                 </span>
+                 </h2>
               </div>
            </div>
            
-           <p class="text-sm text-slate-400 line-clamp-3 mb-4 leading-relaxed">
+           <h2 class="text-sm text-slate-400 line-clamp-3 mb-4 leading-relaxed">
               {{ supplier.description }}
-           </p>
+           </h2>
 
            <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-4 bg-slate-950/50 p-3 rounded-lg border border-slate-800">
               <div class="flex flex-col">
@@ -112,7 +112,7 @@
         <CardFooter class="px-6 pb-6 pt-0 mt-auto">
            <Button 
               v-if="supplier.status === 'available' || supplier.status === 'rejected'"
-              @click="requirePermission('create', () => initiatePartnership(supplier))" 
+              @click="requirePermission('manage', () => initiatePartnership(supplier))" 
               class="w-full bg-slate-100 hover:bg-white text-slate-900 transition-all shadow-md hover:shadow-lg font-medium"
            >
               <i class="fas fa-plus-circle mr-2"></i> {{ supplier.status === 'rejected' ? 'Re-apply Partnership' : 'Request Partnership' }}
@@ -200,7 +200,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios' 
-import { Toaster, toast } from 'vue-sonner' // Added Toaster and updated import
+import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -227,12 +227,11 @@ const loading = ref(false)
 const requestMessage = ref('')
 const suppliers = ref([])
 
-// User Permissions setup via RBAC
+// User Permissions setup via Level-Based RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

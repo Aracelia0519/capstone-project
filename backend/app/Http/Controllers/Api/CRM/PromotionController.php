@@ -19,18 +19,16 @@ class PromotionController extends Controller
     {
         $defaults = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         // Main distributors and head operational distributors automatically have full access
         if (in_array($user->role, ['distributor', 'operational_distributor'])) {
             return [
                 'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
+                'can_manage' => true,
+                'can_approve' => true
             ];
         }
 
@@ -53,9 +51,8 @@ class PromotionController extends Controller
             if ($access) {
                 return [
                     'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
+                    'can_manage' => (bool) $access->can_manage,
+                    'can_approve' => (bool) $access->can_approve,
                 ];
             }
         }
@@ -128,7 +125,7 @@ class PromotionController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Unauthenticated'], 401);
             }
 
-            if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_view') && !$this->checkRbacAccess($user, 'ec_promotions', 'can_create')) {
+            if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_view') && !$this->checkRbacAccess($user, 'ec_promotions', 'can_manage')) {
                 return response()->json(['status' => 'error', 'message' => 'Access Denied'], 403);
             }
 
@@ -171,7 +168,7 @@ class PromotionController extends Controller
         $user = Auth::user();
 
         // HARD BACKEND CHECK: If an employee circumvents the UI, the backend will stop it here.
-        if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_create')) {
+        if (!$this->checkRbacAccess($user, 'ec_promotions', 'can_manage')) {
             return response()->json(['status' => 'error', 'message' => 'Access Denied: You do not have permission to create promotions.'], 403);
         }
 

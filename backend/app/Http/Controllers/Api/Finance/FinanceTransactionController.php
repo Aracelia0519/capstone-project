@@ -30,15 +30,14 @@ class FinanceTransactionController extends Controller
     }
 
     /**
-     * Fetch RBAC permissions for the logged-in user.
+     * Fetch RBAC permissions for the logged-in user (Level-Based).
      */
     private function getPermissions($user)
     {
         $defaultPermissions = [
             'can_view' => true,
-            'can_create' => true,
-            'can_update' => true,
-            'can_delete' => true
+            'can_manage' => true,
+            'can_approve' => true
         ];
 
         // Non-employees bypass this specific RBAC check and get full access
@@ -48,9 +47,8 @@ class FinanceTransactionController extends Controller
 
         $noAccess = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
@@ -63,19 +61,18 @@ class FinanceTransactionController extends Controller
 
         if (!$position) return $noAccess;
 
-        // Reusing the finance_budget_release permission as it governs financial outgoings
+        // FIXED: Now properly checks 'finance_transactions' instead of 'finance_budget_release'
         $access = DB::table('position_accessibilities')
             ->where('position_id', $position->id)
-            ->where('permission_key', 'finance_budget_release')
+            ->where('permission_key', 'finance_transactions')
             ->first();
 
         if (!$access || !$access->is_granted) return $noAccess;
 
         return [
             'can_view' => (bool)$access->can_view,
-            'can_create' => (bool)$access->can_create,
-            'can_update' => (bool)$access->can_update,
-            'can_delete' => (bool)$access->can_delete,
+            'can_manage' => (bool)$access->can_manage,
+            'can_approve' => (bool)$access->can_approve,
         ];
     }
 
@@ -142,8 +139,9 @@ class FinanceTransactionController extends Controller
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
 
-        if (!$permissions['can_update']) {
-            return response()->json(['message' => 'Access Denied: You do not have permission to process refunds.'], 403);
+        // Explicitly requires Approve level for processing financial outgoing
+        if (!$permissions['can_approve']) {
+            return response()->json(['message' => 'Access Denied: You do not have permission to process and approve refunds.'], 403);
         }
 
         $refund = DB::table('ec_refund_requests')->where('id', $id)->first();
@@ -152,16 +150,11 @@ class FinanceTransactionController extends Controller
             return response()->json(['message' => 'Only pending refunds can be processed.'], 400);
         }
 
-        // Budget Validation
+        // FIXED: Budget Validation - Checking only the raw current total_revenue
         $distributorId = $this->getDistributorId($user);
-        $totalRevenue = DB::table('distributor_overall_sales')
+        $availableBudget = DB::table('distributor_overall_sales')
             ->where('distributor_id', $distributorId)
             ->sum('total_revenue');
-        $totalDeducted = DB::table('budget_deduction_logs')
-            ->where('distributor_id', $distributorId)
-            ->sum('amount');
-            
-        $availableBudget = $totalRevenue - $totalDeducted;
 
         if ($refund->amount > $availableBudget) {
             return response()->json([
@@ -370,7 +363,8 @@ class FinanceTransactionController extends Controller
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
 
-        if (!$permissions['can_update']) {
+        // Explicitly requires Approve level for rejecting a financial transaction
+        if (!$permissions['can_approve']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to reject refunds.'], 403);
         }
 

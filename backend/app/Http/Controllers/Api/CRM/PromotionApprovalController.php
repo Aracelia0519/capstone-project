@@ -40,9 +40,8 @@ class PromotionApprovalController extends Controller
     {
         $defaultPermissions = [
             'can_view' => true,
-            'can_create' => true,
-            'can_update' => true,
-            'can_delete' => true
+            'can_manage' => true,
+            'can_approve' => true
         ];
 
         // Non-employees (like distributors, admins) bypass this specific RBAC check
@@ -52,9 +51,8 @@ class PromotionApprovalController extends Controller
 
         $noAccess = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
@@ -77,9 +75,8 @@ class PromotionApprovalController extends Controller
 
         return [
             'can_view' => (bool)$access->can_view,
-            'can_create' => (bool)$access->can_create,
-            'can_update' => (bool)$access->can_update,
-            'can_delete' => (bool)$access->can_delete,
+            'can_manage' => (bool)$access->can_manage,
+            'can_approve' => (bool)$access->can_approve,
         ];
     }
 
@@ -135,7 +132,8 @@ class PromotionApprovalController extends Controller
             $user = Auth::user();
             $permissions = $this->getPermissions($user);
 
-            if (!$permissions['can_update']) {
+            // Using new structure `can_approve`
+            if (!$permissions['can_approve']) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Access Denied: You do not have permission to approve promotions.'
@@ -165,7 +163,8 @@ class PromotionApprovalController extends Controller
             $user = Auth::user();
             $permissions = $this->getPermissions($user);
 
-            if (!$permissions['can_update']) {
+            // Using new structure `can_approve`
+            if (!$permissions['can_approve']) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Access Denied: You do not have permission to reject promotions.'

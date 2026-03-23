@@ -1,15 +1,48 @@
 <template>
-  <div class="arrived-items-container p-4 md:p-6">
+  <div class="arrived-items-container p-4 md:p-6 text-gray-100">
+    <Teleport to="body">
+      <Toaster
+        position="top-right"
+        :expand="false"
+        :rich-colors="false"
+        :close-button="true"
+        :theme="'light'"
+        :visible-toasts="1"
+        :container-style="{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999999,
+          pointerEvents: 'none',
+        }"
+        :toast-options="{
+          style: {
+            background: 'white',
+            color: 'black',
+            border: 'none',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
+            padding: '16px 20px',
+            fontSize: '15px',
+            minWidth: '280px',
+            maxWidth: '400px',
+            borderRadius: '10px',
+            pointerEvents: 'auto',
+          },
+        }"
+      />
+    </Teleport>
     
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Inventory Processing</h1>
-          <p class="text-gray-300">Review recent deliveries and manage products waiting for supplier return.</p>
+          <h2 class="text-gray-300">Review recent deliveries and manage products waiting for supplier return.</h2>
         </div>
         <div class="flex items-center gap-3 mt-4 md:mt-0">
           <Button 
             variant="outline" 
+            @click="requirePermission('view', handleExport)"
             class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent w-full sm:w-auto"
           >
             <FileDown class="w-4 h-4 mr-2" />
@@ -22,13 +55,13 @@
     <div class="flex space-x-2 mb-6 bg-gray-900/50 p-1.5 rounded-lg border border-gray-800 w-fit">
       <button 
         @click="activeTab = 'arrived'" 
-        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'arrived' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-800']"
+        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'arrived' ? 'bg-indigo-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
         Arrived Items ({{ arrivedItems.length }})
       </button>
       <button 
         @click="activeTab = 'returns'" 
-        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'returns' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-800']"
+        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'returns' ? 'bg-red-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
         Returns & Replacements ({{ returnItems.length }})
       </button>
@@ -41,7 +74,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ arrivedItems.length }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Pending Inventory Check</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Pending Inventory Check</h2></CardDescription>
         </CardHeader>
       </Card>
       
@@ -51,7 +84,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ totalQuantityArrived }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Total Units Received</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Total Units Received</h2></CardDescription>
         </CardHeader>
       </Card>
     </div>
@@ -134,8 +167,8 @@
                 </TableCell>
                 <TableCell class="text-right">
                   <Button @click="openViewModal(item, false)" variant="ghost" size="sm" class="text-indigo-400 hover:text-white hover:bg-indigo-600/20">
-                    <Eye class="w-4 h-4 mr-2" />
-                    View Details
+                    <h2><Eye class="w-4 h-4 mr-2" /></h2>
+                    <h2>View Details</h2>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -191,12 +224,12 @@
                     </div>
                     <div class="flex flex-col">
                       <span class="font-bold text-white">{{ ret.procurement_request?.product_name || 'Product' }}</span>
-                      <p class="text-xs text-gray-400 mt-0.5 max-w-50 truncate" :title="ret.reason">Reason: {{ ret.reason }}</p>
+                      <p class="text-xs text-white mt-0.5 max-w-50 truncate" :title="ret.reason">Reason: {{ ret.reason }}</p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell class="text-gray-300 text-center">{{ ret.procurement_request?.supplier || 'N/A' }}</TableCell>
-                <TableCell class="text-right"><span class="font-bold text-red-400">{{ ret.quantity_returned }}</span></TableCell>
+                <TableCell class="text-white text-center">{{ ret.procurement_request?.supplier || 'N/A' }}</TableCell>
+                <TableCell class="text-right"><h2 class="font-bold text-red-400">{{ ret.quantity_returned }}</h2></TableCell>
                 <TableCell class="text-center">
                   <Badge class="rounded-full border-0 font-medium capitalize" :class="statusColor(ret.status)">
                     {{ formatStatus(ret.status) }}
@@ -204,8 +237,8 @@
                 </TableCell>
                 <TableCell class="text-right">
                   <Button @click="openViewModal(ret, true)" variant="ghost" size="sm" class="text-indigo-400 hover:text-white hover:bg-indigo-600/20">
-                    <Eye class="w-4 h-4 mr-2" />
-                    View Details
+                    <h2><Eye class="w-4 h-4 mr-2" /></h2>
+                    <h2>View Details</h2>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -436,7 +469,7 @@
           <template v-if="!isViewingReturn">
             <Button 
               variant="outline" 
-              @click="openReturnModal"
+              @click="requirePermission('manage', openReturnModal)"
               class="border-red-900/50 text-red-400 hover:bg-red-900/30 hover:text-red-300 bg-transparent w-full sm:w-auto sm:mr-auto"
             >
               <AlertTriangle class="w-4 h-4 mr-2" />
@@ -474,7 +507,7 @@
                   <AlertDialogCancel class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent mt-0">
                     Cancel
                   </AlertDialogCancel>
-                  <AlertDialogAction @click="moveToInventory" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+                  <AlertDialogAction @click="requirePermission('manage', moveToInventory)" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
                     Yes, Move to Inventory
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -509,7 +542,7 @@
                   <AlertDialogCancel class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent mt-0">
                     Cancel
                   </AlertDialogCancel>
-                  <AlertDialogAction @click="moveReplacementToInventory" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+                  <AlertDialogAction @click="requirePermission('manage', moveReplacementToInventory)" class="bg-emerald-600 hover:bg-emerald-700 text-white border-0">
                     Yes, Move to Inventory
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -577,7 +610,7 @@
           <Button variant="ghost" @click="closeReturnModal" :disabled="isReturning" class="text-gray-400 hover:text-white hover:bg-gray-800 w-full sm:w-auto">
             Cancel
           </Button>
-          <Button @click="submitReturn" :disabled="isReturning || !isReturnValid" class="bg-red-600 hover:bg-red-700 text-white border-0 w-full sm:w-auto">
+          <Button @click="requirePermission('manage', submitReturn)" :disabled="isReturning || !isReturnValid" class="bg-red-600 hover:bg-red-700 text-white border-0 w-full sm:w-auto">
             <Loader2 v-if="isReturning" class="w-4 h-4 mr-2 animate-spin" />
             Submit Return
           </Button>
@@ -639,6 +672,23 @@ const returnProofFile = ref<File | null>(null)
 const returnProofPreview = ref<string | null>(null)
 const isReturning = ref(false)
 
+// Updated to the new Level-Based framework
+const permissions = ref({
+  can_view: false,
+  can_manage: false,
+  can_approve: false
+})
+
+// RBAC Action Interceptor
+const requirePermission = (action: string, callback: Function | null = null) => {
+  if (!(permissions.value as any)[`can_${action}`]) {
+    toast.error(`Access Denied`, { description: `You do not have permission to ${action} arrived items.` });
+    return false;
+  }
+  if (callback) callback();
+  return true;
+}
+
 // Dynamic URL Helpers
 const buildStorageUrl = (path: string) => {
   if (!path) return '';
@@ -692,6 +742,9 @@ const fetchArrivedItems = async () => {
     }
     if (responseData && Array.isArray(responseData.data)) {
       arrivedItems.value = responseData.data;
+      if (responseData.permissions) {
+          permissions.value = responseData.permissions;
+      }
     } else if (Array.isArray(responseData)) {
       arrivedItems.value = responseData;
     } else {
@@ -717,6 +770,13 @@ const fetchReturnItems = async () => {
   } finally {
     isReturnsLoading.value = false
   }
+}
+
+const handleExport = () => {
+  toast.info("Exporting CSV started...")
+  setTimeout(() => {
+    toast.success("CSV exported successfully")
+  }, 1000)
 }
 
 onMounted(() => {

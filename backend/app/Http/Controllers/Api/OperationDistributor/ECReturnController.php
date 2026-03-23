@@ -15,10 +15,20 @@ class ECReturnController extends Controller
 {
     private function getPermissions($user, $permissionKey)
     {
-        $defaults = ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false];
+        $defaults = [
+            'is_granted' => false,
+            'can_view' => false, 
+            'can_manage' => false, 
+            'can_approve' => false
+        ];
 
         if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
-            return ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true];
+            return [
+                'is_granted' => true,
+                'can_view' => true, 
+                'can_manage' => true, 
+                'can_approve' => true
+            ];
         }
 
         if ($user->role === 'employee') {
@@ -31,7 +41,6 @@ class ECReturnController extends Controller
                 ->first();
             if (!$position) return $defaults;
 
-            // FIXED: Changed 'module_name' to 'permission_key' to match your database schema
             $access = DB::table('position_accessibilities')
                 ->where('position_id', $position->id)
                 ->where('permission_key', $permissionKey) 
@@ -39,10 +48,10 @@ class ECReturnController extends Controller
 
             if ($access) {
                 return [
+                    'is_granted' => (bool) $access->is_granted,
                     'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete
+                    'can_manage' => (bool) $access->can_manage,
+                    'can_approve' => (bool) $access->can_approve
                 ];
             }
         }
@@ -125,7 +134,7 @@ class ECReturnController extends Controller
     public function approveReturn(Request $request, $id)
     {
         $user = $request->user();
-        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_update')) {
+        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_approve')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 
@@ -150,7 +159,7 @@ class ECReturnController extends Controller
     public function rejectReturn(Request $request, $id)
     {
         $user = $request->user();
-        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_update')) {
+        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_approve')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 
@@ -175,7 +184,7 @@ class ECReturnController extends Controller
     public function receiveItemAndRequestRefund(Request $request, $id)
     {
         $user = $request->user();
-        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_update')) {
+        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_manage')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 
@@ -252,7 +261,7 @@ class ECReturnController extends Controller
     public function sendReturnMessage(Request $request, $id)
     {
         $user = $request->user();
-        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_update')) {
+        if (!$this->checkRbacAccess($user, 'ec_returns', 'can_manage')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 

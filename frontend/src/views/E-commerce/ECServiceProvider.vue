@@ -1,6 +1,11 @@
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen text-slate-200 relative">
-    <Toaster richColors position="top-right" expand />
+    <Teleport to="body">
+      <Toaster richColors position="top-right"
+      :expand="false"
+      :close-button="true"
+      :visible-toasts="1"/>
+    </Teleport>
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
@@ -269,14 +274,14 @@
               <Button 
                 variant="outline" 
                 class="w-full sm:w-auto border-red-900/50 bg-red-950/20 text-red-400 hover:bg-red-900/40 hover:text-red-300"
-                @click="requirePermission('update', initiateReject)"
+                @click="requirePermission('approve', initiateReject)"
               >
                 <X class="mr-2 h-4 w-4" />
                 Decline
               </Button>
               <Button 
                 class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
-                @click="requirePermission('update', initiateApprove)"
+                @click="requirePermission('approve', initiateApprove)"
                 :disabled="!agreedToTerms"
               >
                 <Check class="mr-2 h-4 w-4" />
@@ -397,9 +402,8 @@ const rejectReason = ref('')
 // User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

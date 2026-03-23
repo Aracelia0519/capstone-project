@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
-import { Toaster, toast } from 'vue-sonner' // <-- Updated import
+import { Toaster, toast } from 'vue-sonner' 
 import { 
   Check, 
   Clock, 
@@ -89,12 +89,11 @@ const showConfirmDialog = ref(false)
 const orderToConfirm = ref<Order | null>(null)
 const showMobileSheet = ref(false)
 
-// User Permissions setup via RBAC
+// Updated to the new Level-Based Permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
@@ -384,7 +383,7 @@ onMounted(() => {
                     <Badge class="capitalize text-[8px] px-1 py-0 h-4 bg-gray-800 text-gray-300 border-gray-700">
                       {{ order.status }}
                     </Badge>
-                    <span class="text-gray-300">{{ order.order_number }}</span>
+                    <h2 class="text-gray-300">{{ order.order_number }}</h2>
                   </div>
                   <span class="font-medium text-gray-400">{{ formatCurrency(order.grand_total) }}</span>
                 </button>
@@ -471,9 +470,9 @@ onMounted(() => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent class="pt-4">
-                  <p class="text-sm text-gray-300 leading-relaxed font-medium">
+                  <h2 class="text-sm text-gray-300 leading-relaxed font-medium">
                       {{ selectedOrder.delivery_address || 'No address provided.' }}
-                  </p>
+                  </h2>
                 </CardContent>
               </Card>
             </div>
@@ -498,9 +497,9 @@ onMounted(() => {
                              <div class="font-medium text-gray-200">{{ item.name }}</div>
                              <div class="text-xs text-white">{{ item.category }}</div>
                           </TableCell>
-                          <TableCell class="text-right text-gray-300">{{ item.quantity }}</TableCell>
-                          <TableCell class="text-right text-gray-300">{{ formatCurrency(item.unit_price) }}</TableCell>
-                          <TableCell class="text-right font-medium text-gray-200">{{ formatCurrency(item.total) }}</TableCell>
+                          <TableCell class="text-right text-white">{{ item.quantity }}</TableCell>
+                          <TableCell class="text-right text-white">{{ formatCurrency(item.unit_price) }}</TableCell>
+                          <TableCell class="text-right font-medium text-white">{{ formatCurrency(item.total) }}</TableCell>
                        </TableRow>
                     </TableBody>
                  </Table>
@@ -515,16 +514,16 @@ onMounted(() => {
                     <span class="text-white">{{ formatCurrency(selectedOrder.shipping_fee) }}</span>
                  </div>
                  <Separator class="bg-gray-800 w-full md:w-64 my-1" />
-                 <div class="flex items-center gap-4 text-lg font-bold w-full md:w-64 justify-between">
-                    <span class="text-white">Grand Total:</span>
-                    <span class="text-blue-400">{{ formatCurrency(selectedOrder.grand_total) }}</span>
+                 <div class="flex w-full justify-between items-center font-bold text-lg mt-1">
+                    <span class="text-white">Total</span>
+                    <h2 class="text-blue-400">{{ formatCurrency(selectedOrder.grand_total) }}</h2>
                  </div>
               </CardFooter>
             </Card>
 
             <div v-if="selectedOrder.status === 'pending'" class="mt-8 flex justify-end">
               <Button 
-                @click="requirePermission('update', () => openConfirmDialog(selectedOrder))" 
+                @click="requirePermission('approve', () => openConfirmDialog(selectedOrder))" 
                 :disabled="isProcessing"
                 class="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-8"
                 size="lg"
@@ -730,7 +729,7 @@ onMounted(() => {
 
           <div v-if="selectedOrder.status === 'pending'" class="mt-6">
             <Button 
-              @click="requirePermission('update', () => openConfirmDialog(selectedOrder))" 
+              @click="requirePermission('approve', () => openConfirmDialog(selectedOrder))" 
               :disabled="isProcessing"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white"
               size="lg"

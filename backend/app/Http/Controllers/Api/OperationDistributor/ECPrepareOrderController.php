@@ -13,24 +13,22 @@ use Illuminate\Support\Facades\DB;
 class ECPrepareOrderController extends Controller
 {
     /**
-     * Retrieves the specific permissions for a user on a given module.
+     * Retrieves the specific permissions for a user on a given module (Level-Based).
      */
     private function getPermissions($user, $permissionKey)
     {
         $defaults = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         // Main distributors and head operational distributors automatically have full access
-        if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
+        if ($user->role === 'admin' || $user->role === 'distributor' || $user->role === 'operational_distributor') {
             return [
                 'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
+                'can_manage' => true,
+                'can_approve' => true
             ];
         }
 
@@ -53,9 +51,8 @@ class ECPrepareOrderController extends Controller
             if ($access) {
                 return [
                     'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
+                    'can_manage' => (bool) $access->can_manage,
+                    'can_approve' => (bool) $access->can_approve,
                 ];
             }
         }
@@ -161,7 +158,7 @@ class ECPrepareOrderController extends Controller
         $user = $request->user();
 
         // Quick check to ensure user has any sort of access to this module
-        if (!$this->checkRbacAccess($user, 'ec_prepare_order', 'can_view') && !$this->checkRbacAccess($user, 'ec_prepare_order', 'can_update')) {
+        if (!$this->checkRbacAccess($user, 'ec_prepare_order', 'can_view') && !$this->checkRbacAccess($user, 'ec_prepare_order', 'can_manage')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 
@@ -200,8 +197,8 @@ class ECPrepareOrderController extends Controller
     // Assign the Delivery Personnel and update Status
     public function dispatchOrder(Request $request, $id)
     {
-        // Hard backend RBAC check for performing the update
-        if (!$this->checkRbacAccess($request->user(), 'ec_prepare_order', 'can_update')) {
+        // Hard backend RBAC check for performing the update (Requires Manage level)
+        if (!$this->checkRbacAccess($request->user(), 'ec_prepare_order', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to dispatch orders.'], 403);
         }
 

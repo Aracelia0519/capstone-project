@@ -8,7 +8,7 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Inventory Management</h1>
-          <p class="text-gray-300">Manage your available stock and deploy products to the E-commerce store.</p>
+          <h2 class="text-gray-300">Manage your available stock and deploy products to the E-commerce store.</h2>
         </div>
         <div class="flex items-center gap-3 mt-4 md:mt-0">
           <Button 
@@ -22,7 +22,7 @@
             Refresh Data
           </Button>
           <Button 
-            @click="requirePermission('create', handleAddProduct)"
+            @click="requirePermission('manage', handleAddProduct)"
             class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0"
           >
             <Plus class="w-5 h-5 mr-2" />
@@ -35,13 +35,13 @@
     <div class="flex space-x-2 mb-6 bg-gray-900/50 p-1.5 rounded-lg border border-gray-800 w-fit">
       <button 
         @click="activeTab = 'active'" 
-        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-800']"
+        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
         Active Inventory ({{ inventoryItems.length }})
       </button>
       <button 
         @click="activeTab = 'inactive'" 
-        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'inactive' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-gray-800']"
+        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'inactive' ? 'bg-red-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
         Inactive Products ({{ inactiveItems.length }})
       </button>
@@ -54,7 +54,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ inventoryItems.length }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Total Unique Products</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Total Unique Products</h2></CardDescription>
         </CardHeader>
       </Card>
       
@@ -64,7 +64,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ totalStock }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Total Units in Stock</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Total Units in Stock</h2></CardDescription>
         </CardHeader>
       </Card>
 
@@ -74,7 +74,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ lowStockCount }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Low Stock Alerts</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Low Stock Alerts</h2></CardDescription>
         </CardHeader>
       </Card>
 
@@ -84,7 +84,7 @@
             <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
             <span v-else>{{ deployedCount }}</span>
           </CardTitle>
-          <CardDescription class="text-gray-300">Deployed to E-commerce</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Deployed to E-commerce</h2></CardDescription>
         </CardHeader>
       </Card>
     </div>
@@ -105,7 +105,7 @@
           
           <div v-if="activeTab === 'active'" class="flex items-center gap-2">
             <Badge variant="outline" class="bg-gray-800 border-gray-700 text-gray-300 cursor-pointer hover:bg-gray-700">All Items</Badge>
-            <Badge variant="outline" class="bg-transparent border-gray-700 text-gray-500 cursor-pointer hover:text-gray-300">Low Stock</Badge>
+            <Badge variant="outline" class="bg-transparent border-gray-700 text-gray-500 cursor-pointer hover:text-gray-300"><h2>Low Stock</h2></Badge>
           </div>
         </div>
 
@@ -148,13 +148,13 @@
               >
                 <TableCell>
                   <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-md bg-gray-800 border border-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-md bg-gray-800 border-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
                       <img v-if="item.image_url" :src="item.image_url" class="w-full h-full object-cover" />
                       <Package v-else class="w-5 h-5 text-gray-500" />
                     </div>
                     <div class="flex flex-col">
                       <span class="font-bold text-white">{{ item.name }}</span>
-                      <span class="text-xs text-gray-400 mt-0.5">SKU: {{ item.sku_code }}</span>
+                      <h2 class="text-xs text-gray-400 mt-0.5">SKU: {{ item.sku_code }}</h2>
                     </div>
                   </div>
                 </TableCell>
@@ -209,8 +209,8 @@
                     size="sm" 
                     class="text-blue-400 hover:text-white hover:bg-blue-600/20"
                   >
-                    <Eye class="w-4 h-4 mr-2" />
-                    View Details
+                    <h2><Eye class="w-4 h-4 mr-2" /></h2>
+                    <h2>View Details</h2>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -219,9 +219,9 @@
         </div>
 
         <div class="p-4 border-t border-gray-800 flex items-center justify-between text-sm text-gray-400">
-          <div>
+          <h2>
             Showing <span class="text-white font-medium">{{ currentFilteredItems.length > 0 ? 1 : 0 }}</span> to <span class="text-white font-medium">{{ currentFilteredItems.length }}</span> of <span class="text-white font-medium">{{ activeTab === 'active' ? inventoryItems.length : inactiveItems.length }}</span> items
-          </div>
+          </h2>
         </div>
       </CardContent>
     </Card>
@@ -339,7 +339,7 @@
           <Button 
             v-if="activeTab === 'inactive' && selectedItem"
             :disabled="isProcessing"
-            @click="requirePermission('update', () => { actionQuantity = selectedItem.quantity; isReactivateConfirmOpen = true; })"
+            @click="requirePermission('manage', () => { actionQuantity = selectedItem.quantity; isReactivateConfirmOpen = true; })"
             class="bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-lg"
           >
             <Loader2 v-if="isProcessing" class="w-4 h-4 mr-2 animate-spin" />
@@ -350,7 +350,7 @@
           <template v-else-if="selectedItem">
             <Button 
               :disabled="isProcessing"
-              @click="requirePermission('update', () => { actionQuantity = selectedItem.quantity; isDeactivateConfirmOpen = true; })"
+              @click="requirePermission('manage', () => { actionQuantity = selectedItem.quantity; isDeactivateConfirmOpen = true; })"
               class="bg-red-600/80 hover:bg-red-600 text-white border-0 mr-auto"
             >
               <PackageX class="w-4 h-4 mr-2" />
@@ -360,7 +360,7 @@
             <Button 
               v-if="selectedItem.ecommerce_status === 'not_deployed'"
               :disabled="isProcessing"
-              @click="requirePermission('update', () => isDeployConfirmOpen = true)"
+              @click="requirePermission('manage', () => isDeployConfirmOpen = true)"
               class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:opacity-90 border-0 shadow-lg shadow-indigo-500/20"
             >
               <Loader2 v-if="isProcessing" class="w-4 h-4 mr-2 animate-spin" />
@@ -498,12 +498,11 @@ const isDeployConfirmOpen = ref(false)
 const isDeactivateConfirmOpen = ref(false)
 const isReactivateConfirmOpen = ref(false)
 
-// User Permissions setup via RBAC
+// User Permissions setup via Level-Based RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

@@ -13,60 +13,50 @@ use Illuminate\Support\Facades\DB;
 class PartnerSupplierController extends Controller
 {
     /**
-     * Retrieves the specific permissions for a user on a given module.
+     * Fetch RBAC permissions for the logged-in user (Level-Based).
      */
-    private function getPermissions($user, $permissionKey)
+    private function getPermissions($user)
     {
-        $defaults = [
-            'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+        $defaultPermissions = [
+            'can_view' => true,
+            'can_manage' => true,
+            'can_approve' => true
         ];
 
-        // Main distributors and head operational distributors automatically have full access
-        if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
-            return [
-                'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
-            ];
+        // Non-employees bypass this specific RBAC check and get full access
+        if ($user->role !== 'employee') {
+            return $defaultPermissions;
         }
 
-        // Check RBAC for standard employees
-        if ($user->role === 'employee') {
-            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
-            if (!$employee) return $defaults;
+        $noAccess = [
+            'can_view' => false,
+            'can_manage' => false,
+            'can_approve' => false
+        ];
 
-            $position = DB::table('positions')
-                ->where('title', $employee->position)
-                ->where('distributor_id', $employee->parent_distributor_id)
-                ->first();
-            if (!$position) return $defaults;
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if (!$employee) return $noAccess;
 
-            $access = DB::table('position_accessibilities')
-                ->where('position_id', $position->id)
-                ->where('permission_key', $permissionKey)
-                ->first();
+        $position = DB::table('positions')
+            ->where('title', $employee->position)
+            ->where('distributor_id', $employee->parent_distributor_id)
+            ->first();
 
-            if ($access) {
-                return [
-                    'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
-                ];
-            }
-        }
+        if (!$position) return $noAccess;
 
-        return $defaults;
-    }
+        // Fetch using the newly updated permission format with the 'ec_partner_supplier' key
+        $access = DB::table('position_accessibilities')
+            ->where('position_id', $position->id)
+            ->where('permission_key', 'ec_partner_supplier')
+            ->first();
 
-    private function checkRbacAccess($user, $permissionKey, $action)
-    {
-        $permissions = $this->getPermissions($user, $permissionKey);
-        return $permissions[$action] ?? false;
+        if (!$access || !$access->is_granted) return $noAccess;
+
+        return [
+            'can_view' => (bool)$access->can_view,
+            'can_manage' => (bool)$access->can_manage,
+            'can_approve' => (bool)$access->can_approve,
+        ];
     }
 
     /**
@@ -77,8 +67,8 @@ class PartnerSupplierController extends Controller
         try {
             $user = Auth::user();
 
-            // Get permissions and check RBAC Read Access using 'ec_partner_supplier'
-            $permissions = $this->getPermissions($user, 'ec_partner_supplier');
+            // Get permissions and check Level-Based RBAC Read Access
+            $permissions = $this->getPermissions($user);
             
             if (!$permissions['can_view']) {
                 return response()->json(['message' => 'Access Denied: You do not have permission to view partner suppliers.'], 403);
@@ -184,8 +174,11 @@ class PartnerSupplierController extends Controller
      */
     public function store(Request $request)
     {
-        // Hard backend RBAC check for creating requests
-        if (!$this->checkRbacAccess($request->user(), 'ec_partner_supplier', 'can_create')) {
+        $user = Auth::user();
+        
+        // Level-Based backend RBAC check for creating requests (maps to 'manage')
+        $permissions = $this->getPermissions($user);
+        if (!$permissions['can_manage']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to request partnerships.'], 403);
         }
 
@@ -195,8 +188,6 @@ class PartnerSupplierController extends Controller
         ]);
 
         try {
-            $user = Auth::user();
-
             // Logic to get Distributor ID (Parent)
             $distributorId = null;
 

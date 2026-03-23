@@ -21,7 +21,8 @@ import { Package, Search, CheckCircle2, XCircle, RotateCcw, Truck, MessageSquare
 const props = defineProps({ user: { type: Object, required: true } })
 
 const returnRequests = ref([])
-const permissions = ref({ can_view: false, can_create: false, can_update: false, can_delete: false })
+// RECONSTRUCTED RBAC
+const permissions = ref({ is_granted: false, can_view: false, can_manage: false, can_approve: false })
 const distributorId = ref(null)
 const isLoading = ref(true)
 const searchQuery = ref('')
@@ -325,7 +326,7 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Returns & Refunds</h1>
-          <p class="text-gray-300">Manage client product returns, chat, and request finance refunds.</p>
+          <h2 class="text-gray-300">Manage client product returns, chat, and request finance refunds.</h2>
         </div>
       </div>
     </div>
@@ -433,8 +434,8 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
                         <td class="p-4 text-gray-300 text-sm max-w-[200px] truncate" :title="req.order_item?.product?.name">
                             {{ req.order_item?.product?.name || 'Unknown Product' }}
                         </td>
-                        <td class="p-4 text-gray-400 text-sm truncate max-w-[150px]">{{ req.reason }}</td>
-                        <td class="p-4 text-gray-400 text-sm">{{ formatDate(req.created_at) }}</td>
+                        <td class="p-4 text-gray-400 text-sm truncate max-w-[150px]"><h2>{{ req.reason }}</h2></td>
+                        <td class="p-4 text-gray-400 text-sm"><h2>{{ formatDate(req.created_at) }}</h2></td>
                         <td class="p-4">
                             <Badge :class="getStatusBadge(req.status)" class="border-0 uppercase tracking-wider text-[10px] font-bold px-2 py-1">{{ req.status }}</Badge>
                         </td>
@@ -507,11 +508,11 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
 
             <div class="p-6 border-t border-gray-800 bg-gray-800/30">
                 <div v-if="selectedReturn?.status === 'pending'" class="flex gap-3">
-                    <Button @click="updateStatus(selectedReturn.id, 'reject')" :disabled="isUpdatingStatus || !permissions.can_update" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/20 bg-gray-900"><XCircle class="w-4 h-4 mr-2"/> Reject</Button>
-                    <Button @click="updateStatus(selectedReturn.id, 'approve')" :disabled="isUpdatingStatus || !permissions.can_update" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-lg shadow-emerald-900/20"><CheckCircle2 class="w-4 h-4 mr-2"/> Approve Return</Button>
+                    <Button @click="updateStatus(selectedReturn.id, 'reject')" :disabled="isUpdatingStatus || !permissions.can_approve" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/20 bg-gray-900"><XCircle class="w-4 h-4 mr-2"/> Reject</Button>
+                    <Button @click="updateStatus(selectedReturn.id, 'approve')" :disabled="isUpdatingStatus || !permissions.can_approve" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-lg shadow-emerald-900/20"><CheckCircle2 class="w-4 h-4 mr-2"/> Approve Return</Button>
                 </div>
                 <div v-else-if="selectedReturn?.status === 'shipped'">
-                    <Button @click="() => { isDetailsModalOpen = false; openRefundModal(selectedReturn); }" :disabled="!permissions.can_update" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-12 text-md font-bold shadow-lg shadow-emerald-900/20">
+                    <Button @click="() => { isDetailsModalOpen = false; openRefundModal(selectedReturn); }" :disabled="!permissions.can_manage" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-12 text-md font-bold shadow-lg shadow-emerald-900/20">
                         <Package class="w-5 h-5 mr-2"/> Mark Received & Request Refund
                     </Button>
                 </div>
@@ -622,7 +623,7 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
                             </div>
                         </div>
 
-                        <div v-if="['pending', 'approved', 'shipped'].includes(activeChatReq.status) && permissions.can_update" class="p-3 bg-gray-800/80 border-t border-gray-700 shrink-0 flex items-end gap-2">
+                        <div v-if="['pending', 'approved', 'shipped'].includes(activeChatReq.status) && permissions.can_manage" class="p-3 bg-gray-800/80 border-t border-gray-700 shrink-0 flex items-end gap-2">
                             <input type="file" id="chatImg" accept="image/*" class="hidden" @change="handleChatImageUpload" />
                             <label for="chatImg" class="cursor-pointer p-3 rounded-full text-gray-400 hover:bg-gray-700 shrink-0 transition-colors" :class="{'text-emerald-400 bg-emerald-500/20': chatImageFile}"><Paperclip class="w-5 h-5" /></label>
                             <div class="flex-1 bg-gray-900 rounded-2xl border border-gray-700 focus-within:border-emerald-500 flex items-center overflow-hidden transition-colors">

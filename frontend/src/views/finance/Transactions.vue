@@ -181,7 +181,7 @@
 
       <div v-if="filteredTransactions.length === 0 && !loading" class="py-12 text-center">
         <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
         <p class="text-gray-500">Try adjusting your filters.</p>
@@ -243,8 +243,8 @@
           <Button variant="outline" @click="closeModal" class="border-slate-300 text-slate-700">Close</Button>
           
           <template v-if="selectedTransaction.status === 'pending'">
-            <Button variant="outline" @click="requirePermission('update', initiateReject)" class="text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
-            <Button @click="requirePermission('update', initiateProcess)" class="bg-blue-600 hover:bg-blue-700 text-white" :disabled="isProcessing">
+            <Button variant="outline" @click="requirePermission('approve', initiateReject)" class="text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
+            <Button @click="requirePermission('approve', initiateProcess)" class="bg-blue-600 hover:bg-blue-700 text-white" :disabled="isProcessing">
               <span v-if="isProcessing" class="mr-2 animate-spin">◷</span>
               Proceed to GCash
             </Button>
@@ -306,11 +306,11 @@ const filters = ref({
   search: ''
 })
 
+// Updated to the new Level-based permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 const alertOpen = ref(false)
@@ -322,7 +322,7 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
-// RBAC
+// RBAC Interceptor
 const requirePermission = (action, callback) => {
   if (!permissions.value['can_' + action]) {
     toast.error(`Access Denied`, { description: `You do not have permission to ${action} transactions.` });

@@ -1,6 +1,9 @@
 <template>
   <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8 relative">
-    <Toaster richColors position="top-right" expand />
+    <Teleport to="body">
+      <Toaster richColors position="top-right" expand />
+    </Teleport>
+    
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
@@ -9,7 +12,7 @@
         </h1>
         <p class="text-sm md:text-base text-gray-400">Increase sales through targeted promotions and discounts</p>
       </div>
-      <Button v-if="permissions.can_create" 
+      <Button v-if="permissions.can_manage" 
               @click="showCreateModal = true" 
               class="w-full md:w-auto bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 hover:from-orange-400 hover:to-red-400 transition-all duration-300 shadow-lg shadow-orange-500/20 rounded-lg px-6">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,8 +34,8 @@
             <span class="text-[10px] md:text-xs font-semibold px-2.5 py-1 bg-black/40 rounded-full text-orange-400 border border-orange-500/20">Total</span>
           </div>
           <div>
-            <p class="text-2xl md:text-3xl font-bold text-white mb-1">{{ promotions.length }}</p>
-            <p class="text-xs md:text-sm text-gray-400 font-medium">Total Promotions</p>
+            <h3 class="text-2xl md:text-3xl font-bold text-white mb-1">{{ promotions.length }}</h3>
+            <h3 class="text-xs md:text-sm text-gray-400 font-medium">Total Promotions</h3>
           </div>
         </CardContent>
       </Card>
@@ -48,8 +51,8 @@
             <span class="text-[10px] md:text-xs font-semibold px-2.5 py-1 bg-black/40 rounded-full text-green-400 border border-green-500/20">Active</span>
           </div>
           <div>
-            <p class="text-2xl md:text-3xl font-bold text-white mb-1">{{ activePromotions }}</p>
-            <p class="text-xs md:text-sm text-gray-400 font-medium">Currently Active</p>
+            <h3 class="text-2xl md:text-3xl font-bold text-white mb-1">{{ activePromotions }}</h3>
+            <h3 class="text-xs md:text-sm text-gray-400 font-medium">Currently Active</h3>
           </div>
         </CardContent>
       </Card>
@@ -65,8 +68,8 @@
             <span class="text-[10px] md:text-xs font-semibold px-2.5 py-1 bg-black/40 rounded-full text-blue-400 border border-blue-500/20">Pending</span>
           </div>
           <div>
-            <p class="text-2xl md:text-3xl font-bold text-white mb-1">{{ pendingPromotions }}</p>
-            <p class="text-xs md:text-sm text-gray-400 font-medium">Pending Approval</p>
+            <h3 class="text-2xl md:text-3xl font-bold text-white mb-1">{{ pendingPromotions }}</h3>
+            <h3 class="text-xs md:text-sm text-gray-400 font-medium">Pending Approval</h3>
           </div>
         </CardContent>
       </Card>
@@ -82,8 +85,8 @@
             <span class="text-[10px] md:text-xs font-semibold px-2.5 py-1 bg-black/40 rounded-full text-purple-400 border border-purple-500/20">Uses</span>
           </div>
           <div>
-            <p class="text-2xl md:text-3xl font-bold text-white mb-1">{{ totalUses }}</p>
-            <p class="text-xs md:text-sm text-gray-400 font-medium">Total Code Uses</p>
+            <h3 class="text-2xl md:text-3xl font-bold text-white mb-1">{{ totalUses }}</h3>
+            <h3 class="text-xs md:text-sm text-gray-400 font-medium">Total Code Uses</h3>
           </div>
         </CardContent>
       </Card>
@@ -109,7 +112,7 @@
         
         <div v-else class="overflow-x-auto">
           <table class="w-full text-left text-sm text-gray-300 min-w-[800px]">
-            <thead class="bg-black/40 text-xs uppercase font-semibold text-gray-400 tracking-wider">
+            <thead class="bg-black/40 text-xs uppercase font-semibold text-white tracking-wider">
               <tr>
                 <th class="px-6 py-5">Promotion Name</th>
                 <th class="px-6 py-5">Type & Discount</th>
@@ -124,11 +127,11 @@
               <tr v-for="promo in filteredPromotions" :key="promo.id" class="hover:bg-white/[0.02] transition-colors group">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="font-semibold text-gray-100 group-hover:text-white transition-colors">{{ promo.name }}</div>
-                  <div class="text-xs text-gray-500 mt-0.5" v-if="promo.product">For: {{ promo.product.name }}</div>
+                  <h3 class="text-xs text-gray-500 mt-0.5" v-if="promo.product">For: {{ promo.product.name }}</h3>
                   <div class="text-[11px] text-gray-500 mt-0.5 uppercase tracking-wider font-semibold" v-else>Storewide Promotion</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-xs text-gray-400 mb-1">{{ formatPromoType(promo.type) }}</div>
+                  <h3 class="text-xs text-gray-400 mb-1">{{ formatPromoType(promo.type) }}</h3>
                   <div class="text-orange-400 font-bold bg-orange-400/10 inline-block px-2 py-0.5 rounded text-xs">{{ formatDiscount(promo) }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -141,7 +144,7 @@
                     <div class="flex-1 w-24 bg-gray-800 rounded-full h-1.5 overflow-hidden">
                       <div class="bg-gradient-to-r from-orange-500 to-red-500 h-1.5 rounded-full" :style="`width: ${(promo.used_count / promo.usage_limit) * 100}%`"></div>
                     </div>
-                    <div class="text-xs font-medium text-gray-400">{{ promo.used_count }}/{{ promo.usage_limit }}</div>
+                    <h3 class="text-xs font-medium text-gray-400">{{ promo.used_count }}/{{ promo.usage_limit }}</h3>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -155,10 +158,10 @@
                   <span 
                     class="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm"
                     :class="{
-                      'bg-green-500/10 text-green-400 border border-green-500/20': promo.status === 'active',
-                      'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20': promo.status === 'pending',
-                      'bg-red-500/10 text-red-400 border border-red-500/20': promo.status === 'rejected',
-                      'bg-gray-500/10 text-gray-400 border border-gray-500/20': promo.status === 'inactive'
+                      'bg-green-500/10 text-green-600 border border-green-500/20': promo.status === 'active',
+                      'bg-yellow-500/10 text-yellow-600 border border-yellow-500/20': promo.status === 'pending',
+                      'bg-red-500/10 text-red-600 border border-red-500/20': promo.status === 'rejected',
+                      'bg-gray-500/10 text-gray-600 border border-gray-500/20': promo.status === 'inactive'
                     }"
                   >
                     {{ promo.status }}
@@ -359,9 +362,8 @@ const isCodeManuallyEdited = ref(false)
 // User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 const generateRandomSuffix = () => {
@@ -534,7 +536,7 @@ const handleFormSubmit = () => {
 
 const submitPromotion = async () => {
   // FINAL HARD STOP on the frontend before interacting with the API
-  if (!permissions.value.can_create) {
+  if (!permissions.value.can_manage) {
      toast.error('Access Denied', {
         description: 'You do not have permission to create promotions.',
         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }

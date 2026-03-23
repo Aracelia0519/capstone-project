@@ -638,7 +638,7 @@ onUnmounted(() => {
               <Truck class="h-5 w-5 text-emerald-400" />
             </div>
             <div class="min-w-0">
-               <h1 class="font-bold text-white text-sm md:text-base truncate">E-Commerce Routing</h1>
+               <span class="font-bold text-white text-sm md:text-base truncate">E-Commerce Routing</span>
                <p class="text-xs text-gray-400 truncate">{{ pendingDeliveries.length }} Pending Stops</p>
             </div>
           </div>
@@ -668,9 +668,9 @@ onUnmounted(() => {
         :style="{ transform: isDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }"
       >
         <div class="pt-6 pb-2 px-4 flex justify-between items-center border-b border-gray-800 mx-4 md:mx-6 shrink-0">
-           <h2 class="text-lg font-bold text-white tracking-tight">
+           <div class="text-lg font-bold text-white tracking-tight">
               {{ activeDeliveryId ? 'Delivery Actions' : 'Assigned Routes' }}
-           </h2>
+           </div>
            <Button variant="ghost" size="icon" @click="isDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8">
              <X class="w-4 h-4" />
            </Button>

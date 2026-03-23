@@ -4,10 +4,10 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Payment Management</h1>
-          <p class="text-gray-300">Manage customer payments securely and efficiently</p>
+          <h2 class="text-gray-300">Manage customer payments securely and efficiently</h2>
         </div>
         <div class="mt-4 md:mt-0 flex space-x-3">
-          <Button @click="openSettings" class="bg-gray-800 text-white border border-gray-700 hover:bg-gray-700">
+          <Button v-if="userAccess.can_manage" @click="openSettings" class="bg-gray-800 text-white border border-gray-700 hover:bg-gray-700">
             <Settings class="w-5 h-5 mr-2" />
             Payment Settings
           </Button>
@@ -26,30 +26,40 @@
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
     </div>
 
+    <div v-else-if="!userAccess.can_view" class="text-center py-20">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-4">
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">Access Denied</h2>
+      <p class="text-gray-400">You do not have permission to view the Payment Management module.</p>
+    </div>
+
     <div v-else>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card class="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-gray-800 text-white">
           <CardContent class="p-4">
-            <div class="text-2xl font-bold mb-1">₱{{ totalRevenue.toLocaleString() }}</div>
-            <div class="text-sm text-gray-300">Total Revenue</div>
+            <h2 class="text-2xl font-bold mb-1">₱{{ totalRevenue.toLocaleString() }}</h2>
+            <h2 class="text-sm text-gray-300">Total Revenue</h2>
           </CardContent>
         </Card>
         <Card class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-gray-800 text-white">
           <CardContent class="p-4">
-            <div class="text-2xl font-bold mb-1">{{ completedPayments }}</div>
-            <div class="text-sm text-gray-300">Completed</div>
+            <h2 class="text-2xl font-bold mb-1">{{ completedPayments }}</h2>
+            <h2 class="text-sm text-gray-300">Completed</h2>
           </CardContent>
         </Card>
         <Card class="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-gray-800 text-white">
           <CardContent class="p-4">
-            <div class="text-2xl font-bold mb-1">{{ pendingPayments }}</div>
-            <div class="text-sm text-gray-300">Pending</div>
+            <h2 class="text-2xl font-bold mb-1">{{ pendingPayments }}</h2>
+            <h2 class="text-sm text-gray-300">Pending</h2>
           </CardContent>
         </Card>
         <Card class="bg-gradient-to-br from-red-500/20 to-pink-500/20 border-gray-800 text-white">
           <CardContent class="p-4">
-            <div class="text-2xl font-bold mb-1">{{ refundedPayments }}</div>
-            <div class="text-sm text-gray-300">Refunded</div>
+            <h2 class="text-2xl font-bold mb-1">{{ refundedPayments }}</h2>
+            <h2 class="text-sm text-gray-300">Refunded</h2>
           </CardContent>
         </Card>
       </div>
@@ -467,6 +477,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+// RBAC States - Assumes they have access until the backend rejects them via 403
+const userAccess = ref({
+  can_view: true,
+  can_manage: false,
+  can_approve: false
+})
+
 // States
 const payments = ref([])
 const isLoading = ref(true)
@@ -502,16 +519,27 @@ const methodColors = {
   'Pick-Up': 'bg-gradient-to-r from-amber-500 to-orange-500'
 }
 
-// Fetch Backend Data
+// Fetch Backend Data + Automatic Permissions Setup
 const fetchPayments = async () => {
   try {
     isLoading.value = true
     const response = await api.get('/operation-distributor/payments')
     if (response.data.success) {
       payments.value = response.data.data
+      
+      // Inject permissions returned directly from the backend
+      if (response.data.permissions) {
+          userAccess.value = response.data.permissions;
+      }
     }
   } catch (error) {
     console.error("Error fetching payment data:", error)
+    if(error.response?.status === 403) {
+       // Only block view if backend explicitly says they are unauthorized
+       userAccess.value.can_view = false;
+    } else {
+       toast.error("Failed to load payment data. Please try again later.");
+    }
   } finally {
     isLoading.value = false
   }
@@ -536,6 +564,10 @@ const fetchPaymentSettings = async () => {
 
 // Modal Toggle Handlers
 const openSettings = () => {
+  if (!userAccess.value.can_manage) {
+    toast.error("You do not have permission to manage Payment Settings.");
+    return;
+  }
   fetchPaymentSettings()
   isSettingsModalOpen.value = true
 }

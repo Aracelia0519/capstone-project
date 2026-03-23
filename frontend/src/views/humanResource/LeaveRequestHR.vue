@@ -62,12 +62,11 @@ import {
 const requests = ref([])
 const isLoading = ref(false)
 
-// User Permissions setup via RBAC
+// Updated to the new RBAC Levels
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
@@ -176,8 +175,8 @@ const initiateAction = (type) => {
 // Execute Action (called after Alert Dialog confirmation)
 const confirmAction = async () => {
   // Check permission again as a safeguard
-  if (!permissions.value.can_update) {
-    toast.error('Access Denied: You do not have permission to update leave requests.');
+  if (!permissions.value.can_approve) {
+    toast.error('Access Denied: You do not have permission to approve/reject leave requests.');
     isConfirmOpen.value = false;
     return;
   }
@@ -495,10 +494,10 @@ onMounted(() => {
 
                 <template v-if="selectedRequest.status === 'Pending'">
                     <Button variant="outline" @click="isDetailsOpen = false">Close</Button>
-                    <Button variant="outline" class="border-red-200 text-red-600 hover:bg-red-50" @click="requirePermission('update', () => { isRejecting = true })">
+                    <Button variant="outline" class="border-red-200 text-red-600 hover:bg-red-50" @click="requirePermission('approve', () => { isRejecting = true })">
                        Reject
                     </Button>
-                    <Button class="bg-green-600 hover:bg-green-700 text-white" @click="requirePermission('update', () => initiateAction('Approved'))">
+                    <Button class="bg-green-600 hover:bg-green-700 text-white" @click="requirePermission('approve', () => initiateAction('Approved'))">
                        Approve
                     </Button>
                 </template>

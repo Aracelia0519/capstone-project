@@ -16,42 +16,35 @@ use Illuminate\Support\Facades\DB;
 
 class PositionController extends Controller
 {
-    /**
-     * Check RBAC Permissions for HR Modules (Specifically positions_roles)
-     */
     private function checkAccess($user, $action = 'can_view')
     {
-        // Admin
         if ($user->role === 'admin') {
             return [
                 'has_access' => true,
                 'distributor_id' => null,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
-        // Distributor
         if ($user->role === 'distributor') {
             return [
                 'has_access' => true,
                 'distributor_id' => $user->id,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
-        // HR Manager
         if ($user->role === 'hr_manager') {
             $hrManager = HRManager::where('user_id', $user->id)->first();
             if ($hrManager && $hrManager->parent_distributor_id) {
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         } 
         
-        // Employee with specific RBAC
         elseif ($user->role === 'employee') {
             $employee = Employee::where('user_id', $user->id)->first();
             if ($employee) {
@@ -63,15 +56,14 @@ class PositionController extends Controller
                 if ($position) {
                     $access = DB::table('position_accessibilities')
                         ->where('position_id', $position->id)
-                        ->where('permission_key', 'positions_roles') // Permission key for this module
+                        ->where('permission_key', 'positions_roles') 
                         ->first();
                         
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -79,9 +71,8 @@ class PositionController extends Controller
                                 'distributor_id' => $employee->parent_distributor_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -93,17 +84,15 @@ class PositionController extends Controller
         return [
             'has_access' => false,
             'distributor_id' => null,
-            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
         ];
     }
 
     public function index(Request $request)
     {
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
             
-            // Apply RBAC
             $accessData = $this->checkAccess($user, 'can_view');
             if (!$accessData['has_access']) {
                 return response()->json([
@@ -123,7 +112,6 @@ class PositionController extends Controller
                 'accessibilitySettings' 
             ]);
 
-            // Filter by distributor based on RBAC results (Skip filter if admin)
             if ($user->role !== 'admin') {
                 $query->where('distributor_id', $accessData['distributor_id']);
             }
@@ -200,15 +188,14 @@ class PositionController extends Controller
     public function getEmployeeSidebarAccessibility($id)
     {
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
             $employee = Employee::where('user_id', $id)->first();
             
             if (!$employee) return response()->json(['status' => 'error', 'message' => 'Not found.'], 404);
             
-            // Enhanced access checking
             $canView = false;
-            if ($user->id == $id || $user->isHRManager() || $user->role === 'admin' || $user->role === 'distributor') {
+            // FIXED: Replaced $user->isHRManager() with $user->role === 'hr_manager'
+            if ($user->id == $id || $user->role === 'hr_manager' || $user->role === 'admin' || $user->role === 'distributor') {
                 $canView = true;
             } elseif ($user->role === 'employee') {
                 $accessData = $this->checkAccess($user, 'can_view');
@@ -237,9 +224,8 @@ class PositionController extends Controller
                     $accessibilityDetails = $settings->mapWithKeys(function ($item) {
                         return [$item->permission_key => [
                             'view' => $item->can_view,
-                            'create' => $item->can_create,
-                            'update' => $item->can_update,
-                            'delete' => $item->can_delete,
+                            'manage' => $item->can_manage,
+                            'approve' => $item->can_approve,
                         ]];
                     })->toArray();
                 } 
@@ -254,7 +240,8 @@ class PositionController extends Controller
                     'employee_id' => $employee->id,
                     'accessibility_keys' => $accessibilityKeys,
                     'accessibility_details' => $accessibilityDetails,
-                    'has_full_access' => $user->isHRManager()
+                    // FIXED: Replaced $user->isHRManager() with $user->role === 'hr_manager'
+                    'has_full_access' => ($user->role === 'hr_manager') 
                 ]
             ]);
         } catch (\Exception $e) {
@@ -265,13 +252,12 @@ class PositionController extends Controller
     public function getEmployeeAccessibility($id)
     {
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
             $employee = Employee::findOrFail($id);
             
-            // Enhanced access checking
             $canView = false;
-            if ($user->id == $id || $user->isHRManager() || $user->role === 'admin' || $user->role === 'distributor') {
+            // FIXED: Replaced $user->isHRManager() with $user->role === 'hr_manager'
+            if ($user->id == $id || $user->role === 'hr_manager' || $user->role === 'admin' || $user->role === 'distributor') {
                 $canView = true;
             } elseif ($user->role === 'employee') {
                 $accessData = $this->checkAccess($user, 'can_view');
@@ -302,9 +288,8 @@ class PositionController extends Controller
                     $accessibilityDetails = $settings->mapWithKeys(function ($item) {
                         return [$item->permission_key => [
                             'view' => $item->can_view,
-                            'create' => $item->can_create,
-                            'update' => $item->can_update,
-                            'delete' => $item->can_delete,
+                            'manage' => $item->can_manage,
+                            'approve' => $item->can_approve,
                         ]];
                     })->toArray();
                 } 
@@ -321,7 +306,7 @@ class PositionController extends Controller
                         $accessibleModules[] = [
                             'key' => $key,
                             'name' => $moduleMap[$key],
-                            'permissions' => $accessibilityDetails[$key] ?? ['view'=>true,'create'=>true,'update'=>true,'delete'=>true]
+                            'permissions' => $accessibilityDetails[$key] ?? ['view'=>true,'manage'=>true,'approve'=>true]
                         ];
                     }
                 }
@@ -333,7 +318,8 @@ class PositionController extends Controller
                     'accessibility_keys' => $accessibilityKeys,
                     'accessibility_details' => $accessibilityDetails,
                     'accessible_modules' => $accessibleModules,
-                    'has_full_access' => $user->isHRManager()
+                    // FIXED: Replaced $user->isHRManager() with $user->role === 'hr_manager'
+                    'has_full_access' => ($user->role === 'hr_manager')
                 ]
             ]);
         } catch (\Exception $e) {
@@ -342,7 +328,6 @@ class PositionController extends Controller
     }
 
     public function statistics() {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         $accessData = $this->checkAccess($user, 'can_view');
         
@@ -354,7 +339,6 @@ class PositionController extends Controller
     }
 
     public function departments() {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         $accessData = $this->checkAccess($user, 'can_view');
         
@@ -366,7 +350,6 @@ class PositionController extends Controller
     }
 
     public function distributors() {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         if ($user->role !== 'admin') return response()->json(['success' => false], 403);
         $distributors = User::where('role', 'distributor')->where('status', 'active')->get();
@@ -375,11 +358,9 @@ class PositionController extends Controller
 
     public function store(Request $request)
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         
-        // Apply RBAC
-        $accessData = $this->checkAccess($user, 'can_create');
+        $accessData = $this->checkAccess($user, 'can_manage'); // Replaced can_create
         if (!$accessData['has_access']) {
             return response()->json([
                 'success' => false,
@@ -453,7 +434,6 @@ class PositionController extends Controller
 
     public function show($id)
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         $position = Position::with(['distributor', 'accessibilitySettings'])->find($id);
 
@@ -465,7 +445,6 @@ class PositionController extends Controller
 
     public function update(Request $request, $id)
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         
         $validator = Validator::make($request->all(), [
@@ -484,7 +463,7 @@ class PositionController extends Controller
 
             $position = Position::find($id);
             if (!$position) return response()->json(['success' => false, 'message' => 'Not found'], 404);
-            if (!$this->canAccessPosition($user, $position, 'can_update')) return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            if (!$this->canAccessPosition($user, $position, 'can_manage')) return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
 
             $updateData = array_merge(
                 $request->only(['title', 'department', 'description', 'min_salary', 'max_salary', 'status']),
@@ -532,12 +511,11 @@ class PositionController extends Controller
 
     public function destroy($id)
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
         $position = Position::find($id);
         
         if (!$position) return response()->json(['success' => false, 'message' => 'Not found'], 404);
-        if (!$this->canAccessPosition($user, $position, 'can_delete')) return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!$this->canAccessPosition($user, $position, 'can_manage')) return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
 
         $position->delete();
         return response()->json(['success' => true, 'message' => 'Position deleted successfully.']);

@@ -14,6 +14,40 @@ use Carbon\Carbon;
 class PaymentManagementController extends Controller
 {
     /**
+     * RBAC Integration Check:
+     * Validates if the currently logged in user has access based on the Role & Position matrices.
+     */
+    private function hasAccess($user, $permissionKey, $action = 'can_view')
+    {
+        // High-level domain owners inherently have full access implicitly
+        if (in_array($user->role, ['distributor', 'operational_distributor', 'hr_manager', 'finance_manager'])) {
+            return true;
+        }
+
+        // Employee checking mapped down to HR table -> Positions table -> Accessibility pivot
+        if ($user->role === 'employee') {
+            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('title', $employee->position)
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->first();
+
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', $permissionKey)
+                        ->first();
+
+                    return $access && (bool) $access->{$action};
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Reusable method to resolve the main distributor ID based on the logged-in user's role
      */
     private function resolveDistributorId($user)
@@ -40,6 +74,15 @@ class PaymentManagementController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        // New RBAC Implementation
+        if (!$this->hasAccess($user, 'ec_payment', 'can_view')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized Access: You do not have permission to view payments.'
+            ], 403);
+        }
+
         $distributorId = $this->resolveDistributorId($user);
 
         // Fetch orders associated with this distributor's products
@@ -93,9 +136,15 @@ class PaymentManagementController extends Controller
             ];
         }
 
+        // Return the payload with dynamic RBAC permissions bundled directly
         return response()->json([
             'success' => true,
-            'data' => $payments
+            'data' => $payments,
+            'permissions' => [
+                'can_view' => true,
+                'can_manage' => $this->hasAccess($user, 'ec_payment', 'can_manage'),
+                'can_approve' => $this->hasAccess($user, 'ec_payment', 'can_approve'),
+            ]
         ]);
     }
 
@@ -105,6 +154,14 @@ class PaymentManagementController extends Controller
     public function getSettings(Request $request)
     {
         $user = Auth::user();
+
+        if (!$this->hasAccess($user, 'ec_payment', 'can_manage')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized Access: You do not have permission to view payment settings.'
+            ], 403);
+        }
+
         $distributorId = $this->resolveDistributorId($user);
 
         // Fetch or Initialize default settings if not exists
@@ -129,6 +186,15 @@ class PaymentManagementController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        $user = Auth::user();
+
+        if (!$this->hasAccess($user, 'ec_payment', 'can_manage')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized Access: You do not have permission to update payment settings.'
+            ], 403);
+        }
+
         $request->validate([
             'is_cod_enabled' => 'required|boolean',
             'is_gcash_enabled' => 'required|boolean',
@@ -137,7 +203,6 @@ class PaymentManagementController extends Controller
             'gcash_number' => 'required_if:is_gcash_enabled,true|nullable|string|max:20'
         ]);
 
-        $user = Auth::user();
         $distributorId = $this->resolveDistributorId($user);
 
         $settings = DistributorPaymentSetting::updateOrCreate(

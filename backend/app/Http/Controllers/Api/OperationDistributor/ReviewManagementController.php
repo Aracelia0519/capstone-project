@@ -18,18 +18,16 @@ class ReviewManagementController extends Controller
     {
         $defaults = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         // Main distributors and head operational distributors automatically have full access
         if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
             return [
                 'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
+                'can_manage' => true,
+                'can_approve' => true
             ];
         }
 
@@ -52,9 +50,8 @@ class ReviewManagementController extends Controller
             if ($access) {
                 return [
                     'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
+                    'can_manage' => (bool) $access->can_manage,
+                    'can_approve' => (bool) $access->can_approve,
                 ];
             }
         }
@@ -138,8 +135,8 @@ class ReviewManagementController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        // Hard backend RBAC check for updating
-        if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_update')) {
+        // Hard backend RBAC check for managing (publishing/hiding)
+        if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to update review statuses.'], 403);
         }
 
@@ -163,8 +160,8 @@ class ReviewManagementController extends Controller
 
     public function respond(Request $request, $id)
     {
-        // Hard backend RBAC check for responding to reviews
-        if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_update')) {
+        // Hard backend RBAC check for managing (responding)
+        if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to respond to reviews.'], 403);
         }
 

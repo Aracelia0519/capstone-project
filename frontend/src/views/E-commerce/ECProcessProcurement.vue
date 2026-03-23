@@ -22,11 +22,11 @@
             color: 'black',
             border: 'none',
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',          // slightly smaller padding
-            fontSize: '15px',              // slightly smaller font
-            minWidth: '280px',             // smaller width
+            padding: '16px 20px',          
+            fontSize: '15px',              
+            minWidth: '280px',             
             maxWidth: '400px',
-            borderRadius: '10px',          // slightly smaller rounding
+            borderRadius: '10px',          
             pointerEvents: 'auto',
           },
         }"
@@ -55,36 +55,36 @@
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
       <Card class="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Total Pipeline</div>
+          <h2 class="text-xl md:text-2xl font-bold mb-1">{{ requests.length }}</h2>
+          <h2 class="text-xs md:text-sm text-gray-300">Total Pipeline</h2>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'approved').length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Pending Ops Action</div>
+          <h2 class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'approved').length }}</h2>
+          <h2 class="text-xs md:text-sm text-gray-300">Pending Ops Action</h2>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => ['op-approved', 'd-approved', 'ready', 'processing'].includes(r.status)).length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Processing / Ready</div>
+          <h2 class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => ['op-approved', 'd-approved', 'ready', 'processing'].includes(r.status)).length }}</h2>
+          <h2 class="text-xs md:text-sm text-gray-300">Processing / Ready</h2>
         </CardContent>
       </Card>
       
       <Card class="bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'shipped').length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">In Transit</div>
+          <h2 class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'shipped').length }}</h2>
+          <h2 class="text-xs md:text-sm text-gray-300">In Transit</h2>
         </CardContent>
       </Card>
 
       <Card class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-gray-800 text-white">
         <CardContent class="p-3 md:p-4">
-          <div class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'delivered').length }}</div>
-          <div class="text-xs md:text-sm text-gray-300">Delivered</div>
+          <h2 class="text-xl md:text-2xl font-bold mb-1">{{ requests.filter(r => r.status === 'delivered').length }}</h2>
+          <h2 class="text-xs md:text-sm text-gray-300">Delivered</h2>
         </CardContent>
       </Card>
     </div>
@@ -162,8 +162,8 @@
           <TableBody>
             <TableRow v-for="req in filteredRequests" :key="req.id" class="border-gray-800 hover:bg-white/5 transition-colors">
               <TableCell class="whitespace-nowrap">
-                <div class="font-mono text-white font-medium">{{ req.id }}</div>
-                <div class="text-xs text-gray-500">{{ req.date }}</div>
+                <h1 class="font-mono text-white font-medium">{{ req.id }}</h1>
+                <h1 class="text-xs text-gray-500">{{ req.date }}</h1>
               </TableCell>
               <TableCell class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
@@ -171,8 +171,8 @@
                     {{ req.department ? req.department.substring(0,2).toUpperCase() : 'NA' }}
                   </div>
                   <div>
-                    <div class="text-white text-sm font-medium">{{ req.department }}</div>
-                    <div class="text-xs text-gray-400">{{ req.requester }}</div>
+                    <h1 class="text-white text-sm font-medium">{{ req.department }}</h1>
+                    <h1 class="text-xs text-gray-400">{{ req.requester }}</h1>
                   </div>
                 </div>
               </TableCell>
@@ -181,9 +181,9 @@
                   <MapPin class="w-3 h-3 text-gray-500" />
                   {{ req.location }}
                 </div>
-                <div class="text-xs text-gray-500 mt-0.5">
+                <h1 class="text-xs text-gray-500 mt-0.5">
                   {{ req.items.length }} items
-                </div>
+                </h1>
               </TableCell>
               <TableCell class="whitespace-nowrap">
                 <Badge :class="['rounded-full border-0 font-medium px-2 py-0.5 whitespace-nowrap', statusClasses[req.status]]">
@@ -318,16 +318,16 @@
                 
                 <div v-if="selectedRequest.status === 'approved'" class="contents">
                    <template v-if="!isRejecting">
-                      <Button variant="destructive" @click="requirePermission('update', () => { isRejecting = true })" class="w-full sm:w-auto bg-red-900/50 text-red-200 hover:bg-red-900">
+                      <Button variant="destructive" @click="requirePermission('approve', () => { isRejecting = true })" class="w-full sm:w-auto bg-red-900/50 text-red-200 hover:bg-red-900">
                          Reject
                       </Button>
-                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="requirePermission('update', initiateOpApprove)">
+                      <Button class="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white" @click="requirePermission('approve', initiateOpApprove)">
                          <Truck class="w-4 h-4 mr-2" />
                          Op. Approve
                       </Button>
                    </template>
                    
-                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason" class="w-full sm:w-auto">
+                   <Button v-else variant="destructive" @click="requirePermission('approve', initiateReject)" :disabled="!rejectReason" class="w-full sm:w-auto">
                      Confirm Reject
                    </Button>
                 </div>
@@ -345,14 +345,14 @@
     </Dialog>
 
     <AlertDialog :open="alertOpen" @update:open="alertOpen = $event">
-      <AlertDialogContent class="bg-gray-950 border-gray-800 text-white z-50 w-[90vw] sm:w-full max-w-lg rounded-lg">
+      <AlertDialogContent class="bg-gray-950 border-gray-800 text-white z-[100] w-[90vw] sm:w-full max-w-lg rounded-lg">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription class="text-gray-400">
             {{ alertConfig.description }}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter class="flex-col sm:flex-row gap-2">
+        <AlertDialogFooter class="flex-col sm:flex-row gap-2 mt-4">
           <AlertDialogCancel @click="alertOpen = false" class="bg-gray-800 text-white hover:bg-gray-700 border-gray-700 mt-0">Cancel</AlertDialogCancel>
           <AlertDialogAction @click="executeAction" :class="alertConfig.confirmClass">
             {{ alertConfig.confirmText }}
@@ -409,18 +409,19 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
-// User Permissions setup via RBAC
+// Updated to Level-Based Permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
 const requirePermission = (action, callback) => {
   if (!permissions.value['can_' + action]) {
-    toast.error(`Access Denied: You do not have permission to ${action} request fulfillments.`);
+    toast.error(`Access Denied`, {
+      description: `You do not have permission to ${action} request fulfillments.`
+    });
     return;
   }
   if (callback) callback();
@@ -468,7 +469,7 @@ const fetchRequests = async () => {
     }
   } catch (error) {
     if (error.response?.status === 403) {
-      toast.error('Unauthorized: Access to procurement fulfillment is restricted.')
+      toast.error('Unauthorized', { description: 'Access to procurement fulfillment is restricted.' })
     } else {
       console.error("Failed to fetch requests", error)
       toast.error("Failed to load requests from server")

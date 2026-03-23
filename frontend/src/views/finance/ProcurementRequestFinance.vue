@@ -325,7 +325,7 @@
                 
                 <div class="flex space-x-4">
                   <Button 
-                    @click="requirePermission('update', approveRequest)"
+                    @click="requirePermission('approve', approveRequest)"
                     :disabled="processing || !budgetInfo.can_afford"
                     class="flex-1 text-white"
                     :class="!budgetInfo.can_afford ? 'bg-gray-400 opacity-50 cursor-not-allowed hover:bg-gray-400' : 'bg-green-600 hover:bg-green-700'"
@@ -340,7 +340,7 @@
                     {{ processing ? 'Processing...' : 'Approve Request' }}
                   </Button>
                   <Button 
-                    @click="requirePermission('update', rejectRequest)"
+                    @click="requirePermission('approve', rejectRequest)"
                     :disabled="processing"
                     class="flex-1 bg-red-600 hover:bg-red-700 text-white"
                   >
@@ -478,12 +478,11 @@ const page = ref(1);
 const hasMore = ref(true);
 const loadingMore = ref(false);
 
-// User Permissions setup via RBAC
+// Updated Level-Based Permissions
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 });
 
 // RBAC Action Interceptor

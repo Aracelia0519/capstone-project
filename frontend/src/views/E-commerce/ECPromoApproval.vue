@@ -33,12 +33,11 @@ const showReviewModal = ref(false)
 const showConfirmDialog = ref(false)
 const pendingAction = ref({ type: '', id: null })
 
-// User Permissions setup via RBAC
+// User Permissions setup via New RBAC Process
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor
@@ -150,11 +149,11 @@ const formatDate = (dateString) => {
             color: 'black',
             border: 'none',
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',          // slightly smaller padding
-            fontSize: '15px',              // slightly smaller font
-            minWidth: '280px',             // smaller width
+            padding: '16px 20px',          
+            fontSize: '15px',              
+            minWidth: '280px',             
             maxWidth: '400px',
-            borderRadius: '10px',          // slightly smaller rounding
+            borderRadius: '10px',          
             pointerEvents: 'auto',
           },
         }"
@@ -175,7 +174,7 @@ const formatDate = (dateString) => {
         <CardContent class="p-6 flex items-center gap-4">
           <div class="p-3 bg-orange-500/20 rounded-xl text-orange-400"><Clock class="w-6 h-6" /></div>
           <div>
-            <p class="text-sm text-gray-400">Pending Approval</p>
+            <h3 class="text-sm text-gray-400">Pending Approval</h3>
             <h3 class="text-2xl font-bold text-white">{{ stats.total_pending }}</h3>
           </div>
         </CardContent>
@@ -184,7 +183,7 @@ const formatDate = (dateString) => {
         <CardContent class="p-6 flex items-center gap-4">
           <div class="p-3 bg-green-500/20 rounded-xl text-green-400"><CheckCircle class="w-6 h-6" /></div>
           <div>
-            <p class="text-sm text-gray-400">Active Promotions</p>
+            <h3 class="text-sm text-gray-400">Active Promotions</h3>
             <h3 class="text-2xl font-bold text-white">{{ stats.total_active }}</h3>
           </div>
         </CardContent>
@@ -193,7 +192,7 @@ const formatDate = (dateString) => {
         <CardContent class="p-6 flex items-center gap-4">
           <div class="p-3 bg-red-500/20 rounded-xl text-red-400"><XCircle class="w-6 h-6" /></div>
           <div>
-            <p class="text-sm text-gray-400">Rejected Requests</p>
+            <h3 class="text-sm text-gray-400">Rejected Requests</h3>
             <h3 class="text-2xl font-bold text-white">{{ stats.total_rejected }}</h3>
           </div>
         </CardContent>
@@ -204,8 +203,8 @@ const formatDate = (dateString) => {
       <CardContent class="p-0">
         <div class="p-4 md:p-5 border-b border-white/5 bg-white/[0.02]">
           <div class="relative w-full md:w-96">
-            <Search class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <Input v-model="searchQuery" placeholder="Search by name or code..." class="pl-10 bg-black/40 border-white/10 text-white" />
+            <Search class="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-white w-4 h-4" />
+            <Input v-model="searchQuery" placeholder="Search by name or code..." class="text-white pl-10 bg-black/40 border-white/10 " />
           </div>
         </div>
 
@@ -216,7 +215,7 @@ const formatDate = (dateString) => {
 
         <div v-else class="overflow-x-auto">
           <table class="w-full text-left text-sm text-gray-300 min-w-[900px]">
-            <thead class="bg-black/40 text-xs uppercase font-semibold text-gray-400 tracking-wider">
+            <thead class="bg-black/40 text-xs uppercase font-semibold text-white tracking-wider">
               <tr>
                 <th class="px-6 py-5">Promotion</th>
                 <th class="px-6 py-5">Benefit</th>
@@ -283,10 +282,10 @@ const formatDate = (dateString) => {
         </div>
 
         <DialogFooter class="flex flex-col sm:flex-row gap-3">
-          <Button @click="requirePermission('update', () => confirmAction('reject', selectedPromo.id))" variant="outline" class="w-full sm:w-auto border-red-500/20 text-red-400 hover:bg-red-500/10">
+          <Button @click="requirePermission('approve', () => confirmAction('reject', selectedPromo.id))" variant="outline" class="w-full sm:w-auto border-red-500/20 text-red-400 hover:bg-red-500/10">
             <XCircle class="w-4 h-4 mr-2" /> Reject
           </Button>
-          <Button @click="requirePermission('update', () => confirmAction('approve', selectedPromo.id))" class="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600">
+          <Button @click="requirePermission('approve', () => confirmAction('approve', selectedPromo.id))" class="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600">
             <CheckCircle2 class="w-4 h-4 mr-2" /> Approve Promotion
           </Button>
         </DialogFooter>

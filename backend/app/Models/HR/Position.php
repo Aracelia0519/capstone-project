@@ -12,7 +12,6 @@ class Position extends Model
 {
     use SoftDeletes;
 
-    // Supported Departments for Role-Based Access Control
     public const RBAC_DEPARTMENTS = [
         'Human Resources', 
         'Finance', 
@@ -117,21 +116,18 @@ class Position extends Model
             return [];
         }
 
-        // Return the detailed objects formatted per module containing CRUD values
         $settings = $this->accessibilitySettings()->granted()->get();
         
         if ($settings->isNotEmpty()) {
             return $settings->mapWithKeys(function ($item) {
                 return [$item->permission_key => [
                     'view' => $item->can_view,
-                    'create' => $item->can_create,
-                    'update' => $item->can_update,
-                    'delete' => $item->can_delete,
+                    'manage' => $item->can_manage,
+                    'approve' => $item->can_approve,
                 ]];
             })->toArray();
         }
 
-        // Backward fallback
         if ($this->requirements && isset($this->requirements['accessibility'])) {
             return $this->requirements['accessibility'];
         }
@@ -139,7 +135,7 @@ class Position extends Model
         return [];
     }
 
-    public function hasPermission(string $permissionKey, string $action = null): bool
+    public function hasPermission(string $permissionKey, string $level = null): bool
     {
         if (!in_array($this->department, self::RBAC_DEPARTMENTS)) {
             return false;
@@ -149,8 +145,8 @@ class Position extends Model
             ->where('permission_key', $permissionKey)
             ->granted();
 
-        if ($action && in_array($action, ['view', 'create', 'update', 'delete'])) {
-            $query->where("can_{$action}", true);
+        if ($level && in_array($level, ['view', 'manage', 'approve'])) {
+            $query->where("can_{$level}", true);
         }
 
         if ($query->exists()) {
@@ -177,7 +173,7 @@ class Position extends Model
             $keys[] = is_numeric($k) ? $v : $k;
         }
 
-        $requirements['accessibility'] = $keys; // save keys for backwards compat
+        $requirements['accessibility'] = $keys; 
         $this->requirements = $requirements;
         $this->save();
     }

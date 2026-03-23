@@ -7,64 +7,100 @@ use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\HR\Employee;
+use App\Models\Distributor\HRManager;
 
 class ECOrderController extends Controller
 {
     /**
-     * Retrieves the specific permissions for a user on a given module.
+     * Check RBAC Permissions for E-Commerce Orders Module (Level-Based)
      */
-    private function getPermissions($user, $permissionKey)
+    private function checkAccess($user, $action = 'can_view')
     {
-        $defaults = [
-            'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
-        ];
-
-        // Main distributors and head operational distributors automatically have full access
-        if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
+        // Admin
+        if ($user->role === 'admin') {
             return [
-                'can_view' => true,
-                'can_create' => true,
-                'can_update' => true,
-                'can_delete' => true
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
-        // Check RBAC for standard employees
-        if ($user->role === 'employee') {
-            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
-            if (!$employee) return $defaults;
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
+            ];
+        }
 
-            $position = DB::table('positions')
-                ->where('title', $employee->position)
-                ->where('distributor_id', $employee->parent_distributor_id)
-                ->first();
-            if (!$position) return $defaults;
-
-            $access = DB::table('position_accessibilities')
-                ->where('position_id', $position->id)
-                ->where('permission_key', $permissionKey)
-                ->first();
-
-            if ($access) {
+        // HR Manager
+        if ($user->role === 'hr_manager') {
+            $hrManager = HRManager::where('user_id', $user->id)->first();
+            if ($hrManager && $hrManager->parent_distributor_id) {
                 return [
-                    'can_view' => (bool) $access->can_view,
-                    'can_create' => (bool) $access->can_create,
-                    'can_update' => (bool) $access->can_update,
-                    'can_delete' => (bool) $access->can_delete,
+                    'has_access' => true,
+                    'distributor_id' => $hrManager->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
+                ];
+            }
+        } 
+        
+        // Operational Distributor
+        elseif ($user->role === 'operational_distributor') {
+            $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first(); 
+            if ($opDist && $opDist->parent_distributor_id) {
+                return [
+                    'has_access' => true,
+                    'distributor_id' => $opDist->parent_distributor_id,
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         }
-
-        return $defaults;
-    }
-
-    private function checkRbacAccess($user, $permissionKey, $action)
-    {
-        $permissions = $this->getPermissions($user, $permissionKey);
-        return $permissions[$action] ?? false;
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'ec_orders') // Permission key for this module
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
+        ];
     }
 
     public function index(Request $request)
@@ -73,27 +109,13 @@ class ECOrderController extends Controller
         $user = Auth::user();
 
         // Get permissions and check RBAC Read Access
-        $permissions = $this->getPermissions($user, 'ec_orders');
+        $accessData = $this->checkAccess($user, 'can_view');
         
-        if (!$permissions['can_view']) {
+        if (!$accessData['has_access']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to view orders.'], 403);
         }
         
-        // Find distributor context based on user role
-        $distributorId = null;
-        if ($user->role === 'employee') {
-            $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
-            $distributorId = $employee ? $employee->parent_distributor_id : null;
-        } elseif ($user->role === 'operational_distributor') {
-            $opDistributor = DB::table('operational_distributors')
-                ->where('user_id', $user->id)
-                ->first();
-            if ($opDistributor) {
-                $distributorId = $opDistributor->parent_distributor_id;
-            }
-        } elseif ($user->role === 'distributor') {
-            $distributorId = $user->id;
-        }
+        $distributorId = $accessData['distributor_id'];
 
         $query = ClientOrder::with(['client', 'items.product']);
 
@@ -138,14 +160,17 @@ class ECOrderController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formattedOrders,
-            'permissions' => $permissions
+            'permissions' => $accessData['permissions']
         ]);
     }
 
     public function confirmOrder(Request $request, $id)
     {
-        // Hard backend check to prevent bypass
-        if (!$this->checkRbacAccess($request->user(), 'ec_orders', 'can_update')) {
+        // Require explicit Approve level to confirm workflow
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_approve');
+        
+        if (!$accessData['has_access']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to confirm orders.'], 403);
         }
 

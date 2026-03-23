@@ -13,7 +13,7 @@
             <Button variant="outline" @click="requirePermission('view', downloadPayroll)">
               Export
             </Button>
-            <Button @click="requirePermission('create', processPayroll)" class="bg-blue-600 hover:bg-blue-700">
+            <Button @click="requirePermission('manage', processPayroll)" class="bg-blue-600 hover:bg-blue-700">
               Process Payroll
             </Button>
           </div>
@@ -237,7 +237,7 @@
              
              <div class="flex justify-center space-x-4 mt-8">
                  <Button variant="outline" @click="prevStep">Back</Button>
-                 <Button @click="requirePermission('create', submitPayroll)" :disabled="processing" class="bg-green-600 hover:bg-green-700 min-w-[150px]">
+                 <Button @click="requirePermission('approve', submitPayroll)" :disabled="processing" class="bg-green-600 hover:bg-green-700 min-w-[150px]">
                     <span v-if="processing" class="flex items-center gap-2">
                         <div class="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Processing...
@@ -298,12 +298,11 @@ const showSuccessModal = ref(false)
 const batchCode = ref('')
 const savedCount = ref(0)
 
-// User Permissions setup via RBAC
+// Updated to the new RBAC Levels
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

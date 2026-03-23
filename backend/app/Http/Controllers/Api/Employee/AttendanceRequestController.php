@@ -15,7 +15,7 @@ use Carbon\Carbon;
 class AttendanceRequestController extends Controller
 {
     /**
-     * Check RBAC Permissions for HR Modules (Specifically attendance_request)
+     * Check RBAC Permissions for HR Modules (Level-Based)
      */
     private function checkAccess($user, $action = 'can_view')
     {
@@ -24,7 +24,7 @@ class AttendanceRequestController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => null,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -33,7 +33,7 @@ class AttendanceRequestController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => $user->id,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -44,7 +44,7 @@ class AttendanceRequestController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         } 
@@ -67,9 +67,8 @@ class AttendanceRequestController extends Controller
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -77,9 +76,8 @@ class AttendanceRequestController extends Controller
                                 'distributor_id' => $employee->parent_distributor_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -91,7 +89,7 @@ class AttendanceRequestController extends Controller
         return [
             'has_access' => false,
             'distributor_id' => null,
-            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
         ];
     }
 
@@ -135,7 +133,8 @@ class AttendanceRequestController extends Controller
     public function approve(Request $request, $id)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_update');
+        // Changed to require explicitly the Approval level
+        $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
             return response()->json([
@@ -251,7 +250,8 @@ class AttendanceRequestController extends Controller
     public function reject(Request $request, $id)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_update');
+        // Changed to require explicitly the Approval level
+        $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
             return response()->json([

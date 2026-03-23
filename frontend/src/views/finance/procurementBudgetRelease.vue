@@ -283,11 +283,11 @@
                 
                 <div v-if="selectedRequest.status === 'd-approved'" class="contents">
                    <template v-if="!isRejecting">
-                      <Button variant="outline" @click="requirePermission('update', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
+                      <Button variant="outline" @click="requirePermission('approve', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
                          Reject Request
                       </Button>
                       <Button :class="['w-full sm:w-auto shadow-sm text-white', selectedRequest.payment_terms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700', {'opacity-50 cursor-not-allowed': selectedRequest.totalAmount > availableBudget}]" 
-                              @click="requirePermission('update', initiateApprove)"
+                              @click="requirePermission('approve', initiateApprove)"
                               :disabled="selectedRequest.totalAmount > availableBudget">
                          <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4 mr-2" />
                          <Coins v-else class="w-4 h-4 mr-2" />
@@ -295,12 +295,14 @@
                       </Button>
                    </template>
                    
-                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason || isProcessing" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center justify-center">
-                     <span v-if="isProcessing" class="mr-2 animate-spin">
-                       <RefreshCw class="w-4 h-4" />
-                     </span>
-                     {{ isProcessing ? 'Processing...' : 'Confirm Rejection' }}
-                   </Button>
+                   <template v-else>
+                     <Button variant="destructive" @click="requirePermission('approve', initiateReject)" :disabled="!rejectReason || isProcessing" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center justify-center">
+                       <span v-if="isProcessing" class="mr-2 animate-spin">
+                         <RefreshCw class="w-4 h-4" />
+                       </span>
+                       {{ isProcessing ? 'Processing...' : 'Confirm Rejection' }}
+                     </Button>
+                   </template>
                 </div>
                 
                 <div v-else class="w-full sm:w-auto">
@@ -390,12 +392,11 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
-// RBAC Permissions ref state
+// Updated to the new Level-Based framework
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // Validation interceptor for operations

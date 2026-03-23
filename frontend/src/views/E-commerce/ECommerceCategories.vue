@@ -4,17 +4,9 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Product Categories</h1>
-          <p class="text-gray-300">Organize products for better customer navigation</p>
+          <h2 class="text-gray-300">Organize products for better customer navigation</h2>
         </div>
-        <Button 
-          @click="showAddModal = true" 
-          class="mt-4 md:mt-0 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Add Category
-        </Button>
+        
       </div>
     </div>
 
@@ -22,28 +14,28 @@
       <Card class="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-gray-800 text-white">
         <CardHeader class="p-4">
           <CardTitle class="text-2xl font-bold mb-1">{{ categories.length }}</CardTitle>
-          <CardDescription class="text-gray-300">Total Categories</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Total Categories</h2></CardDescription>
         </CardHeader>
       </Card>
       
       <Card class="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-gray-800 text-white">
         <CardHeader class="p-4">
           <CardTitle class="text-2xl font-bold mb-1">{{ activeCategories }}</CardTitle>
-          <CardDescription class="text-gray-300">Active</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Active</h2></CardDescription>
         </CardHeader>
       </Card>
 
       <Card class="bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border-gray-800 text-white">
         <CardHeader class="p-4">
           <CardTitle class="text-2xl font-bold mb-1">{{ totalProducts }}</CardTitle>
-          <CardDescription class="text-gray-300">Total Products</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Total Products</h2></CardDescription>
         </CardHeader>
       </Card>
 
       <Card class="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-gray-800 text-white">
         <CardHeader class="p-4">
           <CardTitle class="text-2xl font-bold mb-1">{{ averageProducts }}</CardTitle>
-          <CardDescription class="text-gray-300">Avg Products/Category</CardDescription>
+          <CardDescription class="text-gray-300"><h2>Avg Products/Category</h2></CardDescription>
         </CardHeader>
       </Card>
     </div>
@@ -75,43 +67,15 @@
                   ]">
                     {{ category.status }}
                   </Badge>
-                  <span class="text-sm text-gray-400 ml-3">{{ category.productCount }} products</span>
+                  <h2 class="text-sm text-gray-400 ml-3">{{ category.productCount }} products</h2>
                 </div>
               </div>
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon" class="text-gray-400 hover:text-white hover:bg-gray-800">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent class="w-48 bg-gray-800 border-gray-700 text-gray-300">
-                <DropdownMenuItem @click="editCategory(category)" class="focus:bg-gray-700 focus:text-white cursor-pointer">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit Category
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="toggleStatus(category)" class="focus:bg-gray-700 focus:text-white cursor-pointer">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                  {{ category.status === 'Active' ? 'Disable' : 'Enable' }}
-                </DropdownMenuItem>
-                <DropdownMenuItem @click="deleteCategory(category)" class="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            
           </div>
           
-          <p class="text-gray-400 mb-4">{{ category.description }}</p>
+          <h2 class="text-gray-400 mb-4">{{ category.description }}</h2>
           
           <div class="mb-4">
             <div class="flex items-center justify-between text-sm text-gray-300 mb-2">
@@ -128,9 +92,9 @@
           </div>
         </CardContent>
         <CardFooter class="flex items-center justify-between pt-0 pb-6 px-6 border-t border-gray-800 pt-4">
-          <span class="text-sm text-gray-400">Created: {{ category.createdDate }}</span>
+          <span class="text-sm text-white">Created: {{ category.createdDate }}</span>
           <Button variant="link" @click="viewProducts(category)" class="text-indigo-400 hover:text-indigo-300 p-0 h-auto">
-            View Products →
+            <h2>View Products →</h2>
           </Button>
         </CardFooter>
       </Card>

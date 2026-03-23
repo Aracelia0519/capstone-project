@@ -14,7 +14,7 @@ use App\Models\Distributor\HRManager;
 class ECInventoryController extends Controller
 {
     /**
-     * Check RBAC Permissions for Inventory Module
+     * Check RBAC Permissions for Inventory Module (Level-Based)
      */
     private function checkAccess($user, $action = 'can_view')
     {
@@ -23,7 +23,7 @@ class ECInventoryController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => null,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -32,7 +32,7 @@ class ECInventoryController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => $user->id,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -43,7 +43,7 @@ class ECInventoryController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         } 
@@ -55,7 +55,7 @@ class ECInventoryController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $opDist->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         }
@@ -78,9 +78,8 @@ class ECInventoryController extends Controller
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -88,9 +87,8 @@ class ECInventoryController extends Controller
                                 'distributor_id' => $employee->parent_distributor_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -102,7 +100,7 @@ class ECInventoryController extends Controller
         return [
             'has_access' => false,
             'distributor_id' => null,
-            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
         ];
     }
 
@@ -257,7 +255,8 @@ class ECInventoryController extends Controller
     {
         try {
             $user = Auth::user();
-            $accessData = $this->checkAccess($user, 'can_update');
+            // Requires Manage level
+            $accessData = $this->checkAccess($user, 'can_manage');
 
             if (!$accessData['has_access']) {
                 return response()->json([
@@ -310,7 +309,8 @@ class ECInventoryController extends Controller
     {
         try {
             $user = Auth::user();
-            $accessData = $this->checkAccess($user, 'can_update');
+            // Requires Manage level
+            $accessData = $this->checkAccess($user, 'can_manage');
 
             if (!$accessData['has_access']) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized. Access Denied.'], 403);
@@ -388,7 +388,8 @@ class ECInventoryController extends Controller
     {
         try {
             $user = Auth::user();
-            $accessData = $this->checkAccess($user, 'can_update');
+            // Requires Manage level
+            $accessData = $this->checkAccess($user, 'can_manage');
 
             if (!$accessData['has_access']) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized. Access Denied.'], 403);

@@ -6,7 +6,7 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Reviews & Ratings</h1>
-          <p class="text-gray-300">Collect and manage customer feedback</p>
+          <h2 class="text-gray-300">Collect and manage customer feedback</h2>
         </div>
         <div class="mt-4 md:mt-0 flex items-center space-x-4">
           <div class="flex items-center bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-700 shadow-sm">
@@ -31,7 +31,7 @@
         <Card class="bg-gray-900/50 border-gray-800 text-white hover:bg-gray-800/50 transition-colors shadow-sm">
           <CardContent class="p-5 flex flex-col justify-center items-center text-center h-full">
             <div class="text-4xl font-black text-blue-400 mb-1">{{ reviews.length }}</div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Reviews</div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Reviews</h3>
           </CardContent>
         </Card>
         
@@ -39,8 +39,14 @@
           <CardContent class="p-5 flex flex-col justify-center items-center text-center h-full">
             <div class="text-4xl font-black text-amber-400 mb-1">{{ fiveStarCount }}</div>
             <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center">
+            <h2>
               <svg class="w-3.5 h-3.5 text-amber-400 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            </h2>
+            <h2>
               5 Star Reviews
+
+            </h2>
+              
             </div>
           </CardContent>
         </Card>
@@ -48,7 +54,7 @@
         <Card class="bg-gray-900/50 border-gray-800 text-white hover:bg-gray-800/50 transition-colors shadow-sm">
           <CardContent class="p-5 flex flex-col justify-center items-center text-center h-full">
             <div class="text-4xl font-black text-emerald-400 mb-1">{{ publishedCount }}</div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-400">Published</div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Published</h2>
           </CardContent>
         </Card>
 
@@ -56,7 +62,7 @@
           <div v-if="pendingCount > 0" class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-bl-full border-b border-l border-amber-500/20"></div>
           <CardContent class="p-5 flex flex-col justify-center items-center text-center h-full relative z-10">
             <div class="text-4xl font-black text-gray-200 mb-1" :class="{'text-amber-400': pendingCount > 0}">{{ pendingCount }}</div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Approval</div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Pending Approval</h2>
           </CardContent>
         </Card>
       </div>
@@ -77,8 +83,8 @@
                     :style="{ width: dist.percentage + '%' }"
                   ></div>
                 </div>
-                <span class="w-14 text-right text-gray-400 text-xs font-bold font-mono">
-                  {{ dist.count }} <span class="text-gray-500 font-normal">({{ dist.percentage }}%)</span>
+                <span class="w-14 text-right text-white text-xs font-bold font-mono">
+                  {{ dist.count }} <span class="text-white font-normal">({{ dist.percentage }}%)</span>
                 </span>
               </div>
             </div>
@@ -189,14 +195,14 @@
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" class="w-48 bg-gray-900 border-gray-700 text-gray-300 rounded-xl shadow-xl">
-                      <DropdownMenuItem @click="requirePermission('update', () => updateStatus(review.id, 'published'))" v-if="review.status !== 'published'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('manage', () => updateStatus(review.id, 'published'))" v-if="review.status !== 'published'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <CheckCircle class="w-4 h-4 mr-2 text-emerald-400" /> Publish Review
                       </DropdownMenuItem>
-                      <DropdownMenuItem @click="requirePermission('update', () => updateStatus(review.id, 'hidden'))" v-if="review.status !== 'hidden'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('manage', () => updateStatus(review.id, 'hidden'))" v-if="review.status !== 'hidden'" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <EyeOff class="w-4 h-4 mr-2 text-gray-400" /> Hide Review
                       </DropdownMenuItem>
                       <DropdownMenuSeparator class="bg-gray-800" />
-                      <DropdownMenuItem @click="requirePermission('update', () => showResponseForm(review))" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
+                      <DropdownMenuItem @click="requirePermission('manage', () => showResponseForm(review))" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <Reply class="w-4 h-4 mr-2 text-blue-400" /> Reply to Customer
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -218,7 +224,7 @@
                   <div class="text-sm text-gray-300 whitespace-pre-wrap break-words font-medium leading-relaxed">
                     {{ review.response }}
                   </div>
-                  <span class="text-[10px] font-bold text-gray-500 shrink-0 ml-4 mt-0.5">{{ review.responseDate }}</span>
+                  <span class="text-[10px] font-bold text-white shrink-0 ml-4 mt-0.5">{{ review.responseDate }}</span>
                 </div>
               </div>
             </div>
@@ -259,7 +265,7 @@
           <Button variant="outline" @click="respondingToReview = null" class="bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white rounded-xl font-bold">
             Cancel
           </Button>
-          <Button @click="requirePermission('update', submitResponse)" :disabled="!responseForm.text || isProcessing" class="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl font-bold px-6 shadow-lg shadow-blue-600/20">
+          <Button @click="requirePermission('manage', submitResponse)" :disabled="!responseForm.text || isProcessing" class="bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl font-bold px-6 shadow-lg shadow-blue-600/20">
             {{ isProcessing ? 'Submitting...' : 'Submit Reply' }}
           </Button>
         </DialogFooter>
@@ -327,9 +333,8 @@ const responseForm = ref({ text: '' })
 // User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
 // RBAC Action Interceptor

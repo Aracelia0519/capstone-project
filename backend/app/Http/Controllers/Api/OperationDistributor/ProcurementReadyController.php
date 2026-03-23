@@ -13,7 +13,7 @@ use App\Models\Distributor\HRManager;
 class ProcurementReadyController extends Controller
 {
     /**
-     * Check RBAC Permissions for Procurement Processing Module
+     * Check RBAC Permissions for Procurement Processing Module (Level-Based)
      */
     private function checkAccess($user, $action = 'can_view')
     {
@@ -22,7 +22,7 @@ class ProcurementReadyController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => null,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -31,7 +31,7 @@ class ProcurementReadyController extends Controller
             return [
                 'has_access' => true,
                 'distributor_id' => $user->id,
-                'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
             ];
         }
 
@@ -42,7 +42,7 @@ class ProcurementReadyController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         } 
@@ -54,7 +54,7 @@ class ProcurementReadyController extends Controller
                 return [
                     'has_access' => true,
                     'distributor_id' => $opDist->parent_distributor_id,
-                    'permissions' => ['can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]
+                    'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
         }
@@ -77,9 +77,8 @@ class ProcurementReadyController extends Controller
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;
-                        if ($action === 'can_create' && $access->can_create) $hasAccess = true;
-                        if ($action === 'can_update' && $access->can_update) $hasAccess = true;
-                        if ($action === 'can_delete' && $access->can_delete) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
                         
                         if ($hasAccess) {
                             return [
@@ -87,9 +86,8 @@ class ProcurementReadyController extends Controller
                                 'distributor_id' => $employee->parent_distributor_id,
                                 'permissions' => [
                                     'can_view' => (bool)$access->can_view,
-                                    'can_create' => (bool)$access->can_create,
-                                    'can_update' => (bool)$access->can_update,
-                                    'can_delete' => (bool)$access->can_delete,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
                                 ]
                             ];
                         }
@@ -101,7 +99,7 @@ class ProcurementReadyController extends Controller
         return [
             'has_access' => false,
             'distributor_id' => null,
-            'permissions' => ['can_view' => false, 'can_create' => false, 'can_update' => false, 'can_delete' => false]
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
         ];
     }
 
@@ -175,10 +173,11 @@ class ProcurementReadyController extends Controller
     public function markAsOpApproved(Request $request, $id)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_update');
+        // Changed to explicit approve level
+        $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
-            return response()->json(['message' => 'Unauthorized. You do not have permission to approve procurement fulfillments.'], 403);
+            return response()->json(['message' => 'Unauthorized. You do not have permission to operationally approve procurement requests.'], 403);
         }
 
         $procurement = ProcurementRequest::findOrFail($id);
@@ -206,10 +205,11 @@ class ProcurementReadyController extends Controller
     public function reject(Request $request, $id)
     {
         $user = Auth::user();
-        $accessData = $this->checkAccess($user, 'can_update');
+        // Changed to explicit approve level
+        $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
-            return response()->json(['message' => 'Unauthorized. You do not have permission to reject procurement fulfillments.'], 403);
+            return response()->json(['message' => 'Unauthorized. You do not have permission to reject procurement requests.'], 403);
         }
 
         $request->validate([

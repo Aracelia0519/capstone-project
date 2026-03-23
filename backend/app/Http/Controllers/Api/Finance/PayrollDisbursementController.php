@@ -13,15 +13,14 @@ use Illuminate\Support\Facades\Auth;
 class PayrollDisbursementController extends Controller
 {
     /**
-     * Fetch RBAC permissions for the logged-in user.
+     * Fetch RBAC permissions for the logged-in user (Level-Based).
      */
     private function getPermissions($user)
     {
         $defaultPermissions = [
             'can_view' => true,
-            'can_create' => true,
-            'can_update' => true,
-            'can_delete' => true
+            'can_manage' => true,
+            'can_approve' => true
         ];
 
         // Non-employees bypass this specific RBAC check and get full access
@@ -31,9 +30,8 @@ class PayrollDisbursementController extends Controller
 
         $noAccess = [
             'can_view' => false,
-            'can_create' => false,
-            'can_update' => false,
-            'can_delete' => false
+            'can_manage' => false,
+            'can_approve' => false
         ];
 
         $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
@@ -56,9 +54,8 @@ class PayrollDisbursementController extends Controller
 
         return [
             'can_view' => (bool)$access->can_view,
-            'can_create' => (bool)$access->can_create,
-            'can_update' => (bool)$access->can_update,
-            'can_delete' => (bool)$access->can_delete,
+            'can_manage' => (bool)$access->can_manage,
+            'can_approve' => (bool)$access->can_approve,
         ];
     }
 
@@ -128,9 +125,10 @@ class PayrollDisbursementController extends Controller
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
 
-        if (!$permissions['can_update']) {
+        // Explicitly requires Approve level to disburse funds
+        if (!$permissions['can_approve']) {
             return response()->json([
-                'message' => 'Access Denied: You do not have permission to process payments.'
+                'message' => 'Access Denied: You do not have permission to process payments and release funds.'
             ], 403);
         }
 

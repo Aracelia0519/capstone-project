@@ -132,7 +132,7 @@
       </div>
       <h3 class="text-xl font-semibold text-gray-800 mb-3">No Positions Found</h3>
       <p class="text-gray-600 mb-8 max-w-md mx-auto">Start building your team structure by creating your first position.</p>
-      <Button @click="requirePermission('create', startNewPosition)" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md h-auto py-3">
+      <Button @click="requirePermission('manage', startNewPosition)" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md h-auto py-3">
         <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
@@ -166,12 +166,12 @@
               </span>
             </div>
             <div class="flex space-x-1">
-              <Button variant="ghost" size="icon" @click="requirePermission('update', () => editPosition(position))" class="h-8 w-8 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50">
+              <Button variant="ghost" size="icon" @click="requirePermission('manage', () => editPosition(position))" class="h-8 w-8 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </Button>
-              <Button variant="ghost" size="icon" @click="requirePermission('delete', () => deletePosition(position.id))" class="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
+              <Button variant="ghost" size="icon" @click="requirePermission('manage', () => deletePosition(position.id))" class="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -337,7 +337,7 @@
           <div v-if="currentStep === 2" class="space-y-4 md:space-y-6">
             <div class="max-w-6xl mx-auto">
               <h3 class="text-lg font-semibold text-gray-800 mb-2">Position Details & Access</h3>
-              <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Define the responsibilities and grant system access control.</p>
+              <p class="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">Define the responsibilities and grant system access control based on Levels.</p>
               
               <div class="space-y-6">
                 <div class="max-w-4xl">
@@ -392,21 +392,40 @@
                   <div class="flex justify-between items-end mb-4">
                     <div>
                       <h4 class="text-lg font-semibold text-gray-800 mb-1">Role-Based Access Control (RBAC)</h4>
-                      <p class="text-sm text-gray-500">Grant granular permissions categorized by function.</p>
+                      <p class="text-sm text-gray-500">Grant granular permissions grouped by access levels.</p>
                     </div>
                   </div>
 
                   <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm w-full">
                     <div class="overflow-auto max-h-[55vh] custom-scrollbar relative">
-                      <table class="w-full text-left border-collapse min-w-[600px]">
+                      <table class="w-full text-left border-collapse min-w-[700px]">
                         <thead class="bg-gray-50 sticky top-0 z-20 shadow-sm outline outline-1 outline-gray-200">
                           <tr>
                             <th scope="col" class="py-3 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider bg-gray-50 w-auto">Module Name</th>
-                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="View / Read">👁️<span class="hidden md:inline ml-1">View</span></th>
-                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Create / Add">➕<span class="hidden md:inline ml-1">Create</span></th>
-                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Update / Edit">✏️<span class="hidden md:inline ml-1">Update</span></th>
-                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-16 md:w-28 bg-gray-50" title="Delete / Remove">🗑️<span class="hidden md:inline ml-1">Delete</span></th>
-                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-indigo-900 uppercase tracking-wider w-20 md:w-32 bg-indigo-50" title="All / Full Access">🔐<span class="hidden md:inline ml-1">All</span></th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-24 md:w-32 bg-gray-50">
+                              <div class="flex flex-col items-center justify-center gap-1">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                <span>Level 1 (View)</span>
+                              </div>
+                            </th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-24 md:w-32 bg-gray-50">
+                              <div class="flex flex-col items-center justify-center gap-1">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                <span title="Create, Update, Delete">Level 2 (Manage)</span>
+                              </div>
+                            </th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-24 md:w-32 bg-gray-50">
+                              <div class="flex flex-col items-center justify-center gap-1">
+                                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                <span title="Approve, Reject Workflows">Level 3 (Approve)</span>
+                              </div>
+                            </th>
+                            <th scope="col" class="py-3 px-2 text-center text-xs font-bold text-indigo-900 uppercase tracking-wider w-20 md:w-32 bg-indigo-50">
+                              <div class="flex flex-col items-center justify-center gap-1">
+                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                <span>All Access</span>
+                              </div>
+                            </th>
                           </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 bg-white">
@@ -414,7 +433,7 @@
                           <template v-for="group in currentModules" :key="group.category">
                             
                             <tr class="bg-gray-50/80 border-y border-gray-200">
-                              <td colspan="6" class="py-2.5 px-4 text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-100">
+                              <td colspan="5" class="py-2.5 px-4 text-xs font-bold text-gray-500 uppercase tracking-widest bg-gray-100">
                                 {{ group.category }}
                               </td>
                             </tr>
@@ -437,6 +456,7 @@
                                   v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
                                   type="checkbox" 
                                   v-model="positionForm.accessibility[mod.permissionKey || mod.key].view"
+                                  @change="enforceDependencies(mod.permissionKey || mod.key, 'view')"
                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
                                 >
                               </td>
@@ -445,29 +465,19 @@
                                 <input 
                                   v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
                                   type="checkbox" 
-                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].create"
-                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].manage"
+                                  @change="enforceDependencies(mod.permissionKey || mod.key, 'manage')"
+                                  class="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 cursor-pointer"
+                                >
+                              </td>
+
+                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
+                                <input 
+                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
+                                  type="checkbox" 
+                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].approve"
+                                  @change="enforceDependencies(mod.permissionKey || mod.key, 'approve')"
                                   class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-600 cursor-pointer"
-                                >
-                              </td>
-
-                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
-                                <input 
-                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
-                                  type="checkbox" 
-                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].update"
-                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
-                                  class="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-600 cursor-pointer"
-                                >
-                              </td>
-
-                              <td class="py-2.5 px-2 text-center hover:bg-gray-50 transition-colors">
-                                <input 
-                                  v-if="positionForm.accessibility[mod.permissionKey || mod.key]" 
-                                  type="checkbox" 
-                                  v-model="positionForm.accessibility[mod.permissionKey || mod.key].delete"
-                                  @change="enforceViewDependency(mod.permissionKey || mod.key)"
-                                  class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600 cursor-pointer"
                                 >
                               </td>
 
@@ -533,7 +543,7 @@
                           class="inline-flex items-center px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 rounded border border-green-200 text-xs font-medium">
                           {{ getModuleName(key) }} 
                           <span class="ml-1 opacity-70">
-                            ({{ [perms.view ? 'V' : '', perms.create ? 'C' : '', perms.update ? 'U' : '', perms.delete ? 'D' : ''].filter(Boolean).join(',') }})
+                            ({{ [perms.view ? 'L1' : '', perms.manage ? 'L2' : '', perms.approve ? 'L3' : ''].filter(Boolean).join(',') }})
                           </span>
                         </div>
                       </div>
@@ -621,15 +631,12 @@ const selectedDepartment = ref('all')
 const selectedStatus = ref('active')
 let searchTimeout = null
 
-// User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
-  can_create: false,
-  can_update: false,
-  can_delete: false
+  can_manage: false,
+  can_approve: false
 })
 
-// RBAC Action Interceptor
 const requirePermission = (action, callback) => {
   if (!permissions.value['can_' + action]) {
     toast.error(`Access Denied: You do not have permission to ${action} positions.`);
@@ -644,10 +651,6 @@ const defaultDepartments = [
   'Operational Distributor',
   'Special RBAC'
 ]
-
-// ========================
-// Categorized Module Configurations
-// ========================
 
 const hrNavItems = [
   {
@@ -766,9 +769,6 @@ const odNavItems = [
   }
 ]
 
-// ========================
-// State & Computed
-// ========================
 const positions = ref([])
 const departments = ref([])
 const statistics = ref({})
@@ -784,13 +784,11 @@ const positionForm = ref({
   accessibility: {} 
 })
 
-// Current Categorized Modules available based on selected Department
 const currentModules = computed(() => {
   if (positionForm.value.department === 'Human Resources') return hrNavItems;
   if (positionForm.value.department === 'Finance') return financeNavItems;
   if (positionForm.value.department === 'Operational Distributor') return odNavItems;
   
-  // For special RBAC, combine everything but prefix the categories to keep them distinct
   if (positionForm.value.department === 'Special RBAC') {
     return [
       ...hrNavItems.map(g => ({ ...g, category: `HR - ${g.category}` })),
@@ -818,13 +816,10 @@ const getModuleName = (key) => {
   return key;
 }
 
-// ========================
-// Matrix Operations
-// ========================
 const toggleModule = (moduleKey, isChecked) => {
   if (isChecked) {
     if (!positionForm.value.accessibility[moduleKey]) {
-      positionForm.value.accessibility[moduleKey] = { view: true, create: false, update: false, delete: false };
+      positionForm.value.accessibility[moduleKey] = { view: true, manage: false, approve: false };
     }
   } else {
     delete positionForm.value.accessibility[moduleKey];
@@ -834,27 +829,41 @@ const toggleModule = (moduleKey, isChecked) => {
 const isFullAccess = (moduleKey) => {
   const perms = positionForm.value.accessibility[moduleKey];
   if (!perms) return false;
-  return perms.view && perms.create && perms.update && perms.delete;
+  return perms.view && perms.manage && perms.approve;
 }
 
 const toggleFullAccess = (moduleKey, isChecked) => {
   if (isChecked) {
-    positionForm.value.accessibility[moduleKey] = { view: true, create: true, update: true, delete: true };
+    positionForm.value.accessibility[moduleKey] = { view: true, manage: true, approve: true };
   } else {
-    positionForm.value.accessibility[moduleKey] = { view: true, create: false, update: false, delete: false };
+    positionForm.value.accessibility[moduleKey] = { view: true, manage: false, approve: false };
   }
 }
 
-const enforceViewDependency = (moduleKey) => {
+// Logic to ensure level dependencies cascade correctly
+const enforceDependencies = (moduleKey, levelChanged) => {
   const perms = positionForm.value.accessibility[moduleKey];
-  if (perms && (perms.create || perms.update || perms.delete)) {
-    perms.view = true;
+  if (!perms) return;
+  
+  if (levelChanged === 'approve') {
+    if (perms.approve) {
+      perms.manage = true;
+      perms.view = true;
+    }
+  } else if (levelChanged === 'manage') {
+    if (perms.manage) {
+      perms.view = true;
+    } else {
+      perms.approve = false;
+    }
+  } else if (levelChanged === 'view') {
+    if (!perms.view) {
+      perms.manage = false;
+      perms.approve = false;
+    }
   }
 }
 
-// ========================
-// API & Navigation
-// ========================
 const fetchPositions = async () => {
   loading.value = true
   error.value = ''
@@ -882,7 +891,7 @@ const fetchPositions = async () => {
       if (response.data.permissions) {
         permissions.value = response.data.permissions
       } else {
-        permissions.value = { can_view: true, can_create: true, can_update: true, can_delete: true }
+        permissions.value = { can_view: true, can_manage: true, can_approve: true }
       }
     } else {
       error.value = response.data.message || 'Failed to load positions'
@@ -938,13 +947,12 @@ const editPosition = (position) => {
   editingPosition.value = position
   currentStep.value = 1
   
-  // Transform backward compatible arrays vs newly fetched structured object
   let parsedAccessibility = {}
   if (position.accessibility && typeof position.accessibility === 'object' && !Array.isArray(position.accessibility)) {
     parsedAccessibility = JSON.parse(JSON.stringify(position.accessibility));
   } else if (Array.isArray(position.accessibility)) {
     position.accessibility.forEach(k => {
-      parsedAccessibility[k] = { view: true, create: true, update: true, delete: true };
+      parsedAccessibility[k] = { view: true, manage: true, approve: true };
     });
   }
 
@@ -1052,7 +1060,6 @@ onMounted(() => {
   animation: modal-appear 0.3s ease-out;
 }
 
-/* Slim Custom Scrollbar setup for Table and Modal */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
