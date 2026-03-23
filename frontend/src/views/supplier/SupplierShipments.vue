@@ -74,6 +74,14 @@
                     <span>{{ order.delivery_address || 'No address provided' }}</span>
                 </div>
 
+                <div v-if="order.rejection_reason" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+                    <div class="flex items-center gap-1.5 font-bold mb-1 text-red-800">
+                        <AlertTriangle class="h-4 w-4" />
+                        Delivery Rejected
+                    </div>
+                    <p class="pl-5 text-[11px] leading-relaxed">{{ order.rejection_reason }}</p>
+                </div>
+
                 <div class="mt-4 pt-4 border-t">
                   <Label class="mb-2 block">Assign Delivery Personnel</Label>
                   <select 
@@ -211,7 +219,8 @@ import {
   UploadCloud, 
   X, 
   Check, 
-  PackageOpen 
+  PackageOpen,
+  AlertTriangle 
 } from 'lucide-vue-next'
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'

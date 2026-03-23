@@ -121,10 +121,7 @@
               </td>
               <td class="py-4 px-6">
                 <div class="flex items-center space-x-4">
-                  <div class="w-14 h-14 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
-                    <img v-if="request.raw_material_details?.image_url" :src="getImageUrl(request.raw_material_details.image_url)" class="w-full h-full object-cover" />
-                    <svg v-else class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  </div>
+                  
                   <div>
                     <h4 class="text-white font-medium">{{ request.product_name }}</h4>
                     <p class="text-xs text-gray-400 mt-1">
@@ -223,9 +220,11 @@
               <div v-else-if="currentStep === 2" class="wizard-form-step space-y-6">
                 <div class="flex justify-between items-center mb-4">
                   <text class="text-lg font-semibold text-white">Select Products from {{ requestForm.supplier }}</text>
-                  <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 flex items-center">
-                    <span class="text-gray-400 text-sm mr-2">Cart Total:</span>
-                    <span class="text-indigo-400 font-bold">₱{{ formatCurrency(calculatedCartTotal) }}</span>
+                  <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 flex items-center gap-4">
+                    <div>
+                        <span class="text-gray-400 text-sm mr-2">Cart Total:</span>
+                        <span class="font-bold" :class="calculatedCartTotal > availableBudget ? 'text-red-400' : 'text-indigo-400'">₱{{ formatCurrency(calculatedCartTotal) }}</span>
+                    </div>
                   </div>
                 </div>
                 
@@ -242,9 +241,13 @@
                   <div v-for="product in supplierProducts" :key="product.id" class="bg-gray-800 border border-gray-700 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-500/50 transition-colors">
                     
                     <div class="w-full h-32 mb-4 rounded-lg overflow-hidden bg-gray-900 border border-gray-700 relative">
-                        <img v-if="product.image_url" :src="getImageUrl(product.image_url)" class="w-full h-full object-cover" />
+                        <img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover" />
                         <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
                             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                        
+                        <div v-if="!canAddProduct(product) && getProductQty(product.id) === 0" class="absolute inset-0 bg-black/60 flex items-center justify-center p-2 text-center backdrop-blur-[2px]">
+                            <span class="text-red-400 text-xs font-bold bg-red-900/50 px-2 py-1 rounded border border-red-500/50">Exceeds Budget</span>
                         </div>
                         <span class="absolute top-2 right-2 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded">₱{{ formatCurrency(product.price) }}</span>
                     </div>
@@ -264,7 +267,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
                       </button>
                       <span class="text-white font-medium w-12 text-center">{{ getProductQty(product.id) }}</span>
-                      <button type="button" @click="updateCart(product, 1)" class="w-8 h-8 rounded text-gray-400 hover:text-white hover:bg-gray-800 flex items-center justify-center transition-colors">
+                      <button type="button" @click="updateCart(product, 1)" :disabled="!canAddProduct(product)" class="w-8 h-8 rounded text-gray-400 hover:text-white hover:bg-gray-800 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                       </button>
                     </div>
@@ -389,6 +392,8 @@ const statistics = ref(null)
 const pagination = ref(null)
 const currentPage = ref(1)
 
+const availableBudget = ref(0) // State for Budget Tracking kept hidden
+
 const currentStep = ref(1)
 const wizardSteps = ref([
   { label: 'Select Supplier', completed: false },
@@ -431,16 +436,16 @@ const requirePermission = (action, callback) => {
   if (callback) callback();
 }
 
-const getImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  return `${baseUrl}/storage/${path}`;
-}
-
 const calculatedCartTotal = computed(() => {
   return cart.value.reduce((total, item) => total + (item.price * item.quantity), 0)
 })
+
+// Check if adding one iteration of product exceeds budget securely
+const canAddProduct = (product) => {
+  const currentQty = getProductQty(product.id)
+  const costToAdd = currentQty > 0 ? parseFloat(product.price) : (parseFloat(product.price) * (product.min_order || 1))
+  return (calculatedCartTotal.value + costToAdd) <= availableBudget.value
+}
 
 const validateCurrentStep = computed(() => {
   switch (currentStep.value) {
@@ -514,6 +519,7 @@ const fetchFormOptions = async () => {
     if (response.data.success) {
       suppliers.value = response.data.data.suppliers;
       distributorAddresses.value = response.data.data.addresses;
+      availableBudget.value = response.data.data.available_budget || 0;
     }
   } catch (err) {
     console.error(err);
@@ -573,6 +579,22 @@ const updateCart = (product, change) => {
   const minOrder = product.min_order || 1
   const maxOrder = product.max_order || 5000 
   
+  // Real-Time Budget Validation before updating state
+  if (change > 0) {
+      let costToAdd = 0;
+      if (index > -1) {
+          costToAdd = parseFloat(product.price) * change;
+      } else {
+          costToAdd = parseFloat(product.price) * minOrder;
+      }
+
+      if ((calculatedCartTotal.value + costToAdd) > availableBudget.value) {
+          // Changed toast to remove exact budget amount display
+          showToast(`Cannot add ${product.name}. Cart total would exceed the allocated business budget.`, 'warning');
+          return;
+      }
+  }
+
   if (index > -1) {
     const currentQty = cart.value[index].quantity
     const newQty = currentQty + change
@@ -621,8 +643,6 @@ const submitRequest = async () => {
       submitError.value = response.data.message
     }
   } catch (err) {
-    // The explicit error message generated by our budget check in the backend
-    // will be caught and displayed right here
     submitError.value = err.response?.data?.message || 'Failed to submit'
   } finally {
     submitting.value = false

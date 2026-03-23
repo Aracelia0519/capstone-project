@@ -84,7 +84,7 @@
               </SelectTrigger>
               <SelectContent class="z-[10000]">
                 <SelectItem value="all_finishes_reset">All Finishes</SelectItem>
-                <SelectItem v-for="finish in finish" :key="finish" :value="finish">{{ finish }}</SelectItem>
+                <SelectItem v-for="finish in finishes" :key="finish" :value="finish">{{ finish }}</SelectItem>
               </SelectContent>
             </Select>
           </div>

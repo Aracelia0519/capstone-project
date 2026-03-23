@@ -295,8 +295,11 @@
                       </Button>
                    </template>
                    
-                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm">
-                     Confirm Rejection
+                   <Button v-else variant="destructive" @click="requirePermission('update', initiateReject)" :disabled="!rejectReason || isProcessing" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center justify-center">
+                     <span v-if="isProcessing" class="mr-2 animate-spin">
+                       <RefreshCw class="w-4 h-4" />
+                     </span>
+                     {{ isProcessing ? 'Processing...' : 'Confirm Rejection' }}
                    </Button>
                 </div>
                 
@@ -323,7 +326,10 @@
         </AlertDialogHeader>
         <AlertDialogFooter class="flex-col sm:flex-row gap-3 mt-6">
           <AlertDialogCancel @click="alertOpen = false" class="bg-white text-slate-700 hover:bg-slate-100 border-slate-300 mt-0 shadow-sm font-medium">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="executeAction" :disabled="isProcessing" :class="[alertConfig.confirmClass, 'shadow-sm font-medium']">
+          <AlertDialogAction @click="executeAction" :disabled="isProcessing" :class="[alertConfig.confirmClass, 'shadow-sm font-medium flex items-center justify-center']">
+            <span v-if="isProcessing" class="mr-2 animate-spin">
+              <RefreshCw class="w-4 h-4" />
+            </span>
             {{ isProcessing ? 'Processing...' : alertConfig.confirmText }}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -596,28 +602,38 @@ const confirmReject = async () => {
   if (!selectedRequest.value || !rejectReason.value) return
 
   try {
-    isProcessing.value = true
-    const promise = api.post(`/finance/budget-release/${selectedRequest.value.db_id}/reject`, {
+    isProcessing.value = true // Keep the loading state active
+    
+    // Capture the request ID before doing anything that could wipe it out
+    const reqId = selectedRequest.value.id;
+
+    const requestPromise = api.post(`/finance/budget-release/${selectedRequest.value.db_id}/reject`, {
       reason: rejectReason.value
     })
-    
-    toast.promise(promise, {
-      loading: 'Rejecting request...',
+
+    // This creates the lazy loading / processing notification
+    toast.promise(requestPromise, {
+      loading: 'Rejecting request and sending emails... Please wait.',
       success: () => {
         fetchRequests()
-        closeModal()
-        return `Request ${selectedRequest.value.id} has been rejected.`
+        closeModal() // This sets selectedRequest.value to null
+        return `Request ${reqId} has been rejected.` // Safely using the captured ID!
       },
-      error: (err) => {
-        return err.response?.status === 403 
+      error: (error) => {
+        console.error("Rejection Error:", error)
+        return error.response?.status === 403 
           ? 'Access denied: You cannot reject budget releases.' 
           : 'Failed to reject request.'
       }
     })
+
+    // Explicitly AWAIT the API call so the UI waits for the email to finish sending
+    await requestPromise
+    
   } catch (error) {
-    console.error(error)
+    // The error is already visually handled by the toast.promise block above
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false // Modal will only close AFTER the process is done
   }
 }
 </script>

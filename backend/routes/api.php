@@ -623,6 +623,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/start', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'arrive']);
         Route::post('/{id}/remit', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'remit']); 
+        Route::post('/{id}/reject', [\App\Http\Controllers\Api\SupplierDelivery\SupplierDeliveryController::class, 'rejectDelivery']); // ADDED THIS
     });
 
     Route::put('/profile/supplier', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
@@ -640,6 +641,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/start', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'arrive']);
         Route::post('/{id}/remit', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'remit']); 
+        Route::post('/{id}/reject', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'rejectDelivery']); // <--- ADDED THIS HERE
     });
 
     Route::prefix('operation-distributor')->group(function () {

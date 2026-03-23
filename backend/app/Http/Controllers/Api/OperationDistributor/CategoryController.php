@@ -156,7 +156,11 @@ class CategoryController extends Controller
             $query->where('category', $request->query('category'));
         }
 
-        $products = $query->get();
+        // Retrieve and format the image_url to be fully qualified
+        $products = $query->get()->map(function($product) {
+            $product->image_url = $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null;
+            return $product;
+        });
 
         return response()->json([
             'success' => true,

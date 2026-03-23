@@ -17,7 +17,7 @@ use App\Models\Distributor\DistributorAddress;
 use App\Models\Supplier\SupplierRawMaterial;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
-use App\Models\Supplier\ProcurementFulfillment; // Import Fulfillment Model
+use App\Models\Supplier\ProcurementFulfillment;
 
 class ProcurementController extends Controller
 {
@@ -176,7 +176,13 @@ class ProcurementController extends Controller
 
             $products = SupplierRawMaterial::where('user_id', $supplierId)
                 ->where('is_active', true)
-                ->get();
+                ->get()
+                ->map(function ($product) {
+                    if ($product->image_url && !str_starts_with($product->image_url, 'http')) {
+                        $product->image_url = asset('storage/' . ltrim($product->image_url, '/'));
+                    }
+                    return $product;
+                });
 
             return response()->json([
                 'success' => true,
@@ -202,6 +208,12 @@ class ProcurementController extends Controller
 
             $distributorId = $accessData['distributor_id'];
 
+            // Fetch Current Business Budget
+            $salesRecord = DB::table('distributor_overall_sales')
+                ->where('distributor_id', $distributorId)
+                ->first();
+            $availableBudget = $salesRecord ? (float) ($salesRecord->total_revenue ?? 0) : 0;
+
             $suppliers = SupplierPartner::where('distributor_id', $distributorId)
                 ->where('status', 'active')
                 ->with('supplier')
@@ -215,7 +227,6 @@ class ProcurementController extends Controller
                         $companyName = SupplierRequirements::where('user_id', $partner->supplier_id)->value('company_name');
                     } catch (\Exception $e) {}
                     
-                    // Fetch Payment Settings for the specific Supplier
                     $paymentSettings = DB::table('supplier_payment_settings')->where('supplier_id', $partner->supplier_id)->first();
 
                     return [
@@ -226,7 +237,7 @@ class ProcurementController extends Controller
                             'is_cod_enabled' => (bool)$paymentSettings->is_cod_enabled,
                             'is_gcash_enabled' => (bool)$paymentSettings->is_gcash_enabled,
                         ] : [
-                            'is_cod_enabled' => true, // default fallback
+                            'is_cod_enabled' => true, 
                             'is_gcash_enabled' => false
                         ]
                     ];
@@ -244,7 +255,8 @@ class ProcurementController extends Controller
                 'success' => true,
                 'data' => [
                     'suppliers' => $suppliers,
-                    'addresses' => $addresses
+                    'addresses' => $addresses,
+                    'available_budget' => $availableBudget // Sent to frontend for hidden real-time validation
                 ],
                 'message' => 'Form options retrieved successfully'
             ]);
@@ -290,7 +302,6 @@ class ProcurementController extends Controller
                 ], 422);
             }
             
-            // DB Specific Validations for min/max orders and total cost accumulation
             $totalRequestedCost = 0;
 
             foreach ($request->items as $item) {
@@ -317,7 +328,7 @@ class ProcurementController extends Controller
             }
 
             // ==========================================
-            // STRICT BUDGET VERIFICATION
+            // STRICT BUDGET VERIFICATION ON BACKEND
             // ==========================================
             $salesRecord = DB::table('distributor_overall_sales')
                 ->where('distributor_id', $distributorId)
@@ -328,7 +339,7 @@ class ProcurementController extends Controller
             if ($totalRequestedCost > $availableBudget) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient budget to complete this request. The total amount exceeds your available funds.'
+                    'message' => 'Insufficient budget to complete this request. The total amount exceeds the allocated business funds.'
                 ], 400); 
             }
             // ==========================================
@@ -397,7 +408,6 @@ class ProcurementController extends Controller
                 ], 403);
             }
 
-            // Fetch and attach Fulfillment data safely
             $request->fulfillment = ProcurementFulfillment::where('procurement_request_id', $request->id)->first();
             
             return response()->json([

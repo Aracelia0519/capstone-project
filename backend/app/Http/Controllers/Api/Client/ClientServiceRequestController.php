@@ -13,6 +13,7 @@ use App\Models\ServiceProvider\ServiceReview;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ClientServiceRequestController extends Controller
 {
@@ -145,6 +146,8 @@ class ClientServiceRequestController extends Controller
 
     public function payWithGcash(Request $request, $termId)
     {
+        $user = Auth::user();
+        
         $term = OfficialPaymentTerm::with('deal.clientServiceRequest.serviceOffering')->findOrFail($termId);
         $deal = $term->deal;
         $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
@@ -180,6 +183,34 @@ class ClientServiceRequestController extends Controller
             $client = new \GuzzleHttp\Client();
             $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
+            // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
+            $billingDetails = [
+                'name' => trim($user->first_name . ' ' . $user->last_name),
+                'email' => $user->email,
+            ];
+            
+            // --- STRICT GCASH NUMBER VALIDATION ---
+            $gcashNumberToUse = null;
+            if (Schema::hasTable('client_payment_settings')) {
+                $clientPayment = DB::table('client_payment_settings')
+                    ->where('client_id', $user->id)
+                    ->first();
+                    
+                if ($clientPayment && !empty($clientPayment->gcash_number)) {
+                    $gcashNumberToUse = $clientPayment->gcash_number;
+                }
+            }
+            
+            if (empty($gcashNumberToUse)) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'No GCash number found in your payment settings. Please update your payment settings before proceeding.'
+                ], 400);
+            }
+
+            $billingDetails['phone'] = (string) $gcashNumberToUse;
+            // --------------------------------------
+
             $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                 'headers' => [
                     'Content-Type' => 'application/json',
@@ -196,6 +227,7 @@ class ClientServiceRequestController extends Controller
                             'payment_method_types' => ['gcash'],
                             'description' => 'Service Payment - ' . $serviceName,
                             'reference_number' => 'SRV-' . $term->id . '-' . time(), 
+                            'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
                             'line_items' => [
                                 [
                                     'currency' => 'PHP',

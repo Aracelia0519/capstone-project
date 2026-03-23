@@ -294,6 +294,34 @@ class ShopController extends Controller
                 $client = new \GuzzleHttp\Client();
                 $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
+                // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
+                $billingDetails = [
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'email' => $user->email,
+                ];
+                
+                // --- STRICT GCASH NUMBER VALIDATION ---
+                $gcashNumberToUse = null;
+                if (Schema::hasTable('client_payment_settings')) {
+                    $clientPayment = DB::table('client_payment_settings')
+                        ->where('client_id', $user->id)
+                        ->first();
+                        
+                    if ($clientPayment && !empty($clientPayment->gcash_number)) {
+                        $gcashNumberToUse = $clientPayment->gcash_number;
+                    }
+                }
+                
+                if (empty($gcashNumberToUse)) {
+                    return response()->json([
+                        'success' => false, 
+                        'message' => 'No GCash number found in your payment settings. Please link a GCash number before proceeding.'
+                    ], 400);
+                }
+
+                $billingDetails['phone'] = (string) $gcashNumberToUse;
+                // --------------------------------------
+
                 $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                     'headers' => [
                         'Content-Type' => 'application/json',
@@ -310,6 +338,7 @@ class ShopController extends Controller
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Payment for Order ' . $orderNumber,
                                 'reference_number' => $orderNumber, 
+                                'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -318,7 +347,6 @@ class ShopController extends Controller
                                         'quantity' => 1,
                                     ]
                                 ],
-                                // FIX: We pass the order_number to the URL instead of the broken macro!
                                 'success_url' => $frontendOrigin . '/ECommerceClient/EccommerceShop?order_number=' . $orderNumber,
                                 'cancel_url' => $frontendOrigin . '/ECommerceClient/EccommerceShop'
                             ]
@@ -342,7 +370,7 @@ class ShopController extends Controller
 
                 $cacheData = [
                     'type' => 'shop',
-                    'session_id' => $sessionId, // <-- WE STORE THE REAL SESSION ID HERE
+                    'session_id' => $sessionId, 
                     'user_id' => $user->id,
                     'order_number' => $orderNumber,
                     'total_amount' => $totalOrderAmount,
@@ -366,7 +394,6 @@ class ShopController extends Controller
                     'client_name' => $user->first_name . ' ' . $user->last_name,
                 ];
 
-                // FIX: Write to explicit local disk using the order number!
                 Storage::disk('local')->put('pending_orders/' . $orderNumber . '.json', json_encode($cacheData));
 
                 return response()->json([

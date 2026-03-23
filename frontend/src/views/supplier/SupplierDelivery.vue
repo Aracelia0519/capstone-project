@@ -30,7 +30,8 @@ import {
   Banknote,
   UploadCloud,
   Menu,
-  Info
+  Info,
+  Ban
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +47,10 @@ const currentPosition = ref(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
 const isDrawerOpen = ref(true)
+
+// Reject State
+const showRejectForm = ref(false)
+const rejectReason = ref('')
 
 // File States
 const arrivalProofFile = ref(null)
@@ -441,10 +446,33 @@ const remitAndComplete = async () => {
   }
 }
 
+const submitReject = async () => {
+  if (!rejectReason.value.trim() || !activeDeliveryId.value) return
+  
+  isProcessing.value = true
+  try {
+    await api.post(`/supplier-delivery/${activeDeliveryId.value}/reject`, {
+      reason: rejectReason.value
+    })
+    toast.success('Delivery rejected successfully')
+    showRejectForm.value = false
+    rejectReason.value = ''
+    clearActiveDelivery()
+    await fetchDeliveries()
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to reject delivery')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 // --- Helpers ---
 const focusDelivery = (id) => {
   activeDeliveryId.value = id
   isDrawerOpen.value = true 
+  showRejectForm.value = false
+  rejectReason.value = ''
+  
   updateMapMarkers()
   drawRoute(true) // Force draw the route when a delivery is focused
   
@@ -471,6 +499,9 @@ const clearActiveDelivery = () => {
   activeDeliveryId.value = null
   isDrawerOpen.value = true
   lastRoutedPosition = null
+  showRejectForm.value = false
+  rejectReason.value = ''
+  
   updateMapMarkers()
   drawRoute(true) // Will erase the line
   
@@ -706,11 +737,33 @@ onUnmounted(() => {
                </div>
             </div>
 
-            <div v-if="activeDelivery.status === 'assigned'" class="pt-4">
-                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-14 text-lg font-semibold" size="lg">
-                    <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
+            <div v-if="activeDelivery.status === 'assigned'" class="pt-4 space-y-3">
+                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-14 text-lg font-semibold shadow-lg shadow-blue-900/20" size="lg">
+                    <Loader2 v-if="isProcessing && !showRejectForm" class="mr-2 h-5 w-5 animate-spin" />
                     <Navigation v-else class="mr-2 h-5 w-5" /> Start Trip
                 </Button>
+
+                <div v-if="!showRejectForm">
+                  <Button variant="outline" @click="showRejectForm = true" class="w-full border-red-900/40 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-xl h-12">
+                    <Ban class="mr-2 h-4 w-4" /> Reject Assignment
+                  </Button>
+                </div>
+                <div v-else class="bg-red-900/10 p-4 rounded-xl border border-red-900/30 space-y-3 mt-2">
+                  <label class="text-sm font-semibold text-red-400">Reason for rejection <span class="text-red-500">*</span></label>
+                  <textarea 
+                    v-model="rejectReason" 
+                    class="w-full bg-gray-900 border border-red-900/50 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500" 
+                    rows="3" 
+                    placeholder="I cannot fulfill this delivery because..."></textarea>
+                  
+                  <div class="flex gap-2 pt-1">
+                    <Button variant="ghost" @click="showRejectForm = false" class="flex-1 text-gray-400 hover:text-white hover:bg-gray-800">Cancel</Button>
+                    <Button variant="destructive" @click="submitReject" :disabled="isProcessing || !rejectReason.trim()" class="flex-1 bg-red-600 hover:bg-red-700">
+                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
+                        Confirm Reject
+                    </Button>
+                  </div>
+                </div>
             </div>
 
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">

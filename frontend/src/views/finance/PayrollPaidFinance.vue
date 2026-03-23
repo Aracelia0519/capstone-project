@@ -222,7 +222,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6 bg-slate-50/50 min-h-screen">
+  <div class="flex flex-col gap-6 p-6 min-h-screen">
     
     <Toaster richColors position="top-right" expand />
 

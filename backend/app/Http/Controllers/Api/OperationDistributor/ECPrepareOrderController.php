@@ -108,6 +108,17 @@ class ECPrepareOrderController extends Controller
         }
 
         $orders = $query->get()->map(function ($order) {
+            // Fetch the latest delivery to check if it was rejected
+            $latestDelivery = DB::table('ec_order_deliveries')
+                ->where('order_id', $order->id)
+                ->latest('id')
+                ->first();
+                
+            $isDeliveryRejected = false;
+            if ($latestDelivery && ($latestDelivery->status === 'rejected' || $latestDelivery->status === 'cancelled')) {
+                $isDeliveryRejected = true;
+            }
+
             return [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
@@ -120,6 +131,9 @@ class ECPrepareOrderController extends Controller
                 'delivery_address' => $order->delivery_address,
                 'client_name' => $order->client ? $order->client->full_name : 'Unknown Client',
                 'client_phone' => $order->client ? $order->client->phone : 'No Contact Provided',
+                'rejection_reason' => $order->rejection_reason,
+                'is_delivery_rejected' => $isDeliveryRejected,
+                'latest_delivery_status' => $latestDelivery ? $latestDelivery->status : null,
                 'items' => $order->items->map(function ($item) {
                     return [
                         'id' => $item->id,
@@ -222,7 +236,7 @@ class ECPrepareOrderController extends Controller
 
             // Mark the order as prepared or ready for pickup
             $newStatus = $isPickUp ? 'ready_for_pickup' : 'prepared';
-            $order->update(['status' => $newStatus]);
+            $order->update(['status' => $newStatus, 'rejection_reason' => null]); // Clear any past rejection reasons
 
             return response()->json(['message' => 'Order processed successfully.']);
         }

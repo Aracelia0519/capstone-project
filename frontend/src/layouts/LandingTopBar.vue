@@ -88,7 +88,6 @@ const mobileMenuOpen = ref(false)
 
 const navItems = [
   { id: 'home', label: 'Home', route: '/Landing/homeLanding' },
-  { id: 'explore-colors', label: 'Explore Colors', route: '/Landing/exploreColors' },
   { id: 'ecommerce', label: 'E-Commerce', route: '/ECommerceClient/EccommerceShop' }
 ]
 

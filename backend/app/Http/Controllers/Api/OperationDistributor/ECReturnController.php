@@ -31,9 +31,10 @@ class ECReturnController extends Controller
                 ->first();
             if (!$position) return $defaults;
 
+            // FIXED: Changed 'module_name' to 'permission_key' to match your database schema
             $access = DB::table('position_accessibilities')
                 ->where('position_id', $position->id)
-                ->where('module_name', $permissionKey)
+                ->where('permission_key', $permissionKey) 
                 ->first();
 
             if ($access) {

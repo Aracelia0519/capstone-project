@@ -83,6 +83,7 @@ class CartController extends Controller
 
             $distSettings = $paymentSettings->get($item->distributor_id);
             $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
+            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
 
             $formattedItems[] = [
                 'id' => $item->id,
@@ -105,6 +106,7 @@ class CartController extends Controller
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
                 'distributor_gcash_enabled' => $gcashEnabled,
+                'distributor_pickup_enabled' => $pickupEnabled,
             ];
         }
 
@@ -138,7 +140,7 @@ class CartController extends Controller
     {
         $request->validate([
             'custom_address' => 'nullable|string',
-            'payment_method' => 'required|string|in:cod,gcash',
+            'payment_method' => 'required|string|in:cod,gcash,pick-up',
             'selected_items' => 'required|array|min:1',
             'selected_items.*' => 'integer'
         ]);
@@ -265,6 +267,13 @@ class CartController extends Controller
             foreach($distributorShippingFees as $k => $v) { $distributorShippingFees[$k] = 0; }
         }
 
+        // FORCE SHIPPING FEE TO 0 IF PICKUP
+        if ($request->payment_method === 'pick-up') {
+            $totalShippingFee = 0;
+            $fullAddress = "Store Pick-Up";
+            foreach($distributorShippingFees as $k => $v) { $distributorShippingFees[$k] = 0; }
+        }
+
         $grandTotal = $totalOrderAmount + $totalShippingFee;
         $orderStatus = $totalQuantity <= 30 ? 'confirmed' : 'pending';
         $vatableSales = round($grandTotal / 1.12, 2);
@@ -279,6 +288,34 @@ class CartController extends Controller
             try {
                 $client = new \GuzzleHttp\Client();
                 $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+                // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
+                $billingDetails = [
+                    'name' => trim($user->first_name . ' ' . $user->last_name),
+                    'email' => $user->email,
+                ];
+                
+                // --- STRICT GCASH NUMBER VALIDATION ---
+                $gcashNumberToUse = null;
+                if (Schema::hasTable('client_payment_settings')) {
+                    $clientPayment = DB::table('client_payment_settings')
+                        ->where('client_id', $user->id)
+                        ->first();
+                        
+                    if ($clientPayment && !empty($clientPayment->gcash_number)) {
+                        $gcashNumberToUse = $clientPayment->gcash_number;
+                    }
+                }
+                
+                if (empty($gcashNumberToUse)) {
+                    return response()->json([
+                        'success' => false, 
+                        'message' => 'No GCash number found in your payment settings. Please update your payment settings before proceeding.'
+                    ], 400);
+                }
+
+                $billingDetails['phone'] = (string) $gcashNumberToUse;
+                // --------------------------------------
 
                 $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                     'headers' => [
@@ -296,6 +333,7 @@ class CartController extends Controller
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Payment for Cart Order ' . $orderNumber,
                                 'reference_number' => $orderNumber, 
+                                'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -357,7 +395,7 @@ class CartController extends Controller
         }
 
         // =========================================================================
-        // 2. DB TRANSACTION - COD 
+        // 2. DB TRANSACTION - COD & PICK-UP
         // =========================================================================
         DB::beginTransaction();
         try {
@@ -367,7 +405,7 @@ class CartController extends Controller
                 'total_amount' => $totalOrderAmount,
                 'shipping_fee' => $totalShippingFee,
                 'grand_total' => $grandTotal,
-                'payment_method' => 'cod',
+                'payment_method' => $request->payment_method, // Handles cod and pick-up
                 'status' => $orderStatus,
                 'delivery_address' => $fullAddress,
             ]);
@@ -452,7 +490,7 @@ class CartController extends Controller
                     'vatable_sales' => $vatableSales,
                     'vat_amount' => $vatAmount,
                     'grand_total' => $grandTotal,
-                    'payment_method' => 'COD',
+                    'payment_method' => strtoupper($request->payment_method),
                     'status' => ucfirst($orderStatus),
                     'date' => now()->format('Y-m-d H:i:s')
                 ]

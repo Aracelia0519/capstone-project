@@ -34,7 +34,8 @@ import {
   Banknote,
   UploadCloud,
   Menu,
-  Info
+  Info,
+  Ban
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -72,6 +73,10 @@ const currentPosition = ref<{ lat: number; lng: number } | null>(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
 const isDrawerOpen = ref(true)
+
+// Reject State
+const showRejectForm = ref(false)
+const rejectReason = ref('')
 
 // Proof File States
 const proofFile = ref<File | null>(null)
@@ -465,10 +470,33 @@ const remitAndComplete = async () => {
   }
 }
 
+const submitReject = async () => {
+  if (!rejectReason.value.trim() || !activeDeliveryId.value) return
+  
+  isProcessing.value = true
+  try {
+    await api.post(`/distributor-delivery/${activeDeliveryId.value}/reject`, {
+      reason: rejectReason.value
+    })
+    toast.success('Delivery rejected successfully')
+    showRejectForm.value = false
+    rejectReason.value = ''
+    clearActiveDelivery()
+    await fetchDeliveries()
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to reject delivery')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 // --- Helpers ---
 const focusDelivery = (id: number) => {
   activeDeliveryId.value = id
   isDrawerOpen.value = true 
+  showRejectForm.value = false
+  rejectReason.value = ''
+  
   updateMapMarkers()
   drawRoute(true) 
   
@@ -495,6 +523,9 @@ const clearActiveDelivery = () => {
   activeDeliveryId.value = null
   isDrawerOpen.value = true
   lastRoutedPosition = null
+  showRejectForm.value = false
+  rejectReason.value = ''
+
   updateMapMarkers()
   drawRoute(true) 
   
@@ -560,9 +591,9 @@ onUnmounted(() => {
     <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
       <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
         <div class="relative">
-          <div class="absolute -inset-4 bg-blue-500/20 rounded-full animate-pulse blur-xl"></div>
-          <div class="bg-blue-900/40 p-6 rounded-full relative shadow-inner border border-blue-500/30">
-            <MapPin class="w-16 h-16 text-blue-400" />
+          <div class="absolute -inset-4 bg-emerald-500/20 rounded-full animate-pulse blur-xl"></div>
+          <div class="bg-emerald-900/40 p-6 rounded-full relative shadow-inner border border-emerald-500/30">
+            <MapPin class="w-16 h-16 text-emerald-400" />
           </div>
         </div>
         
@@ -579,7 +610,7 @@ onUnmounted(() => {
           <AlertDescription>{{ locationError }}</AlertDescription>
         </Alert>
 
-        <Button @click="requestLocation" size="lg" :disabled="isLoading" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20">
+        <Button @click="requestLocation" size="lg" :disabled="isLoading" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
           <Loader2 v-if="isLoading" class="mr-2 h-5 w-5 animate-spin" />
           <Navigation v-else class="mr-2 h-5 w-5" />
           Enable GPS Access
@@ -596,18 +627,18 @@ onUnmounted(() => {
         <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
           <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2 w-max">
             <div class="relative flex h-2.5 w-2.5 shrink-0">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </div>
             <span class="text-xs font-medium text-gray-200 truncate font-mono">{{ currentCoordsDisplay }}</span>
           </div>
 
           <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
-            <div class="bg-blue-500/20 p-2 rounded-lg shrink-0">
-              <Truck class="h-5 w-5 text-blue-400" />
+            <div class="bg-emerald-500/20 p-2 rounded-lg shrink-0">
+              <Truck class="h-5 w-5 text-emerald-400" />
             </div>
             <div class="min-w-0">
-               <h1 class="font-bold text-white text-sm md:text-base truncate">Distributor Routing</h1>
+               <h1 class="font-bold text-white text-sm md:text-base truncate">E-Commerce Routing</h1>
                <p class="text-xs text-gray-400 truncate">{{ pendingDeliveries.length }} Pending Stops</p>
             </div>
           </div>
@@ -649,7 +680,7 @@ onUnmounted(() => {
           
           <div v-if="!activeDeliveryId" class="space-y-3 pb-8">
             <div v-if="pendingDeliveries.length === 0" class="text-center py-12">
-              <CheckCircle2 class="h-12 w-12 text-green-500/50 mx-auto mb-3" />
+              <CheckCircle2 class="h-12 w-12 text-emerald-500/50 mx-auto mb-3" />
               <p class="text-gray-400 font-medium text-lg">You're all caught up!</p>
               <p class="text-gray-500 text-sm mt-1">No active deliveries assigned at the moment.</p>
             </div>
@@ -658,19 +689,21 @@ onUnmounted(() => {
               v-for="delivery in pendingDeliveries"
               :key="delivery.id"
               @click="focusDelivery(delivery.id)"
-              class="w-full text-left bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/50 rounded-2xl p-4 transition-all"
+              class="w-full text-left bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800 hover:border-emerald-500/50 rounded-2xl p-4 transition-all"
             >
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
-                  <h3 class="font-bold text-gray-100 text-lg truncate">{{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name }}</h3>
+                  <h3 class="font-bold text-gray-100 text-lg truncate">
+                    {{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name }}
+                  </h3>
                   <p class="text-xs text-gray-500 font-mono mt-0.5">{{ delivery.order_number }}</p>
                 </div>
                 <Badge :class="{
                   'bg-purple-500/20 text-purple-400 border-0': delivery.status === 'remitting',
-                  'bg-blue-500/20 text-blue-400 border-0': delivery.status === 'in_transit',
+                  'bg-emerald-500/20 text-emerald-400 border-0': delivery.status === 'in_transit',
                   'bg-amber-500/20 text-amber-400 border-0': delivery.status === 'assigned'
                 }">
-                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'In Transit' : 'Assigned') }}
+                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned') }}
                 </Badge>
               </div>
               <p class="text-sm text-gray-400 mt-2 flex items-start gap-2">
@@ -684,10 +717,14 @@ onUnmounted(() => {
             
             <div class="flex justify-between items-start">
                <div>
-                  <h2 class="text-2xl font-black text-white leading-tight">{{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.client_name }}</h2>
-                  <p class="text-sm text-gray-400 font-mono mt-1">{{ activeDelivery.order_number }}</p>
+                  <h2 class="text-2xl font-black text-white leading-tight">
+                    {{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.client_name }}
+                  </h2>
+                  <div class="flex items-center gap-2 mt-1">
+                    <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.order_number }}</p>
+                  </div>
                </div>
-               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1">
+               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
                   {{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away
                </Badge>
             </div>
@@ -722,11 +759,33 @@ onUnmounted(() => {
                </div>
             </div>
 
-            <div v-if="activeDelivery.status === 'assigned'" class="pt-4">
-                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-14 text-lg font-semibold" size="lg">
-                    <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
+            <div v-if="activeDelivery.status === 'assigned'" class="pt-4 space-y-3">
+                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 text-lg font-semibold shadow-lg shadow-emerald-900/20" size="lg">
+                    <Loader2 v-if="isProcessing && !showRejectForm" class="mr-2 h-5 w-5 animate-spin" />
                     <Navigation v-else class="mr-2 h-5 w-5" /> Start Trip
                 </Button>
+
+                <div v-if="!showRejectForm">
+                  <Button variant="outline" @click="showRejectForm = true" class="w-full border-red-900/40 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-xl h-12">
+                    <Ban class="mr-2 h-4 w-4" /> Reject Assignment
+                  </Button>
+                </div>
+                <div v-else class="bg-red-900/10 p-4 rounded-xl border border-red-900/30 space-y-3 mt-2">
+                  <label class="text-sm font-semibold text-red-400">Reason for rejection <span class="text-red-500">*</span></label>
+                  <textarea 
+                    v-model="rejectReason" 
+                    class="w-full bg-gray-900 border border-red-900/50 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-red-500" 
+                    rows="3" 
+                    placeholder="I cannot fulfill this delivery because..."></textarea>
+                  
+                  <div class="flex gap-2 pt-1">
+                    <Button variant="ghost" @click="showRejectForm = false" class="flex-1 text-gray-400 hover:text-white hover:bg-gray-800">Cancel</Button>
+                    <Button variant="destructive" @click="submitReject" :disabled="isProcessing || !rejectReason.trim()" class="flex-1 bg-red-600 hover:bg-red-700">
+                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
+                        Confirm Reject
+                    </Button>
+                  </div>
+                </div>
             </div>
 
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
@@ -773,7 +832,7 @@ onUnmounted(() => {
                 <Button 
                   @click="arriveAndComplete" 
                   :disabled="!isWithinRange || !proofFile || (activeDelivery.payment_method.toLowerCase() === 'cod' && !paymentFile) || isProcessing" 
-                  class="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
+                  class="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >
                     <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />

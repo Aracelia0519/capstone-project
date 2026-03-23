@@ -301,6 +301,47 @@ class SupplierDeliveryController extends Controller
     }
 
     /**
+     * Delivery Personnel cancels/rejects the assigned delivery
+     */
+    public function rejectDelivery(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:1000'
+        ]);
+
+        $delivery = SupplierDelivery::findOrFail($id);
+
+        // Fetch the user to retrieve the personnel's name
+        $user = $request->user();
+        $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+        $personnelName = $personnel ? trim($personnel->first_name . ' ' . $personnel->last_name) : 'Unknown Delivery Personnel';
+
+        DB::beginTransaction();
+
+        try {
+            $req = ProcurementRequest::find($delivery->procurement_request_id);
+            
+            if ($req) {
+                $req->status = 'prepared';
+                // Prepend the personnel's name to the rejection reason
+                $req->rejection_reason = "Rejected by {$personnelName}: " . $request->reason;
+                $req->save();
+            }
+
+            // Remove the delivery assignment
+            $delivery->delete();
+
+            DB::commit();
+
+            return response()->json(['message' => 'Delivery rejected successfully.']);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to reject delivery: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Haversine formula to calculate distance
      */
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)

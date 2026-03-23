@@ -69,6 +69,7 @@ class SupplierShipmentController extends Controller
                     'weight' => $order->quantity . ' Units', 
                     'status' => ucfirst($order->status),
                     'delivery_address' => $order->delivery_address,
+                    'rejection_reason' => $order->rejection_reason, // ADDED REJECTION REASON FETCHING
                     'proofImage' => null,
                     'updated_at' => $order->updated_at
                 ];
@@ -90,6 +91,7 @@ class SupplierShipmentController extends Controller
                     'weight' => $ret->quantity_returned . ' Units', 
                     'status' => 'Replacement Prepared',
                     'delivery_address' => $ret->procurementRequest ? $ret->procurementRequest->delivery_address : null,
+                    'rejection_reason' => $ret->rejection_reason ?? ($ret->procurementRequest ? $ret->procurementRequest->rejection_reason : null), // ADDED REJECTION REASON FETCHING
                     'proofImage' => null,
                     'updated_at' => $ret->updated_at
                 ];
@@ -190,6 +192,7 @@ class SupplierShipmentController extends Controller
 
                 $procurementRequest->status = 'in_transit';
                 $procurementRequest->shipped_at = now();
+                $procurementRequest->rejection_reason = null; // CLEAR REJECTION REASON UPON SUCCESSFUL REASSIGNMENT
                 $procurementRequest->save();
 
             } elseif ($type === 'return') {
@@ -214,7 +217,17 @@ class SupplierShipmentController extends Controller
                 ]);
 
                 $returnReq->status = 'in_transit';
+                $returnReq->rejection_reason = null; // CLEAR REJECTION REASON UPON SUCCESSFUL REASSIGNMENT
                 $returnReq->save();
+
+                // Clear from base request if it got appended there
+                if ($returnReq->procurement_request_id) {
+                    $parentReq = ProcurementRequest::find($returnReq->procurement_request_id);
+                    if ($parentReq) {
+                        $parentReq->rejection_reason = null;
+                        $parentReq->save();
+                    }
+                }
             }
 
             DB::commit();

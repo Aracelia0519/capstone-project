@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ProcurementBudgetReleaseController extends Controller
@@ -188,6 +190,24 @@ class ProcurementBudgetReleaseController extends Controller
         // PAYMONGO (GCASH) LOGIC IF PAYMENT TERMS ARE GCASH
         // =========================================================================
         if (strtolower($procurement->payment_terms) === 'gcash') {
+            
+            // FETCH BILLING DETAILS FROM USERS & DISTRIBUTOR_PAYMENT_SETTINGS
+            $distributorUser = DB::table('users')->where('id', $distributorId)->first();
+            $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
+
+            // STRICT GCASH NUMBER VALIDATION
+            if (!$paymentSettings || empty($paymentSettings->gcash_number)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'GCash payment cannot be processed. No valid GCash number found in your Payment Settings.'
+                ], 400);
+            }
+
+            // Format Name and Email
+            $billingName = $distributorUser ? trim($distributorUser->first_name . ' ' . $distributorUser->last_name) : 'Distributor';
+            $billingEmail = $distributorUser ? $distributorUser->email : 'no-reply@example.com';
+            $billingPhone = $paymentSettings->gcash_number;
+
             try {
                 $client = new \GuzzleHttp\Client();
                 
@@ -213,6 +233,12 @@ class ProcurementBudgetReleaseController extends Controller
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Procurement Budget Release for ' . $requestCode,
                                 'reference_number' => $requestCode, 
+                                // AUTO-FILL BILLING INFOS
+                                'billing' => [
+                                    'name' => $billingName,
+                                    'email' => $billingEmail,
+                                    'phone' => $billingPhone
+                                ],
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -412,7 +438,7 @@ class ProcurementBudgetReleaseController extends Controller
     }
 
     /**
-     * Reject a request
+     * Reject a request and send Email Notifications
      */
     public function reject(Request $request, $id)
     {
@@ -429,12 +455,81 @@ class ProcurementBudgetReleaseController extends Controller
             'reason' => 'required|string|max:500'
         ]);
 
-        $procurement = ProcurementRequest::findOrFail($id);
+        // Load the related models to fetch their emails
+        $procurement = ProcurementRequest::with(['requester', 'distributor'])->findOrFail($id);
 
         $procurement->updateStatus('rejected', $request->reason);
 
+        // =========================================================================
+        // EMAIL NOTIFICATION DISPATCH LOGIC
+        // =========================================================================
+        $emailsToNotify = [];
+        
+        if ($procurement->requester && !empty($procurement->requester->email)) {
+            $emailsToNotify[] = $procurement->requester->email;
+        }
+        
+        if ($procurement->distributor && !empty($procurement->distributor->email)) {
+            $emailsToNotify[] = $procurement->distributor->email;
+        }
+
+        // Prevent duplicate emails (e.g. if the requester is the distributor)
+        $emailsToNotify = array_unique($emailsToNotify);
+
+        if (!empty($emailsToNotify)) {
+            $requestCode = $procurement->request_code ?? 'REQ-' . $procurement->id;
+            $reason = $request->reason;
+            $productName = $procurement->product_name;
+            $quantity = $procurement->quantity;
+            $totalCost = number_format($procurement->total_cost, 2);
+
+            $subject = "Procurement Budget Release Rejected: {$requestCode}";
+            
+            $message = "
+                <div style='font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; line-height: 1.6;'>
+                    <h2 style='color: #dc2626;'>Procurement Budget Release Rejected</h2>
+                    <p>Hello,</p>
+                    <p>Please be advised that the budget release for the following procurement request has been <strong>rejected</strong> by the Finance Department.</p>
+                    
+                    <table style='width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;'>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb; width: 35%;'><strong>Request Code:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb;'>{$requestCode}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb;'><strong>Product:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb;'>{$productName} (Qty: {$quantity})</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb;'><strong>Total Budget Required:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #e5e7eb;'>₱{$totalCost}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #fecaca; background-color: #fef2f2; color: #991b1b;'><strong>Reason for Rejection:</strong></td>
+                            <td style='padding: 10px; border: 1px solid #fecaca; background-color: #fef2f2; color: #991b1b;'>{$reason}</td>
+                        </tr>
+                    </table>
+                    
+                    <p>Please log in to the CaviteGoPaint system to review this request or contact the Finance Department for further clarification.</p>
+                    <br>
+                    <p>Best regards,<br><strong>CaviteGoPaint Finance System</strong></p>
+                </div>
+            ";
+
+            try {
+                Mail::html($message, function ($mail) use ($emailsToNotify, $subject) {
+                    $mail->to($emailsToNotify)
+                         ->subject($subject);
+                });
+            } catch (\Exception $e) {
+                // Log the failure to prevent crashing the response if SMTP misbehaves
+                Log::error("Failed to send budget rejection email for {$requestCode}: " . $e->getMessage());
+            }
+        }
+        // =========================================================================
+
         return response()->json([
-            'message' => 'Request rejected successfully',
+            'message' => 'Request rejected successfully and email notifications have been sent.',
             'data' => $procurement
         ]);
     }

@@ -170,6 +170,23 @@ class FinanceTransactionController extends Controller
             ], 400);
         }
 
+        // FETCH BILLING DETAILS FROM USERS & DISTRIBUTOR_PAYMENT_SETTINGS
+        $distributorUser = DB::table('users')->where('id', $distributorId)->first();
+        $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
+
+        // STRICT GCASH NUMBER VALIDATION
+        if (!$paymentSettings || empty($paymentSettings->gcash_number)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'GCash payment cannot be processed. No valid GCash number found in your Payment Settings.'
+            ], 400);
+        }
+
+        // Format Name and Email for PayMongo Billing
+        $billingName = $distributorUser ? trim($distributorUser->first_name . ' ' . $distributorUser->last_name) : 'Distributor';
+        $billingEmail = $distributorUser ? $distributorUser->email : 'no-reply@example.com';
+        $billingPhone = $paymentSettings->gcash_number;
+
         try {
             $client = new \GuzzleHttp\Client();
             $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
@@ -192,6 +209,12 @@ class FinanceTransactionController extends Controller
                             'payment_method_types' => ['gcash'],
                             'description' => 'Refund Processing for ' . $transactionCode,
                             'reference_number' => $transactionCode, 
+                            // AUTO-FILL BILLING INFOS
+                            'billing' => [
+                                'name' => $billingName,
+                                'email' => $billingEmail,
+                                'phone' => $billingPhone
+                            ],
                             'line_items' => [
                                 [
                                     'currency' => 'PHP',

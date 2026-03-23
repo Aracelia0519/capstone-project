@@ -69,6 +69,9 @@ interface Order {
   client_name: string
   client_phone: string
   items: OrderItem[]
+  rejection_reason?: string
+  is_delivery_rejected?: boolean
+  latest_delivery_status?: string
 }
 
 interface DeliveryMan {
@@ -334,9 +337,14 @@ const formatDate = (dateString: string) => {
                 <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
               </div>
               <div class="flex w-full items-center justify-between gap-2">
-                  <Badge class="capitalize text-[10px] px-2 py-0 h-5 bg-blue-500/20 text-blue-400 border-0">
-                      {{ order.status }}
-                  </Badge>
+                  <div class="flex items-center gap-1">
+                    <Badge class="capitalize text-[10px] px-2 py-0 h-5 bg-blue-500/20 text-blue-400 border-0">
+                        {{ order.status }}
+                    </Badge>
+                    <Badge v-if="order.is_delivery_rejected || order.rejection_reason" class="capitalize text-[10px] px-2 py-0 h-5 bg-red-500/20 text-red-400 border-0">
+                        Rejected
+                    </Badge>
+                  </div>
                   <span class="font-semibold text-blue-400">{{ formatCurrency(order.grand_total) }}</span>
               </div>
             </button>
@@ -384,6 +392,14 @@ const formatDate = (dateString: string) => {
 
         <ScrollArea class="flex-1 p-6">
           <div v-if="selectedOrder" :key="selectedOrder.id" class="mx-auto max-w-4xl space-y-6 pb-10">
+
+            <div v-if="selectedOrder.is_delivery_rejected || selectedOrder.rejection_reason" class="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex gap-3">
+              <AlertCircle class="h-5 w-5 text-red-400 shrink-0" />
+              <div>
+                <h3 class="text-sm font-semibold text-red-400">Delivery Assignment Rejected</h3>
+                <p class="text-xs text-red-300 mt-1">{{ selectedOrder.rejection_reason || 'The assigned delivery personnel rejected or was unable to fulfill this order. Please assign to a new personnel.' }}</p>
+              </div>
+            </div>
             
             <div class="grid gap-6 md:grid-cols-2">
               <Card class="bg-gray-900/40 border-gray-800 text-white shadow-none">
@@ -584,9 +600,14 @@ const formatDate = (dateString: string) => {
                           <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
                         </div>
                         <div class="flex w-full items-center justify-between gap-2">
-                            <Badge class="capitalize text-[10px] px-2 py-0 h-5 bg-blue-500/20 text-blue-400 border-0">
-                                {{ order.status }}
-                            </Badge>
+                            <div class="flex items-center gap-1">
+                              <Badge class="capitalize text-[10px] px-2 py-0 h-5 bg-blue-500/20 text-blue-400 border-0">
+                                  {{ order.status }}
+                              </Badge>
+                              <Badge v-if="order.is_delivery_rejected || order.rejection_reason" class="capitalize text-[10px] px-2 py-0 h-5 bg-red-500/20 text-red-400 border-0">
+                                  Rejected
+                              </Badge>
+                            </div>
                         </div>
                       </button>
                     </div>
@@ -610,6 +631,14 @@ const formatDate = (dateString: string) => {
       <ScrollArea class="flex-1">
         <div v-if="selectedOrder" class="p-4 space-y-4 pb-8">
           
+          <div v-if="selectedOrder.is_delivery_rejected || selectedOrder.rejection_reason" class="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex gap-3">
+            <AlertCircle class="h-5 w-5 text-red-400 shrink-0" />
+            <div>
+              <h3 class="text-sm font-semibold text-red-400">Delivery Assignment Rejected</h3>
+              <p class="text-xs text-red-300 mt-1">{{ selectedOrder.rejection_reason || 'The assigned delivery personnel rejected or was unable to fulfill this order. Please assign to a new personnel.' }}</p>
+            </div>
+          </div>
+
           <Card class="bg-gray-900/40 border-gray-800 shadow-none text-white">
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2 text-gray-200">
