@@ -547,7 +547,7 @@ class EmployeeController extends Controller
 
             // --- SEND WELCOME EMAIL ---
             try {
-                $portalUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')) . '/login';
+                $portalUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')) . '/landing/payrollLogin';
                 
                 $htmlContent = "
                     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;'>
