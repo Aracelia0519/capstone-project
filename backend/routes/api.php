@@ -415,6 +415,9 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
+    Route::get('/profile', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'getProfile']);
+    Route::post('/profile/update-password', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'updatePassword']);
+
     // HR Employees Routes
     Route::prefix('hr')->middleware(['auth:sanctum'])->group(function () {
         Route::prefix('employees')->group(function () {

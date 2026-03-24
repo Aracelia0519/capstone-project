@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class EmployeeController extends Controller
 {
@@ -83,6 +84,16 @@ class EmployeeController extends Controller
                 'can_approve' => false,
             ]
         ];
+    }
+
+    /**
+     * Helper to generate absolute file URL from a storage path.
+     * Uses url(Storage::url()) so it always resolves to the full APP_URL-based URL.
+     */
+    private function fileUrl(?string $path): ?string
+    {
+        if (!$path) return null;
+        return url(Storage::url($path));
     }
 
     // Get all employees for the current distributor (HR Manager & Permitted Employees)
@@ -307,13 +318,15 @@ class EmployeeController extends Controller
                 ] : null,
                 'created_at' => $employee->created_at->format('Y-m-d H:i:s'),
                 'updated_at' => $employee->updated_at->format('Y-m-d H:i:s'),
-                // Document URLs
-                'valid_id_photo_url' => $employee->valid_id_photo ? Storage::url($employee->valid_id_photo) : null,
-                'resume_url' => $employee->resume ? Storage::url($employee->resume) : null,
-                'employment_contract_url' => $employee->employment_contract ? Storage::url($employee->employment_contract) : null,
-                'medical_certificate_url' => $employee->medical_certificate ? Storage::url($employee->medical_certificate) : null,
-                'nbi_clearance_url' => $employee->nbi_clearance ? Storage::url($employee->nbi_clearance) : null,
-                'police_clearance_url' => $employee->police_clearance ? Storage::url($employee->police_clearance) : null,
+
+                // FIX: Use url(Storage::url()) to generate absolute URLs so the
+                // Vue frontend (running on a different port in dev) can resolve them.
+                'valid_id_photo_url'         => $this->fileUrl($employee->valid_id_photo),
+                'resume_url'                 => $this->fileUrl($employee->resume),
+                'employment_contract_url'    => $this->fileUrl($employee->employment_contract),
+                'medical_certificate_url'    => $this->fileUrl($employee->medical_certificate),
+                'nbi_clearance_url'          => $this->fileUrl($employee->nbi_clearance),
+                'police_clearance_url'       => $this->fileUrl($employee->police_clearance),
             ];
             
             return response()->json([
@@ -359,7 +372,6 @@ class EmployeeController extends Controller
                 'phone.required' => 'A contact number is required.',
                 'phone.regex' => 'The phone number must be exactly 11 digits and contain only numbers.',
                 'emergency_contact.regex' => 'The emergency contact must be exactly 11 digits and contain only numbers.',
-                'password.confirmed' => 'The password confirmation does not match.',
                 'hire_date.date' => 'Please provide a valid hire date.',
                 'date_of_birth.before' => 'The employee must be at least 1 day old.',
                 'salary.min' => 'Salary cannot be negative.',
@@ -384,8 +396,6 @@ class EmployeeController extends Controller
                 'middle_name' => 'nullable|string|max:255',
                 'last_name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:hr_employees,email|unique:users,email',
-                'password' => 'required|string|min:8|confirmed',
-                'password_confirmation' => 'required|string|min:8',
                 'phone' => ['required', 'string', 'regex:/^[0-9]{11}$/'],
                 'emergency_contact' => ['nullable', 'string', 'regex:/^[0-9]{11}$/'],
                 'address' => 'required|string|max:500',
@@ -463,13 +473,13 @@ class EmployeeController extends Controller
             }
             
             $employeeCode = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-            
+
             // Step 1: Create User account
             $userData = [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => $request->password, 
+                'password' => $request->last_name, 
                 'phone' => $request->phone,
                 'address' => $request->address,
                 'role' => 'employee', 
@@ -492,8 +502,7 @@ class EmployeeController extends Controller
                 'school_graduated', 'year_graduated', 'course', 'notes'
             ]);
             
-            // Add system fields
-            $employeeData['password'] = $userData['password'];
+            $employeeData['password'] = Hash::make($request->last_name); 
             $employeeData['employee_code'] = $employeeCode;
             $employeeData['parent_distributor_id'] = $parentDistributorId;
             $employeeData['hr_manager_id'] = $hrManagerId;
@@ -532,9 +541,44 @@ class EmployeeController extends Controller
             
             DB::commit();
             
-            // Get company name for response
+            // Get company name for response and email
             $distributorRequirement = DistributorRequirements::where('user_id', $parentDistributorId)->first();
             $companyName = $distributorRequirement ? $distributorRequirement->company_name : 'Unknown Company';
+
+            // --- SEND WELCOME EMAIL ---
+            try {
+                $portalUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')) . '/login';
+                
+                $htmlContent = "
+                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;'>
+                        <h2 style='color: #2563eb;'>Welcome to {$companyName}!</h2>
+                        <p>Hi {$request->first_name},</p>
+                        <p>Your employee account has been successfully created. You can now log into the employee portal.</p>
+                        
+                        <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0;'>Your Login Credentials</h3>
+                            <ul style='list-style-type: none; padding: 0;'>
+                                <li><strong>Portal URL:</strong> <a href='{$portalUrl}' style='color: #2563eb;'>{$portalUrl}</a></li>
+                                <li><strong>Email:</strong> {$request->email}</li>
+                                <li><strong>Temporary Password:</strong> {$request->last_name}</li>
+                            </ul>
+                        </div>
+                        
+                        <p style='color: #dc2626; font-weight: bold;'>Security Notice: Please change your password immediately upon your first login.</p>
+                        
+                        <br>
+                        <p>Best Regards,<br><strong>HR Department, {$companyName}</strong></p>
+                    </div>
+                ";
+
+                Mail::html($htmlContent, function ($message) use ($request, $companyName) {
+                    $message->to($request->email)
+                            ->subject("Welcome to {$companyName} - Your Account Details");
+                });
+
+            } catch (\Exception $mailException) {
+                Log::error('Failed to send welcome email: ' . $mailException->getMessage());
+            }
             
             return response()->json([
                 'status' => 'success',
@@ -544,10 +588,6 @@ class EmployeeController extends Controller
                         'id' => $employee->id,
                         'employee_code' => $employee->employee_code,
                         'full_name' => $employee->full_name,
-                        'email' => $employee->email,
-                        'department' => $employee->department,
-                        'position' => $employee->position,
-                        'company_name' => $companyName,
                     ]
                 ]
             ], 201);
@@ -555,17 +595,15 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Employee creation failed: ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
             
             return response()->json([
                 'status' => 'error',
-                'message' => 'Server Error: ' . $e->getMessage(),
-                'error' => $e->getMessage()
+                'message' => 'Server Error: ' . $e->getMessage()
             ], 500);
         }
     }
     
-    // Update employee
+    // Update employee details and optionally replace documents
     public function update(Request $request, $id)
     {
         DB::beginTransaction();
@@ -585,20 +623,31 @@ class EmployeeController extends Controller
             
             $parentDistributorId = $accessData['parent_distributor_id'];
             
-            $employee = Employee::where('parent_distributor_id', $parentDistributorId)
-                ->findOrFail($id);
+            $employee = Employee::where('parent_distributor_id', $parentDistributorId)->findOrFail($id);
             
-            // Validate request
             $validator = Validator::make($request->all(), [
+                'first_name' => 'sometimes|string|max:255',
+                'last_name' => 'sometimes|string|max:255',
+                'email' => [
+                    'sometimes', 'string', 'email', 'max:255',
+                    Rule::unique('hr_employees', 'email')->ignore($employee->id),
+                    Rule::unique('users', 'email')->ignore($employee->user_id),
+                ],
+                'phone' => ['sometimes', 'string', 'regex:/^[0-9]{11}$/'],
+                'date_of_birth' => 'sometimes|date|before:today',
                 'department' => 'sometimes|string|max:255',
                 'position' => 'sometimes|string|max:255',
                 'employment_status' => 'sometimes|in:probationary,regular,contractual,resigned,terminated,retired',
                 'salary' => 'sometimes|numeric|min:0',
                 'salary_currency' => 'sometimes|string|max:3',
                 'status' => 'sometimes|in:active,inactive,on_leave',
-                'password' => 'nullable|string|min:8|confirmed',
-                'password_confirmation' => 'nullable|string|min:8',
-                'notes' => 'nullable|string',
+                // Document overrides (nullable because they aren't required to be updated every time)
+                'valid_id_photo' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'resume' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+                'employment_contract' => 'nullable|file|mimes:pdf|max:5120',
+                'medical_certificate' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'nbi_clearance' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
+                'police_clearance' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:5120',
             ]);
             
             if ($validator->fails()) {
@@ -608,35 +657,53 @@ class EmployeeController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
+
+            // Define file fields for checking replacements
+            $fileFields = [
+                'valid_id_photo' => 'hr/employees/documents/valid_ids',
+                'resume' => 'hr/employees/documents/resumes',
+                'employment_contract' => 'hr/employees/documents/contracts',
+                'medical_certificate' => 'hr/employees/documents/medical',
+                'nbi_clearance' => 'hr/employees/documents/clearances',
+                'police_clearance' => 'hr/employees/documents/clearances'
+            ];
             
-            $updateData = $request->only([
-                'department', 'position', 'employment_status',
-                'salary', 'salary_currency', 'status', 'notes'
-            ]);
+            $updateData = $request->except(array_merge(array_keys($fileFields), ['_method']));
             
-            // Only update password if provided
-            if ($request->filled('password')) {
-                $hashedPassword = Hash::make($request->password);
-                $updateData['password'] = $hashedPassword;
-                
-                if ($employee->user_id) {
-                    $userAccount = User::find($employee->user_id);
-                    if ($userAccount) {
-                        $userAccount->update(['password' => $hashedPassword]);
+            // Handle file replacements
+            foreach ($fileFields as $field => $path) {
+                if ($request->hasFile($field)) {
+                    // Delete old file if exists
+                    if ($employee->$field) {
+                        Storage::disk('public')->delete($employee->$field);
+                    }
+                    
+                    $file = $request->file($field);
+                    $fileName = time() . '_' . $employee->employee_code . '_' . $field . '.' . $file->getClientOriginalExtension();
+                    $filePath = $file->storeAs($path, $fileName, 'public');
+                    $updateData[$field] = $filePath;
+                }
+            }
+            
+            // Update User linked account
+            if ($employee->user_id) {
+                $userAccount = User::find($employee->user_id);
+                if ($userAccount) {
+                    $userData = [];
+                    if ($request->has('first_name')) $userData['first_name'] = $request->first_name;
+                    if ($request->has('last_name')) $userData['last_name'] = $request->last_name;
+                    if ($request->has('email')) $userData['email'] = $request->email;
+                    if ($request->has('phone')) $userData['phone'] = $request->phone;
+                    if ($request->has('address')) $userData['address'] = $request->address;
+                    if ($request->has('status')) $userData['status'] = $request->status === 'active' ? 'active' : 'inactive';
+                    
+                    if (!empty($userData)) {
+                        $userAccount->update($userData);
                     }
                 }
             }
             
             $employee->update($updateData);
-            
-            // Update User status if employee status changed
-            if ($request->has('status') && $employee->user_id) {
-                $userAccount = User::find($employee->user_id);
-                if ($userAccount) {
-                    $userStatus = $request->status === 'active' ? 'active' : 'inactive';
-                    $userAccount->update(['status' => $userStatus]);
-                }
-            }
             
             DB::commit();
             
@@ -650,7 +717,6 @@ class EmployeeController extends Controller
                         'department' => $employee->department,
                         'position' => $employee->position,
                         'employment_status' => $employee->employment_status,
-                        'formatted_salary' => $employee->formatted_salary,
                         'status' => $employee->status
                     ]
                 ]
@@ -658,6 +724,7 @@ class EmployeeController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Employee update failed: ' . $e->getMessage());
             
             return response()->json([
                 'status' => 'error',
@@ -856,7 +923,6 @@ class EmployeeController extends Controller
         }
     }
 
-    // New Endpoint for specific Employee Accessibility matching api.php routing
     public function getEmployeeAccessibility($id)
     {
         try {
