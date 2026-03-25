@@ -194,7 +194,8 @@ const navigation = [
         path: '/supplier/PersonnelOfficer',
         icon: Users,
         color: 'text-emerald-400',
-        badgeColor: 'bg-emerald-500/20 text-emerald-300'
+        badgeColor: 'bg-emerald-500/20 text-emerald-300',
+        requiresVerify: true
       },
       { 
         name: 'Add Personnel',
@@ -202,7 +203,8 @@ const navigation = [
         icon: UserPlus,
         color: 'text-cyan-400',
         badge: 'new',
-        badgeColor: 'bg-cyan-500/20 text-cyan-300'
+        badgeColor: 'bg-cyan-500/20 text-cyan-300',
+        requiresVerify: true
       },
       { 
         name: 'Role Activation',
@@ -210,7 +212,8 @@ const navigation = [
         icon: ShieldCheck,
         color: 'text-purple-400',
         badge: 'pending',
-        badgeColor: 'bg-purple-500/20 text-purple-300'
+        badgeColor: 'bg-purple-500/20 text-purple-300',
+        requiresVerify: true
       }
     ]
   },

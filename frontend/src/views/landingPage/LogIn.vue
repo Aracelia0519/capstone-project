@@ -65,7 +65,7 @@
               <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 shadow-2xl flex items-center justify-center transform transition-all duration-500 hover:rotate-[360deg] hover:scale-110 animate-soft-spin">
                 <img src="/favicon.svg" class="w-20 h-20" alt="icon" />
                 
-                <div class="absolute bottom-0 w-2 h-4 bg-gradient-to-t from-blue-400 to-transparent rounded-b-full animate-drip"></div>
+                
               </div>
             </div>
             

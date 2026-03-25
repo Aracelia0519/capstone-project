@@ -29,16 +29,16 @@
               <div class="absolute -inset-4 bg-gradient-to-r from-emerald-500/30 via-teal-500/30 to-cyan-500/30 rounded-3xl blur-xl animate-pulse-glow"></div>
               <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 shadow-2xl flex items-center justify-center transform transition-all duration-500 hover:rotate-12">
                 <svg class="w-12 h-12 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
               </div>
             </div>
             
             <div class="mt-6 text-center">
               <h1 class="text-3xl font-bold bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 bg-clip-text text-transparent">
-                Payroll Portal
+                Employee Portal
               </h1>
-              <p class="text-slate-400 text-sm mt-2">Secure Salary Management</p>
+              <p class="text-slate-400 text-sm mt-2">Secure Employee and Salary Management</p>
             </div>
           </div>
 
@@ -59,7 +59,7 @@
           <div class="max-w-md mx-auto w-full">
             <div class="text-center mb-8">
               <h2 class="text-2xl font-bold text-white mb-2">Employee Login</h2>
-              <p class="text-slate-400 text-sm">Access your payslips and tax documents</p>
+              <p class="text-slate-400 text-sm">Access your payslips and empoyee documents</p>
             </div>
 
             <form @submit.prevent="handleLogin" class="space-y-6">
@@ -110,9 +110,9 @@
                     Remember me
                   </label>
                 </div>
-                <a href="#" class="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors hover:underline">
+                <!--<a href="#" class="text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors hover:underline">
                   Forgot password?
-                </a>
+                </a>-->
               </div>
 
               <button
@@ -166,7 +166,7 @@ const particleCanvas = ref(null)
 const features = [
   {
     icon: ShieldCheck,
-    title: 'Bank-Grade Security',
+    title: 'Security',
     subtitle: 'End-to-end encrypted data'
   },
   {
