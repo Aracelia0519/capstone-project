@@ -1,275 +1,166 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4 overflow-hidden relative">
-    <canvas ref="particleCanvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-    
-    <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute top-1/4 left-1/4 w-96 h-96">
-        <div class="absolute w-48 h-48 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-full blur-3xl animate-morph-slow"></div>
-        <div class="absolute top-12 left-12 w-32 h-32 bg-gradient-to-r from-purple-500/15 to-pink-500/15 rounded-full blur-2xl animate-morph-medium"></div>
-        <div class="absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-r from-blue-400/10 to-cyan-300/10 rounded-full blur-xl animate-pulse-delay"></div>
-      </div>
-      
-      <div class="absolute bottom-1/4 right-1/4 w-96 h-96">
-        <div class="absolute w-48 h-48 bg-gradient-to-r from-emerald-500/15 to-teal-400/15 rounded-full blur-3xl animate-morph-slow-reverse"></div>
-        <div class="absolute bottom-12 right-12 w-32 h-32 bg-gradient-to-r from-amber-500/10 to-yellow-400/10 rounded-full blur-2xl animate-morph-medium-delay"></div>
-      </div>
+  <div class="min-h-screen relative flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat"
+       style="background-image: url('/hero-paint-store.jpg');">
+    <!-- Dark overlay for readability -->
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
 
-      <div class="absolute top-1/3 right-1/3 w-64 h-96 opacity-10">
-        <div class="absolute w-8 h-40 bg-gradient-to-b from-blue-400 to-transparent rounded-full transform rotate-45 animate-brush-trail"></div>
-      </div>
-      
-      <div class="absolute bottom-1/3 left-1/3 w-64 h-96 opacity-10">
-        <div class="absolute w-8 h-32 bg-gradient-to-t from-purple-400 to-transparent rounded-full transform -rotate-12 animate-brush-trail-delay"></div>
-      </div>
-
-      <div class="absolute top-20 left-20 animate-parabolic-blue">
-        <div class="w-6 h-6 bg-gradient-to-r from-blue-400/40 to-cyan-300/40 rounded-full blur-sm"></div>
-      </div>
-      <div class="absolute top-40 right-40 animate-parabolic-purple">
-        <div class="w-5 h-5 bg-gradient-to-r from-purple-400/40 to-pink-300/40 rounded-full blur-sm"></div>
-      </div>
-      <div class="absolute bottom-20 left-32 animate-parabolic-green">
-        <div class="w-7 h-7 bg-gradient-to-r from-emerald-400/40 to-teal-300/40 rounded-full blur-sm"></div>
-      </div>
-      <div class="absolute bottom-40 right-20 animate-parabolic-yellow">
-        <div class="w-5 h-5 bg-gradient-to-r from-amber-400/40 to-yellow-300/40 rounded-full blur-sm"></div>
-      </div>
-
-      <div class="absolute top-1/2 left-1/4 w-32 h-32 animate-orb-float">
-        <div class="w-full h-full bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-2xl"></div>
-      </div>
-      
-      <div class="absolute bottom-1/3 right-1/4 w-40 h-40 animate-orb-float-delay">
-        <div class="w-full h-full bg-gradient-to-r from-pink-500/5 to-yellow-500/5 rounded-full blur-2xl"></div>
-      </div>
-
-      <div class="absolute inset-0 flex items-center justify-center">
-        <div class="w-1 h-1 animate-ripple"></div>
-      </div>
-    </div>
-
-    <div class="relative w-full max-w-4xl z-10 animate-gentle-float">
-      <div class="flex flex-col lg:flex-row bg-gray-800/20 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-700/30 overflow-hidden transform transition-all duration-1000 hover:scale-[1.01] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <!-- Main Card -->
+    <div class="relative w-full max-w-5xl z-10">
+      <div class="flex flex-col lg:flex-row bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
         
-        <div class="lg:w-2/5 p-8 lg:p-12 bg-gradient-to-br from-blue-900/15 via-purple-900/15 to-pink-900/15 flex flex-col justify-center items-center relative overflow-hidden group">
-          <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-gradient-shift"></div>
-          
-          <div class="absolute inset-0 pointer-events-none">
-            <div class="absolute inset-0 animate-particle-field"></div>
-          </div>
-          
-          <div class="relative mb-6 z-30 transform transition-all duration-700 group-hover:scale-105">
+        <!-- Left Side: Branding & Features -->
+        <div class="lg:w-2/5 p-8 bg-gradient-to-br from-gray-800/80 to-gray-900/80 flex flex-col justify-center items-center">
+          <div class="mb-6">
             <div class="relative">
-              <div class="absolute -inset-4 bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-xl animate-pulse-glow"></div>
-              
-              <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 shadow-2xl flex items-center justify-center transform transition-all duration-500 hover:rotate-[360deg] hover:scale-110 animate-soft-spin">
-                <img src="/favicon.svg" class="w-20 h-20" alt="icon" />
-                
-                
-              </div>
+              <img src="/favicon.svg" class="w-20 h-20 mx-auto" alt="icon" />
             </div>
-            
-            <div class="mt-6">
-              <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent text-center animate-gradient-text">
-                CaviteGo Paint
-              </h1>
-              <p class="text-gray-300/80 text-center mt-2 animate-fade-in-up">Color Your World Beautifully</p>
-            </div>
+            <h1 class="text-3xl font-bold text-white text-center mt-4">
+              CaviteGo Paint
+            </h1>
+            <p class="text-gray-400 text-center mt-2">Color Your World Beautifully</p>
           </div>
 
           <div class="space-y-4 mt-6 w-full max-w-xs">
             <div v-for="(feature, index) in features" :key="index"
-                 class="relative overflow-hidden group/feature">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover/feature:translate-x-[100%] transition-transform duration-1000"></div>
-              
-              <div class="relative flex items-center space-x-3 p-3 rounded-xl bg-gray-900/30 backdrop-blur-sm hover:bg-gray-900/50 transition-all duration-500 cursor-pointer"
-                   :style="`animation-delay: ${0.9 + index * 0.2}s`">
-                <div class="p-2 rounded-lg bg-gradient-to-r from-blue-500/20 to-cyan-400/20 transform transition-all duration-500 group-hover/feature:scale-110 group-hover/feature:rotate-12">
-                  <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="feature.icon"></path>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <p class="text-sm font-medium text-gray-200 transition-all duration-300 group-hover/feature:translate-x-2">{{ feature.title }}</p>
-                  <p class="text-xs text-gray-400 transition-all duration-300 group-hover/feature:translate-x-2">{{ feature.subtitle }}</p>
-                </div>
+                 class="flex items-center space-x-3 p-3 rounded-xl bg-gray-800/60 shadow-sm hover:shadow-md transition-shadow">
+              <div class="p-2 rounded-lg bg-blue-900/40 text-blue-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="feature.icon"></path>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <p class="text-sm font-medium text-gray-200">{{ feature.title }}</p>
+                <p class="text-xs text-gray-400">{{ feature.subtitle }}</p>
               </div>
             </div>
           </div>
 
-          <div class="mt-8 text-center relative">
-            <div class="absolute -inset-x-4 -inset-y-2 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <p class="text-gray-400/70 text-sm italic relative animate-typewriter">"Where Every Color Tells a Story"</p>
+          <div class="mt-8 text-center">
+            <p class="text-gray-500 text-sm italic">"Where Every Color Tells a Story"</p>
           </div>
         </div>
 
-        <div class="lg:w-3/5 p-8 lg:p-12 relative">
-          <div class="text-center mb-8 relative">
-            <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full animate-expand-width"></div>
-            <h2 class="text-2xl font-bold text-white mb-2 animate-fade-in-up">Welcome Back</h2>
-            <p class="text-gray-400 animate-fade-in-up-delay">Sign in to your account</p>
+        <!-- Right Side: Login Form -->
+        <div class="lg:w-3/5 p-8 lg:p-10 bg-gray-900/90">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">Welcome Back</h2>
+            <p class="text-gray-400">Sign in to your account</p>
           </div>
 
           <form @submit.prevent="handleLogin" class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div class="group animate-input-slide-left">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  <div class="flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                    </svg>
-                    <span class="group-hover:text-blue-300 transition-colors duration-300">Email Address</span>
-                  </div>
-                </label>
-                <div class="relative">
-                  <input
-                    v-model="form.email"
-                    type="email"
-                    required
-                    placeholder="your@email.com"
-                    class="w-full px-4 py-3 pl-11 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all duration-500 group-hover:border-blue-500/30"
-                    :class="validationErrors.email ? 'animate-shake border-red-500/50 focus:ring-red-500/30' : ''"
-                  />
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-5 h-5 text-gray-500 group-hover:text-blue-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
-                    </svg>
-                  </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>Email Address</span>
+                </div>
+              </label>
+              <div class="relative">
+                <input
+                  v-model="form.email"
+                  type="email"
+                  required
+                  placeholder="your@email.com"
+                  class="w-full px-4 py-3 pl-11 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
+                  :class="validationErrors.email ? 'border-red-500' : ''"
+                />
+                <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                  </svg>
                 </div>
               </div>
-
-              <div class="group animate-input-slide-right">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                  <div class="flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 118 0v4h8z"></path>
-                    </svg>
-                    <span class="group-hover:text-purple-300 transition-colors duration-300">Password</span>
-                  </div>
-                </label>
-                <div class="relative">
-                  <input
-                    v-model="form.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    required
-                    placeholder="••••••••"
-                    class="w-full px-4 py-3 pl-11 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500/50 transition-all duration-500 group-hover:border-purple-500/30"
-                    :class="validationErrors.password ? 'animate-shake border-red-500/50 focus:ring-red-500/30' : ''"
-                  />
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-5 h-5 text-gray-500 group-hover:text-purple-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
-                    </svg>
-                  </div>
-                  <button
-                    type="button"
-                    @click="showPassword = !showPassword"
-                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-pink-400 transition-all duration-300 hover:scale-110"
-                  >
-                    <svg v-if="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
-                    </svg>
-                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+              <p v-if="validationErrors.email" class="text-xs text-red-400 mt-1">{{ validationErrors.email }}</p>
             </div>
 
-            <div class="flex items-center justify-between animate-fade-in-up">
-              <label class="flex items-center space-x-3 cursor-pointer group">
-                <div class="relative">
-                  <input
-                    v-model="form.remember"
-                    type="checkbox"
-                    class="sr-only"
-                  />
-                  <div class="w-5 h-5 border-2 border-gray-600 rounded-lg bg-gray-900/50 flex items-center justify-center transition-all duration-300 group-hover:border-blue-400 group-hover:scale-110 group-active:scale-90"
-                       :class="form.remember ? 'animate-bounce-check border-blue-400 bg-blue-500/20 scale-110' : ''">
-                    <svg v-if="form.remember" class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                  </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 118 0v4h8z"></path>
+                  </svg>
+                  <span>Password</span>
                 </div>
-                <span class="text-sm text-gray-300 group-hover:text-blue-300 transition-colors duration-300">Remember me</span>
+              </label>
+              <div class="relative">
+                <input
+                  v-model="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  required
+                  placeholder="••••••••"
+                  class="w-full px-4 py-3 pl-11 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition"
+                  :class="validationErrors.password ? 'border-red-500' : ''"
+                />
+                <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                  </svg>
+                </div>
+                <button
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  <svg v-if="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                </button>
+              </div>
+              <p v-if="validationErrors.password" class="text-xs text-red-400 mt-1">{{ validationErrors.password }}</p>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input
+                  v-model="form.remember"
+                  type="checkbox"
+                  class="w-4 h-4 bg-gray-800 border-gray-600 rounded text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                />
+                <span class="text-sm text-gray-400">Remember me</span>
               </label>
               <button
                 type="button"
                 @click="handleForgotPassword"
-                class="text-sm bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-medium hover:from-blue-300 hover:to-purple-300 transition-all duration-500 flex items-center space-x-2 hover:scale-105 group"
+                class="text-sm text-blue-400 hover:text-blue-300 font-medium"
               >
-                <svg class="w-4 h-4 transform transition-transform duration-500 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
-                </svg>
-                <span class="relative">
-                  Forgot password?
-                  <span class="absolute bottom-0 left-0 w-0 h-px bg-gradient-to-r from-blue-400 to-purple-400 transition-all duration-300 group-hover:w-full"></span>
-                </span>
+                Forgot password?
               </button>
             </div>
 
             <button
               type="submit"
               :disabled="isLoading"
-              class="relative w-full py-3.5 text-white font-semibold rounded-xl shadow-2xl overflow-hidden group transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] animate-button-pulse"
-              :class="isLoading ? 'opacity-50 cursor-not-allowed' : ''"
+              class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 group-hover:from-blue-600 group-hover:via-purple-600 group-hover:to-pink-600 transition-all duration-500"></div>
-              
-              <div class="absolute inset-0 overflow-hidden">
-                <div class="absolute top-0 left-0 w-12 h-full bg-white/20 skew-x-12 animate-shine"></div>
-              </div>
-              
-              <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                <div class="absolute inset-0 animate-ripple-button"></div>
-              </div>
-              
-              <div class="relative flex items-center justify-center space-x-3">
-                <svg v-if="isLoading" class="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <svg v-else class="w-5 h-5 transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                </svg>
-                <span class="transform transition-all duration-500 group-hover:scale-105">
-                  {{ isLoading ? 'Signing In...' : 'Sign In to Account' }}
-                </span>
-              </div>
+              {{ isLoading ? 'Signing In...' : 'Sign In to Account' }}
             </button>
 
-            <div class="relative flex text-center">
-              <div class="w-full max-w-md">
-                <div class="absolute inset-0 flex items-center">
-                  <div class="w-full h-px bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
-                </div>
-                <div class="relative flex justify-center text-center">
-                  <span class="px-4 bg-gray-800/80 text-gray-400/80 text-sm animate-bounce-soft">Don't have an account?</span>
-                </div>
+            <div class="relative text-center">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full h-px bg-gray-700"></div>
+              </div>
+              <div class="relative flex justify-center">
+                <span class="px-4 bg-gray-900 text-gray-400 text-sm">Don't have an account?</span>
               </div>
             </div>
 
             <button
               type="button"
               @click="handleRegister"
-              class="relative w-full py-3 text-gray-300 font-medium rounded-xl border-2 border-transparent group overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] animate-fade-in-up-delay"
+              class="w-full py-3 text-gray-300 font-medium rounded-lg border border-gray-700 hover:bg-gray-800 transition"
             >
-              <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div class="absolute inset-[2px] bg-gray-800/80 rounded-lg transition-all duration-500 group-hover:bg-gray-800/60"></div>
-              
-              <div class="relative flex items-center justify-center space-x-2 group-hover:text-white transition-colors duration-500">
-                <svg class="w-5 h-5 transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                </svg>
-                <span class="transform transition-all duration-500 group-hover:scale-105">Create New Account</span>
-              </div>
+              Create New Account
             </button>
           </form>
 
-          <div class="mt-6 pt-4 border-t border-gray-700/30 text-center animate-fade-in-up-delay">
-            <p class="text-gray-400/70 text-xs">
+          <div class="mt-6 pt-4 border-t border-gray-800 text-center">
+            <p class="text-gray-500 text-xs">
               © 2026 CaviteGo Paint • Secure authentication powered by Laravel Sanctum
             </p>
           </div>
@@ -277,39 +168,40 @@
       </div>
     </div>
 
+    <!-- Toast Notification (dark theme) -->
     <transition
-      enter-active-class="transition-all duration-500 ease-out"
-      leave-active-class="transition-all duration-300 ease-in"
-      enter-from-class="opacity-0 translate-y-4 scale-95"
-      leave-to-class="opacity-0 translate-y-4 scale-95"
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 translate-y-4"
+      leave-to-class="opacity-0 translate-y-4"
     >
       <div
         v-if="showToast"
-        class="fixed top-6 right-6 bg-gray-800/90 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-4 max-w-sm z-50 animate-toast-slide"
+        class="fixed top-6 right-6 bg-gray-800 shadow-lg rounded-lg border border-gray-700 p-4 max-w-sm z-50"
       >
-        <div class="flex items-start space-x-4">
+        <div class="flex items-start space-x-3">
           <div :class="[
-            'p-3 rounded-xl transform transition-all duration-500',
-            toastType === 'success' ? 'animate-bounce-check bg-gradient-to-br from-emerald-500/20 to-teal-400/20 border border-emerald-500/30' : 
-            toastType === 'error' ? 'animate-shake bg-gradient-to-br from-red-500/20 to-pink-400/20 border border-red-500/30' :
-            'animate-pulse-glow bg-gradient-to-br from-amber-500/20 to-yellow-400/20 border border-amber-500/30'
+            'p-2 rounded-full',
+            toastType === 'success' ? 'bg-green-900/50 text-green-400' : 
+            toastType === 'error' ? 'bg-red-900/50 text-red-400' :
+            'bg-amber-900/50 text-amber-400'
           ]">
-            <svg v-if="toastType === 'success'" class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="toastType === 'success'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <svg v-else-if="toastType === 'error'" class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-else-if="toastType === 'error'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-            <svg v-else class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
           <div class="flex-1">
-            <h5 class="text-sm font-semibold text-white mb-2 animate-fade-in-up">{{ toastTitle }}</h5>
-            <p class="text-xs text-gray-300 animate-fade-in-up-delay">{{ toastMessage }}</p>
+            <h5 class="text-sm font-semibold text-white">{{ toastTitle }}</h5>
+            <p class="text-xs text-gray-300">{{ toastMessage }}</p>
           </div>
-          <button @click="showToast = false" class="text-gray-500 hover:text-gray-300 transition-colors duration-300 transform hover:rotate-90">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button @click="showToast = false" class="text-gray-500 hover:text-gray-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -317,50 +209,49 @@
       </div>
     </transition>
 
+    <!-- Client Options Modal (dark theme) -->
     <transition
-      enter-active-class="transition-all duration-500 ease-out"
-      leave-active-class="transition-all duration-300 ease-in"
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
       enter-from-class="opacity-0 scale-95"
       leave-to-class="opacity-0 scale-95"
     >
-      <div v-if="showClientOptions" class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4">
-        <div class="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-fade-in-up">
-          <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-          
-          <h3 class="text-2xl font-bold text-white text-center mb-2">Welcome, Client!</h3>
-          <p class="text-gray-400 text-center mb-8">Where would you like to go?</p>
+      <div v-if="showClientOptions" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 relative border border-gray-700">
+          <h3 class="text-xl font-bold text-white text-center mb-2">Welcome, Client!</h3>
+          <p class="text-gray-400 text-center mb-6">Where would you like to go?</p>
           
           <div class="grid grid-cols-1 gap-4">
             <button 
               @click="navigateToClientRoute('/ECommerceClient/EccommerceShop')"
-              class="relative p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-all duration-300 group overflow-hidden flex items-center justify-between"
+              class="flex items-center justify-between p-4 rounded-xl border border-blue-800 bg-blue-900/30 hover:bg-blue-900/50 transition"
             >
-              <div class="flex items-center space-x-4">
-                <div class="p-3 bg-blue-500/20 rounded-lg text-blue-400 group-hover:scale-110 transition-transform">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+              <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-800/50 rounded-lg text-blue-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 </div>
                 <div class="text-left">
                   <h4 class="text-white font-semibold">E-Commerce</h4>
                   <p class="text-sm text-gray-400">Shop for products</p>
                 </div>
               </div>
-              <svg class="w-5 h-5 text-gray-500 group-hover:text-white transition-colors group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </button>
 
             <button 
               @click="navigateToClientRoute('/Clients/dashboardC')"
-              class="relative p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-300 group overflow-hidden flex items-center justify-between"
+              class="flex items-center justify-between p-4 rounded-xl border border-purple-800 bg-purple-900/30 hover:bg-purple-900/50 transition"
             >
-              <div class="flex items-center space-x-4">
-                <div class="p-3 bg-purple-500/20 rounded-lg text-purple-400 group-hover:scale-110 transition-transform">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              <div class="flex items-center space-x-3">
+                <div class="p-2 bg-purple-800/50 rounded-lg text-purple-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 </div>
                 <div class="text-left">
                   <h4 class="text-white font-semibold">Management</h4>
                   <p class="text-sm text-gray-400">Manage your account</p>
                 </div>
               </div>
-              <svg class="w-5 h-5 text-gray-500 group-hover:text-white transition-colors group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </button>
           </div>
         </div>
@@ -375,7 +266,6 @@ import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 
 const router = useRouter()
-const particleCanvas = ref(null)
 
 // Client modal state
 const showClientOptions = ref(false)
@@ -469,81 +359,6 @@ const getRedirectRoute = (user) => {
   };
   
   return roleRoutes[role] || '/';
-}
-
-// Particle system
-let particles = []
-let animationId = null
-
-const initParticleSystem = () => {
-  const canvas = particleCanvas.value
-  if (!canvas) return
-  
-  const ctx = canvas.getContext('2d')
-  
-  // Set canvas size
-  const resizeCanvas = () => {
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-  }
-  
-  resizeCanvas()
-  window.addEventListener('resize', resizeCanvas)
-  
-  // Create particles
-  const colors = [
-    'rgba(59, 130, 246, 0.3)',
-    'rgba(139, 92, 246, 0.3)',
-    'rgba(236, 72, 153, 0.3)',
-    'rgba(34, 197, 94, 0.3)',
-    'rgba(245, 158, 11, 0.3)'
-  ]
-  
-  particles = Array.from({ length: 30 }, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    size: Math.random() * 3 + 1,
-    speedX: Math.random() * 0.5 - 0.25,
-    speedY: Math.random() * 0.5 - 0.25,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    opacity: Math.random() * 0.3 + 0.1
-  }))
-  
-  // Animation loop
-  const animateParticles = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    
-    particles.forEach(particle => {
-      particle.x += particle.speedX
-      particle.y += particle.speedY
-      
-      // Bounce off edges
-      if (particle.x <= 0 || particle.x >= canvas.width) particle.speedX *= -1
-      if (particle.y <= 0 || particle.y >= canvas.height) particle.speedY *= -1
-      
-      // Draw particle
-      ctx.beginPath()
-      ctx.fillStyle = particle.color.replace('0.3', particle.opacity)
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-      ctx.fill()
-      
-      // Draw glow
-      ctx.beginPath()
-      ctx.fillStyle = particle.color.replace('0.3', '0.05')
-      ctx.arc(particle.x, particle.y, particle.size * 4, 0, Math.PI * 2)
-      ctx.fill()
-    })
-    
-    animationId = requestAnimationFrame(animateParticles)
-  }
-  
-  animateParticles()
-  
-  // Cleanup function
-  return () => {
-    window.removeEventListener('resize', resizeCanvas)
-    if (animationId) cancelAnimationFrame(animationId)
-  }
 }
 
 // Validation rules
@@ -657,37 +472,34 @@ const handleRegister = () => {
   router.push('/Landing/signUp')
 }
 
-// Initialize animations and particle system
+// No particle system – removed for performance
 onMounted(() => {
-  const cleanup = initParticleSystem()
-  
-  // Trigger animations
-  setTimeout(() => {
-    const animations = [
-      '.animate-gentle-float',
-      '.animate-input-slide-left',
-      '.animate-input-slide-right',
-      '.animate-fade-in-up',
-      '.animate-fade-in-up-delay',
-      '.animate-button-pulse',
-      '.animate-expand-width',
-      '.animate-expand-width-delay'
-    ];
-    
-    animations.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(el => {
-        el.classList.add('animation-complete');
-      });
-    });
-  }, 100);
-  
-  onUnmounted(() => {
-    if (cleanup) cleanup()
-  })
+  // No animations to set up
 })
+
+// No cleanup needed
+onUnmounted(() => {})
 </script>
 
 <style scoped>
-  @import "../landingPage/styleFolder/logIn.css";
+/* Simple transitions and scrollbar (no heavy animations) */
+input, button {
+  transition: all 0.2s ease;
+}
+input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
 </style>
