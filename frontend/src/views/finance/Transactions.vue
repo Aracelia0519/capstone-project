@@ -206,7 +206,7 @@
             <span class="font-mono text-sm px-2 py-1 bg-slate-100 text-slate-600 rounded-md border border-slate-200" v-if="selectedTransaction">{{ selectedTransaction.id }}</span>
           </DialogTitle>
           <DialogDescription class="text-slate-500 mt-1">
-            Review transaction details and release funds via PayMongo.
+            Review transaction details and release funds via Gcash.
           </DialogDescription>
         </DialogHeader>
 
@@ -234,7 +234,7 @@
             <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <div>
               <p class="font-bold mb-1">Ready for Processing</p>
-              <p>Approving this will deduct the amount directly from overall revenue logs and redirect you to PayMongo to complete the transfer.</p>
+              <p>Approving this will deduct the amount directly from overall revenue logs and redirect you to Gcash to complete the transfer.</p>
             </div>
           </div>
         </div>
@@ -353,7 +353,6 @@ const fetchTransactions = async () => {
   }
 }
 
-// PayMongo Redirect Verification
 const verifyGcashPayment = async (transactionCode) => {
   loading.value = true
   toast.info('Verifying Transaction... Please wait.')
@@ -472,7 +471,7 @@ const processTransaction = async () => {
     })
     
     if (response.data.checkout_url) {
-        toast.success('Redirecting to PayMongo...')
+        toast.success('Redirecting...')
         setTimeout(() => { window.location.href = response.data.checkout_url }, 1500)
     }
   } catch (error) {

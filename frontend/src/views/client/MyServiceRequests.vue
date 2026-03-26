@@ -278,7 +278,7 @@
                    <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
                       <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                       <span v-else>
-                        {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Pay Remaining Balance via GCash' : 'Pay via GCash (PayMongo)' }}
+                        {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Pay Remaining Balance via GCash' : 'Pay via GCash' }}
                       </span>
                    </Button>
                 </div>

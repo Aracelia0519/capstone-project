@@ -61,6 +61,40 @@
 
         <div class="lg:col-span-4 flex flex-col gap-6">
           <!-- Decision Support System Module -->
+          
+
+          <!-- Mobile Application Module (with download link added) -->
+          <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
+             <img src="/mobile-app.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-110 transition-transform duration-1000" />
+            <div class="relative z-10">
+              <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mb-4 border border-purple-500/30">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span class="text-[10px] font-black tracking-[0.3em] uppercase text-purple-400">Mobile App</span>
+              <h3 class="text-3xl font-bold mt-2 text-white">On-The-Go Access</h3>
+              <p class="text-xs text-slate-400 mt-2">Android companion app for field operations</p>
+              <!-- Download button added here -->
+              <a 
+                href="https://median.co/share/eenpqek#apk" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="inline-flex items-center gap-2 mt-5 px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download APK
+              </a>
+            </div>
+            <span class="absolute top-8 right-8 text-2xl text-slate-700 group-hover:text-purple-400 transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </span>
+          </div>
+
           <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
             <img src="/dss-analytics.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:opacity-30 transition-opacity duration-700" />
             <div class="relative z-10">
@@ -74,26 +108,6 @@
             <span class="absolute top-8 right-8 text-2xl text-slate-700 group-hover:text-blue-400 transition-colors">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </span>
-          </div>
-
-          <!-- Mobile Application Module -->
-          <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
-             <img src="/mobile-app.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-110 transition-transform duration-1000" />
-            <div class="relative z-10">
-              <div class="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mb-4 border border-purple-500/30">
-                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span class="text-[10px] font-black tracking-[0.3em] uppercase text-purple-400">Mobile App</span>
-              <h3 class="text-3xl font-bold mt-2 text-white">On-The-Go Access</h3>
-              <p class="text-xs text-slate-400 mt-2">Android companion app for field operations</p>
-            </div>
-            <span class="absolute top-8 right-8 text-2xl text-slate-700 group-hover:text-purple-400 transition-colors">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </span>
           </div>

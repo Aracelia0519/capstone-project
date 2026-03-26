@@ -308,7 +308,7 @@ const handleSubscribe = async (planKey) => {
     
     if (response.data.success) {
       if (response.data.checkout_url) {
-        toast.info('Redirecting to PayMongo for GCash checkout...');
+        toast.info('Redirecting for GCash checkout...');
         setTimeout(() => {
           window.location.href = response.data.checkout_url;
         }, 1500);
@@ -328,7 +328,7 @@ const verifyGcashPayment = async (referenceNumber) => {
   isProcessingPayment.value = true;
   toast.info('Verifying GCash Payment... Please wait.');
   
-  await new Promise(resolve => setTimeout(resolve, 2500)); // Buffer for PayMongo Sync
+  await new Promise(resolve => setTimeout(resolve, 2500)); 
 
   try {
     const response = await api.post('/client/subscription/verify', { reference_number: referenceNumber });

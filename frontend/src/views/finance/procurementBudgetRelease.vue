@@ -476,7 +476,6 @@ const verifyGcashPayment = async (requestCode) => {
   loading.value = true
   toast.info('Verifying GCash Payment... Please wait.')
   
-  // 2.5 second buffer to let PayMongo's test server sync
   await new Promise(resolve => setTimeout(resolve, 2500));
   
   try {
@@ -525,7 +524,7 @@ const initiateApprove = () => {
   alertConfig.value = {
     title: isGcash ? 'Proceed to GCash Payment' : 'Confirm Budget Release',
     description: isGcash 
-      ? `You are about to transfer ₱${selectedRequest.value.totalAmount.toLocaleString()} to the supplier via GCash. You will be redirected to PayMongo securely.`
+      ? `You are about to transfer ₱${selectedRequest.value.totalAmount.toLocaleString()} to the supplier via GCash. You will be redirected securely.`
       : `You are about to release ₱${selectedRequest.value.totalAmount.toLocaleString()} for Request ${selectedRequest.value.id}. This action will log a budget deduction and set the request to Ready. Do you wish to proceed?`,
     confirmText: isGcash ? 'Proceed to GCash' : 'Yes, Release Funds',
     confirmClass: isGcash ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -574,7 +573,7 @@ const markAsApproved = async () => {
     })
     
     if (response.data.checkout_url) {
-        toast.success('Redirecting to PayMongo for GCash checkout...')
+        toast.success('Redirecting for GCash checkout...')
         setTimeout(() => {
             window.location.href = response.data.checkout_url
         }, 1500)

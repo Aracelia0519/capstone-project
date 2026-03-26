@@ -750,7 +750,7 @@
               The total amount is <strong class="text-gray-900 text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</strong>. 
               <br/>
               <span v-if="paymentMethod === 'gcash'" class="text-blue-600 text-sm font-semibold mt-2 block">
-                You will be redirected to PayMongo to complete your GCash payment securely.
+                You will be redirected to complete your GCash payment securely.
               </span>
               <span v-else-if="paymentMethod === 'pick-up'" class="text-amber-600 text-sm mt-2 block font-semibold">
                 You will pay for and pick up your items at the physical store.
@@ -1141,7 +1141,7 @@ const confirmOrderNow = async () => {
 
     if (response.data.success) {
       if (response.data.checkout_url && paymentMethod.value === 'gcash') {
-        toast.success('Redirecting to PayMongo for GCash checkout...')
+        toast.success('Redirecting for GCash checkout...')
         setTimeout(() => {
           window.location.href = response.data.checkout_url
         }, 1500)
@@ -1169,7 +1169,6 @@ const verifyGcashPayment = async (orderNumber) => {
   isLoading.value = true
   toast.info('Verifying GCash Payment... Please wait.')
   
-  // 2.5 second buffer to let PayMongo's test server sync
   await new Promise(resolve => setTimeout(resolve, 2500));
   
   try {
@@ -1293,7 +1292,6 @@ const clearFilters = () => {
 }
 
 onMounted(() => {
-  // INTERCEPT THE REDIRECT FROM PAYMONGO
   if (route.query.order_number) { 
     verifyGcashPayment(route.query.order_number) 
   } else {
