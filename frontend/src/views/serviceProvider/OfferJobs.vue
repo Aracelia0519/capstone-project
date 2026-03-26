@@ -326,7 +326,7 @@ const proceedToggle = async () => {
           <div class="flex items-center gap-4 mb-4 text-sm text-gray-300 font-medium bg-gray-800 p-3 rounded-xl border border-gray-700 shadow-inner">
             <div class="flex items-center gap-1.5">
               <span class="text-emerald-400 font-bold text-base leading-none">₱</span>
-              <span class="text-white font-bold text-base">{{ Number(service.price).toLocaleString() }}</span>
+              <span class="font-bold text-base">{{ Number(service.price).toLocaleString() }}</span>
               <span class="text-[10px] text-gray-400 uppercase tracking-wider">({{ service.price_type }})</span>
             </div>
             <div class="h-4 w-px bg-gray-600"></div>

@@ -8,7 +8,7 @@
           </div>
         </div>
         <div v-if="state === 'expanded' || isMobile" class="flex flex-col min-w-0 flex-1">
-          <h2 class="text-sm font-bold text-slate-100 truncate tracking-tight">Human Resource</h2>
+          <h2 class="text-sm font-bold text-slate-100 truncate tracking-tight">Employee Management</h2>
           <p class="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-widest">Portal Access</p>
         </div>
       </div>
@@ -163,8 +163,8 @@ const hrNavItems = ref([
 ])
 
 const toolsNavItems = ref([
-  { id: 'reports', text: 'HR Reports', route: '/HR/reportsHR', permissionKey: 'reports' },
-  { id: 'settings', text: 'HR Settings', route: '/HR/settings', permissionKey: 'settings' },
+  { id: 'reports', text: 'EM Reports', route: '/HR/reportsHR', permissionKey: 'reports' },
+  { id: 'settings', text: 'EM Settings', route: '/HR/settings', permissionKey: 'settings' },
 ])
 
 const isItemAccessible = (permissionKey) => {

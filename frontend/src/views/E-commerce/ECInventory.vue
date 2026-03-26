@@ -10,7 +10,19 @@
           <h1 class="text-2xl md:text-3xl font-bold text-white mb-2">Inventory Management</h1>
           <h2 class="text-gray-300">Manage your available stock and deploy products to the E-commerce store.</h2>
         </div>
-        <div class="flex items-center gap-3 mt-4 md:mt-0">
+        <div class="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+          
+          <Button 
+            @click="showDssModal = true"
+            class="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 border-0 shadow-lg relative"
+          >
+            <Lightbulb class="w-4 h-4 mr-2" />
+            Smart Insights
+            <span v-if="lowStockCount > 0" class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-bounce shadow-md border border-red-400">
+              {{ lowStockCount }} Alerts
+            </span>
+          </Button>
+
           <Button 
             variant="outline" 
             class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent"
@@ -37,13 +49,13 @@
         @click="activeTab = 'active'" 
         :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
-        Active Inventory ({{ inventoryItems.length }})
+        Available for selling ({{ inventoryItems.length }})
       </button>
       <button 
         @click="activeTab = 'inactive'" 
         :class="['px-5 py-2 text-sm font-medium rounded-md transition-all', activeTab === 'inactive' ? 'bg-red-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
       >
-        Inactive Products ({{ inactiveItems.length }})
+        Unavailable Products ({{ inactiveItems.length }})
       </button>
     </div>
 
@@ -344,7 +356,7 @@
           >
             <Loader2 v-if="isProcessing" class="w-4 h-4 mr-2 animate-spin" />
             <Package class="w-4 h-4 mr-2" v-else />
-            Restore to Active
+            Make Available for Selling
           </Button>
 
           <template v-else-if="selectedItem">
@@ -354,7 +366,7 @@
               class="bg-red-600/80 hover:bg-red-600 text-white border-0 mr-auto"
             >
               <PackageX class="w-4 h-4 mr-2" />
-              Mark Inactive
+              Mark Unavailable for selling
             </Button>
 
             <Button 
@@ -382,6 +394,75 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog :open="showDssModal" @update:open="(val) => !val && (showDssModal = false)">
+      <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-4xl custom-scrollbar max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-xl font-bold flex items-center gap-2 text-amber-400">
+            <Activity class="w-6 h-6" />
+            Decision Support System (DSS)
+          </DialogTitle>
+          <DialogDescription class="text-gray-400">
+            Automated inventory predictions, trend alerts, and restocking recommendations based on your database.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="dssAlerts.length === 0" class="py-12 text-center text-gray-500">
+          <Lightbulb class="w-16 h-16 mx-auto mb-4 opacity-20 text-emerald-500" />
+          <p class="text-lg font-bold text-gray-300">Inventory is stable.</p>
+          <p class="text-sm mt-1">No critical shortages or negative trends detected at the moment.</p>
+        </div>
+
+        <div v-else class="space-y-4 py-4">
+          <div v-for="(alert, index) in dssAlerts" :key="index" class="bg-gray-800/40 border border-gray-700 rounded-xl p-4 md:p-5 relative overflow-hidden transition-all hover:bg-gray-800/60">
+             <div class="absolute left-0 top-0 bottom-0 w-1" :class="alert.severity === 'Critical' ? 'bg-red-500' : 'bg-amber-500'"></div>
+             
+             <div class="flex flex-col md:flex-row gap-5 justify-between">
+                <div class="flex-1">
+                   <div class="flex items-center flex-wrap gap-2 mb-2">
+                      <h3 class="font-bold text-lg text-white">{{ alert.item.name }}</h3>
+                      <Badge :class="alert.severity === 'Critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'" class="border-0 font-bold uppercase tracking-wider text-[10px]">
+                         {{ alert.severity }} Shortage
+                      </Badge>
+                   </div>
+                   <p class="text-sm text-gray-400 mb-4">SKU: <span class="text-gray-300 font-mono">{{ alert.item.sku_code }}</span> | Current Stock: <span class="font-bold" :class="alert.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'">{{ alert.item.quantity }}</span> (Min threshold: {{ alert.item.min_stock_level }})</p>
+                   
+                   <div class="space-y-2 bg-gray-900/60 rounded-lg p-3 md:p-4 border border-gray-800">
+                      <div class="flex items-start gap-3">
+                         <TrendingDown class="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                         <p class="text-sm text-gray-300 leading-relaxed"><span class="font-bold text-blue-300 uppercase tracking-wider text-xs block mb-0.5">Prediction</span> {{ alert.trendText }}</p>
+                      </div>
+                      <div class="w-full h-px bg-gray-800 my-1"></div>
+                      <div class="flex items-start gap-3">
+                         <Lightbulb class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                         <p class="text-sm text-gray-300 leading-relaxed"><span class="font-bold text-amber-300 uppercase tracking-wider text-xs block mb-0.5">Recommendation</span> {{ alert.suggestion }}</p>
+                      </div>
+                   </div>
+                </div>
+
+                <div class="flex flex-col justify-end shrink-0 min-w-[220px] mt-2 md:mt-0">
+                   <Button 
+                      v-if="alert.action === 'reactivate'"
+                      @click="handleDssReactivate(alert.inactiveMatch)"
+                      class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11"
+                   >
+                      Make Available for Selling
+                      <ArrowRight class="w-4 h-4 ml-2" />
+                   </Button>
+                   <Button 
+                      v-else
+                      @click="goToProcurement"
+                      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11"
+                   >
+                      Request Procurement
+                      <ArrowRight class="w-4 h-4 ml-2" />
+                   </Button>
+                </div>
+             </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     <AlertDialog :open="isDeployConfirmOpen" @update:open="isDeployConfirmOpen = $event">
       <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white z-50">
         <AlertDialogHeader>
@@ -400,7 +481,7 @@
     <AlertDialog :open="isDeactivateConfirmOpen" @update:open="isDeactivateConfirmOpen = $event">
       <AlertDialogContent class="bg-gray-900 border border-gray-800 text-white z-50">
         <AlertDialogHeader>
-          <AlertDialogTitle class="text-red-400">Mark Quantity as Inactive</AlertDialogTitle>
+          <AlertDialogTitle class="text-red-400">Mark Quantity as Unavailable for selling</AlertDialogTitle>
           <AlertDialogDescription class="text-gray-400">
             Select the number of units of <span class="text-white font-bold">{{ selectedItem?.name }}</span> you want to move to inactive storage.
           </AlertDialogDescription>
@@ -420,7 +501,7 @@
 
         <AlertDialogFooter>
           <AlertDialogCancel @click="isDeactivateConfirmOpen = false" class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent">Cancel</AlertDialogCancel>
-          <AlertDialogAction :disabled="!isActionQuantityValid" @click="deactivateItem" class="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50">Yes, Mark Inactive</AlertDialogAction>
+          <AlertDialogAction :disabled="!isActionQuantityValid" @click="deactivateItem" class="bg-red-600 hover:bg-red-700 text-white border-0 disabled:opacity-50">Yes, Mark Unavailable</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -458,10 +539,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios' 
 import { toast, Toaster } from 'vue-sonner'
 import { 
-  Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle 
+  Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle, Lightbulb, Activity, TrendingDown, ArrowRight
 } from 'lucide-vue-next'
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -482,10 +564,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+const router = useRouter()
+
 // State
 const activeTab = ref('active')
 const searchQuery = ref('')
 const showViewModal = ref(false)
+const showDssModal = ref(false)
 const selectedItem = ref<any>(null)
 const isProcessing = ref(false)
 const isLoading = ref(true)
@@ -570,6 +655,74 @@ const isActionQuantityValid = computed(() => {
   if (!selectedItem.value || actionQuantity.value === '') return false;
   return actionQuantity.value > 0 && actionQuantity.value <= selectedItem.value.quantity;
 })
+
+// =========================================================================
+// DSS (DECISION SUPPORT SYSTEM) LOGIC
+// =========================================================================
+const dssAlerts = computed(() => {
+  const alerts: any[] = [];
+  
+  // Find all items in active inventory that hit or dropped below their minimum threshold
+  const lowStockProducts = inventoryItems.value.filter(item => item.quantity <= item.min_stock_level);
+  
+  lowStockProducts.forEach(item => {
+    // Check if we have backup stock in the inactive inventory list matching the product_id
+    const inactiveMatch = inactiveItems.value.find(inc => inc.product_id === item.product_id);
+    const inactiveQty = inactiveMatch ? inactiveMatch.quantity : 0;
+    
+    // Calculate severity and trend text
+    let severity = item.quantity === 0 ? 'Critical' : 'Warning';
+    let trendText = item.quantity === 0 
+      ? 'Stockout Detected: Immediate replenishment required. Trend indicates zero availability blocking sales.'
+      : (item.quantity <= item.min_stock_level / 2 
+          ? 'High Shortage Risk: Stock is depleting rapidly past safety threshold.' 
+          : 'Moderate Shortage Risk: Inventory is approaching minimum safety levels.');
+          
+    // Determine the smart suggestion and the actionable route
+    let suggestion = '';
+    let action = '';
+    
+    if (inactiveQty > 0) {
+      suggestion = `Found ${inactiveQty} unit(s) of this item in your inactive (unavailable) storage. Reactivate them to active inventory to quickly resolve the shortage.`;
+      action = 'reactivate';
+    } else {
+      suggestion = `No inactive backup stock available in the database. Request procurement from suppliers immediately to maintain operations.`;
+      action = 'procure';
+    }
+    
+    alerts.push({
+      item,
+      inactiveMatch,
+      severity,
+      trendText,
+      suggestion,
+      action
+    });
+  });
+  
+  // Sort Critical to top
+  return alerts.sort((a, b) => a.severity === 'Critical' ? -1 : 1);
+});
+
+// DSS Action Handlers
+const handleDssReactivate = (inactiveMatch: any) => {
+  requirePermission('manage', () => {
+    selectedItem.value = inactiveMatch;
+    actionQuantity.value = inactiveMatch.quantity;
+    showDssModal.value = false;
+    isReactivateConfirmOpen.value = true;
+  });
+}
+
+const goToProcurement = () => {
+  requirePermission('manage', () => {
+    showDssModal.value = false;
+    toast.info('Redirecting to Procurement Module...');
+    // Replace with your actual procurement path if it differs
+    router.push('/ECommerce/ECProcurement'); 
+  });
+}
+// =========================================================================
 
 // Actions
 const handleAddProduct = () => toast.info("Add new product feature coming soon.")

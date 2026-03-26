@@ -119,6 +119,8 @@ import ECommerceCart from '@/views/ClientE-Commerce/ECommerceCart.vue'
 import ECommerceCheckout from '@/views/ClientE-Commerce/ECommerceCheckout.vue'
 import ClientECommerceOrders from '@/views/ClientE-Commerce/ECommerceOrders.vue'
 import ECommerceProfile from '@/views/ClientE-Commerce/ECommerceProfile.vue'
+import ServiceDetails from '@/views/ClientE-Commerce/ServiceDetails.vue'
+import ProductDetails from '@/views/ClientE-Commerce/ProductDetails.vue'
 
 import EmployeeLayout from '@/layouts/EmployeeLayout.vue'
 import DashboardEmployee from '@/views/Employees/DashboardEmployee.vue'
@@ -1122,6 +1124,16 @@ const routes = [
         path: 'EccommerceProfile',
         name: 'EccommerceProfile',
         component: ECommerceProfile
+      },
+      {
+        path: 'ServiceDetails/:id', 
+        name: 'ServiceDetails',
+        component: ServiceDetails
+      },
+      {
+        path: 'ProductDetails/:id', 
+        name: 'ProductDetails',
+        component: ProductDetails
       },
     ]
   },

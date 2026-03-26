@@ -402,33 +402,6 @@ onMounted(() => {
              <h1 class="text-xl font-bold">Select an Order</h1>
              <p class="text-sm text-muted-foreground">Choose an incoming order to view details</p>
           </div>
-          
-          <div v-if="selectedOrder" class="flex gap-2">
-              <Button 
-                  v-if="selectedOrder.status === 'ready'"
-                  @click="openConfirmDialog(selectedOrder)" 
-                  :disabled="isProcessing"
-              >
-                  <Check class="mr-2 h-4 w-4" />
-                  {{ isProcessing ? 'Processing...' : 'Confirm' }}
-              </Button>
-              <Button 
-                  v-if="selectedOrder.status === 'processing'"
-                  variant="secondary"
-                  disabled
-              >
-                  <Clock class="mr-2 h-4 w-4" />
-                  Processing
-              </Button>
-              <Button 
-                  v-if="selectedOrder.status === 'shipped'"
-                  variant="outline"
-                  disabled
-              >
-                  <Truck class="mr-2 h-4 w-4" />
-                  Shipped
-              </Button>
-          </div>
         </header>
 
         <ScrollArea class="flex-1 p-6">
@@ -528,6 +501,37 @@ onMounted(() => {
                  </div>
               </CardFooter>
             </Card>
+
+            <div class="flex justify-end gap-2 pt-4">
+                <Button 
+                    v-if="selectedOrder.status === 'ready'"
+                    @click="openConfirmDialog(selectedOrder)" 
+                    :disabled="isProcessing"
+                    size="lg"
+                >
+                    <Check class="mr-2 h-5 w-5" />
+                    {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
+                </Button>
+                <Button 
+                    v-if="selectedOrder.status === 'processing'"
+                    variant="secondary"
+                    disabled
+                    size="lg"
+                >
+                    <Clock class="mr-2 h-5 w-5" />
+                    Processing
+                </Button>
+                <Button 
+                    v-if="selectedOrder.status === 'shipped'"
+                    variant="outline"
+                    disabled
+                    size="lg"
+                >
+                    <Truck class="mr-2 h-5 w-5" />
+                    Shipped
+                </Button>
+            </div>
+
           </div>
           <div v-else class="flex h-full flex-col items-center justify-center text-muted-foreground pb-20">
              <Package class="h-16 w-16 mb-4 opacity-20" />
@@ -650,18 +654,6 @@ onMounted(() => {
             </CardContent>
           </Card>
 
-          <div v-if="selectedOrder.status === 'ready'" class="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
-            <Button 
-              @click="openConfirmDialog(selectedOrder)" 
-              :disabled="isProcessing"
-              class="w-full"
-              size="lg"
-            >
-              <Check class="mr-2 h-5 w-5" />
-              {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
-            </Button>
-          </div>
-
           <Card>
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2">
@@ -730,6 +722,40 @@ onMounted(() => {
               </div>
             </CardFooter>
           </Card>
+
+          <div class="mt-4 mobile-sticky-button pt-2 pb-4 -mx-2 px-2">
+            <Button 
+              v-if="selectedOrder.status === 'ready'"
+              @click="openConfirmDialog(selectedOrder)" 
+              :disabled="isProcessing"
+              class="w-full shadow-lg"
+              size="lg"
+            >
+              <Check class="mr-2 h-5 w-5" />
+              {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
+            </Button>
+            <Button 
+                v-if="selectedOrder.status === 'processing'"
+                variant="secondary"
+                disabled
+                class="w-full"
+                size="lg"
+            >
+                <Clock class="mr-2 h-5 w-5" />
+                Processing
+            </Button>
+            <Button 
+                v-if="selectedOrder.status === 'shipped'"
+                variant="outline"
+                disabled
+                class="w-full"
+                size="lg"
+            >
+                <Truck class="mr-2 h-5 w-5" />
+                Shipped
+            </Button>
+          </div>
+
         </div>
 
         <div v-else class="flex flex-col items-center justify-center text-muted-foreground py-20 px-4">
@@ -749,6 +775,7 @@ onMounted(() => {
     position: sticky;
     bottom: 0;
     background: linear-gradient(to top, hsl(var(--background)) 50%, transparent);
+    z-index: 10;
   }
 }
 </style>

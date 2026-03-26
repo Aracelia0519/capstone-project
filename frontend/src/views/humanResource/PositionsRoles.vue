@@ -8,7 +8,7 @@
         <p class="text-gray-600">Define job roles and access responsibilities within the organization</p>
       </div>
       <Button 
-        @click="requirePermission('create', startNewPosition)" 
+        @click="requirePermission('manage', startNewPosition)" 
         class="mt-4 md:mt-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md hover:shadow-lg border-0"
       >
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

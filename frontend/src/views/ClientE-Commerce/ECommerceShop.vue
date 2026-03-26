@@ -1,15 +1,66 @@
 <template>
   <div class="min-h-screen relative">
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
+      <div class="container mx-auto px-4 py-4 md:py-6 flex justify-between items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Paint Shop</h1>
-          <p class="text-gray-500 mt-1 text-sm">Browse our premium collection of paints</p>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Paint Shop</h1>
+          <p class="text-gray-500 mt-1 text-sm hidden sm:block">Browse our premium collection of paints</p>
+        </div>
+
+        <div class="hidden md:flex items-center gap-3">
+          <Button 
+            @click="showDssModal = true"
+            class="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 border-0 shadow-lg rounded-xl font-medium"
+          >
+            <Lightbulb class="w-4 h-4 mr-2" />
+            Smart Picks
+          </Button>
+
+          <Button @click="router.push('/ECommerceClient/EccommerceCart')" variant="outline" class="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium">
+            <ShoppingCart class="w-4 h-4 mr-2" />
+            Cart
+          </Button>
+          <Button @click="router.push('/ECommerceClient/EccommerceOrders')" variant="outline" class="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium">
+            <Package class="w-4 h-4 mr-2" />
+            My Orders
+          </Button>
+        </div>
+
+        <div class="md:hidden flex items-center">
+          <Sheet v-model:open="showMobileMenu">
+            <SheetTrigger as-child>
+              <Button variant="ghost" size="icon" class="h-10 w-10 text-gray-600 hover:bg-gray-100 rounded-xl">
+                <Menu class="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" class="w-[85%] sm:w-80 p-0 z-[10005]">
+              <div class="flex flex-col h-full bg-white">
+                <div class="p-6 border-b border-gray-100">
+                  <h2 class="text-lg font-bold text-gray-900 tracking-tight">Menu</h2>
+                  <p class="text-sm text-gray-500 mt-1">Paint Shop</p>
+                </div>
+                <div class="p-4 flex-1 flex flex-col gap-3">
+                  <Button @click="showDssModal = true; showMobileMenu = false" class="w-full justify-start rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium h-12 border-0">
+                    <Lightbulb class="w-5 h-5 mr-3" />
+                    Smart Picks
+                  </Button>
+                  <Button @click="router.push('/ECommerceClient/EccommerceCart'); showMobileMenu = false" variant="outline" class="w-full justify-start rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium h-12">
+                    <ShoppingCart class="w-5 h-5 mr-3" />
+                    Cart
+                  </Button>
+                  <Button @click="router.push('/ECommerceClient/EccommerceOrders'); showMobileMenu = false" variant="outline" class="w-full justify-start rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium h-12">
+                    <Package class="w-5 h-5 mr-3" />
+                    My Orders
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </div>
 
-    <div class="bg-white border-b border-gray-100 shadow-sm">
+    <div class="bg-white border-b border-gray-100 shadow-sm relative z-20">
       <div class="container mx-auto px-4 py-4">
         <div class="flex flex-col lg:flex-row gap-4">
           <div class="flex-1">
@@ -135,14 +186,15 @@
           <Card
             v-for="product in filteredProducts"
             :key="product.id"
-            class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col"
+            @click="goToProductDetails(product.id)"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col cursor-pointer"
           >
             <div class="h-56 relative overflow-hidden flex items-center justify-center bg-gray-50" :style="product.image_url ? {} : { backgroundColor: product.color }">
               <img v-if="product.image_url" :src="product.image_url" alt="Product Image" 
                    :class="['object-cover w-full h-full group-hover:scale-105 transition-transform duration-500', product.stock <= 0 ? 'grayscale opacity-60' : '']" />
               <div v-else class="w-32 h-32 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: product.color }"></div>
               
-              <div class="absolute top-3 left-3 flex gap-2 flex-col items-start">
+              <div class="absolute top-3 left-3 flex gap-2 flex-col items-start z-10">
                 <Badge :class="[
                   'border-0 shadow-sm backdrop-blur-md bg-white/90',
                   product.stock > 10 ? 'text-green-700' : 
@@ -163,11 +215,11 @@
               </div>
             </div>
 
-            <CardContent class="p-5 flex-1 flex flex-col justify-between">
+            <CardContent class="p-5 flex-1 flex flex-col justify-between relative z-10">
               <div>
                 <p class="text-xs font-bold tracking-wider text-blue-600 uppercase mb-1">{{ product.distributor_name || product.brand }}</p>
-                <h3 :class="['font-bold text-lg leading-tight mb-1', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">{{ product.name }}</h3>
-                <p class="text-sm text-gray-500 line-clamp-1">{{ product.type }} • {{ product.finish }}</p>
+                <h3 :class="['font-bold text-lg leading-tight mb-1 group-hover:text-blue-600 transition-colors', product.stock <= 0 ? 'text-gray-400' : 'text-gray-900']">{{ product.name }}</h3>
+                <p class="text-sm text-gray-500 line-clamp-1">{{ product.type }} </p>
               </div>
 
               <div class="mt-4 flex justify-between items-end">
@@ -189,7 +241,7 @@
               </div>
             </CardContent>
 
-            <CardFooter class="p-5 pt-0 mt-auto flex flex-col gap-3">
+            <CardFooter class="p-5 pt-0 mt-auto flex flex-col gap-3 relative z-10">
               <div class="flex justify-between items-center w-full">
                 <span :class="['text-xs font-medium', product.stock <= 0 ? 'text-red-500 font-bold' : 'text-gray-400']">
                   {{ product.stock > 0 ? `${product.stock} units left` : '0 units left' }}
@@ -198,7 +250,7 @@
               
               <div class="flex gap-2 w-full">
                 <Button
-                  @click="openCartModal(product)"
+                  @click.stop="openCartModal(product)"
                   :disabled="product.stock <= 0"
                   variant="outline"
                   :class="[
@@ -213,7 +265,7 @@
                 </Button>
                 
                 <Button
-                  @click="openOrderModal(product)"
+                  @click.stop="openOrderModal(product)"
                   :disabled="product.stock <= 0"
                   :class="[
                     'flex-1 rounded-xl font-semibold transition-all border-0',
@@ -243,6 +295,93 @@
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <Dialog :open="showDssModal" @update:open="(val) => !val && (showDssModal = false)">
+        <DialogContent class="bg-white border-0 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 z-[10001]">
+          <div class="px-6 py-6 border-b border-gray-100 bg-white sticky top-0 z-20 flex justify-between items-start">
+            <div>
+              <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                <Lightbulb class="w-6 h-6 text-amber-500" />
+                Smart Recommendations
+              </DialogTitle>
+              <DialogDescription class="text-gray-500 font-medium mt-1">
+                 Our system analyzed user ratings and trends to find the best products for you.
+              </DialogDescription>
+            </div>
+            <button @click="showDssModal = false" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+
+          <div class="px-6 py-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/50">
+             
+             <div v-if="dssRecommendations.topRated.length === 0 && dssRecommendations.trending.length === 0" class="text-center py-16">
+                <div class="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center text-gray-300 shadow-sm border border-gray-100">
+                  <Star class="w-10 h-10" />
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Needs More Data</h3>
+                <p class="text-gray-500 max-w-sm mx-auto">We need a few more customer reviews to accurately predict trends and generate smart recommendations.</p>
+             </div>
+
+             <div v-if="dssRecommendations.topRated.length > 0" class="mb-10">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                   <Star class="w-5 h-5 text-amber-500 fill-amber-500" />
+                   Highest Rated Products
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <Card 
+                      v-for="prod in dssRecommendations.topRated" 
+                      :key="prod.id"
+                      @click="goToProductDetails(prod.id); showDssModal = false;"
+                      class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+                   >
+                      <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
+                         <img v-if="prod.image_url" :src="prod.image_url" class="object-cover w-full h-full" />
+                         <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
+                      </div>
+                      <div class="p-3 flex flex-col justify-center flex-1">
+                         <p class="text-[10px] font-bold tracking-wider text-amber-600 uppercase mb-0.5">Top Pick</p>
+                         <h4 class="font-bold text-sm text-gray-900 line-clamp-1">{{ prod.name }}</h4>
+                         <div class="flex items-center gap-1 mt-1 text-xs font-bold text-gray-700">
+                            <Star class="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> {{ prod.rating }} <span class="text-gray-400 font-medium ml-1">({{ prod.review_count }} reviews)</span>
+                         </div>
+                      </div>
+                   </Card>
+                </div>
+             </div>
+
+             <div v-if="dssRecommendations.trending.length > 0">
+                <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                   <TrendingUp class="w-5 h-5 text-blue-500" />
+                   Trending Now (Most Discussed)
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <Card 
+                      v-for="prod in dssRecommendations.trending" 
+                      :key="prod.id"
+                      @click="goToProductDetails(prod.id); showDssModal = false;"
+                      class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+                   >
+                      <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
+                         <img v-if="prod.image_url" :src="prod.image_url" class="object-cover w-full h-full" />
+                         <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
+                      </div>
+                      <div class="p-3 flex flex-col justify-center flex-1">
+                         <p class="text-[10px] font-bold tracking-wider text-blue-600 uppercase mb-0.5">Popular</p>
+                         <h4 class="font-bold text-sm text-gray-900 line-clamp-1">{{ prod.name }}</h4>
+                         <div class="flex items-center gap-1 mt-1 text-xs font-bold text-gray-700">
+                            <MessageSquare class="w-3.5 h-3.5 text-blue-400" /> {{ prod.review_count }} reviews
+                         </div>
+                      </div>
+                   </Card>
+                </div>
+             </div>
+
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Teleport>
 
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
@@ -638,6 +777,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
+import { Menu, ShoppingCart, Package, Star, MessageSquare, CornerDownRight, ShieldCheck, Lightbulb, TrendingUp } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -651,6 +791,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -681,12 +833,16 @@ const isProcessing = ref(false)
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
+const showDssModal = ref(false) // NEW DSS Modal State
 const selectedProduct = ref(null)
 
 // Alert Dialog States
 const isAuthAlertOpen = ref(false)
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
+
+// Mobile Menu State
+const showMobileMenu = ref(false)
 
 // Form States
 const orderQuantity = ref(1)
@@ -725,6 +881,33 @@ const fetchProducts = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+// =========================================================================
+// DSS (DECISION SUPPORT SYSTEM) COMPUTED LOGIC
+// =========================================================================
+const dssRecommendations = computed(() => {
+  // Only consider products that have reviews and are in stock
+  const ratedProducts = products.value.filter(p => p.review_count > 0 && p.stock > 0);
+
+  // Top Rated: Sorted by highest rating, then by review count to break ties
+  const topRated = [...ratedProducts]
+    .sort((a, b) => b.rating - a.rating || b.review_count - a.review_count)
+    .slice(0, 4);
+
+  // Trending: Sorted by highest interaction (review_count)
+  // Exclude those already in the "Top Rated" so we don't show duplicates
+  const trending = [...ratedProducts]
+    .sort((a, b) => b.review_count - a.review_count)
+    .filter(p => !topRated.find(t => t.id === p.id))
+    .slice(0, 4);
+
+  return { topRated, trending };
+});
+// =========================================================================
+
+const goToProductDetails = (id) => {
+  router.push(`/ECommerceClient/ProductDetails/${id}`)
 }
 
 const openCartModal = (product) => {

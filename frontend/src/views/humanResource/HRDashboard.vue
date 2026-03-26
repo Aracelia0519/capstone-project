@@ -1,7 +1,7 @@
 <template>
   <div class="hr-dashboard p-4 md:p-6">
     <div class="mb-8">
-      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">HR Dashboard</h1>
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">EM Dashboard</h1>
       <p class="text-gray-600">Overview of workforce information and statistics</p>
     </div>
 

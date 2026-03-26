@@ -88,7 +88,7 @@
                    <Badge v-if="review.is_hidden" class="bg-red-500/10 text-red-400 border-red-500/30 text-[10px]">Hidden from public</Badge>
                    <Badge v-else class="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]">Publicly Visible</Badge>
                 </div>
-                <p :class="['text-sm md:text-base leading-relaxed', review.is_hidden ? 'text-slate-500 italic' : 'text-slate-300']">
+                <p :class="['text-sm md:text-base leading-relaxed', review.is_hidden ? 'text-slate-500 italic' : '']">
                    "{{ review.comment || 'No specific comment provided.' }}"
                 </p>
              </div>
