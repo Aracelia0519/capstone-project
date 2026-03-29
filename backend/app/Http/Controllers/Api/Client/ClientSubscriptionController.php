@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Client\ClientSubscription;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use GuzzleHttp\Client;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 
 class ClientSubscriptionController extends Controller
 {
@@ -66,10 +69,104 @@ class ClientSubscriptionController extends Controller
             ->orderBy('created_at', 'desc')
             ->first();
 
+        // Trigger reminder check dynamically on dashboard load
+        if ($subscription) {
+            $this->checkAndSendReminder($subscription, Auth::user());
+        }
+
         return response()->json([
             'success' => true,
             'data' => $subscription
         ]);
+    }
+
+    // Email Reminder Function
+    private function checkAndSendReminder($subscription, $user)
+    {
+        $daysLeft = (int) Carbon::now()->startOfDay()->diffInDays(Carbon::parse($subscription->end_date)->startOfDay(), false);
+
+        $reminderType = null;
+        $timeframe = "";
+
+        // Exact match logic
+        if ($daysLeft === 30) {
+            $reminderType = 30;
+            $timeframe = "1 Month";
+        } elseif ($daysLeft === 7) {
+            $reminderType = 7;
+            $timeframe = "1 Week";
+        } elseif ($daysLeft === 1) {
+            $reminderType = 1;
+            $timeframe = "1 Day";
+        }
+
+        if ($reminderType !== null && $user && $user->email) {
+            $cacheKey = "sub_reminder_{$subscription->id}_{$reminderType}";
+            
+            if (!Cache::has($cacheKey)) {
+                try {
+                    $userName = $user->first_name ?? 'Valued Client';
+                    $expiryDate = Carbon::parse($subscription->end_date)->format('F d, Y');
+                    
+                    Mail::html("
+                        <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;'>
+                            <h2 style='color: #0ea5e9; margin-top: 0;'>CaviteGoPaint Subscription Reminder</h2>
+                            <p>Hello <strong>{$userName}</strong>,</p>
+                            <p>This is a friendly reminder that your <strong>" . ucfirst($subscription->plan_name) . "</strong> subscription is expiring in <strong>{$timeframe}</strong>.</p>
+                            <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #0ea5e9;'>
+                                <p style='margin: 0;'><strong>Plan:</strong> " . ucfirst($subscription->plan_name) . "</p>
+                                <p style='margin: 5px 0 0 0;'><strong>Expiry Date:</strong> {$expiryDate}</p>
+                            </div>
+                            <p>To avoid any interruption in your services, please log in to your dashboard to renew your plan.</p>
+                            <br>
+                            <p style='margin-bottom: 0;'>Thank you,<br><strong>CaviteGoPaint Team</strong></p>
+                        </div>
+                    ", function ($message) use ($user, $timeframe) {
+                        $message->to($user->email)
+                                ->subject("CaviteGoPaint - Subscription Expiring in {$timeframe}");
+                    });
+
+                    Cache::put($cacheKey, true, now()->addDays(2));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Mail sending failed: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    // Success Email Function
+    private function sendSubscriptionSuccessEmail($user, $subscription)
+    {
+        if ($user && $user->email) {
+            try {
+                $userName = $user->first_name ?? 'Valued Client';
+                $planName = ucfirst($subscription->plan_name);
+                $endDate = Carbon::parse($subscription->end_date)->format('F d, Y');
+                $amount = number_format($subscription->amount, 2);
+
+                Mail::html("
+                    <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;'>
+                        <h2 style='color: #10b981; margin-top: 0;'>Subscription Successful!</h2>
+                        <p>Hello <strong>{$userName}</strong>,</p>
+                        <p>Thank you for subscribing to CaviteGoPaint! Your <strong>{$planName}</strong> plan is now active.</p>
+                        <div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981;'>
+                            <p style='margin: 0;'><strong>Plan:</strong> {$planName}</p>
+                            <p style='margin: 5px 0 0 0;'><strong>Amount Paid:</strong> ₱{$amount}</p>
+                            <p style='margin: 5px 0 0 0;'><strong>Valid Until:</strong> {$endDate}</p>
+                            <p style='margin: 5px 0 0 0;'><strong>Reference ID:</strong> {$subscription->reference_number}</p>
+                        </div>
+                        <p>You now have full access to your plan's advanced Color Lab features and seamless project management.</p>
+                        <br>
+                        <p style='margin-bottom: 0;'>Happy Painting,<br><strong>CaviteGoPaint Team</strong></p>
+                    </div>
+                ", function ($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject("Subscription Confirmed - CaviteGoPaint");
+                });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Subscription success email failed: ' . $e->getMessage());
+            }
+        }
     }
 
     public function subscribe(Request $request)
@@ -90,7 +187,7 @@ class ClientSubscriptionController extends Controller
                 // Expire old subscriptions
                 ClientSubscription::where('client_id', $user->id)->update(['status' => 'expired']);
 
-                ClientSubscription::create([
+                $subscription = ClientSubscription::create([
                     'client_id' => $user->id,
                     'plan_name' => $planKey,
                     'features' => $planDetails['features'],
@@ -102,6 +199,10 @@ class ClientSubscriptionController extends Controller
                     'admin_receiving_number' => $this->receivingNumber
                 ]);
                 DB::commit();
+
+                // Send Welcome/Success Email
+                $this->sendSubscriptionSuccessEmail($user, $subscription);
+
                 return response()->json(['success' => true, 'message' => 'Starter plan activated successfully!']);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -137,6 +238,12 @@ class ClientSubscriptionController extends Controller
                                     'name' => 'Color Lab ' . ucfirst($planKey) . ' Subscription',
                                     'quantity' => 1,
                                 ]
+                            ],
+                            // AUTO-FILL CUSTOMER INFORMATION FOR PAYMONGO
+                            'billing' => [
+                                'name'  => $user->first_name . ' ' . $user->last_name,
+                                'email' => $user->email,
+                                'phone' => $user->phone
                             ],
                             'success_url' => $frontendOrigin . '/Clients/dashboardC?subscription_ref=' . $referenceNumber,
                             'cancel_url' => $frontendOrigin . '/Clients/dashboardC'
@@ -240,7 +347,7 @@ class ClientSubscriptionController extends Controller
                 $planDays = $this->plans[$cacheData['plan_name']]['days'];
                 
                 // Write the new subscription to the database ONLY now
-                ClientSubscription::create([
+                $subscription = ClientSubscription::create([
                     'client_id' => $cacheData['client_id'],
                     'plan_name' => $cacheData['plan_name'],
                     'features' => $cacheData['features'],
@@ -257,6 +364,11 @@ class ClientSubscriptionController extends Controller
                 Storage::disk('local')->delete($filePath);
                 
                 DB::commit();
+
+                // Send Welcome/Success Email for GCash Payment
+                $user = User::find($cacheData['client_id']);
+                $this->sendSubscriptionSuccessEmail($user, $subscription);
+
                 return response()->json(['success' => true, 'message' => 'Payment verified. Subscription active!']);
 
             } catch (\Exception $e) {

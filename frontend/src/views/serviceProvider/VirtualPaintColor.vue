@@ -25,14 +25,19 @@
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
                 <div v-for="(color, index) in colors" :key="color.id" 
                      :class="['group relative bg-slate-800/30 rounded-xl p-4 border-2 transition-all duration-300', 
                               color.active ? getBorderClass(index) : 'border-slate-700/50 opacity-60']">
                   
                   <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold text-white text-lg">Color {{ index + 1 }}</h3>
-                    <Switch :model-value="color.active" @update:model-value="toggleActive(index, $event)" />
+                    <div class="flex items-center gap-2">
+                      <Button v-if="colors.length > 2" @click="removeColor(index)" variant="ghost" size="icon" class="h-6 w-6 text-slate-500 hover:text-red-400 transition-colors">
+                        <Trash2 class="w-4 h-4" />
+                      </Button>
+                      <Switch :model-value="color.active" @update:model-value="toggleActive(index, $event)" />
+                    </div>
                   </div>
 
                   <div class="space-y-4">
@@ -73,6 +78,9 @@
               </div>
 
               <div class="flex flex-wrap gap-3 justify-center border-t border-slate-700/50 pt-6">
+                <Button @click="addColor" :disabled="colors.length >= 6" variant="secondary" class="rounded-full bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30">
+                  <Plus class="w-4 h-4 mr-2" /> Add Color
+                </Button>
                 <Button @click="randomizeColors" variant="secondary" class="rounded-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border-purple-500/30">
                   <RefreshCcw class="w-4 h-4 mr-2" /> Randomize
                 </Button>
@@ -101,7 +109,7 @@
                     
                     <div class="absolute inset-0 flex items-center justify-center">
                       <div class="absolute w-56 h-56 rounded-full opacity-20 blur-xl animate-spin-slow"
-                           :style="{ background: `conic-gradient(${colors[0].active ? colors[0].hex : 'transparent'}, ${colors[1].active ? colors[1].hex : 'transparent'}, ${colors[2].active ? colors[2].hex : 'transparent'}, transparent)` }"></div>
+                           :style="{ background: generatedConicGradient }"></div>
                       
                       <div class="relative w-40 h-40 rounded-full animate-float shadow-2xl transition-all duration-700"
                            :style="{ 
@@ -114,9 +122,9 @@
                       <div v-for="(color, i) in colors" :key="i" v-show="color.active"
                            class="absolute rounded-full border border-white/10 animate-orbit"
                            :style="{ 
-                             width: 180 + i*40 + 'px', 
-                             height: 180 + i*40 + 'px',
-                             animationDuration: 5 + i*2 + 's' 
+                             width: 180 + i*30 + 'px', 
+                             height: 180 + i*30 + 'px',
+                             animationDuration: 5 + i*1.5 + 's' 
                            }">
                         <div class="w-3 h-3 rounded-full absolute -top-1.5 left-1/2" :style="{ backgroundColor: color.hex, boxShadow: `0 0 15px ${color.hex}` }"></div>
                       </div>
@@ -259,8 +267,9 @@
     <div v-if="showCopyNotification || showSaveNotification" 
          class="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
       <div class="bg-slate-900 border border-emerald-500/30 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
-        <CheckCircle2 class="w-5 h-5 text-emerald-500" />
-        <span class="text-sm font-bold text-white">{{ notificationText }}</span>
+        <CheckCircle2 v-if="!isErrorNotification" class="w-5 h-5 text-emerald-500" />
+        <Info v-else class="w-5 h-5 text-red-500" />
+        <span class="text-sm font-bold" :class="isErrorNotification ? 'text-red-400' : 'text-white'">{{ notificationText }}</span>
       </div>
     </div>
   </div>
@@ -280,7 +289,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Beaker, Settings2, Sparkles, RefreshCcw, Scale, Undo2, 
-  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap 
+  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap, Trash2
 } from 'lucide-vue-next'
 import api from '@/utils/axios'
 
@@ -316,6 +325,7 @@ const tips = [
 const currentTip = ref(0)
 const showCopyNotification = ref(false)
 const showSaveNotification = ref(false)
+const isErrorNotification = ref(false)
 const notificationText = ref('')
 
 // --- Computeds ---
@@ -328,10 +338,28 @@ const palettes = computed(() => [
   { label: 'Complementary', colors: generateComplementary() }
 ])
 
-// --- Helpers ---
-const getBorderClass = (i) => ['border-purple-500', 'border-pink-500', 'border-cyan-500'][i]
-const getSliderClass = (i) => ['[&>span:last-child>span]:bg-purple-500', '[&>span:last-child>span]:bg-pink-500', '[&>span:last-child>span]:bg-cyan-500'][i]
-const getProgressBarTheme = (i) => ['[&>div]:bg-purple-500', '[&>div]:bg-pink-500', '[&>div]:bg-cyan-500'][i]
+const generatedConicGradient = computed(() => {
+  const active = colors.value.filter(c => c.active);
+  if (active.length === 0) return 'transparent';
+  if (active.length === 1) return active[0].hex;
+  const stops = active.map(c => c.hex).join(', ');
+  return `conic-gradient(${stops}, ${active[0].hex})`;
+});
+
+// --- Dynamic Styling Helpers ---
+const themeStyles = [
+  { border: 'border-purple-500', slider: '[&>span:last-child>span]:bg-purple-500', progress: '[&>div]:bg-purple-500' },
+  { border: 'border-pink-500', slider: '[&>span:last-child>span]:bg-pink-500', progress: '[&>div]:bg-pink-500' },
+  { border: 'border-cyan-500', slider: '[&>span:last-child>span]:bg-cyan-500', progress: '[&>div]:bg-cyan-500' },
+  { border: 'border-emerald-500', slider: '[&>span:last-child>span]:bg-emerald-500', progress: '[&>div]:bg-emerald-500' },
+  { border: 'border-amber-500', slider: '[&>span:last-child>span]:bg-amber-500', progress: '[&>div]:bg-amber-500' },
+  { border: 'border-rose-500', slider: '[&>span:last-child>span]:bg-rose-500', progress: '[&>div]:bg-rose-500' }
+]
+
+const getTheme = (i) => themeStyles[i % themeStyles.length];
+const getBorderClass = (i) => getTheme(i).border;
+const getSliderClass = (i) => getTheme(i).slider;
+const getProgressBarTheme = (i) => getTheme(i).progress;
 
 // --- Proper Naming Convention Logic ---
 const getColorName = (h, s, l) => {
@@ -358,6 +386,26 @@ const getColorName = (h, s, l) => {
 }
 
 // --- Logic ---
+const addColor = () => {
+  if (colors.value.length >= 6) return;
+  const newId = colors.value.length ? Math.max(...colors.value.map(c => c.id)) + 1 : 1;
+  colors.value.push({
+    id: newId,
+    name: 'New Custom Color',
+    hex: '#FFFFFF',
+    rgb: '255, 255, 255',
+    active: true,
+    weight: 0
+  });
+  balanceWeights();
+}
+
+const removeColor = (index) => {
+  if (colors.value.length <= 2) return;
+  colors.value.splice(index, 1);
+  balanceWeights();
+}
+
 const rgbToHSL = (r, g, b) => {
   r /= 255; g /= 255; b /= 255;
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -523,10 +571,18 @@ const balanceWeights = () => {
   });
 }
 
-const resetColors = () => location.reload()
+const resetColors = () => {
+  colors.value = [
+    { id: 1, name: 'Vibrant Red', hex: '#FF3636', rgb: '255, 54, 54', active: true, weight: 34 },
+    { id: 2, name: 'Sunshine Yellow', hex: '#FFE436', rgb: '255, 228, 54', active: true, weight: 33 },
+    { id: 3, name: 'Ocean Blue', hex: '#00C8FF', rgb: '0, 200, 255', active: true, weight: 33 }
+  ];
+  balanceWeights();
+}
 
 const copyColor = (hex) => {
   navigator.clipboard.writeText(hex);
+  isErrorNotification.value = false;
   notificationText.value = 'Color Copied!';
   showCopyNotification.value = true;
   setTimeout(() => showCopyNotification.value = false, 2000);
@@ -550,22 +606,25 @@ const saveMixedColor = async () => {
       stability: mixedColor.value.stability,
       frequency: mixedColor.value.frequency,
       quantumState: mixedColor.value.quantumState,
-      
-      // ADD THESE TWO LINES:
-      sourceColors: colors.value,
+      sourceColors: colors.value.filter(c => c.active).map(c => ({
+        name: c.name,
+        hex: c.hex,
+        rgb: c.rgb,
+        weight: c.weight
+      })),
       palettes: palettes.value
     };
 
-    // Change endpoint to '/service-provider/save-color' or '/client/save-color' depending on the file
     await api.post('/service-provider/save-color', payload); 
+    isErrorNotification.value = false;
     notificationText.value = 'Saved to Collection!';
     showSaveNotification.value = true;
     setTimeout(() => showSaveNotification.value = false, 2000);
   } catch (error) {
-    console.error('Validation Error Details:', error.response?.data?.errors);
-    notificationText.value = 'Save Failed - Check Console';
+    isErrorNotification.value = true;
+    notificationText.value = error.response?.data?.message || 'Save Failed - Check Console';
     showSaveNotification.value = true;
-    setTimeout(() => showSaveNotification.value = false, 2000);
+    setTimeout(() => showSaveNotification.value = false, 3500);
   }
 }
 
