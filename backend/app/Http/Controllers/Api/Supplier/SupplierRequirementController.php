@@ -106,13 +106,18 @@ class SupplierRequirementController extends Controller
                 'business_registration_number' => 'required|string|max:100',
                 'business_registration_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 
-                // Address Validation
+                // Address Validation - strict bounding box for Cavite
                 'province' => 'required|string|in:Cavite',
                 'city' => 'required|string|max:255',
                 'barangay' => 'required|string|max:255',
                 'block_address' => 'required|string|max:1000',
-                'latitude' => 'nullable|numeric',
-                'longitude' => 'nullable|numeric',
+                'latitude' => 'nullable|numeric|min:14.0000|max:14.6000',
+                'longitude' => 'nullable|numeric|min:120.5000|max:121.1000',
+            ], [
+                'latitude.min' => 'Location pinned must be inside Cavite.',
+                'latitude.max' => 'Location pinned must be inside Cavite.',
+                'longitude.min' => 'Location pinned must be inside Cavite.',
+                'longitude.max' => 'Location pinned must be inside Cavite.',
             ]);
             
             if ($validator->fails()) {

@@ -967,7 +967,7 @@ import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -996,6 +996,7 @@ const locationError = ref('')
 // Map State
 const map = ref(null)
 const marker = ref(null)
+const caviteLayer = ref(null)
 
 // Constants
 const caviteCities = [
@@ -1105,6 +1106,9 @@ const isVerificationFormValid = computed(() => {
          verificationForm.city && 
          verificationForm.barangay && 
          verificationForm.block_address &&
+         verificationForm.latitude &&
+         verificationForm.longitude &&
+         !locationError.value &&
          verificationForm.valid_id_type &&
          verificationForm.id_number &&
          verificationForm.valid_id_photo &&
@@ -1143,7 +1147,7 @@ const formatDateTime = (dateTimeString) => {
 const isStepValid = (step) => {
   switch(step) {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
-    case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude
+    case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude && !locationError.value
     case 3: return verificationForm.valid_id_type && verificationForm.id_number && verificationForm.valid_id_photo
     case 4: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo
     case 5: return isVerificationFormValid.value
@@ -1170,7 +1174,6 @@ const previousStep = () => {
 }
 
 const getProgressWidth = () => {
-  // Adjusted for 5 steps (0% to 100%)
   const percentage = ((currentStep.value - 1) / 4) * 100
   return `${percentage}%`
 }
@@ -1220,16 +1223,49 @@ const getAddressComponent = (address, keys) => {
 
 // Fix Leaflet Icons in Vue/Vite environment
 const fixLeafletIcons = () => {
-  // Fix TS Error 2339 by casting to any
   delete (L.Icon.Default.prototype as any)._getIconUrl
   
   L.Icon.Default.mergeOptions({
-    // Fix TS Error 1343 by using direct imports instead of import.meta.url
     iconRetinaUrl,
     iconUrl,
     shadowUrl,
   })
 }
+
+// Function to strictly enforce Cavite boundary
+const drawCaviteBoundary = async () => {
+  try {
+    const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
+      const geojson = caviteData.geojson;
+      
+      caviteLayer.value = L.geoJSON(geojson, {
+        style: {
+          color: '#4f46e5',
+          weight: 4,
+          fillColor: '#4f46e5',
+          fillOpacity: 0.1,
+          dashArray: '5, 5'
+        }
+      }).addTo(map.value);
+      
+      const exactBounds = caviteLayer.value.getBounds();
+      map.value.setMaxBounds(exactBounds.pad(0.02)); 
+      map.value.setMinZoom(10);
+      
+      if (!verificationForm.latitude) {
+        map.value.fitBounds(exactBounds);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load strictly exact boundary for Cavite:', err);
+    const fallbackBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+    if(map.value) map.value.setMaxBounds(fallbackBounds);
+  }
+};
 
 // Initialize Map
 const initMap = () => {
@@ -1246,7 +1282,7 @@ const initMap = () => {
 
   fixLeafletIcons()
 
-  map.value = L.map('map').setView([startLat, startLng], 12)
+  map.value = L.map('map', { minZoom: 10 }).setView([startLat, startLng], 12)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
@@ -1265,10 +1301,13 @@ const initMap = () => {
     marker.value.setLatLng(e.latlng)
     await updateLocationFromCoords(e.latlng.lat, e.latlng.lng)
   })
+
+  drawCaviteBoundary();
 }
 
 // Reverse Geocode Logic (Nominatim OSM)
 const updateLocationFromCoords = async (lat, lon) => {
+  locationError.value = '';
   verificationForm.latitude = lat.toString()
   verificationForm.longitude = lon.toString()
   
@@ -1281,14 +1320,39 @@ const updateLocationFromCoords = async (lat, lon) => {
     
     const data = await response.json()
     const addr = data.address
+
+    // Water Body Validation - Prevent pinning in oceans, seas, bays, rivers
+    const isWater = 
+        data.class === 'waterway' || 
+        (data.class === 'natural' && data.type === 'water') || 
+        (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
+
+    if (isWater) {
+        locationError.value = "You cannot pin a water area. Please select a valid land location within Cavite.";
+        verificationForm.city = '';
+        verificationForm.barangay = '';
+        verificationForm.block_address = '';
+        verificationForm.latitude = '';
+        verificationForm.longitude = '';
+        validateStep(2);
+        return;
+    }
     
     if (addr) {
       // 1. City/Municipality
       const rawCity = getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county'])
       const matchedCity = caviteCities.find(c => 
-        rawCity.toLowerCase().includes(c.toLowerCase()) || 
-        c.toLowerCase().includes(rawCity.toLowerCase())
+        rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || 
+        c.toLowerCase().includes(rawCity.toLowerCase()))
       )
+
+      if (!matchedCity && addr.state !== 'Cavite') {
+         locationError.value = "Location must be within Cavite province.";
+         verificationForm.city = '';
+         validateStep(2);
+         return;
+      }
+
       verificationForm.city = matchedCity || rawCity
 
       // 2. Barangay
@@ -1309,6 +1373,7 @@ const updateLocationFromCoords = async (lat, lon) => {
       }
 
       verificationForm.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map')
+      validateStep(2);
     }
   } catch (error) {
     console.error('Reverse geocoding error:', error)
@@ -1329,6 +1394,14 @@ const getCurrentLocation = async () => {
     async (position) => {
       const lat = position.coords.latitude
       const lon = position.coords.longitude
+
+      // Strict bounds check before processing
+      const caviteBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+      if (!caviteBounds.contains([lat, lon])) {
+         locationError.value = "Your current device location is outside Cavite. Please pin manually.";
+         gettingLocation.value = false;
+         return;
+      }
       
       // Update form
       verificationForm.latitude = lat.toString()
@@ -1378,6 +1451,7 @@ watch(currentStep, async (newStep) => {
       map.value.remove()
       map.value = null
       marker.value = null
+      caviteLayer.value = null
     }
   }
 })

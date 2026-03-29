@@ -996,6 +996,7 @@ const locationError = ref('')
 // Map State
 const map = ref(null)
 const marker = ref(null)
+const caviteLayer = ref(null)
 
 // Constants
 const caviteCities = [
@@ -1036,13 +1037,11 @@ const verificationData = ref(null)
 
 const verificationForm = reactive({
   company_name: '',
-  // NEW ADDRESS FIELDS
   city: '',
   barangay: '',
   block_address: '',
   latitude: '',
   longitude: '',
-  // Existing fields
   valid_id_type: '',
   id_number: '',
   valid_id_photo: null,
@@ -1105,6 +1104,9 @@ const isVerificationFormValid = computed(() => {
          verificationForm.city && 
          verificationForm.barangay && 
          verificationForm.block_address &&
+         verificationForm.latitude &&
+         verificationForm.longitude &&
+         !locationError.value &&
          verificationForm.valid_id_type &&
          verificationForm.id_number &&
          verificationForm.valid_id_photo &&
@@ -1139,11 +1141,10 @@ const formatDateTime = (dateTimeString) => {
   return date.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// Wizard Navigation - UPDATED for 5 Steps
 const isStepValid = (step) => {
   switch(step) {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
-    case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude
+    case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude && !locationError.value
     case 3: return verificationForm.valid_id_type && verificationForm.id_number && verificationForm.valid_id_photo
     case 4: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo
     case 5: return isVerificationFormValid.value
@@ -1170,7 +1171,6 @@ const previousStep = () => {
 }
 
 const getProgressWidth = () => {
-  // Adjusted for 5 steps (0% to 100%)
   const percentage = ((currentStep.value - 1) / 4) * 100
   return `${percentage}%`
 }
@@ -1198,7 +1198,6 @@ const formatIDType = (type) => {
   return types[type] || type
 }
 
-// Password Visibility
 const toggleCurrentPasswordVisibility = () => showCurrentPassword.value = !showCurrentPassword.value
 const toggleNewPasswordVisibility = () => showNewPassword.value = !showNewPassword.value
 const toggleConfirmPasswordVisibility = () => showConfirmPassword.value = !showConfirmPassword.value
@@ -1209,7 +1208,6 @@ const changeProfilePhoto = () => {
 
 // ---- LEAFLET MAP LOGIC ----
 
-// Helper to safely find address components (case-insensitive)
 const getAddressComponent = (address, keys) => {
   if (!address) return '';
   for (const key of keys) {
@@ -1218,35 +1216,62 @@ const getAddressComponent = (address, keys) => {
   return '';
 }
 
-// Fix Leaflet Icons in Vue/Vite environment
 const fixLeafletIcons = () => {
-  // Fix TS Error 2339 by casting to any
   delete (L.Icon.Default.prototype as any)._getIconUrl
-  
   L.Icon.Default.mergeOptions({
-    // Fix TS Error 1343 by using direct imports instead of import.meta.url
     iconRetinaUrl,
     iconUrl,
     shadowUrl,
   })
 }
 
-// Initialize Map
+// Function to strictly enforce Cavite boundary
+const drawCaviteBoundary = async () => {
+  try {
+    const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
+      const geojson = caviteData.geojson;
+      
+      caviteLayer.value = L.geoJSON(geojson, {
+        style: {
+          color: '#4f46e5',
+          weight: 4,
+          fillColor: '#4f46e5',
+          fillOpacity: 0.1,
+          dashArray: '5, 5'
+        }
+      }).addTo(map.value);
+      
+      const exactBounds = caviteLayer.value.getBounds();
+      map.value.setMaxBounds(exactBounds.pad(0.02)); 
+      map.value.setMinZoom(10);
+      
+      if (!verificationForm.latitude) {
+        map.value.fitBounds(exactBounds);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load strictly exact boundary for Cavite:', err);
+    const fallbackBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+    if(map.value) map.value.setMaxBounds(fallbackBounds);
+  }
+};
+
 const initMap = () => {
-  // Prevent multiple initializations
   if (map.value) return;
   
-  // Basic Cavite Coordinates (center point)
   const defaultLat = 14.24
   const defaultLng = 120.88
   
-  // Use existing form values if available, otherwise default
   const startLat = verificationForm.latitude ? parseFloat(verificationForm.latitude) : defaultLat
   const startLng = verificationForm.longitude ? parseFloat(verificationForm.longitude) : defaultLng
 
   fixLeafletIcons()
 
-  map.value = L.map('map').setView([startLat, startLng], 12)
+  map.value = L.map('map', { minZoom: 10 }).setView([startLat, startLng], 12)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
@@ -1254,21 +1279,21 @@ const initMap = () => {
 
   marker.value = L.marker([startLat, startLng], { draggable: true }).addTo(map.value)
 
-  // Drag End Event - Reverse Geocode
   marker.value.on('dragend', async function(e) {
     const latlng = e.target.getLatLng()
     await updateLocationFromCoords(latlng.lat, latlng.lng)
   })
 
-  // Map Click Event - Move Marker
   map.value.on('click', async function(e) {
     marker.value.setLatLng(e.latlng)
     await updateLocationFromCoords(e.latlng.lat, e.latlng.lng)
   })
+
+  drawCaviteBoundary();
 }
 
-// Reverse Geocode Logic (Nominatim OSM)
 const updateLocationFromCoords = async (lat, lon) => {
+  locationError.value = '';
   verificationForm.latitude = lat.toString()
   verificationForm.longitude = lon.toString()
   
@@ -1281,21 +1306,43 @@ const updateLocationFromCoords = async (lat, lon) => {
     
     const data = await response.json()
     const addr = data.address
+
+    // Water Body Validation - Prevent pinning in oceans, seas, bays, rivers
+    const isWater = 
+        data.class === 'waterway' || 
+        (data.class === 'natural' && data.type === 'water') || 
+        (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
+
+    if (isWater) {
+        locationError.value = "You cannot pin a water area. Please select a valid land location within Cavite.";
+        verificationForm.city = '';
+        verificationForm.barangay = '';
+        verificationForm.block_address = '';
+        verificationForm.latitude = '';
+        verificationForm.longitude = '';
+        validateStep(2);
+        return;
+    }
     
     if (addr) {
-      // 1. City/Municipality
       const rawCity = getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county'])
       const matchedCity = caviteCities.find(c => 
-        rawCity.toLowerCase().includes(c.toLowerCase()) || 
-        c.toLowerCase().includes(rawCity.toLowerCase())
+        rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || 
+        c.toLowerCase().includes(rawCity.toLowerCase()))
       )
+
+      if (!matchedCity && addr.state !== 'Cavite') {
+         locationError.value = "Location must be within Cavite province.";
+         verificationForm.city = '';
+         validateStep(2);
+         return;
+      }
+
       verificationForm.city = matchedCity || rawCity
 
-      // 2. Barangay
       const rawBarangay = getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district'])
       verificationForm.barangay = rawBarangay.replace('Barangay', '').trim()
 
-      // 3. Block Address
       const parts = []
       if (addr.house_number) parts.push(`No. ${addr.house_number}`)
       if (addr.building) parts.push(addr.building)
@@ -1309,13 +1356,13 @@ const updateLocationFromCoords = async (lat, lon) => {
       }
 
       verificationForm.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map')
+      validateStep(2);
     }
   } catch (error) {
     console.error('Reverse geocoding error:', error)
   }
 }
 
-// Geolocation Logic - Updated for Leaflet
 const getCurrentLocation = async () => {
   if (!navigator.geolocation) {
     locationError.value = "Geolocation is not supported by your browser"
@@ -1330,17 +1377,22 @@ const getCurrentLocation = async () => {
       const lat = position.coords.latitude
       const lon = position.coords.longitude
       
-      // Update form
+      // Enforce strict geo-check against Cavite Bounds before processing
+      const caviteBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+      if (!caviteBounds.contains([lat, lon])) {
+         locationError.value = "Your current device location is outside Cavite. Please pin manually.";
+         gettingLocation.value = false;
+         return;
+      }
+      
       verificationForm.latitude = lat.toString()
       verificationForm.longitude = lon.toString()
       
-      // Update Map
       if (map.value && marker.value) {
         map.value.flyTo([lat, lon], 16)
         marker.value.setLatLng([lat, lon])
         await updateLocationFromCoords(lat, lon)
       } else {
-        // Fallback if map isn't ready (shouldn't happen on step 2)
         await updateLocationFromCoords(lat, lon)
       }
       
@@ -1367,21 +1419,19 @@ const getCurrentLocation = async () => {
   )
 }
 
-// Watcher to Initialize Map when Step 2 becomes visible
 watch(currentStep, async (newStep) => {
   if (newStep === 2) {
-    await nextTick() // Wait for v-if to render the DOM element
+    await nextTick() 
     initMap()
   } else {
-    // Cleanup map instance if user leaves step 2
     if (map.value) {
       map.value.remove()
       map.value = null
       marker.value = null
+      caviteLayer.value = null
     }
   }
 })
-
 
 // API Calls
 const fetchUserData = async () => {
@@ -1457,7 +1507,6 @@ const fetchVerificationData = async () => {
         verificationForm.id_number = verificationData.value.id_number || ''
         verificationForm.business_registration_number = verificationData.value.business_registration_number || ''
         
-        // Populate address if exists
         if(verificationData.value.address) {
             verificationForm.city = verificationData.value.address.city || ''
             verificationForm.barangay = verificationData.value.address.barangay || ''
@@ -1600,7 +1649,6 @@ const submitVerification = async () => {
     formData.append('id_number', verificationForm.id_number)
     formData.append('business_registration_number', verificationForm.business_registration_number)
     
-    // Append Address Fields
     formData.append('province', 'Cavite')
     formData.append('city', verificationForm.city)
     formData.append('barangay', verificationForm.barangay)
@@ -1631,7 +1679,6 @@ const submitVerification = async () => {
       })
       originalSupplierInfo.value = JSON.parse(JSON.stringify(supplierInfo))
       
-      // Reset form
       Object.assign(verificationForm, {
         company_name: '',
         valid_id_type: '',
@@ -1679,7 +1726,6 @@ const saveAllChanges = () => {
   if (supplierInfoChanged.value) saveSupplierInfo()
 }
 
-// File Handlers
 const triggerFileInput = (field) => {
   const refMap = {
     'valid_id_photo': valid_id_photo_input,
@@ -1742,7 +1788,6 @@ const getVerificationStatusMessage = () => {
   }
 }
 
-// Lifecycle
 onMounted(async () => {
   await fetchUserData()
   await fetchSupplierData()
@@ -1754,7 +1799,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Keeping original styles as requested */
 html {
   scroll-behavior: smooth;
 }

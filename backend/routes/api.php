@@ -62,8 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
 
-    
-
     Route::prefix('special-rbac')->group(function () {
         Route::get('/sidebar', [\App\Http\Controllers\Api\SpecialRBAC\SpecialRBACSidebarController::class, 'getSidebarAccess']);
     });
@@ -91,6 +89,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [UserController::class, 'profile']);
         Route::put('/', [UserController::class, 'updateProfile']);
         Route::put('/password', [UserController::class, 'updatePassword']);
+        
+        // MISSING ROUTE ADDED HERE: For Distributor settings update
+        Route::put('/distributor', [\App\Http\Controllers\Api\Distributor\DistributorRequirementController::class, 'updateDistributorInfo']); 
     });
 
     // Client Requirements - ID Verification & Ecommerce
@@ -415,9 +416,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    Route::get('/profile', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'getProfile']);
-    Route::post('/profile/update-password', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'updatePassword']);
-
+    
     // HR Employees Routes
     Route::prefix('hr')->middleware(['auth:sanctum'])->group(function () {
         Route::prefix('employees')->group(function () {
@@ -430,8 +429,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/regularize', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'regularize']);
             // New route for employee accessibility
             Route::get('/{id}/accessibility', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'getEmployeeAccessibility']);
-            // Add this route in your HR routes section
             
+            // REMOVED THE CONFLICTING EMPLOYEE PROFILE ROUTES HERE
             
         });
 
@@ -522,8 +521,13 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Employee Attendance Routes
+    // Employee Individual Routes
     Route::prefix('employee')->group(function () {
+        
+        // MOVED HERE: The dedicated profile endpoints for Employee users!
+        Route::get('/profile', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'getProfile']);
+        Route::post('/profile/update-password', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'updatePassword']);
+        
         Route::get('/schedule', [\App\Http\Controllers\Api\Employee\AttendanceController::class, 'getSchedule']);
         
         Route::prefix('attendance')->group(function () {

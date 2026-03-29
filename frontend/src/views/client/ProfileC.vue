@@ -744,6 +744,7 @@ export default {
       locationError: '',
       map: null,
       marker: null,
+      caviteLayer: null,
       caviteCities: [
         'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
         'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
@@ -784,7 +785,7 @@ export default {
     canProceedToNextStep() {
       switch(this.currentStep) {
         case 0:
-          return !!(this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude)
+          return !!(this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude && !this.locationError)
         case 1:
           return !!this.idVerification.idType
         case 2:
@@ -807,7 +808,8 @@ export default {
             this.idVerification.block_address &&
             this.idVerification.latitude &&
             this.idVerification.longitude &&
-            this.idVerification.status === 'not_submitted'
+            this.idVerification.status === 'not_submitted' && 
+            !this.locationError
     }
   },
   watch: {
@@ -817,7 +819,6 @@ export default {
           if (!this.map) {
             this.initMap(); 
           } else {
-            // Leaflet requires this when a hidden map container becomes visible
             this.map.invalidateSize(); 
           }
         });
@@ -912,6 +913,7 @@ export default {
         this.idVerification.errors = {}
         this.idVerification.error = null
         this.idVerification.status = 'not_submitted'
+        this.locationError = ''
         
         this.wizardSteps.forEach((step, index) => {
           step.completed = false
@@ -972,8 +974,6 @@ export default {
         } else this.showNotification(this.error, 'error')
       } finally {
         this.initialLoading = false
-        
-        // Fix: Wait for Vue to remove the loading screen and render the map div, THEN initialize
         this.$nextTick(() => {
           if (this.currentStep === 0 && !['pending', 'approved', 'verified'].includes(this.idVerification.status)) {
             this.initMap();
@@ -982,7 +982,6 @@ export default {
       }
     },
 
-    // GCash Settings Fetch & Save
     async fetchGcashNumber() {
       try {
         const response = await axios.get('/client/payment-settings')
@@ -995,21 +994,15 @@ export default {
       }
     },
 
-    // Handle GCash Input (Strict numbers, max 11, starts with 0)
     handleGcashInput(event) {
-      // Remove all non-numeric characters immediately
       let val = event.target.value.replace(/\D/g, '');
-      
-      // Force the string to start with '0' if the user typed something else
       if (val.length > 0 && val.charAt(0) !== '0') {
         val = '0' + val;
       }
-      
-      // Limit to exactly 11 digits
       val = val.substring(0, 11);
       
       this.gcashNumber = val;
-      event.target.value = val; // Force update DOM
+      event.target.value = val;
       
       this.markGcashChanged();
     },
@@ -1079,7 +1072,6 @@ export default {
       }
     },
 
-    // Map & Geolocation methods
     fixLeafletIcons() {
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
@@ -1093,15 +1085,17 @@ export default {
 
     initMap() {
       const mapContainer = document.getElementById('client-map');
-      if (!mapContainer || this.map) return; // If container still isn't there, abort
+      if (!mapContainer || this.map) return; 
       
-      const defaultLat = 14.45; // Adjusted closer to Cavite center
-      const defaultLng = 120.93;
+      const defaultLat = 14.35; // Centered to Cavite
+      const defaultLng = 120.90;
       const startLat = this.idVerification.latitude ? parseFloat(this.idVerification.latitude) : defaultLat;
       const startLng = this.idVerification.longitude ? parseFloat(this.idVerification.longitude) : defaultLng;
 
       this.fixLeafletIcons();
-      this.map = L.map('client-map').setView([startLat, startLng], 12);
+      this.map = L.map('client-map', {
+        minZoom: 10
+      }).setView([startLat, startLng], 12);
       
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -1117,23 +1111,98 @@ export default {
         await this.updateLocationFromCoords(e.latlng.lat, e.latlng.lng);
       });
       
-      // Force map to recognize its container size
+      // Fetch exact shape and bounds of Cavite 
+      this.drawCaviteBoundary();
+
       setTimeout(() => {
         if (this.map) this.map.invalidateSize();
       }, 100);
     },
 
+    // NEW METHOD: Fetches the GeoJSON boundary of Cavite, draws it, and restricts the map view completely
+    async drawCaviteBoundary() {
+      try {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          // Find the result that represents the administrative boundary of the province
+          const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
+          const geojson = caviteData.geojson;
+          
+          // Draw the exact outline shape of Cavite on the map
+          this.caviteLayer = L.geoJSON(geojson, {
+            style: {
+              color: '#4f46e5', // Indigo border
+              weight: 4,
+              fillColor: '#4f46e5',
+              fillOpacity: 0.1,
+              dashArray: '5, 5' // Dashed lines
+            }
+          }).addTo(this.map);
+          
+          // Get the exact bounds of this drawn shape
+          const exactBounds = this.caviteLayer.getBounds();
+          
+          // STRICT RESTRICTION: Lock the user's panning directly to these bounds.
+          // pad(0.02) gives a tiny 2% wiggle room so the border line is comfortably visible.
+          this.map.setMaxBounds(exactBounds.pad(0.02)); 
+          
+          // Adjust zoom
+          this.map.setMinZoom(10);
+          
+          // Center nicely if we don't have a pinned address already
+          if (!this.idVerification.latitude) {
+            this.map.fitBounds(exactBounds);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load exactly boundary for Cavite:', err);
+        // Fallback constraint if API fails
+        const fallbackBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+        this.map.setMaxBounds(fallbackBounds);
+      }
+    },
+
     async updateLocationFromCoords(lat, lon) {
+      this.locationError = ''; 
       this.idVerification.latitude = lat.toString();
       this.idVerification.longitude = lon.toString();
+      
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
         if (!response.ok) throw new Error('Failed to fetch address');
         const data = await response.json();
         const addr = data.address;
+        
+        // Water Body Validation
+        const isWater = 
+            data.class === 'waterway' || 
+            (data.class === 'natural' && data.type === 'water') || 
+            (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
+
+        if (isWater) {
+            this.locationError = "You cannot pin a water area. Please select a valid land location within Cavite.";
+            this.idVerification.city = '';
+            this.idVerification.barangay = '';
+            this.idVerification.block_address = '';
+            this.idVerification.latitude = '';
+            this.idVerification.longitude = '';
+            this.evaluateStep(0);
+            return;
+        }
+
         if (addr) {
-          const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county']);
-          const matchedCity = this.caviteCities.find(c => rawCity.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(rawCity.toLowerCase()));
+          const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county', 'region']);
+          const matchedCity = this.caviteCities.find(c => rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(rawCity.toLowerCase())));
+          
+          if (!matchedCity && addr.state !== 'Cavite') {
+             this.locationError = "Location must be within Cavite province.";
+             this.idVerification.city = '';
+             this.evaluateStep(0);
+             return;
+          }
+
           this.idVerification.city = matchedCity || rawCity;
 
           const rawBarangay = this.getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district']);
@@ -1165,6 +1234,15 @@ export default {
         async (position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
+          
+          // Safety verification strictly for Cavite region via Geolocation feature
+          const caviteBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+          if (!caviteBounds.contains([lat, lon])) {
+             this.locationError = "Your current device location is outside Cavite. Please pin manually.";
+             this.gettingLocation = false;
+             return;
+          }
+
           this.idVerification.latitude = lat.toString();
           this.idVerification.longitude = lon.toString();
           if (this.map && this.marker) {
@@ -1187,7 +1265,6 @@ export default {
       );
     },
     
-    // File Upload Methods
     handleDragOver(event) {
       event.preventDefault()
       this.idVerification.isDragging = true
@@ -1258,7 +1335,6 @@ export default {
         formData.append('id_number', this.idVerification.idNumber)
         formData.append('id_photo', this.idVerification.idPhoto)
         
-        // Address details
         formData.append('province', 'Cavite')
         formData.append('city', this.idVerification.city)
         formData.append('barangay', this.idVerification.barangay)

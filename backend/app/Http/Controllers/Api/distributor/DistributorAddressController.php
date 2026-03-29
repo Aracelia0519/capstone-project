@@ -37,9 +37,10 @@ class DistributorAddressController extends Controller
      */
     public function updateCoordinates(Request $request)
     {
+        // Enforce strict bounding box for Cavite coordinates
         $validator = Validator::make($request->all(), [
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'latitude' => 'required|numeric|min:14.0000|max:14.6000',
+            'longitude' => 'required|numeric|min:120.5000|max:121.1000',
         ]);
 
         if ($validator->fails()) {

@@ -88,16 +88,21 @@ class ServiceProviderRequirementController extends Controller
             'id_number' => 'required|string|max:50',
             'id_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
             'selfie_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
-            // Address validation
+            
+            // Address validation strictly enforced to Cavite bounds
             'province' => 'required|string|in:Cavite',
             'city' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
             'block_address' => 'required|string|max:1000',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'nullable|numeric|min:14.0000|max:14.6000',
+            'longitude' => 'nullable|numeric|min:120.5000|max:121.1000',
         ], [
             'id_photo.max' => 'The ID photo must not exceed 5MB.',
             'selfie_photo.max' => 'The selfie photo must not exceed 5MB.',
+            'latitude.min' => 'Location pinned must be inside Cavite.',
+            'latitude.max' => 'Location pinned must be inside Cavite.',
+            'longitude.min' => 'Location pinned must be inside Cavite.',
+            'longitude.max' => 'Location pinned must be inside Cavite.',
         ]);
 
         if ($validator->fails()) {

@@ -302,7 +302,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Toaster, toast } from 'vue-sonner'
-import { Eye, EyeOff } from 'lucide-vue-next' // Using Lucide icons for guaranteed visibility
+import { Eye, EyeOff } from 'lucide-vue-next'
 
 const activeTab = ref('personal')
 const loadingProfile = ref(true)
@@ -333,7 +333,7 @@ onMounted(() => {
 const fetchUserProfile = async () => {
   loadingProfile.value = true
   try {
-    const response = await axios.get('/profile') 
+    const response = await axios.get('/employee/profile') // CHANGED ROUTE
     
     if (response.data.status === 'success') {
       profileData.value = response.data.data.profile
@@ -354,7 +354,7 @@ const updatePassword = async () => {
 
   savingPassword.value = true
   try {
-    const response = await axios.post('/profile/update-password', {
+    const response = await axios.post('/employee/profile/update-password', { // CHANGED ROUTE
       current_password: passwordForm.current_password,
       password: passwordForm.password,
       password_confirmation: passwordForm.password_confirmation
@@ -378,7 +378,6 @@ const updatePassword = async () => {
     
     if (error.response?.status === 422) {
       const errorMsg = error.response.data.message || 'Validation failed';
-      // If there are detailed errors, display the first one
       if (error.response.data.errors) {
         const firstKey = Object.keys(error.response.data.errors)[0];
         toast.error(error.response.data.errors[firstKey][0]);

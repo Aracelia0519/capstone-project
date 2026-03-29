@@ -79,20 +79,24 @@ class ClientRequirementController extends Controller
                 'id_type' => 'required|string|in:philid,passport,driver_license,umid,prc,voter,postal,philhealth,nbi,senior_citizen,other',
                 'id_number' => 'required|string|max:100',
                 'id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB max
-                // Address validation
+                // Address validation - Restrict to Cavite bounds
                 'province' => 'required|string|in:Cavite',
                 'city' => 'required|string|max:255',
                 'barangay' => 'required|string|max:255',
                 'block_address' => 'required|string|max:1000',
-                'latitude' => 'nullable|numeric',
-                'longitude' => 'nullable|numeric',
+                'latitude' => 'nullable|numeric|min:14.0000|max:14.6000',
+                'longitude' => 'nullable|numeric|min:120.5000|max:121.1000',
             ], [
                 'id_type.required' => 'Please select an ID type',
                 'id_type.in' => 'Please select a valid ID type',
                 'id_number.required' => 'Please enter your ID number',
                 'id_photo.required' => 'Please upload a photo of your ID',
                 'id_photo.mimes' => 'Only JPG, PNG, and PDF files are allowed',
-                'id_photo.max' => 'File size must be less than 5MB'
+                'id_photo.max' => 'File size must be less than 5MB',
+                'latitude.min' => 'Location pinned must be inside Cavite.',
+                'latitude.max' => 'Location pinned must be inside Cavite.',
+                'longitude.min' => 'Location pinned must be inside Cavite.',
+                'longitude.max' => 'Location pinned must be inside Cavite.',
             ]);
             
             if ($validator->fails()) {

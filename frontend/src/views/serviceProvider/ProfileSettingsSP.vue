@@ -836,6 +836,7 @@ export default {
       locationError: '',
       map: null,
       marker: null,
+      caviteLayer: null,
       caviteCities: [
         'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
         'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
@@ -943,7 +944,8 @@ export default {
                    this.idVerification.barangay.trim() && 
                    this.idVerification.block_address.trim() && 
                    this.idVerification.latitude && 
-                   this.idVerification.longitude;
+                   this.idVerification.longitude &&
+                   !this.locationError;
         case 2: 
             return this.idVerification.idType && this.idVerification.idNumber.trim();
         case 3: 
@@ -965,6 +967,7 @@ export default {
           this.map.remove();
           this.map = null;
           this.marker = null;
+          this.caviteLayer = null;
         }
       }
     },
@@ -981,7 +984,6 @@ export default {
     this.loadIdVerificationStatus()
   },
   mounted() {
-    // Retaining entrance animations
     setTimeout(() => {
       const cards = document.querySelectorAll('.bg-linear-to-br')
       cards.forEach((card, index) => {
@@ -1191,7 +1193,6 @@ export default {
       this.showNotification('Avatar upload feature will be available soon', 'info')
     },
 
-    // Wizard Methods
     nextStep() {
       if (this.currentStep < 4 && this.canProceedToNextStep) this.currentStep++
     },
@@ -1199,7 +1200,6 @@ export default {
       if (this.currentStep > 1) this.currentStep--
     },
     
-    // Map & Geolocation methods
     fixLeafletIcons() {
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -1217,9 +1217,44 @@ export default {
       return '';
     },
 
+    // Strict Cavite boundary feature
+    async drawCaviteBoundary() {
+      try {
+        const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
+          const geojson = caviteData.geojson;
+          
+          this.caviteLayer = L.geoJSON(geojson, {
+            style: {
+              color: '#4f46e5',
+              weight: 4,
+              fillColor: '#4f46e5',
+              fillOpacity: 0.1,
+              dashArray: '5, 5'
+            }
+          }).addTo(this.map);
+          
+          const exactBounds = this.caviteLayer.getBounds();
+          this.map.setMaxBounds(exactBounds.pad(0.02)); 
+          this.map.setMinZoom(10);
+          
+          if (!this.idVerification.latitude) {
+            this.map.fitBounds(exactBounds);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load strictly exact boundary for Cavite:', err);
+        const fallbackBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+        if(this.map) this.map.setMaxBounds(fallbackBounds);
+      }
+    },
+
     initMap() {
       const mapContainer = document.getElementById('sp-map');
-      if (!mapContainer) return; // Safeguard against missing DOM element
+      if (!mapContainer) return; 
 
       if (this.map) return;
       
@@ -1231,9 +1266,8 @@ export default {
 
       this.fixLeafletIcons();
 
-      this.map = L.map('sp-map').setView([startLat, startLng], 12);
+      this.map = L.map('sp-map', { minZoom: 10 }).setView([startLat, startLng], 12);
 
-      // Changed to standard openstreetmap light layout
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(this.map);
@@ -1249,9 +1283,12 @@ export default {
         this.marker.setLatLng(e.latlng);
         await this.updateLocationFromCoords(e.latlng.lat, e.latlng.lng);
       });
+
+      this.drawCaviteBoundary();
     },
 
     async updateLocationFromCoords(lat, lon) {
+      this.locationError = '';
       this.idVerification.latitude = lat.toString();
       this.idVerification.longitude = lon.toString();
       
@@ -1264,13 +1301,36 @@ export default {
         
         const data = await response.json();
         const addr = data.address;
+
+        // Water Body Validation
+        const isWater = 
+            data.class === 'waterway' || 
+            (data.class === 'natural' && data.type === 'water') || 
+            (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
+
+        if (isWater) {
+            this.locationError = "You cannot pin a water area. Please select a valid land location within Cavite.";
+            this.idVerification.city = '';
+            this.idVerification.barangay = '';
+            this.idVerification.block_address = '';
+            this.idVerification.latitude = '';
+            this.idVerification.longitude = '';
+            return;
+        }
         
         if (addr) {
           const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county']);
           const matchedCity = this.caviteCities.find(c => 
-            rawCity.toLowerCase().includes(c.toLowerCase()) || 
-            c.toLowerCase().includes(rawCity.toLowerCase())
+            rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || 
+            c.toLowerCase().includes(rawCity.toLowerCase()))
           );
+
+          if (!matchedCity && addr.state !== 'Cavite') {
+             this.locationError = "Location must be within Cavite province.";
+             this.idVerification.city = '';
+             return;
+          }
+
           this.idVerification.city = matchedCity || rawCity;
 
           const rawBarangay = this.getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district']);
@@ -1309,6 +1369,14 @@ export default {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
           
+          // Strict bounds check before processing
+          const caviteBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
+          if (!caviteBounds.contains([lat, lon])) {
+             this.locationError = "Your current device location is outside Cavite. Please pin manually.";
+             this.gettingLocation = false;
+             return;
+          }
+
           this.idVerification.latitude = lat.toString();
           this.idVerification.longitude = lon.toString();
           
