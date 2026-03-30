@@ -306,7 +306,8 @@ Route::middleware('auth:sanctum')->group(function () {
         
 
         Route::get('/partnered-suppliers', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'index']);
-
+        Route::get('/partnered-suppliers/{id}/agreement-raw', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getAgreementRaw']);
+        Route::post('/partnered-suppliers/{id}/sign', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'signAgreement']);
 
         Route::prefix('payroll-settings')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'show']);

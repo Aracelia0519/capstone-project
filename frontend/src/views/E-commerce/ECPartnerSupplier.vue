@@ -1,6 +1,5 @@
 <template>
   <div class="p-6 min-h-screen space-y-8 text-slate-100 relative">
-    <Toaster richColors position="top-right" expand />
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
@@ -140,34 +139,87 @@
 
     <Dialog :open="showConfirmDialog" @update:open="showConfirmDialog = $event">
       <div v-if="showConfirmDialog && selectedSupplier" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <Card class="w-full max-w-md shadow-2xl border border-slate-800 bg-slate-900 animate-in fade-in zoom-in duration-200">
-           <CardHeader class="border-b border-slate-800 bg-slate-900/50 pb-6">
+        <Card class="w-full max-w-2xl shadow-2xl border border-slate-800 bg-slate-900 animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+           <CardHeader class="border-b border-slate-800 bg-slate-900/50 pb-6 shrink-0">
               <div class="flex items-center gap-4">
-                 <div class="h-12 w-12 rounded-lg bg-slate-800 border border-slate-700 shadow-sm flex items-center justify-center overflow-hidden">
+                 <div class="h-12 w-12 rounded-lg bg-slate-800 border border-slate-700 shadow-sm flex items-center justify-center overflow-hidden shrink-0">
                     <span class="text-lg font-bold text-blue-400 select-none">{{ getInitials(selectedSupplier.name) }}</span>
                  </div>
                  <div>
                     <CardTitle class="text-lg text-white">Partner with {{ selectedSupplier.name }}?</CardTitle>
-                    <CardDescription class="text-slate-400">Send a formal partnership request.</CardDescription>
+                    <CardDescription class="text-slate-400">Review the terms and send a formal partnership request.</CardDescription>
                  </div>
               </div>
            </CardHeader>
-           <CardContent class="pt-6 space-y-4">
+           
+           <CardContent class="pt-6 space-y-6 overflow-y-auto custom-scrollbar">
               <div class="p-3 bg-blue-900/20 text-blue-300 text-sm rounded-md border border-blue-800/50 flex gap-3">
-                 <i class="fas fa-info-circle mt-0.5"></i>
-                 <p>This request will first be sent to your Business Owner for approval, then forwarded to the supplier.</p>
+                 <i class="fas fa-info-circle mt-0.5 shrink-0"></i>
+                 <p>This request will first be sent to your Business Owner for approval, then forwarded to the supplier alongside a generated formal agreement.</p>
+              </div>
+
+              <div class="space-y-2">
+                 <label class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <i class="fas fa-file-contract text-blue-400"></i> Supply Partnership Terms and Conditions
+                 </label>
+                 <div class="h-48 overflow-y-auto rounded-md border border-slate-700 bg-slate-950/50 p-4 text-xs text-slate-400 space-y-4 custom-scrollbar">
+                    <h4 class="font-bold text-slate-200 text-sm text-center border-b border-slate-800 pb-2">STANDARD SUPPLY PARTNERSHIP AGREEMENT</h4>
+                    
+                    <div>
+                        <h5 class="font-semibold text-slate-300">1. Introduction and Scope</h5>
+                        <p class="mt-1">This document establishes the official business relationship between the Requesting Distributor and the Supplier. Upon acceptance, the Supplier agrees to provide products to the Distributor according to the terms defined herein.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold text-slate-300">2. Orders and Fulfillment</h5>
+                        <p class="mt-1">The Distributor shall place procurement orders through the e-commerce platform. The Supplier commits to fulfilling these orders in a timely manner, subject to stock availability and operational capacity.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold text-slate-300">3. Pricing and Payment Terms</h5>
+                        <p class="mt-1">Product pricing is dynamically determined by the Supplier's catalog at the time of order placement. Payment terms (e.g., GCash, Cash on Delivery) must be explicitly agreed upon per transaction. The Distributor is legally obligated to remit full payment as dictated by the chosen payment method.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold text-slate-300">4. Shipping and Risk of Loss</h5>
+                        <p class="mt-1">For items shipped directly by the Supplier, the risk of loss, theft, or damage passes to the Distributor upon successful delivery and confirmation of receipt.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold text-slate-300">5. Returns and Warranties</h5>
+                        <p class="mt-1">Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module.</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-semibold text-slate-300">6. Term, Suspension, and Termination</h5>
+                        <p class="mt-1">This Agreement remains active until terminated by either party through the platform. All pending financial obligations and active orders must be completely settled prior to the full severance of the partnership.</p>
+                    </div>
+                 </div>
+
+                 <div class="flex items-start gap-3 mt-3 pt-2 bg-slate-900/30 p-3 rounded-md border border-slate-800">
+                    <input 
+                        type="checkbox" 
+                        id="terms" 
+                        v-model="agreedToTerms" 
+                        class="mt-0.5 rounded border-slate-600 bg-slate-900 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 h-4 w-4 shrink-0 cursor-pointer" 
+                    />
+                    <label for="terms" class="text-sm font-medium text-slate-300 cursor-pointer select-none leading-tight">
+                        I acknowledge that I have read and agree to the Supply Partnership Terms and Conditions on behalf of my business. I understand a formal digital copy will be generated and stored upon request.
+                    </label>
+                 </div>
               </div>
               
               <div class="space-y-2">
                  <label class="text-sm font-medium text-slate-300">Message (Optional)</label>
                  <textarea 
                     v-model="requestMessage"
-                    class="flex w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 ring-offset-background placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]" 
+                    class="flex w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 ring-offset-background placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]" 
                     placeholder="Introduce your business..."
                  ></textarea>
               </div>
            </CardContent>
-           <CardFooter class="flex justify-end gap-3 pt-4 pb-6 bg-slate-900 border-t border-slate-800">
+           
+           <CardFooter class="flex justify-end gap-3 pt-4 pb-6 bg-slate-900 border-t border-slate-800 shrink-0">
               <Button variant="ghost" class="text-slate-400 hover:text-white hover:bg-slate-800" @click="showConfirmDialog = false">Cancel</Button>
               <Button @click="confirmPartnership" :disabled="isProcessing" class="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
                  <i v-if="isProcessing" class="fas fa-circle-notch fa-spin mr-2"></i>
@@ -183,13 +235,12 @@
         <AlertDialogHeader>
           <AlertDialogTitle class="text-white">Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription class="text-slate-400">
-            This will send a partnership request to <span class="text-blue-400 font-medium">{{ selectedSupplier?.name }}</span>.
-            The request will require approval before the partnership is finalized.
+            This will formally send a partnership request to <span class="text-blue-400 font-medium">{{ selectedSupplier?.name }}</span> and generate your digital agreement based on the terms accepted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel class="bg-transparent text-slate-300 hover:bg-slate-800 border-slate-700">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="executePartnershipRequest" class="bg-blue-600 text-white hover:bg-blue-700">Continue</AlertDialogAction>
+          <AlertDialogAction @click="executePartnershipRequest" class="bg-blue-600 text-white hover:bg-blue-700">Submit Agreement & Request</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -226,6 +277,7 @@ const isProcessing = ref(false)
 const loading = ref(false)
 const requestMessage = ref('')
 const suppliers = ref([])
+const agreedToTerms = ref(false) // New state for T&C agreement
 
 // User Permissions setup via Level-Based RBAC
 const permissions = ref({
@@ -306,11 +358,22 @@ const fetchSuppliers = async () => {
 const initiatePartnership = (supplier) => {
   selectedSupplier.value = supplier;
   requestMessage.value = '';
+  agreedToTerms.value = false; // Reset terms agreement
   showConfirmDialog.value = true;
 }
 
 const confirmPartnership = () => {
   if (!selectedSupplier.value) return;
+  
+  // Validation for Terms and Conditions
+  if (!agreedToTerms.value) {
+     toast.error('Agreement Required', {
+        description: 'You must read and agree to the Partnership Terms and Conditions to proceed.',
+        style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+     });
+     return;
+  }
+  
   showAlertDialog.value = true;
 }
 
@@ -324,7 +387,7 @@ const executePartnershipRequest = async () => {
 
     if (response.data.success) {
       toast.success(`Request sent to ${selectedSupplier.value.name}!`, {
-        description: 'It has been submitted for approval.',
+        description: 'It has been submitted for approval and the agreement has been documented.',
         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
       });
       
@@ -371,5 +434,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Scoped overrides if needed */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 1); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 1); 
+}
 </style>

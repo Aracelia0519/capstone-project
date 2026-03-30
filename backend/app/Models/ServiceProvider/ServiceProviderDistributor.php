@@ -19,10 +19,17 @@ class ServiceProviderDistributor extends Model
         'request_message',
         'rejection_reason',
         'approved_at',
+        'agreement_path',
+        'sp_signed_at',
+        'sp_signature_path',
+        'distributor_signed_at',
+        'distributor_signature_path'
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
+        'sp_signed_at' => 'datetime',
+        'distributor_signed_at' => 'datetime',
     ];
 
     /**

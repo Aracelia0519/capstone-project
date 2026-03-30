@@ -10,12 +10,14 @@ use App\Models\Distributor\HRManager;
 use App\Models\Finance\FinanceManager;
 use App\Models\Client\ClientRequirement;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
-use App\Models\Supplier\SupplierRequirements; // Added import
+use App\Models\Supplier\SupplierRequirements;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+
 
 class AdminUserController extends Controller
 {
@@ -640,68 +642,6 @@ class AdminUserController extends Controller
     }
 
     /**
-     * Update user
-     */
-    public function update(Request $request, $id)
-    {
-        try {
-            // Check if user is admin
-            $authUser = Auth::user();
-            if ($authUser->role !== 'admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized access. Admin privileges required.'
-                ], 403);
-            }
-            
-            $user = User::find($id);
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-            
-            $validator = Validator::make($request->all(), [
-                'first_name' => 'sometimes|required|string|max:255',
-                'last_name' => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id,
-                'role' => 'sometimes|required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager,supplier', // Added supplier
-                'phone' => 'nullable|string|max:20',
-                'address' => 'nullable|string',
-                'status' => 'sometimes|in:pending,active,inactive',
-            ]);
-            
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-            
-            $user->update($request->only([
-                'first_name', 'last_name', 'email', 'role', 
-                'phone', 'address', 'status'
-            ]));
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'User updated successfully',
-                'user' => $this->transformUser($user)
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update user',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Delete user
      */
     public function destroy($id)
@@ -918,6 +858,16 @@ class AdminUserController extends Controller
                     }
                     break;
             }
+
+            // Send Email Notification
+            try {
+                Mail::raw("Hello {$user->first_name},\n\nYour account and requirements have been successfully approved! You can now fully access the CaviteGoPaint system.\n\nThank you,\nCaviteGoPaint Team", function ($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject('Account Approved - CaviteGoPaint');
+                });
+            } catch (\Exception $e) {
+                Log::error('Approval email sending failed: ' . $e->getMessage());
+            }
             
             return response()->json([
                 'success' => true,
@@ -1029,6 +979,16 @@ class AdminUserController extends Controller
                         ]);
                     }
                     break;
+            }
+
+            // Send Rejection Email Notification
+            try {
+                Mail::raw("Hello {$user->first_name},\n\nWe regret to inform you that your account or submitted requirements have been rejected.\n\nReason for rejection:\n{$request->reason}\n\nPlease contact support or re-submit your requirements if applicable.\n\nThank you,\nCaviteGoPaint Team", function ($message) use ($user) {
+                    $message->to($user->email)
+                            ->subject('Account Status Update - CaviteGoPaint');
+                });
+            } catch (\Exception $e) {
+                Log::error('Rejection email sending failed: ' . $e->getMessage());
             }
             
             return response()->json([

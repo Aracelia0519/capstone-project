@@ -201,9 +201,6 @@
                     <Button variant="ghost" size="icon" @click="viewUser(user)" class="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50">
                       <i class="fas fa-eye text-xs">View</i>
                     </Button>
-                    <Button variant="ghost" size="icon" @click="editUser(user)" class="h-8 w-8 text-slate-500 hover:text-amber-600 hover:bg-amber-50">
-                      <i class="fas fa-pencil-alt text-xs">Edit</i>
-                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -291,15 +288,11 @@
                       <Badge :class="getVerificationBadgeClass(viewingUser.verification_status)">{{ viewingUser.verification_status || 'N/A' }}</Badge>
                     </div>
                     <div class="pt-4 flex flex-col gap-2">
-                       <Button @click="editUser(viewingUser)" variant="outline" class="w-full justify-start gap-2">
-                          <i class="fas fa-edit text-slate-400"></i> Edit Profile
-                       </Button>
-
                        <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
                           <Button @click="approveUser(viewingUser)" class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white">
                              <i class="fas fa-check-circle"></i> Approve User
                           </Button>
-                          <Button @click="rejectUser(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
+                          <Button @click="openRejectModal(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
                              <i class="fas fa-times-circle"></i> Reject User
                           </Button>
                        </template>
@@ -612,47 +605,47 @@
       </div>
     </Dialog>
 
-    <Dialog :open="showAddUserModal || showEditUserModal" @update:open="val => val ? null : (showAddUserModal ? closeAddUserModal() : closeEditUserModal())">
-      <div v-if="showAddUserModal || showEditUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <Dialog :open="showAddUserModal" @update:open="val => val ? null : closeAddUserModal()">
+      <div v-if="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <Card class="w-full max-w-2xl shadow-xl">
           <CardHeader class="border-b">
             <div class="flex items-center justify-between">
               <div>
-                <CardTitle>{{ showAddUserModal ? 'Add New User' : 'Edit User' }}</CardTitle>
-                <p class="text-sm text-slate-500 mt-1">{{ showAddUserModal ? 'Create a new user account' : 'Update user information' }}</p>
+                <CardTitle>Add New User</CardTitle>
+                <p class="text-sm text-slate-500 mt-1">Create a new user account</p>
               </div>
-              <Button variant="ghost" size="icon" @click="showAddUserModal ? closeAddUserModal() : closeEditUserModal()">
+              <Button variant="ghost" size="icon" @click="closeAddUserModal()">
                 <i class="fas fa-times"></i>
               </Button>
             </div>
           </CardHeader>
           <CardContent class="p-6">
-            <form @submit.prevent="showAddUserModal ? addNewUser() : saveEditedUser()">
+            <form @submit.prevent="addNewUser">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div class="space-y-2">
                     <Label>First Name <span class="text-red-500">*</span></Label>
-                    <Input v-model="(showAddUserModal ? newUser : editingUser).first_name" required />
+                    <Input v-model="newUser.first_name" required />
                  </div>
                  <div class="space-y-2">
                     <Label>Last Name <span class="text-red-500">*</span></Label>
-                    <Input v-model="(showAddUserModal ? newUser : editingUser).last_name" required />
+                    <Input v-model="newUser.last_name" required />
                  </div>
                  <div class="space-y-2">
                     <Label>Email <span class="text-red-500">*</span></Label>
-                    <Input type="email" v-model="(showAddUserModal ? newUser : editingUser).email" required />
+                    <Input type="email" v-model="newUser.email" required />
                  </div>
                  <div class="space-y-2">
                     <Label>Phone</Label>
-                    <Input type="tel" v-model="(showAddUserModal ? newUser : editingUser).phone" />
+                    <Input type="tel" v-model="newUser.phone" />
                  </div>
                  <div class="md:col-span-2 space-y-2">
                     <Label>Address</Label>
-                    <Input v-model="(showAddUserModal ? newUser : editingUser).address" />
+                    <Input v-model="newUser.address" />
                  </div>
                  <div class="space-y-2">
                     <Label>Role <span class="text-red-500">*</span></Label>
                     <select 
-                       v-model="(showAddUserModal ? newUser : editingUser).role" 
+                       v-model="newUser.role" 
                        required
                        class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -670,7 +663,7 @@
                  <div class="space-y-2">
                     <Label>Status</Label>
                     <select 
-                       v-model="(showAddUserModal ? newUser : editingUser).status"
+                       v-model="newUser.status"
                        class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                        <option value="active">Active</option>
@@ -679,28 +672,26 @@
                     </select>
                  </div>
                  
-                 <template v-if="showAddUserModal">
-                    <div class="space-y-2">
-                       <Label>Password <span class="text-red-500">*</span></Label>
-                       <div class="relative">
-                          <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password" required />
-                          <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700">
-                             <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                          </button>
-                       </div>
+                 <div class="space-y-2">
+                    <Label>Password <span class="text-red-500">*</span></Label>
+                    <div class="relative">
+                       <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password" required />
+                       <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700">
+                          <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                       </button>
                     </div>
-                    <div class="space-y-2">
-                       <Label>Confirm Password <span class="text-red-500">*</span></Label>
-                       <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password_confirmation" required />
-                    </div>
-                 </template>
+                 </div>
+                 <div class="space-y-2">
+                    <Label>Confirm Password <span class="text-red-500">*</span></Label>
+                    <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password_confirmation" required />
+                 </div>
               </div>
 
               <div class="flex justify-end gap-3 mt-6 pt-6 border-t">
-                 <Button type="button" variant="outline" @click="showAddUserModal ? closeAddUserModal() : closeEditUserModal()">Cancel</Button>
-                 <Button type="submit" :disabled="addingUser || updatingUser" class="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
-                    <i v-if="addingUser || updatingUser" class="fas fa-spinner fa-spin mr-2"></i>
-                    {{ showAddUserModal ? (addingUser ? 'Creating...' : 'Create User') : (updatingUser ? 'Saving...' : 'Save Changes') }}
+                 <Button type="button" variant="outline" @click="closeAddUserModal()">Cancel</Button>
+                 <Button type="submit" :disabled="addingUser" class="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
+                    <i v-if="addingUser" class="fas fa-spinner fa-spin mr-2"></i>
+                    {{ addingUser ? 'Creating...' : 'Create User' }}
                  </Button>
               </div>
             </form>
@@ -709,8 +700,37 @@
       </div>
     </Dialog>
 
+    <Dialog :open="showRejectModal" @update:open="closeRejectModal">
+      <div v-if="showRejectModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <Card class="w-full max-w-md shadow-xl">
+          <CardHeader class="border-b">
+            <CardTitle>Reject User</CardTitle>
+            <p class="text-sm text-slate-500 mt-1">Provide a reason for rejecting {{ userToReject?.full_name }}</p>
+          </CardHeader>
+          <CardContent class="p-6">
+            <div class="space-y-2">
+               <Label>Rejection Reason <span class="text-red-500">*</span></Label>
+               <textarea 
+                  v-model="rejectReason" 
+                  rows="4" 
+                  class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                  required 
+                  placeholder="Enter the reason for rejection here..."></textarea>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+               <Button type="button" variant="outline" @click="closeRejectModal">Cancel</Button>
+               <Button type="button" @click="confirmRejectUser" :disabled="processingRejection || !rejectReason.trim()" variant="destructive" class="min-w-[120px]">
+                  <i v-if="processingRejection" class="fas fa-spinner fa-spin mr-2"></i>
+                  {{ processingRejection ? 'Rejecting...' : 'Reject User' }}
+               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Dialog>
+
     <Dialog :open="showImageModalFlag" @update:open="closeImageModal">
-      <div v-if="showImageModalFlag" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div v-if="showImageModalFlag" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
           <div class="flex items-center justify-between p-4 border-b">
             <h3 class="font-bold text-lg">{{ currentImageTitle }}</h3>
@@ -740,8 +760,11 @@
           <AlertDialogDescription>{{ alertDialog.description }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel @click="alertDialog.open = false">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="handleAlertDialogAction" class="bg-blue-600 text-white hover:bg-blue-700">Continue</AlertDialogAction>
+          <AlertDialogCancel @click="alertDialog.open = false" :disabled="alertDialog.loading">Cancel</AlertDialogCancel>
+          <AlertDialogAction @click.prevent="handleAlertDialogAction" :disabled="alertDialog.loading" class="bg-blue-600 text-white hover:bg-blue-700">
+             <i v-if="alertDialog.loading" class="fas fa-spinner fa-spin mr-2"></i>
+             {{ alertDialog.loading ? 'Processing...' : 'Continue' }}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -750,7 +773,9 @@
 </template>
 
 <script>
-import axios from 'axios';
+// IMPORTANT: Adjust this path based on where your axios.js file is stored.
+import api from '@/utils/axios'; 
+
 import { toast } from 'vue-sonner';
 // Shadcn Components Imports
 import { Button } from '@/components/ui/button';
@@ -811,14 +836,19 @@ export default {
       currentPage: 1,
       itemsPerPage: 10,
       showAddUserModal: false,
-      showEditUserModal: false,
       showViewModal: false,
       showImageModalFlag: false,
       showPassword: false,
+      
+      // Reject Modal State
+      showRejectModal: false,
+      rejectReason: '',
+      userToReject: null,
+      processingRejection: false,
+      
       loading: false,
       loadingRequirements: false,
       addingUser: false,
-      updatingUser: false,
       
       // Data
       users: [],
@@ -844,16 +874,6 @@ export default {
         password: '',
         password_confirmation: ''
       },
-      editingUser: {
-        id: null,
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        address: '',
-        role: '',
-        status: 'active'
-      },
       viewingUser: {},
       userRequirements: null,
       currentImageUrl: '',
@@ -866,7 +886,8 @@ export default {
         open: false,
         title: '',
         description: '',
-        action: null
+        action: null,
+        loading: false
       }
     }
   },
@@ -890,13 +911,19 @@ export default {
         open: true,
         title,
         description,
-        action
+        action,
+        loading: false
       };
     },
     
     async handleAlertDialogAction() {
       if (this.alertDialog.action) {
-        await this.alertDialog.action();
+        this.alertDialog.loading = true;
+        try {
+          await this.alertDialog.action();
+        } finally {
+          this.alertDialog.loading = false;
+        }
       }
       this.alertDialog.open = false;
     },
@@ -905,13 +932,6 @@ export default {
     async fetchUsers() {
       this.loading = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          toast.error('Please login first');
-          this.$router.push('/login');
-          return;
-        }
-
         const params = {
           page: this.currentPage,
           per_page: this.itemsPerPage,
@@ -920,15 +940,7 @@ export default {
           role: this.activeTab !== 'all' ? this.activeTab : undefined
         };
 
-        const baseURL = 'http://localhost:8000';
-        const response = await axios.get(`${baseURL}/api/admin/users`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          params: params
-        });
+        const response = await api.get('/admin/users', { params });
 
         if (response.data.success) {
           this.users = response.data.users;
@@ -947,14 +959,8 @@ export default {
     // Fetch statistics
     async fetchStatistics() {
       try {
-        // First try the API
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        
         try {
-          const response = await axios.get(`${baseURL}/api/admin/users/statistics`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const response = await api.get('/admin/users/statistics');
           
           if (response.data.success) {
             this.statistics = response.data.statistics;
@@ -996,16 +1002,14 @@ export default {
     async fetchUserRequirements(userId) {
       this.loadingRequirements = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
+        const storageUrl = 'http://localhost:8000';
+        //const storageUrl = 'https://api.capstone001.com';
         
         // Reset requirements
         this.userRequirements = null;
         
         // Fetch user details which should include requirements data
-        const response = await axios.get(`${baseURL}/api/admin/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.get(`/admin/users/${userId}`);
         
         if (response.data.success) {
           const user = response.data.user;
@@ -1015,11 +1019,11 @@ export default {
              this.userRequirements = {
                 supplier: {
                     ...reqs.supplier,
-                    valid_id_photo_url: reqs.supplier.valid_id_photo ? `${baseURL}/storage/${reqs.supplier.valid_id_photo}` : null,
-                    dti_certificate_photo_url: reqs.supplier.dti_certificate_photo ? `${baseURL}/storage/${reqs.supplier.dti_certificate_photo}` : null,
-                    mayor_permit_photo_url: reqs.supplier.mayor_permit_photo ? `${baseURL}/storage/${reqs.supplier.mayor_permit_photo}` : null,
-                    barangay_clearance_photo_url: reqs.supplier.barangay_clearance_photo ? `${baseURL}/storage/${reqs.supplier.barangay_clearance_photo}` : null,
-                    business_registration_photo_url: reqs.supplier.business_registration_photo ? `${baseURL}/storage/${reqs.supplier.business_registration_photo}` : null
+                    valid_id_photo_url: reqs.supplier.valid_id_photo ? `${storageUrl}/storage/${reqs.supplier.valid_id_photo}` : null,
+                    dti_certificate_photo_url: reqs.supplier.dti_certificate_photo ? `${storageUrl}/storage/${reqs.supplier.dti_certificate_photo}` : null,
+                    mayor_permit_photo_url: reqs.supplier.mayor_permit_photo ? `${storageUrl}/storage/${reqs.supplier.mayor_permit_photo}` : null,
+                    barangay_clearance_photo_url: reqs.supplier.barangay_clearance_photo ? `${storageUrl}/storage/${reqs.supplier.barangay_clearance_photo}` : null,
+                    business_registration_photo_url: reqs.supplier.business_registration_photo ? `${storageUrl}/storage/${reqs.supplier.business_registration_photo}` : null
                 }
              };
           } else {
@@ -1030,15 +1034,15 @@ export default {
                       distributor: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
-                          `${baseURL}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
                         mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
-                          `${baseURL}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
                         barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
-                          `${baseURL}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
                         business_registration_photo_url: user.verification_details.business_registration_photo ? 
-                          `${baseURL}/storage/${user.verification_details.business_registration_photo}` : null
+                          `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
                       }
                     };
                   }
@@ -1050,7 +1054,7 @@ export default {
                       client: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null
                       }
                     };
                   }
@@ -1062,9 +1066,9 @@ export default {
                       service_provider: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.selfie_with_id_photo}` : null
+                          `${storageUrl}/storage/${user.verification_details.selfie_with_id_photo}` : null
                       }
                     };
                   }
@@ -1076,11 +1080,11 @@ export default {
                       hr_manager: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         resume_url: user.verification_details.resume ? 
-                          `${baseURL}/storage/${user.verification_details.resume}` : null,
+                          `${storageUrl}/storage/${user.verification_details.resume}` : null,
                         employment_contract_url: user.verification_details.employment_contract ? 
-                          `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                          `${storageUrl}/storage/${user.verification_details.employment_contract}` : null
                       }
                     };
                   }
@@ -1092,11 +1096,11 @@ export default {
                       finance_manager: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         resume_url: user.verification_details.resume ? 
-                          `${baseURL}/storage/${user.verification_details.resume}` : null,
+                          `${storageUrl}/storage/${user.verification_details.resume}` : null,
                         employment_contract_url: user.verification_details.employment_contract ? 
-                          `${baseURL}/storage/${user.verification_details.employment_contract}` : null
+                          `${storageUrl}/storage/${user.verification_details.employment_contract}` : null
                       }
                     };
                   }
@@ -1108,7 +1112,7 @@ export default {
                       operational_distributor: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null
                       }
                     };
                   }
@@ -1120,15 +1124,15 @@ export default {
                       supplier: {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${baseURL}/storage/${user.verification_details.valid_id_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
-                          `${baseURL}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
                         mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
-                          `${baseURL}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
                         barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
-                          `${baseURL}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                          `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
                         business_registration_photo_url: user.verification_details.business_registration_photo ? 
-                          `${baseURL}/storage/${user.verification_details.business_registration_photo}` : null
+                          `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
                       }
                     };
                   }
@@ -1193,51 +1197,10 @@ export default {
       await this.fetchUserRequirements(user.id);
     },
     
-    editUser(user) {
-      this.editingUser = {
-        id: user.id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        phone: user.phone || '',
-        address: user.address || '',
-        role: user.role,
-        status: user.status
-      };
-      this.showEditUserModal = true;
-      this.showViewModal = false;
-    },
-    
-    async saveEditedUser() {
-      this.updatingUser = true;
-      try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        const response = await axios.put(`${baseURL}/api/admin/users/${this.editingUser.id}`, this.editingUser, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (response.data.success) {
-          toast.success('User updated successfully');
-          this.closeEditUserModal();
-          this.fetchUsers();
-          this.fetchStatistics();
-        }
-      } catch (error) {
-        this.handleError(error);
-      } finally {
-        this.updatingUser = false;
-      }
-    },
-    
     async addNewUser() {
       this.addingUser = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        const response = await axios.post(`${baseURL}/api/admin/users`, this.newUser, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.post('/admin/users', this.newUser);
         
         if (response.data.success) {
           toast.success('User created successfully');
@@ -1256,17 +1219,12 @@ export default {
     approveUser(user) {
       this.confirmAction(
         'Approve User',
-        `Are you sure you want to approve ${user.full_name}? This will activate their account and approve all requirements.`,
+        `Are you sure you want to approve ${user.full_name}? This will activate their account and approve all requirements. An email notification will be sent.`,
         async () => {
           try {
-            const token = localStorage.getItem('auth_token');
-            const baseURL = 'http://localhost:8000';
-            
-            // First, try the approve endpoint (if it exists)
+            // First, try the approve endpoint
             try {
-              const approveResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/approve`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
+              const approveResponse = await api.post(`/admin/users/${user.id}/approve`, {});
               
               if (approveResponse.data.success) {
                 toast.success('User approved successfully');
@@ -1280,9 +1238,7 @@ export default {
             }
             
             // Fallback to activate endpoint
-            const userResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const userResponse = await api.post(`/admin/users/${user.id}/activate`, {});
             
             if (userResponse.data.success) {
               toast.success('User activated successfully');
@@ -1290,28 +1246,19 @@ export default {
               // If user is distributor, also approve their requirements
               if (user.role === 'distributor' && user.verification_status === 'pending') {
                 try {
-                  const distributorReq = await axios.get(`${baseURL}/api/distributor/requirements/admin/pending`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
+                  const distributorReq = await api.get('/distributor/requirements/admin/pending');
                   
                   const pendingReq = distributorReq.data.data?.find(req => req.user_id === user.id);
                   if (pendingReq) {
-                    await axios.put(`${baseURL}/api/distributor/requirements/admin/${pendingReq.id}`, {
+                    await api.put(`/distributor/requirements/admin/${pendingReq.id}`, {
                       status: 'approved',
                       rejection_reason: null
-                    }, {
-                      headers: { Authorization: `Bearer ${token}` }
                     });
                     toast.success('Distributor requirements approved');
                   }
                 } catch (error) {
                   // Silent fail for nested requirement approval
                 }
-              }
-
-              // Added Supplier fallback if specific Approve endpoint failed
-              if (user.role === 'supplier' && user.verification_status === 'pending') {
-                  // Assuming logic is handled by the unified approve endpoint now.
               }
               
               this.closeViewModal();
@@ -1325,30 +1272,34 @@ export default {
       );
     },
     
-    // Reject user (with reason)
-    async rejectUser(user) {
-      const reason = prompt(`Please enter reason for rejecting ${user.full_name}:`, '');
-      if (reason === null) return; // User cancelled
-      
-      if (!reason.trim()) {
+    openRejectModal(user) {
+      this.userToReject = user;
+      this.rejectReason = '';
+      this.showRejectModal = true;
+    },
+
+    closeRejectModal() {
+      this.showRejectModal = false;
+      this.userToReject = null;
+      this.rejectReason = '';
+    },
+
+    // Reject user (with reason and lazy loading modal)
+    async confirmRejectUser() {
+      if (!this.rejectReason.trim()) {
         toast.error('Please provide a rejection reason');
         return;
       }
       
+      this.processingRejection = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const baseURL = 'http://localhost:8000';
-        
-        // First, try the reject endpoint (if it exists)
+        // First, try the reject endpoint
         try {
-          const rejectResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/reject`, {
-            reason: reason
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const rejectResponse = await api.post(`/admin/users/${this.userToReject.id}/reject`, { reason: this.rejectReason });
           
           if (rejectResponse.data.success) {
-            toast.success(`User rejected: ${reason}`);
+            toast.success(`User rejected successfully.`);
+            this.closeRejectModal();
             this.closeViewModal();
             this.fetchUsers();
             this.fetchStatistics();
@@ -1359,25 +1310,19 @@ export default {
         }
         
         // Fallback to deactivate endpoint
-        const userResponse = await axios.post(`${baseURL}/api/admin/users/${user.id}/deactivate`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const userResponse = await api.post(`/admin/users/${this.userToReject.id}/deactivate`, {});
         
         if (userResponse.data.success) {
           // If user is distributor, also reject their requirements
-          if (user.role === 'distributor' && user.verification_status === 'pending') {
+          if (this.userToReject.role === 'distributor' && this.userToReject.verification_status === 'pending') {
             try {
-              const distributorReq = await axios.get(`${baseURL}/api/distributor/requirements/admin/pending`, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
+              const distributorReq = await api.get('/distributor/requirements/admin/pending');
               
-              const pendingReq = distributorReq.data.data?.find(req => req.user_id === user.id);
+              const pendingReq = distributorReq.data.data?.find(req => req.user_id === this.userToReject.id);
               if (pendingReq) {
-                await axios.put(`${baseURL}/api/distributor/requirements/admin/${pendingReq.id}`, {
+                await api.put(`/distributor/requirements/admin/${pendingReq.id}`, {
                   status: 'rejected',
-                  rejection_reason: reason
-                }, {
-                  headers: { Authorization: `Bearer ${token}` }
+                  rejection_reason: this.rejectReason
                 });
               }
             } catch (error) {
@@ -1385,13 +1330,16 @@ export default {
             }
           }
           
-          toast.success(`User rejected: ${reason}`);
+          toast.success(`User rejected successfully.`);
+          this.closeRejectModal();
           this.closeViewModal();
           this.fetchUsers();
           this.fetchStatistics();
         }
       } catch (error) {
         this.handleError(error);
+      } finally {
+        this.processingRejection = false;
       }
     },
     
@@ -1402,11 +1350,7 @@ export default {
         `Are you sure you want to activate ${user.full_name}?`,
         async () => {
           try {
-            const token = localStorage.getItem('auth_token');
-            const baseURL = 'http://localhost:8000';
-            const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/activate`, {}, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.post(`/admin/users/${user.id}/activate`, {});
             
             if (response.data.success) {
               toast.success('User activated successfully');
@@ -1427,11 +1371,7 @@ export default {
         `Are you sure you want to deactivate ${user.full_name}?`,
         async () => {
           try {
-            const token = localStorage.getItem('auth_token');
-            const baseURL = 'http://localhost:8000';
-            const response = await axios.post(`${baseURL}/api/admin/users/${user.id}/deactivate`, {}, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.post(`/admin/users/${user.id}/deactivate`, {});
             
             if (response.data.success) {
               toast.success('User deactivated successfully');
@@ -1448,8 +1388,6 @@ export default {
     // Review requirements (for distributors and suppliers)
     async reviewRequirements(user) {
       toast.info('Redirecting to requirements review page...');
-      // In a real app, you would navigate to the requirements review page
-      // this.$router.push(`/admin/requirements/${user.role}/${user.id}`);
     },
     
     // Modal methods
@@ -1458,20 +1396,6 @@ export default {
       this.viewingUser = {};
       this.userRequirements = null;
       this.loadingRequirements = false;
-    },
-    
-    closeEditUserModal() {
-      this.showEditUserModal = false;
-      this.editingUser = {
-        id: null,
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        address: '',
-        role: '',
-        status: 'active'
-      };
     },
     
     closeAddUserModal() {

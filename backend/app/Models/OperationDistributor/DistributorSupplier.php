@@ -20,12 +20,19 @@ class DistributorSupplier extends Model
         'request_message',
         'rejection_reason',
         'distributor_approved_at',
-        'supplier_approved_at'
+        'supplier_approved_at',
+        'agreement_path',
+        'distributor_signed_at',
+        'distributor_signature_path',
+        'supplier_signed_at',          // NEW: For supplier digital signature timestamp
+        'supplier_signature_path'      // NEW: For supplier signature image
     ];
 
     protected $casts = [
         'distributor_approved_at' => 'datetime',
         'supplier_approved_at' => 'datetime',
+        'distributor_signed_at' => 'datetime',
+        'supplier_signed_at' => 'datetime',
     ];
 
     // Relationships

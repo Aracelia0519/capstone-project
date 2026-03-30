@@ -9,6 +9,9 @@ use App\Models\OperationalDistributor;
 use App\Models\OperationDistributor\DistributorSupplier;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class PartnerSupplierController extends Controller
 {
@@ -170,7 +173,7 @@ class PartnerSupplierController extends Controller
     }
 
     /**
-     * Send a partnership request.
+     * Send a partnership request and generate formal terms document.
      */
     public function store(Request $request)
     {
@@ -220,8 +223,6 @@ class PartnerSupplierController extends Controller
             }
 
             // Determine initial status
-            // If created by Op Distributor OR Employee -> pending_internal (needs Owner approval)
-            // If created by Distributor -> pending_supplier (goes directly to supplier)
             $initialStatus = in_array($user->role, ['operational_distributor', 'employee']) 
                 ? 'pending_internal' 
                 : 'pending_supplier';
@@ -234,9 +235,82 @@ class PartnerSupplierController extends Controller
                 'request_message' => $request->message
             ]);
 
+            // =================================================================
+            // Generate Formal Terms and Conditions HTML Document
+            // =================================================================
+            $supplierUser = User::find($request->supplier_id);
+            $distributorUser = User::find($distributorId);
+            $date = now()->format('F d, Y');
+            
+            $htmlContent = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Supply Partnership Agreement</title>
+                <style>
+                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+                    h1 { color: #1e3a8a; text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;}
+                    h2 { color: #2563eb; margin-top: 30px; font-size: 1.2rem; border-left: 4px solid #3b82f6; padding-left: 10px;}
+                    .meta { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
+                    .meta p { margin: 8px 0; font-size: 0.95rem; }
+                    .footer { margin-top: 50px; font-size: 0.85rem; color: #64748b; text-align: center; border-top: 1px solid #cbd5e1; padding-top: 20px; }
+                    .content { font-size: 0.95rem; text-align: justify; }
+                </style>
+            </head>
+            <body>
+                <h1>Supply Partnership Agreement</h1>
+                <div class='meta'>
+                    <p><strong>Effective Date:</strong> {$date}</p>
+                    <p><strong>Distributor (Buyer):</strong> {$distributorUser->full_name}</p>
+                    <p><strong>Supplier (Seller):</strong> {$supplierUser->full_name}</p>
+                </div>
+                
+                <div class='content'>
+                    <h2>1. Introduction and Scope</h2>
+                    <p>This Supply Partnership Agreement (\"Agreement\") establishes the official business relationship between the Distributor and the Supplier. The Supplier agrees to provide products to the Distributor according to the terms defined herein and within the operations of the e-commerce supply chain platform.</p>
+
+                    <h2>2. Orders and Fulfillment</h2>
+                    <p>The Distributor shall place procurement orders securely through the platform. The Supplier commits to fulfilling these orders in a timely and professional manner, subject to stock availability and operational capacity. The Supplier reserves the right to reject or modify orders provided a valid operational reason is electronically communicated to the Distributor.</p>
+
+                    <h2>3. Pricing, Invoicing, and Payments</h2>
+                    <p>Product pricing is dynamically determined by the Supplier's active catalog at the time of order placement. Payment terms (e.g., GCash, Cash on Delivery, Bank Transfer) must be explicitly agreed upon per transaction or established as a default by the Supplier. The Distributor is legally obligated to remit full payment as dictated by the chosen payment method and schedule.</p>
+
+                    <h2>4. Shipping, Delivery, and Risk of Loss</h2>
+                    <p>For items shipped directly by the Supplier or its logistics personnel, the risk of loss, theft, or damage passes to the Distributor upon successful delivery and physical confirmation of receipt. The Distributor must conduct a preliminary inspection of all goods upon arrival.</p>
+
+                    <h2>5. Returns, Warranties, and Defective Goods</h2>
+                    <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module within the allowable timeframe. The Supplier will review and approve valid return requests, subsequently offering replacements or refunds as appropriate.</p>
+
+                    <h2>6. Confidentiality and Data Protection</h2>
+                    <p>Both parties agree to rigorously maintain the confidentiality of proprietary business information encountered during this partnership. This includes, but is not limited to, wholesale pricing models, trade secrets, customer demographics, sales volumes, and internal platform communications.</p>
+
+                    <h2>7. Term, Suspension, and Termination</h2>
+                    <p>This Agreement remains actively binding until officially terminated by either party. Termination can be executed through the platform's partnership management settings. All pending financial obligations, active orders, and outstanding return requests must be completely settled prior to the full severance of the partnership.</p>
+                </div>
+
+                <div class='footer'>
+                    <p>Electronically generated and mutually agreed upon via the Platform on {$date}.</p>
+                    <p>Digital Document Hash: " . Str::uuid() . "</p>
+                    <p>This document is a legally binding system record.</p>
+                </div>
+            </body>
+            </html>
+            ";
+
+            $fileName = 'agreements/supplier_partnerships/partnership_' . $partnership->id . '_' . time() . '.html';
+            
+            // Store the generated T&C HTML to public storage
+            Storage::disk('public')->put($fileName, $htmlContent);
+
+            // Conditionally save to database only if the column exists
+            if (Schema::hasColumn('distributor_suppliers', 'agreement_path')) {
+                $partnership->agreement_path = $fileName;
+                $partnership->save();
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Partnership request submitted successfully.',
+                'message' => 'Partnership request submitted successfully. Terms recorded.',
                 'data' => $partnership
             ]);
 

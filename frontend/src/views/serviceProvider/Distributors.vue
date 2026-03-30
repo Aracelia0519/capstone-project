@@ -163,7 +163,7 @@
     </main>
 
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm sm:p-6">
-      <div class="bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl w-full max-w-xl max-h-[95vh] flex flex-col overflow-hidden">
+      <div class="bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden">
         <div class="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-800/60 flex justify-between items-center bg-slate-800/20 shrink-0">
           <h2 class="text-lg sm:text-xl font-bold text-white tracking-tight">Formal Partnership Request</h2>
           <button @click="closeModal" class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800">
@@ -186,64 +186,78 @@
             <label class="block text-sm font-medium text-slate-200">Introduction Proposal (Optional)</label>
             <textarea 
               v-model="requestMessage"
-              rows="3"
+              rows="2"
               placeholder="Briefly state your business intent and sourcing volume expectations..."
               class="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-4 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
             ></textarea>
           </div>
 
-          <div class="space-y-3">
+          <div class="space-y-3 mb-6">
             <label class="block text-sm font-medium text-slate-200">Partnership Agreement Terms</label>
-            <div class="h-40 overflow-y-auto bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-400 space-y-4 custom-scrollbar">
+            <div class="h-32 overflow-y-auto bg-slate-950 border border-slate-700 rounded-xl p-4 text-xs text-slate-400 space-y-4 custom-scrollbar">
               <div>
                 <p class="font-bold text-slate-300 mb-1">1. Formation of Agreement</p>
                 <p>By submitting this request, you (the "Service Provider") are extending a formal proposal to the Distributor to enter into a commercial supply relationship. Approval of this request grants you authorized partner status.</p>
               </div>
-              
               <div>
                 <p class="font-bold text-slate-300 mb-1">2. Procurement and Pricing</p>
                 <p>Upon acceptance, the Service Provider shall be eligible to procure materials at designated wholesale or partner-tier pricing. The Distributor reserves the exclusive right to modify pricing tiers, stock availability, and catalog offerings with prior reasonable notice.</p>
               </div>
-              
               <div>
                 <p class="font-bold text-slate-300 mb-1">3. Compliance and Representation</p>
                 <p>The Service Provider agrees to maintain all necessary local business licenses and industry certifications. Materials purchased must be used or resold in accordance with the manufacturer's safety guidelines and local commercial regulations.</p>
               </div>
+            </div>
+          </div>
 
-              <div>
-                <p class="font-bold text-slate-300 mb-1">4. Non-Disclosure and Confidentiality</p>
-                <p>Both parties mutually agree to hold in strict confidence any sensitive business intelligence shared during this partnership, including but not limited to custom pricing structures, volume discounts, and client details.</p>
-              </div>
-
-              <div>
-                <p class="font-bold text-slate-300 mb-1">5. Termination Clause</p>
-                <p>Either party holds the right to terminate this partnership agreement at any time, with or without cause, by executing a disconnection through the platform. The Distributor may immediately revoke partnership status in the event of fraudulent activity or breach of conduct.</p>
+          <div class="space-y-3 mb-6">
+            <label class="block text-sm font-medium text-slate-200">Digital Signature <span class="text-red-400">*</span></label>
+            <div class="bg-white rounded-xl border border-slate-700 overflow-hidden relative">
+              <canvas 
+                ref="signaturePad" 
+                width="600" 
+                height="150" 
+                class="w-full h-[150px] touch-none cursor-crosshair"
+                @mousedown="startDrawing" 
+                @mousemove="draw" 
+                @mouseup="stopDrawing" 
+                @mouseleave="stopDrawing" 
+                @touchstart.prevent="startDrawingTouch" 
+                @touchmove.prevent="drawTouch" 
+                @touchend.prevent="stopDrawing"
+              ></canvas>
+              <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300">
+                Sign here
               </div>
             </div>
-            
-            <label class="flex items-start gap-3 mt-4 cursor-pointer group">
-              <div class="relative flex items-center justify-center mt-0.5 shrink-0">
-                <input 
-                  type="checkbox" 
-                  v-model="agreedToTerms"
-                  class="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md bg-slate-900 checked:bg-indigo-500 checked:border-indigo-500 transition-colors cursor-pointer"
-                />
-                <svg class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span class="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed">
-                I acknowledge that I have read and agree to the <span class="text-indigo-400 font-medium">Partnership Agreement Terms</span>. I consent to sharing my verified business profile with this distributor for evaluation.
-              </span>
-            </label>
+            <div class="flex justify-between items-center mt-1">
+              <p class="text-xs text-slate-500">Sign to generate the formal agreement.</p>
+              <Button variant="ghost" size="sm" @click="clearSignature" class="text-xs text-slate-400 hover:text-white px-2 py-1 h-auto">Clear Signature</Button>
+            </div>
           </div>
+
+          <label class="flex items-start gap-3 mt-4 cursor-pointer group">
+            <div class="relative flex items-center justify-center mt-0.5 shrink-0">
+              <input 
+                type="checkbox" 
+                v-model="agreedToTerms"
+                class="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md bg-slate-900 checked:bg-indigo-500 checked:border-indigo-500 transition-colors cursor-pointer"
+              />
+              <svg class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <span class="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed">
+              I acknowledge that I have read and agree to the <span class="text-indigo-400 font-medium">Partnership Agreement Terms</span> and certify that the signature above is my true digital signature.
+            </span>
+          </label>
         </div>
 
         <div class="p-5 sm:p-6 border-t border-slate-800/60 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-slate-900/50 shrink-0">
           <Button @click="closeModal" variant="outline" class="w-full sm:w-auto bg-transparent border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 h-12 rounded-xl">Cancel</Button>
           <Button 
             @click="confirmSubmit" 
-            :disabled="isSubmitting || !agreedToTerms"
+            :disabled="isSubmitting || !agreedToTerms || !hasSignature"
             class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0 h-12 px-8 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
           >
             <span v-if="isSubmitting" class="flex items-center">
@@ -298,7 +312,7 @@
         <AlertDialogHeader>
           <AlertDialogTitle class="text-white">Sign and Submit Request</AlertDialogTitle>
           <AlertDialogDescription class="text-slate-400">
-            You are about to submit a formal partnership proposal to <b>{{ selectedDistributor?.name }}</b>. This will notify their management team to review your application. Proceed?
+            You are about to submit a formal partnership proposal to <b>{{ selectedDistributor?.name }}</b>. Your signature will be digitally attached to the generated agreement document. Proceed?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -308,47 +322,18 @@
       </AlertDialogContent>
     </AlertDialog>
 
-    <Teleport to="body">
-      <Toaster
-        position="top-right"
-        :expand="false"
-        :rich-colors="false"
-        :close-button="true"
-        :theme="'light'"
-        :visible-toasts="1"
-        :container-style="{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 9999999,
-          pointerEvents: 'none',
-        }"
-        :toast-options="{
-          style: {
-            background: 'white',
-            color: 'black',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            padding: '12px 16px',
-            fontSize: '14px',
-            pointerEvents: 'auto',
-          },
-        }"
-      />
-    </Teleport>
+    
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import api from '@/utils/axios'
 
-// Sonner and Alert Dialog Imports
 import { Toaster, toast } from 'vue-sonner'
 import {
   AlertDialog,
@@ -367,7 +352,7 @@ import {
   DialogFooter, 
   DialogHeader, 
   DialogTitle 
-} from '@/components/ui/dialog' // ADDED DIALOG IMPORTS
+} from '@/components/ui/dialog'
 
 export default {
   name: 'DistributorPartnership',
@@ -409,6 +394,11 @@ export default {
       showAgreementDialog: false,
       currentAgreementUrl: '',
 
+      // Signature Pad State
+      isDrawing: false,
+      ctx: null,
+      hasSignature: false,
+
       isLoading: true,
       isSubmitting: false,
       agreedToTerms: false, 
@@ -448,7 +438,6 @@ export default {
     toggleCategory(cat) { this.selectedCategory = cat; },
     resetFilters() { this.searchQuery = ''; this.selectedCategory = 'All'; },
     
-    // Agreement Viewer Methods
     viewAgreement(url) {
       if (url) {
         this.currentAgreementUrl = url;
@@ -471,6 +460,9 @@ export default {
       this.selectedDistributor = dist;
       this.showModal = true;
       document.body.style.overflow = 'hidden';
+      this.$nextTick(() => {
+        this.initSignaturePad();
+      });
     },
     closeModal() {
       this.showModal = false;
@@ -479,26 +471,98 @@ export default {
       this.isSubmitting = false;
       this.requestMessage = '';
       this.agreedToTerms = false;
+      this.hasSignature = false;
     },
+    
+    // --- Signature Pad Methods ---
+    initSignaturePad() {
+      const canvas = this.$refs.signaturePad;
+      if (!canvas) return;
+      this.ctx = canvas.getContext('2d');
+      this.ctx.lineWidth = 2.5;
+      this.ctx.lineCap = 'round';
+      this.ctx.strokeStyle = '#000000';
+      this.clearSignature(); 
+    },
+    startDrawing(e) {
+      this.isDrawing = true;
+      this.hasSignature = true;
+      this.draw(e);
+    },
+    draw(e) {
+      if (!this.isDrawing) return;
+      const canvas = this.$refs.signaturePad;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      this.ctx.lineTo(x, y);
+      this.ctx.stroke();
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, y);
+    },
+    stopDrawing() {
+      this.isDrawing = false;
+      this.ctx.beginPath();
+    },
+    startDrawingTouch(e) {
+      const touch = e.touches[0];
+      const canvas = this.$refs.signaturePad;
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      this.isDrawing = true;
+      this.hasSignature = true;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, y);
+    },
+    drawTouch(e) {
+      if (!this.isDrawing) return;
+      const touch = e.touches[0];
+      const canvas = this.$refs.signaturePad;
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      this.ctx.lineTo(x, y);
+      this.ctx.stroke();
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, y);
+    },
+    clearSignature() {
+      const canvas = this.$refs.signaturePad;
+      if(!canvas) return;
+      this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+      this.hasSignature = false;
+      this.ctx.beginPath();
+    },
+
     confirmSubmit() {
-      if(this.agreedToTerms) {
+      if(this.agreedToTerms && this.hasSignature) {
         this.showConfirm = true;
       }
     },
     async handleFinalSubmit() {
       this.showConfirm = false;
       this.isSubmitting = true;
+      
+      const canvas = this.$refs.signaturePad;
+      const signatureBase64 = canvas.toDataURL('image/png');
+
       try {
         const response = await api.post('/service-provider/distributors/request', {
           distributor_id: this.selectedDistributor.id,
-          request_message: this.requestMessage
+          request_message: this.requestMessage,
+          signature: signatureBase64
         });
+        
         if (response.data.success) {
           const index = this.distributors.findIndex(d => d.id === this.selectedDistributor.id);
           if (index !== -1) this.distributors[index].status = 'pending';
           
           toast.success('Partnership Proposal Sent', {
-            description: `Official request successfully submitted to ${this.selectedDistributor.name}.`,
+            description: `Official request and signed agreement successfully submitted to ${this.selectedDistributor.name}.`,
             duration: 4000,
           });
           this.closeModal();

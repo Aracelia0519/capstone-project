@@ -307,7 +307,7 @@ onMounted(() => {
 
     <div class="hidden md:flex h-full w-full">
       <div class="w-80 lg:w-96 border-r bg-background flex flex-col h-full">
-        <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10">
+        <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10 shrink-0">
           <h2 class="font-semibold text-lg flex items-center gap-2">
             <Package class="h-5 w-5" /> Incoming Orders
             <Badge v-if="incomingOrders.length > 0" variant="secondary" class="ml-2">
@@ -319,7 +319,7 @@ onMounted(() => {
           </Button>
         </div>
 
-        <div v-if="error" class="p-4">
+        <div v-if="error" class="p-4 shrink-0">
           <div class="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             <div class="flex items-center gap-2">
               <AlertCircle class="h-4 w-4 flex-shrink-0" />
@@ -328,7 +328,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <ScrollArea class="flex-1">
+        <ScrollArea class="flex-1 min-h-0">
           <div class="flex flex-col gap-2 p-4">
             <div v-if="incomingOrders.length === 0 && !isLoading" class="text-center text-muted-foreground py-10">
               <Package class="h-12 w-12 mx-auto mb-3 opacity-20" />
@@ -387,8 +387,8 @@ onMounted(() => {
         </ScrollArea>
       </div>
 
-      <div class="flex-1 flex flex-col h-full overflow-hidden">
-        <header class="flex items-center justify-between border-b bg-background px-6 py-4">
+      <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
+        <header class="flex items-center justify-between border-b bg-background px-6 py-4 shrink-0">
           <div v-if="selectedOrder">
             <h1 class="text-xl font-bold flex items-center gap-2">
                <FileText class="h-5 w-5 text-muted-foreground" />
@@ -404,14 +404,14 @@ onMounted(() => {
           </div>
         </header>
 
-        <ScrollArea class="flex-1 p-6">
-          <div v-if="selectedOrder" :key="selectedOrder.id" class="mx-auto max-w-4xl space-y-6 pb-10">
+        <ScrollArea class="flex-1 min-h-0">
+          <div v-if="selectedOrder" :key="selectedOrder.id" class="mx-auto max-w-4xl space-y-6 p-6 pb-10">
             
             <div class="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm">
                <div class="flex items-center gap-4">
                   <div class="rounded-full bg-primary/10 p-2 text-primary">
-                     <Truck v-if="selectedOrder.status === 'shipped'" class="h-6 w-6" />
-                     <Clock v-else-if="selectedOrder.status === 'processing'" class="h-6 w-6" />
+                     <Truck v-if="selectedOrder.status.toLowerCase() === 'shipped'" class="h-6 w-6" />
+                     <Clock v-else-if="selectedOrder.status.toLowerCase() === 'processing'" class="h-6 w-6" />
                      <Package v-else class="h-6 w-6" />
                   </div>
                   <div>
@@ -501,44 +501,43 @@ onMounted(() => {
                  </div>
               </CardFooter>
             </Card>
-
-            <div class="flex justify-end gap-2 pt-4">
-                <Button 
-                    v-if="selectedOrder.status === 'ready'"
-                    @click="openConfirmDialog(selectedOrder)" 
-                    :disabled="isProcessing"
-                    size="lg"
-                >
-                    <Check class="mr-2 h-5 w-5" />
-                    {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
-                </Button>
-                <Button 
-                    v-if="selectedOrder.status === 'processing'"
-                    variant="secondary"
-                    disabled
-                    size="lg"
-                >
-                    <Clock class="mr-2 h-5 w-5" />
-                    Processing
-                </Button>
-                <Button 
-                    v-if="selectedOrder.status === 'shipped'"
-                    variant="outline"
-                    disabled
-                    size="lg"
-                >
-                    <Truck class="mr-2 h-5 w-5" />
-                    Shipped
-                </Button>
-            </div>
-
           </div>
-          <div v-else class="flex h-full flex-col items-center justify-center text-muted-foreground pb-20">
+          <div v-else class="flex h-full flex-col items-center justify-center text-muted-foreground pb-20 p-6">
              <Package class="h-16 w-16 mb-4 opacity-20" />
              <p>No incoming orders to display</p>
              <p class="text-sm">All orders have been processed</p>
           </div>
         </ScrollArea>
+        
+        <div v-if="selectedOrder" class="shrink-0 border-t bg-background p-4 px-6 flex justify-end gap-2 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+            <Button 
+                v-if="selectedOrder.status.toLowerCase() === 'ready'"
+                @click="openConfirmDialog(selectedOrder)" 
+                :disabled="isProcessing"
+                size="lg"
+            >
+                <Check class="mr-2 h-5 w-5" />
+                {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
+            </Button>
+            <Button 
+                v-if="selectedOrder.status.toLowerCase() === 'processing'"
+                variant="secondary"
+                disabled
+                size="lg"
+            >
+                <Clock class="mr-2 h-5 w-5" />
+                Processing
+            </Button>
+            <Button 
+                v-if="selectedOrder.status.toLowerCase() === 'shipped'"
+                variant="outline"
+                disabled
+                size="lg"
+            >
+                <Truck class="mr-2 h-5 w-5" />
+                Shipped
+            </Button>
+        </div>
       </div>
     </div>
 
@@ -553,7 +552,7 @@ onMounted(() => {
             </SheetTrigger>
             <SheetContent side="left" class="w-[85%] sm:w-80 p-0">
               <div class="flex flex-col h-full">
-                <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10">
+                <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10 shrink-0">
                   <h2 class="font-semibold text-lg flex items-center gap-2">
                     <Package class="h-5 w-5" /> Orders
                     <Badge v-if="incomingOrders.length > 0" variant="secondary" class="ml-2">
@@ -565,7 +564,7 @@ onMounted(() => {
                   </Button>
                 </div>
 
-                <ScrollArea class="flex-1">
+                <ScrollArea class="flex-1 min-h-0">
                   <div class="flex flex-col gap-2 p-4">
                     <div v-if="incomingOrders.length === 0 && !isLoading" class="text-center text-muted-foreground py-10">
                       <Package class="h-12 w-12 mx-auto mb-3 opacity-20" />
@@ -591,7 +590,7 @@ onMounted(() => {
                             <Badge :variant="statusVariant(order.status)" class="capitalize text-[10px] px-1 py-0 h-5">
                                 {{ order.status }}
                             </Badge>
-                            <span class="font-semibold" :class="order.status === 'ready' ? 'text-primary' : 'text-muted-foreground'">
+                            <span class="font-semibold" :class="order.status.toLowerCase() === 'ready' ? 'text-primary' : 'text-muted-foreground'">
                               {{ formatCurrency(order.total_amount) }}
                             </span>
                         </div>
@@ -623,7 +622,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <ScrollArea class="flex-1">
+      <ScrollArea class="flex-1 min-h-0">
         <div v-if="error" class="p-4">
           <div class="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
             <div class="flex items-center gap-2">
@@ -725,7 +724,7 @@ onMounted(() => {
 
           <div class="mt-4 mobile-sticky-button pt-2 pb-4 -mx-2 px-2">
             <Button 
-              v-if="selectedOrder.status === 'ready'"
+              v-if="selectedOrder.status.toLowerCase() === 'ready'"
               @click="openConfirmDialog(selectedOrder)" 
               :disabled="isProcessing"
               class="w-full shadow-lg"
@@ -735,7 +734,7 @@ onMounted(() => {
               {{ isProcessing ? 'Processing...' : 'Confirm Order' }}
             </Button>
             <Button 
-                v-if="selectedOrder.status === 'processing'"
+                v-if="selectedOrder.status.toLowerCase() === 'processing'"
                 variant="secondary"
                 disabled
                 class="w-full"
@@ -745,7 +744,7 @@ onMounted(() => {
                 Processing
             </Button>
             <Button 
-                v-if="selectedOrder.status === 'shipped'"
+                v-if="selectedOrder.status.toLowerCase() === 'shipped'"
                 variant="outline"
                 disabled
                 class="w-full"

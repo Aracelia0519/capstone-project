@@ -1,7 +1,7 @@
 <template>
   <SidebarProvider>
     <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-indigo-500/30 overflow-hidden">
-      <Toaster position="top-right" />
+    <Toaster richColors position="top-right" expand />
 
       <SideBarECommerce @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
 

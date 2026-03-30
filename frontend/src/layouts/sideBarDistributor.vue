@@ -236,7 +236,7 @@ const navigation = [
       { name: 'Working Hours', path: '/distributor/WorkingHours', icon: Clock, color: 'text-purple-400', requiresVerify: true },
       { name: 'Payroll Frequency', path: '/distributor/PayrollFrequency', icon: Calendar, color: 'text-orange-400', badge: 'New', requiresVerify: true },
       { name: 'Service Providers', path: '/distributor/ServiceProviders', icon: Users, color: 'text-teal-400', badge: '24', requiresVerify: true },
-      { name: 'Partner Distributor', path: '/distributor/PartnerDistributorReq', icon: Handshake, color: 'text-blue-400', badge: 'req', requiresVerify: true },
+      { name: 'Partner Supplier', path: '/distributor/PartnerDistributorReq', icon: Handshake, color: 'text-blue-400', badge: 'req', requiresVerify: true },
     ]
   },
   {

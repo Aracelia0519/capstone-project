@@ -31,7 +31,7 @@
       <Card class="bg-slate-900 border-slate-800 shadow-sm">
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium text-slate-300">Pending Requests</CardTitle>
-          <Inbox class="h-4 w-4 text-indigo-400" />
+          <Inbox class="h-4 w-4 text-amber-400" />
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold text-white">{{ pendingCount }}</div>
@@ -53,7 +53,7 @@
       <Card class="bg-slate-900 border-slate-800 shadow-sm">
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium text-slate-300">New This Week</CardTitle>
-          <CalendarRange class="h-4 w-4 text-orange-400" />
+          <CalendarRange class="h-4 w-4 text-indigo-400" />
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold text-white">{{ newThisWeekCount }}</div>
@@ -76,12 +76,23 @@
     <Card class="col-span-4 bg-slate-900 border-slate-800 shadow-lg">
       <CardHeader>
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <CardTitle class="text-white">Incoming Applications</CardTitle>
-            <CardDescription class="mt-1 text-slate-400">
-              Review and manage service provider partnership requests.
-            </CardDescription>
+          <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
+            <button 
+              @click="currentTab = 'pending'" 
+              :class="currentTab === 'pending' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'" 
+              class="flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-medium transition-all"
+            >
+              Pending ({{ pendingCount }})
+            </button>
+            <button 
+              @click="currentTab = 'active'" 
+              :class="currentTab === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'" 
+              class="flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-medium transition-all"
+            >
+              Active Partners ({{ activeCount }})
+            </button>
           </div>
+          
           <div class="relative w-full sm:w-72">
             <Search class="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
             <Input 
@@ -96,16 +107,16 @@
       <CardContent class="overflow-x-auto">
         <div v-if="loading" class="flex flex-col items-center justify-center py-12 space-y-4">
           <Loader2 class="w-10 h-10 animate-spin text-indigo-500" />
-          <p class="text-sm text-slate-400">Loading requests...</p>
+          <p class="text-sm text-slate-400">Loading records...</p>
         </div>
 
         <div v-else-if="filteredRequests.length === 0" class="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-xl border-slate-800 bg-slate-800/20">
           <div class="bg-slate-800 p-4 rounded-full mb-4">
             <Briefcase class="w-8 h-8 text-slate-400" />
           </div>
-          <h3 class="text-lg font-semibold text-white">No Pending Requests</h3>
+          <h3 class="text-lg font-semibold text-white">No {{ currentTab === 'pending' ? 'Pending Requests' : 'Active Partners' }}</h3>
           <p class="text-slate-400 text-sm max-w-sm mt-1">
-            There are currently no new partnership requests from service providers matching your criteria.
+            There are currently no records matching your criteria in this tab.
           </p>
         </div>
 
@@ -148,13 +159,17 @@
                 </TableCell>
 
                 <TableCell>
-                  <Badge variant="secondary" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20">
+                  <Badge v-if="req.status === 'pending'" variant="secondary" class="bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     Pending
+                  </Badge>
+                  <Badge v-else-if="req.status === 'active'" variant="secondary" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Active
                   </Badge>
                 </TableCell>
 
                 <TableCell class="text-right">
                   <Button 
+                    v-if="req.status === 'pending'"
                     variant="outline" 
                     size="sm"
                     class="h-8 gap-2 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -162,6 +177,16 @@
                   >
                     <Eye class="h-4 w-4" />
                     Review
+                  </Button>
+                  <Button 
+                    v-else-if="req.status === 'active'"
+                    variant="outline" 
+                    size="sm"
+                    class="h-8 gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300"
+                    @click="openAgreementDialog(req)"
+                  >
+                    <FileText class="h-4 w-4" />
+                    View Agreement
                   </Button>
                 </TableCell>
               </TableRow>
@@ -172,7 +197,7 @@
     </Card>
 
     <Dialog :open="showViewDialog" @update:open="closeViewDialog">
-      <DialogContent class="sm:max-w-[650px] bg-slate-900 border-slate-800 text-slate-200 flex flex-col max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent class="sm:max-w-[700px] w-[95vw] bg-slate-900 border-slate-800 text-slate-200 flex flex-col max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader class="px-5 py-4 border-b border-slate-800 shrink-0 bg-slate-900 z-10">
           <div class="flex items-center gap-3">
             <div class="p-2 bg-indigo-500/20 border border-indigo-500/30 rounded-lg shrink-0">
@@ -181,7 +206,7 @@
             <div>
               <DialogTitle class="text-white text-left">Service Provider Proposal</DialogTitle>
               <DialogDescription class="text-slate-400 text-left mt-1">
-                Review the provider's details and finalize the partnership agreement.
+                Review the provider's details, agreement document, and finalize the partnership.
               </DialogDescription>
             </div>
           </div>
@@ -217,37 +242,51 @@
               </div>
             </div>
             
-            <div class="flex flex-wrap gap-2">
-              <div class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                <ShieldCheck class="h-3.5 w-3.5" />
-                <span>Identity Verified</span>
-              </div>
-              <div class="flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20">
-                <FileCheck class="h-3.5 w-3.5" />
-                <span>Agreed to Terms</span>
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="block text-sm font-medium text-slate-200 flex items-center justify-between">
+                <span>Partnership Agreement Document</span>
+                <span class="text-xs font-normal text-emerald-400 flex items-center"><FileCheck class="w-3 h-3 mr-1" /> Signed by Provider</span>
+              </label>
+              <div class="h-[250px] border border-slate-700 rounded-xl overflow-hidden bg-white">
+                <iframe 
+                  v-if="selectedRequest.agreement_url" 
+                  :src="selectedRequest.agreement_url" 
+                  class="w-full h-full border-0"
+                ></iframe>
+                <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
+                  <FileX class="w-8 h-8 mb-2 opacity-50" />
+                  No agreement document found.
+                </div>
               </div>
             </div>
 
             <div class="space-y-3 pt-4 border-t border-slate-800">
-              <label class="block text-sm font-medium text-slate-200">Distributor Approval Terms</label>
-              <div class="h-40 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-4 custom-scrollbar">
-                <div>
-                  <p class="font-bold text-slate-300 mb-1">1. Authorization of Access</p>
-                  <p>By approving this request, you authorize the Service Provider to access your wholesale catalog, view pricing tiers, and submit procurement requests through the platform.</p>
-                </div>
-                
-                <div>
-                  <p class="font-bold text-slate-300 mb-1">2. Formal Agreement Generation</p>
-                  <p>Upon clicking Approve, an official binding agreement document will be systematically generated to signify the partnership.</p>
-                </div>
-                
-                <div>
-                  <p class="font-bold text-slate-300 mb-1">3. Confidentiality</p>
-                  <p>Client and operational data shared between your distributorship and the Service Provider must remain confidential.</p>
+              <label class="block text-sm font-medium text-slate-200 flex justify-between">
+                <span>Your Digital Signature <span class="text-red-400">*</span></span>
+                <button @click="clearSignature" class="text-xs text-indigo-400 hover:text-indigo-300">Clear Pad</button>
+              </label>
+              <div class="bg-white rounded-xl border border-slate-700 overflow-hidden relative shadow-inner">
+                <canvas 
+                  ref="signaturePad" 
+                  width="600" 
+                  height="150" 
+                  class="w-full h-[150px] touch-none cursor-crosshair"
+                  @mousedown="startDrawing" 
+                  @mousemove="draw" 
+                  @mouseup="stopDrawing" 
+                  @mouseleave="stopDrawing" 
+                  @touchstart.prevent="startDrawingTouch" 
+                  @touchmove.prevent="drawTouch" 
+                  @touchend.prevent="stopDrawing"
+                ></canvas>
+                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 font-medium tracking-wide">
+                  Sign here to officially approve
                 </div>
               </div>
-              
-              <label class="flex items-start gap-3 mt-4 cursor-pointer group">
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="flex items-start gap-3 mt-2 cursor-pointer group">
                 <div class="relative flex items-center justify-center mt-0.5 shrink-0">
                   <input 
                     type="checkbox" 
@@ -259,7 +298,7 @@
                   </svg>
                 </div>
                 <span class="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed">
-                  I have read the terms and officially agree to accept this Service Provider into our distribution network.
+                  I have read the agreement document and certify that the signature above is my true digital signature to accept this Service Provider into our network.
                 </span>
               </label>
             </div>
@@ -282,7 +321,7 @@
               <Button 
                 class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
                 @click="requirePermission('approve', initiateApprove)"
-                :disabled="!agreedToTerms"
+                :disabled="!agreedToTerms || !hasSignature"
               >
                 <Check class="mr-2 h-4 w-4" />
                 Approve Partner
@@ -299,18 +338,23 @@
           <AlertDialogDescription class="text-slate-400 text-left">
             You are about to accept <b class="text-white">{{ selectedRequest?.provider_name }}</b> into your distributor network. 
             <br/><br/>
-            An official agreement document will be securely generated and saved. Proceed?
+            An official agreement document bearing your signature will be securely generated and saved. Proceed?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter class="flex flex-col-reverse sm:flex-row gap-2">
-          <AlertDialogCancel @click="showApproveDialog = false" class="mt-0 sm:mt-0 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white">Review Again</AlertDialogCancel>
-          <AlertDialogAction 
+          <AlertDialogCancel @click="showApproveDialog = false" class="mt-0 sm:mt-0 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white" :disabled="isProcessing">
+            Review Again
+          </AlertDialogCancel>
+          
+          <Button 
             @click="confirmApprove" 
+            :disabled="isProcessing"
             class="bg-indigo-600 hover:bg-indigo-500 text-white border-0"
           >
             <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
-            Finalize Approval
-          </AlertDialogAction>
+            <span v-if="isProcessing">Processing...</span>
+            <span v-else>Finalize Approval</span>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -358,21 +402,68 @@
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog :open="showAgreementDialog" @update:open="showAgreementDialog = $event">
+      <DialogContent class="sm:max-w-[800px] w-[95vw] bg-slate-900 border-slate-800 text-slate-200 flex flex-col h-[85vh] p-0 overflow-hidden shadow-2xl">
+        <DialogHeader class="px-5 py-4 border-b border-slate-800 shrink-0 bg-slate-900 z-10">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-500/20 border border-indigo-500/30 rounded-lg shrink-0">
+              <FileText class="h-5 w-5 text-indigo-400" />
+            </div>
+            <div>
+              <DialogTitle class="text-white text-left">Official Partnership Agreement</DialogTitle>
+              <DialogDescription class="text-slate-400 text-left mt-1">
+                Signed document containing terms, conditions, and authorized signatures.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div class="flex-1 bg-slate-950 p-4 sm:p-6 overflow-hidden">
+          <div class="w-full h-full bg-white rounded-lg overflow-hidden border border-slate-700 shadow-inner">
+            <iframe 
+              v-if="selectedAgreement?.agreement_url" 
+              :src="selectedAgreement.agreement_url" 
+              class="w-full h-full border-0"
+              title="Finalized Agreement"
+            ></iframe>
+            <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
+              <FileX class="w-8 h-8 mb-2 opacity-50" />
+              Document file not found.
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="px-5 py-4 border-t border-slate-800 flex flex-col sm:flex-row gap-2 sm:justify-between items-center bg-slate-900 shrink-0">
+          <Button variant="ghost" class="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-slate-800" @click="showAgreementDialog = false">
+            Close Viewer
+          </Button>
+          <Button 
+            class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0"
+            @click="downloadAgreement(selectedAgreement?.agreement_url)"
+            :disabled="!selectedAgreement?.agreement_url"
+          >
+            <Download class="mr-2 h-4 w-4" />
+            Download Document
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Toaster, toast } from 'vue-sonner' // Added Toaster
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { Toaster, toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import { 
   Loader2, RefreshCw, Search, Eye, Check, X,
   Inbox, Users, CalendarRange, CheckCircle2,
-  Calendar, Briefcase, UserCheck, ShieldCheck, 
-  FileCheck, ShieldAlert
+  Calendar, Briefcase, UserCheck, FileText, Download,
+  FileCheck, FileX, ShieldAlert
 } from 'lucide-vue-next'
 
-// Shadcn Components
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -389,15 +480,25 @@ const loading = ref(false)
 const searchQuery = ref('')
 const isProcessing = ref(false)
 const agreedToTerms = ref(false)
+const currentTab = ref('pending') 
 
 // Dialog Visibility
 const showViewDialog = ref(false)
 const showApproveDialog = ref(false)
 const showRejectDialog = ref(false)
+const showAgreementDialog = ref(false) 
 
 // Selection & Forms
 const selectedRequest = ref(null)
+const selectedAgreement = ref(null) 
 const rejectReason = ref('')
+
+// Signature Pad State
+const signaturePad = ref(null)
+const isDrawing = ref(false)
+const ctx = ref(null)
+const hasSignature = ref(false)
+const finalSignatureBase64 = ref('') 
 
 // User Permissions setup via RBAC
 const permissions = ref({
@@ -421,21 +522,18 @@ const requirePermission = (action, callback) => {
   if (callback) callback();
 }
 
-// Filter logic: Only display pending requests in the table
 const filteredRequests = computed(() => {
-  let pendingList = requests.value.filter(req => req.status === 'pending')
-  
-  if (!searchQuery.value) return pendingList
+  let list = requests.value.filter(req => req.status === currentTab.value)
+  if (!searchQuery.value) return list
   
   const query = searchQuery.value.toLowerCase()
-  return pendingList.filter(req => 
+  return list.filter(req => 
     req.provider_name.toLowerCase().includes(query) ||
     req.email.toLowerCase().includes(query) ||
     req.location.toLowerCase().includes(query)
   )
 })
 
-// Dynamic Statistics logic
 const pendingCount = computed(() => requests.value.filter(r => r.status === 'pending').length)
 const activeCount = computed(() => requests.value.filter(r => r.status === 'active').length)
 const newThisWeekCount = computed(() => {
@@ -450,15 +548,12 @@ const approvalRate = computed(() => {
   return Math.round((approved / totalResolved) * 100) + '%'
 })
 
-// --- API Methods ---
-
 const fetchData = async () => {
   loading.value = true
   try {
     const response = await api.get('/operation-distributor/service-provider-requests')
     if (response.data.success) {
       requests.value = response.data.data
-      
       if (response.data.permissions) {
         permissions.value = response.data.permissions
       }
@@ -478,11 +573,6 @@ const fetchData = async () => {
   }
 }
 
-const refreshData = () => {
-  fetchData()
-  toast.success('Data refreshed')
-}
-
 onMounted(() => {
   fetchData()
 })
@@ -490,12 +580,36 @@ onMounted(() => {
 const openViewDialog = (req) => {
   selectedRequest.value = req
   agreedToTerms.value = false
+  hasSignature.value = false
+  finalSignatureBase64.value = ''
   showViewDialog.value = true
+  
+  nextTick(() => {
+    initSignaturePad()
+  })
 }
 
 const closeViewDialog = () => {
   showViewDialog.value = false
   agreedToTerms.value = false
+  hasSignature.value = false
+  finalSignatureBase64.value = ''
+}
+
+const openAgreementDialog = (req) => {
+  selectedAgreement.value = req
+  showAgreementDialog.value = true
+}
+
+const downloadAgreement = (url) => {
+  if (!url) return
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'Official_Partnership_Agreement.html'
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const closeRejectDialog = () => {
@@ -503,8 +617,76 @@ const closeRejectDialog = () => {
   rejectReason.value = ''
 }
 
+const initSignaturePad = () => {
+  if (!signaturePad.value) return
+  ctx.value = signaturePad.value.getContext('2d')
+  ctx.value.lineWidth = 2.5
+  ctx.value.lineCap = 'round'
+  ctx.value.strokeStyle = '#000000'
+  clearSignature()
+}
+
+const startDrawing = (e) => {
+  isDrawing.value = true
+  hasSignature.value = true
+  draw(e)
+}
+
+const draw = (e) => {
+  if (!isDrawing.value || !ctx.value) return
+  const rect = signaturePad.value.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+
+  ctx.value.lineTo(x, y)
+  ctx.value.stroke()
+  ctx.value.beginPath()
+  ctx.value.moveTo(x, y)
+}
+
+const stopDrawing = () => {
+  isDrawing.value = false
+  if (ctx.value) ctx.value.beginPath()
+}
+
+const startDrawingTouch = (e) => {
+  const touch = e.touches[0]
+  const rect = signaturePad.value.getBoundingClientRect()
+  const x = touch.clientX - rect.left
+  const y = touch.clientY - rect.top
+  
+  isDrawing.value = true
+  hasSignature.value = true
+  ctx.value.beginPath()
+  ctx.value.moveTo(x, y)
+}
+
+const drawTouch = (e) => {
+  if (!isDrawing.value || !ctx.value) return
+  const touch = e.touches[0]
+  const rect = signaturePad.value.getBoundingClientRect()
+  const x = touch.clientX - rect.left
+  const y = touch.clientY - rect.top
+
+  ctx.value.lineTo(x, y)
+  ctx.value.stroke()
+  ctx.value.beginPath()
+  ctx.value.moveTo(x, y)
+}
+
+const clearSignature = () => {
+  if (!ctx.value || !signaturePad.value) return
+  ctx.value.clearRect(0, 0, signaturePad.value.width, signaturePad.value.height)
+  hasSignature.value = false
+  finalSignatureBase64.value = ''
+  ctx.value.beginPath()
+}
+
 const initiateApprove = () => {
-  if (!agreedToTerms.value) return
+  if (!agreedToTerms.value || !hasSignature.value) return
+  
+  finalSignatureBase64.value = signaturePad.value ? signaturePad.value.toDataURL('image/png') : ''
+
   showViewDialog.value = false
   showApproveDialog.value = true
 }
@@ -512,22 +694,30 @@ const initiateApprove = () => {
 const confirmApprove = async () => {
   if (!selectedRequest.value) return
   isProcessing.value = true
-  
+
   try {
-    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/approve`)
+    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/approve`, {
+      signature: finalSignatureBase64.value
+    })
     
     if (response.data.success) {
-      // Update local state to immediately reflect changes on UI
       const index = requests.value.findIndex(r => r.id === selectedRequest.value.id)
-      if (index !== -1) requests.value[index].status = 'active'
+      if (index !== -1) {
+        requests.value[index].status = 'active'
+      }
       
       showApproveDialog.value = false
       agreedToTerms.value = false
+      hasSignature.value = false
+      finalSignatureBase64.value = '' 
       selectedRequest.value = null
       
       toast.success('Partnership Approved', {
-        description: 'Agreement document successfully generated and saved.',
+        description: 'Agreement generated and confirmation emails dispatched.',
       })
+      
+      currentTab.value = 'active'
+      fetchData()
     }
   } catch (error) {
     console.error(error)
@@ -565,7 +755,7 @@ const submitReject = async () => {
       selectedRequest.value = null
       
       toast.error('Proposal Declined', {
-        description: 'The provider will be notified of your decision.',
+        description: 'The provider has been notified via email of your decision.',
       })
     }
   } catch (error) {
@@ -582,7 +772,6 @@ const submitReject = async () => {
 </script>
 
 <style scoped>
-/* Custom scrollbar to keep it clean on the dark theme */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
