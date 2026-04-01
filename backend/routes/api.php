@@ -309,6 +309,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/partnered-suppliers/{id}/agreement-raw', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getAgreementRaw']);
         Route::post('/partnered-suppliers/{id}/sign', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'signAgreement']);
 
+        Route::get('/partnered-suppliers/{id}/termination-raw', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getTerminationRaw']);
+        Route::post('/partnered-suppliers/{id}/terminate', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'terminatePartnership']);
+        Route::post('/partnered-suppliers/{id}/reactivate', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'reactivatePartnership']);
+
         Route::prefix('payroll-settings')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'show']);
             Route::put('/', [\App\Http\Controllers\Api\Distributor\PayrollSettingController::class, 'update']);
@@ -584,6 +588,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'reject']);
+
+            Route::post('/{id}/terminate-approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approveTermination']);
+            Route::post('/{id}/terminate-reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'rejectTermination']);
+            Route::get('/{id}/termination-raw', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'getTerminationRaw']);
+
+            Route::post('/{id}/reactivate-approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approveReactivation']);
+            Route::post('/{id}/reactivate-reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'rejectReactivation']);
         });
 
         Route::prefix('orders')->group(function () {

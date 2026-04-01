@@ -26,13 +26,15 @@
       </div>
       <div class="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
         <Select v-model="statusFilter">
-          <SelectTrigger class="w-full sm:w-[150px]">
+          <SelectTrigger class="w-full sm:w-[190px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="pending_supplier">Pending Supplier</SelectItem>
+            <SelectItem value="pending_reactivation">Pending Reactivation</SelectItem>
+            <SelectItem value="pending_termination">Pending Termination</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>
           </SelectContent>
@@ -72,11 +74,15 @@
             </div>
             
             <Badge 
-              :variant="supplier.status === 'active' ? 'outline' : 'secondary'"
+              :variant="['active', 'pending_reactivation'].includes(supplier.status) ? 'outline' : 'secondary'"
               class="capitalize"
               :class="getStatusColor(supplier.status)"
             >
-              {{ supplier.status === 'pending_supplier' ? 'Waiting on Supplier' : supplier.status }}
+              {{ 
+                supplier.status === 'pending_supplier' ? 'Waiting on Supplier' : 
+                (supplier.status === 'pending_termination' ? 'Terminating' : 
+                (supplier.status === 'pending_reactivation' ? 'Pending Reactivation' : supplier.status)) 
+              }}
             </Badge>
           </div>
 
@@ -140,8 +146,30 @@
               <DropdownMenuItem @click="viewAgreement(supplier)">
                 <FileText class="mr-2 h-4 w-4" /> View Contracts
               </DropdownMenuItem>
+              
               <DropdownMenuSeparator />
-              <DropdownMenuItem class="text-red-600 focus:text-red-600 focus:bg-red-50">
+
+              <DropdownMenuItem 
+                v-if="['pending_termination', 'terminated', 'disconnected'].includes(supplier.status)"
+                @click="viewTerminationDocument(supplier)"
+                class="text-red-600 focus:text-red-600 focus:bg-red-50"
+              >
+                <FileText class="mr-2 h-4 w-4" /> View Termination Doc
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                v-if="['terminated', 'disconnected'].includes(supplier.status)"
+                @click="initiateReactivation(supplier)"
+                class="text-blue-600 focus:text-blue-600 focus:bg-blue-50"
+              >
+                <RefreshCcw class="mr-2 h-4 w-4" /> Reactivate Partnership
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                v-if="!['pending_termination', 'terminated', 'disconnected', 'pending_reactivation'].includes(supplier.status)"
+                class="text-red-600 focus:text-red-600 focus:bg-red-50" 
+                @click="confirmTerminationAction(supplier)"
+              >
                 <Ban class="mr-2 h-4 w-4" /> Terminate
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -156,7 +184,7 @@
       </div>
       <h3 class="text-lg font-medium text-slate-900">No suppliers found</h3>
       <p class="text-slate-500 max-w-sm mt-2 px-4">
-        You don't have any active partnerships yet. Use the "Link New Supplier" button to find partners.
+        You don't have any active partnerships matching the criteria. Use the "Link New Supplier" button to find partners.
       </p>
       <Button variant="outline" class="mt-6" @click="resetFilters">
         Clear Filters
@@ -290,6 +318,28 @@
       </SheetContent>
     </Sheet>
 
+    <AlertDialog :open="showConfirmTerminateDialog" @update:open="showConfirmTerminateDialog = $event">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle class="text-red-600 flex items-center gap-2">
+            <AlertCircle class="h-5 w-5" /> Confirm Termination Request
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to initiate the termination process with <strong>{{ selectedSupplier?.company_name }}</strong>?
+            <br><br>
+            The system will first verify that all transactions and orders are completed. If clear, an official termination document will be generated for your signature to officially sever the partnership.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="isCheckingTermination">Cancel</AlertDialogCancel>
+          <Button variant="destructive" @click="proceedWithTermination" :disabled="isCheckingTermination">
+            <Loader2 v-if="isCheckingTermination" class="mr-2 h-4 w-4 animate-spin" />
+            {{ isCheckingTermination ? 'Verifying...' : 'Proceed' }}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <Dialog :open="showAgreementDialog" @update:open="showAgreementDialog = $event">
       <DialogContent class="w-full h-[100dvh] max-w-none sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl rounded-none border-0 sm:border gap-0">
         <DialogHeader class="p-3 sm:p-4 border-b bg-white shrink-0 shadow-sm z-10">
@@ -388,6 +438,7 @@
                     <div class="h-16 sm:h-20 w-full flex items-center justify-center mt-2">
                         <img v-if="selectedSupplier?.supplier_signature_url" :src="selectedSupplier.supplier_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
                         <span v-else-if="selectedSupplier?.status === 'pending_supplier'" class="text-xs sm:text-sm text-amber-500 italic flex items-center gap-1"><Clock class="h-3 w-3"/> Awaiting...</span>
+                        <span v-else-if="selectedSupplier?.status === 'pending_reactivation'" class="text-xs sm:text-sm text-purple-500 italic flex items-center gap-1"><Clock class="h-3 w-3"/> Reactivation Pending...</span>
                         <span v-else class="text-xs sm:text-sm text-slate-400 italic">Signature not found</span>
                     </div>
                     <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
@@ -398,6 +449,223 @@
                         {{ selectedSupplier?.supplier_signed_at ? selectedSupplier.supplier_signed_at : 'Pending...' }}
                     </p>
                 </div>
+            </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showReactivateDialog" @update:open="showReactivateDialog = $event">
+      <DialogContent class="w-full h-[100dvh] max-w-none sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl rounded-none border-0 sm:border gap-0">
+        <DialogHeader class="p-3 sm:p-4 border-b bg-white shrink-0 shadow-sm z-10">
+          <DialogTitle class="flex items-center gap-2 text-base sm:text-lg text-indigo-600">
+            <RefreshCcw class="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+            <span class="truncate">Reactivate Partnership - {{ selectedSupplier?.company_name }}</span>
+          </DialogTitle>
+          <DialogDescription class="text-xs sm:text-sm mt-1 text-slate-500">
+             To reactivate this previously terminated partnership, please sign the original agreement below to confirm acceptance of the terms.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div class="flex-1 overflow-hidden p-2 sm:p-4 relative bg-slate-100">
+            <iframe 
+              v-if="selectedSupplier?.agreement_url" 
+              :src="selectedSupplier.agreement_url" 
+              class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
+            ></iframe>
+            <div v-else class="flex flex-col h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
+                <FileX class="h-12 w-12 text-slate-300 mb-2" />
+                <p>No original agreement document was found to reactivate.</p>
+            </div>
+        </div>
+
+        <div v-if="selectedSupplier?.agreement_url" class="p-3 sm:p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] overflow-y-auto max-h-[40vh] sm:max-h-none">
+            <div class="flex flex-col gap-3 sm:gap-4 max-w-4xl mx-auto">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <PenTool class="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600" />
+                            Sign to Initiate Reactivation
+                        </label>
+                        <Button variant="ghost" size="sm" class="h-6 sm:h-7 text-xs text-slate-500 hover:text-red-600 px-2" @click="clearReactivateSignature">
+                            Clear Pad
+                        </Button>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-indigo-200 rounded-lg bg-slate-50 overflow-hidden relative" ref="reactivateCanvasContainer">
+                        <canvas 
+                            ref="reactivateSignatureCanvas" 
+                            class="w-full h-[160px] sm:h-[200px] cursor-crosshair touch-none"
+                            @mousedown="startDrawingReactivate"
+                            @mousemove="drawReactivate"
+                            @mouseup="stopDrawingReactivate"
+                            @mouseleave="stopDrawingReactivate"
+                            @touchstart.prevent="startDrawingReactivateTouch"
+                            @touchmove.prevent="drawReactivateTouch"
+                            @touchend.prevent="stopDrawingReactivate"
+                        ></canvas>
+                        
+                        <div v-if="!hasDrawnReactivate" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
+                            <span class="text-indigo-400 text-sm sm:text-base font-medium select-none">Distributor Sign Here</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] sm:text-xs text-slate-500 mt-2 text-center">
+                        This action signifies your intent to reactivate the partnership under the same terms. The supplier will review and countersign to finalize.
+                    </p>
+                </div>
+
+                <div class="flex justify-end gap-2 sm:gap-3 pt-1">
+                    <Button variant="outline" class="flex-1 sm:flex-none" @click="showReactivateDialog = false">Cancel</Button>
+                    <Button 
+                      :disabled="!hasDrawnReactivate || reactivating" 
+                      @click="submitReactivation" 
+                      class="flex-1 sm:flex-none bg-indigo-600 text-white hover:bg-indigo-700 min-w-[140px]"
+                    >
+                        <Loader2 v-if="reactivating" class="mr-2 h-4 w-4 animate-spin" />
+                        {{ reactivating ? 'Processing...' : 'Sign & Reactivate' }}
+                    </Button>
+                </div>
+            </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showTerminationDialog" @update:open="showTerminationDialog = $event">
+      <DialogContent class="w-full h-[100dvh] max-w-none sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl rounded-none border-0 sm:border gap-0">
+        <DialogHeader class="p-3 sm:p-4 border-b bg-white shrink-0 shadow-sm z-10">
+          <DialogTitle class="flex items-center gap-2 text-base sm:text-lg text-red-600">
+            <Ban class="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+            <span class="truncate">Terminate Partnership - {{ selectedSupplier?.company_name }}</span>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div class="flex-1 overflow-hidden p-2 sm:p-4 relative bg-slate-100 overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 h-full overflow-y-auto p-4" v-html="terminationHtml"></div>
+        </div>
+
+        <div class="p-3 sm:p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] overflow-y-auto max-h-[40vh] sm:max-h-none">
+            <div class="flex flex-col gap-3 sm:gap-4 max-w-4xl mx-auto">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs sm:text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <PenTool class="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                            Sign to Initiate Termination
+                        </label>
+                        <Button variant="ghost" size="sm" class="h-6 sm:h-7 text-xs text-slate-500 hover:text-red-600 px-2" @click="clearTermSignature">
+                            Clear Pad
+                        </Button>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-red-200 rounded-lg bg-slate-50 overflow-hidden relative" ref="termCanvasContainer">
+                        <canvas 
+                            ref="termSignatureCanvas" 
+                            class="w-full h-[160px] sm:h-[200px] cursor-crosshair touch-none"
+                            @mousedown="startDrawingTerm"
+                            @mousemove="drawTerm"
+                            @mouseup="stopDrawingTerm"
+                            @mouseleave="stopDrawingTerm"
+                            @touchstart.prevent="startDrawingTermTouch"
+                            @touchmove.prevent="drawTermTouch"
+                            @touchend.prevent="stopDrawingTerm"
+                        ></canvas>
+                        
+                        <div v-if="!hasDrawnTerm" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
+                            <span class="text-red-400 text-sm sm:text-base font-medium select-none">Distributor Sign Here</span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] sm:text-xs text-slate-500 mt-2 text-center">
+                        This action signifies your intent to terminate the partnership. It will be sent to the supplier for final verification.
+                    </p>
+                </div>
+
+                <div class="flex justify-end gap-2 sm:gap-3 pt-1">
+                    <Button variant="outline" class="flex-1 sm:flex-none" @click="showTerminationDialog = false">Cancel</Button>
+                    <Button 
+                      :disabled="!hasDrawnTerm || terminating" 
+                      @click="submitTermination" 
+                      class="flex-1 sm:flex-none bg-red-600 text-white hover:bg-red-700 min-w-[140px]"
+                    >
+                        <Loader2 v-if="terminating" class="mr-2 h-4 w-4 animate-spin" />
+                        {{ terminating ? 'Processing...' : 'Sign & Submit' }}
+                    </Button>
+                </div>
+            </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showViewTerminationDialog" @update:open="showViewTerminationDialog = $event">
+      <DialogContent class="w-full h-[100dvh] max-w-none sm:max-w-5xl sm:h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl rounded-none border-0 sm:border gap-0">
+        <DialogHeader class="p-3 sm:p-4 border-b bg-white shrink-0 shadow-sm z-10">
+          <DialogTitle class="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-6 gap-3">
+            <span class="flex items-center gap-2 text-base sm:text-lg text-red-600">
+                <FileText class="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span class="truncate">Termination Document - {{ selectedSupplier?.company_name }}</span>
+            </span>
+            <Button variant="outline" size="sm" @click="downloadTerminationDocument" class="w-full sm:w-auto text-indigo-600 hover:text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 shrink-0">
+                <Download class="h-4 w-4 mr-2" /> Download Document
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div class="flex-1 overflow-hidden p-2 sm:p-4 relative bg-slate-100">
+            <iframe 
+              v-if="selectedSupplier?.termination_url" 
+              :src="selectedSupplier.termination_url" 
+              class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
+            ></iframe>
+            <div v-else class="flex flex-col h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
+                <FileX class="h-12 w-12 text-slate-300 mb-2" />
+                <p>No digital termination document was found.</p>
+            </div>
+        </div>
+
+        <div class="p-4 sm:p-6 border-t bg-white shrink-0 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-10 overflow-y-auto max-h-[40vh] sm:max-h-none">
+            <h4 class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-3 sm:mb-4">Official Signatures</h4>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
+               <div class="flex flex-col items-center justify-center border border-slate-200 p-3 sm:p-4 rounded-xl bg-slate-50 relative">
+                    <Badge class="absolute -top-3 left-4 bg-indigo-100 text-indigo-700 border border-indigo-200">Distributor (Initiator)</Badge>
+                    <div class="h-16 sm:h-20 w-full flex items-center justify-center mt-2">
+                        <img v-if="selectedSupplier?.distributor_termination_signature_url" :src="selectedSupplier.distributor_termination_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
+                        <span v-else class="text-xs sm:text-sm text-slate-400 italic">Signature not found</span>
+                    </div>
+                    <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
+                    <p class="text-xs sm:text-sm font-bold text-slate-800">Your Business</p>
+                </div>
+
+                <div class="flex flex-col items-center justify-center border border-slate-200 p-3 sm:p-4 rounded-xl bg-slate-50 relative">
+                    <Badge class="absolute -top-3 left-4 bg-blue-100 text-blue-700 border border-blue-200">Supplier (Acknowledged)</Badge>
+                    <div class="h-16 sm:h-20 w-full flex items-center justify-center mt-2">
+                        <img v-if="selectedSupplier?.supplier_termination_signature_url" :src="selectedSupplier.supplier_termination_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
+                        <span v-else-if="selectedSupplier?.status === 'pending_termination'" class="text-xs sm:text-sm text-amber-500 italic flex items-center gap-1"><Clock class="h-3 w-3"/> Pending Approval...</span>
+                        <span v-else class="text-xs sm:text-sm text-slate-400 italic">Signature not found</span>
+                    </div>
+                    <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
+                    <p class="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[150px]">{{ selectedSupplier?.company_name }}</p>
+                </div>
+            </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showOfficialDocDialog" @update:open="showOfficialDocDialog = $event">
+      <DialogContent class="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-100 sm:rounded-xl shadow-2xl">
+        <DialogHeader class="p-4 border-b bg-white shrink-0 shadow-sm z-10">
+          <DialogTitle class="flex items-center gap-2 text-slate-800">
+            <FileBadge class="h-5 w-5 text-emerald-600" />
+            Official Partnership Agreement
+          </DialogTitle>
+        </DialogHeader>
+        <div class="flex-1 overflow-hidden p-4 relative">
+            <iframe 
+              v-if="selectedRequest?.agreement_url" 
+              :src="selectedRequest.agreement_url" 
+              class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-300"
+            ></iframe>
+        </div>
+        <div class="p-6 border-t bg-white shrink-0 z-10 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
+            <div class="flex justify-end mt-4">
+                <Button variant="outline" @click="showOfficialDocDialog = false">Close Document</Button>
             </div>
         </div>
       </DialogContent>
@@ -428,6 +696,7 @@ import {
   FileText,
   FileX,
   RefreshCw,
+  RefreshCcw,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -443,30 +712,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Sheet,
-  SheetContent,
-} from '@/components/ui/sheet'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 // --- Data ---
 const suppliers = ref([])
@@ -479,17 +729,42 @@ const categoryFilter = ref('all')
 const isSheetOpen = ref(false)
 const selectedSupplier = ref(null)
 
-// Signature State
+// Agreement Signature State
 const showAgreementDialog = ref(false)
 const signing = ref(false)
 const hasDrawn = ref(false)
 
-// Canvas State
+// Reactivation Signature State
+const showReactivateDialog = ref(false)
+const reactivating = ref(false)
+const hasDrawnReactivate = ref(false)
+
+// Termination Confirmation & State
+const showConfirmTerminateDialog = ref(false)
+const isCheckingTermination = ref(false)
+const showTerminationDialog = ref(false)
+const showViewTerminationDialog = ref(false)
+const terminating = ref(false)
+const terminationHtml = ref('')
+const hasDrawnTerm = ref(false)
+
+// Canvas States
 const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
-const printIframe = ref(null)
 let ctx = null
 let isDrawing = false
+
+const reactivateSignatureCanvas = ref(null)
+const reactivateCanvasContainer = ref(null)
+let reactivateCtx = null
+let isDrawingReactivate = false
+
+const termSignatureCanvas = ref(null)
+const termCanvasContainer = ref(null)
+let termCtx = null
+let isDrawingTerm = false
+
+const printIframe = ref(null)
 
 // --- Helpers ---
 
@@ -516,8 +791,11 @@ const getStatusColor = (status) => {
   switch(status) {
     case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
     case 'pending_supplier': return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+    case 'pending_reactivation': return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+    case 'pending_termination': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
     case 'suspended': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
     case 'terminated': return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+    case 'disconnected': return 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
     default: return 'bg-slate-100 text-slate-700'
   }
 }
@@ -574,14 +852,13 @@ const resetFilters = () => {
   categoryFilter.value = 'all'
 }
 
-// --- Document Generation & Download ---
+// --- Document Generation & Download (Agreements) ---
 const downloadDocument = async () => {
     if (!selectedSupplier.value?.agreement_url) return;
     
     const toastId = toast.loading('Preparing Official Document...', { description: 'Merging cryptographic signatures...' });
 
     try {
-        // Fetch the raw HTML content of the agreement using our NEW API Endpoint to avoid CORS
         const response = await api.get(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/agreement-raw`);
         
         if (!response.data.success) {
@@ -590,14 +867,12 @@ const downloadDocument = async () => {
 
         let htmlContent = response.data.html;
 
-        // Construct the Signatures HTML Block to inject
         let sigHtml = `
         <div style="margin-top: 60px; padding-top: 30px; border-top: 2px solid #cbd5e1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; page-break-inside: avoid;">
             <h3 style="text-align: center; color: #1e3a8a; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;">Official Cryptographic Signatures</h3>
             <div style="display: flex; justify-content: space-around; margin-top: 40px;">
         `;
 
-        // Distributor Signature Block
         if (selectedSupplier.value.distributor_signature_url) {
             sigHtml += `
                 <div style="text-align: center; width: 40%;">
@@ -611,7 +886,6 @@ const downloadDocument = async () => {
             `;
         }
 
-        // Supplier Signature Block
         if (selectedSupplier.value.supplier_signature_url) {
             sigHtml += `
                 <div style="text-align: center; width: 40%;">
@@ -641,18 +915,15 @@ const downloadDocument = async () => {
         </div>
         `;
 
-        // Inject the signature HTML right before the closing body tag
         if (htmlContent.includes('</body>')) {
             htmlContent = htmlContent.replace('</body>', sigHtml + '</body>');
         } else {
             htmlContent += sigHtml;
         }
 
-        // Create an official HTML file Blob
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const blobUrl = URL.createObjectURL(blob);
 
-        // Auto trigger the download
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = `Official_Agreement_${selectedSupplier.value.company_name.replace(/\s+/g, '_')}.html`;
@@ -660,7 +931,6 @@ const downloadDocument = async () => {
         link.click();
         document.body.removeChild(link);
         
-        // Clean up memory
         setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 
         toast.success('Document Downloaded', { 
@@ -677,7 +947,203 @@ const downloadDocument = async () => {
     }
 }
 
-// --- Signature Pad Methods ---
+
+// --- Termination Methods ---
+
+const viewTerminationDocument = (supplier) => {
+    selectedSupplier.value = supplier;
+    isSheetOpen.value = false;
+    showViewTerminationDialog.value = true;
+}
+
+const downloadTerminationDocument = async () => {
+    if (!selectedSupplier.value?.termination_url) return;
+
+    const toastId = toast.loading('Preparing Official Document...', { description: 'Merging cryptographic signatures...' });
+
+    try {
+        const response = await api.get(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/termination-raw`);
+
+        if (!response.data.success) {
+            throw new Error("Failed to load document content.");
+        }
+
+        let htmlContent = response.data.html;
+
+        let sigHtml = `
+        <div style="margin-top: 60px; padding-top: 30px; border-top: 2px solid #cbd5e1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; page-break-inside: avoid;">
+            <h3 style="text-align: center; color: #dc2626; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;">Official Cryptographic Signatures</h3>
+            <div style="display: flex; justify-content: space-around; margin-top: 40px;">
+        `;
+
+        if (selectedSupplier.value.distributor_termination_signature_url) {
+            sigHtml += `
+                <div style="text-align: center; width: 40%;">
+                    <p style="font-weight: bold; margin-bottom: 10px; color: #333; font-size: 1.1rem;">Distributor (Initiator)</p>
+                    <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
+                        <img src="${selectedSupplier.value.distributor_termination_signature_url}" style="max-height: 100px; max-width: 100%; object-fit: contain;" />
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid #94a3b8; margin: 15px 0;" />
+                </div>
+            `;
+        }
+
+        if (selectedSupplier.value.supplier_termination_signature_url) {
+            sigHtml += `
+                <div style="text-align: center; width: 40%;">
+                    <p style="font-weight: bold; margin-bottom: 10px; color: #333; font-size: 1.1rem;">Supplier (Acknowledged)</p>
+                    <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
+                        <img src="${selectedSupplier.value.supplier_termination_signature_url}" style="max-height: 100px; max-width: 100%; object-fit: contain;" />
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid #94a3b8; margin: 15px 0;" />
+                </div>
+            `;
+        } else {
+             sigHtml += `
+                <div style="text-align: center; width: 40%;">
+                    <p style="font-weight: bold; margin-bottom: 10px; color: #333; font-size: 1.1rem;">Supplier (Acknowledged)</p>
+                    <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
+                        <span style="color: #94a3b8; font-style: italic;">Pending Signature...</span>
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid #94a3b8; margin: 15px 0;" />
+                </div>
+            `;
+        }
+
+        sigHtml += `
+            </div>
+        </div>
+        `;
+
+        if (htmlContent.includes('</body>')) {
+            htmlContent = htmlContent.replace('</body>', sigHtml + '</body>');
+        } else {
+            htmlContent += sigHtml;
+        }
+
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `Termination_Document_${selectedSupplier.value.company_name.replace(/\s+/g, '_')}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+        toast.success('Document Downloaded', {
+            id: toastId,
+            description: 'The termination agreement containing all signatures has been saved.'
+        });
+
+    } catch (e) {
+        console.error('Failed to generate document for download', e);
+        toast.error('Download Failed', {
+            id: toastId,
+            description: 'Could not generate the document with signatures. Please try again.'
+        });
+    }
+}
+
+const confirmTerminationAction = (supplier) => {
+    selectedSupplier.value = supplier
+    isSheetOpen.value = false
+    showConfirmTerminateDialog.value = true
+}
+
+const proceedWithTermination = async () => {
+    isCheckingTermination.value = true
+    const toastId = toast.loading('Verifying transactions...')
+    
+    try {
+        const response = await api.get(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/termination-raw`)
+        
+        if (response.data.success) {
+            toast.dismiss(toastId)
+            terminationHtml.value = response.data.html
+            showConfirmTerminateDialog.value = false
+            showTerminationDialog.value = true
+        }
+    } catch (error) {
+        toast.error('Unable to Terminate', {
+            id: toastId,
+            description: error.response?.data?.message || 'A server error occurred. Please try again.'
+        })
+        showConfirmTerminateDialog.value = false
+    } finally {
+        isCheckingTermination.value = false
+    }
+}
+
+const submitTermination = async () => {
+    if (!selectedSupplier.value || !hasDrawnTerm.value || !termSignatureCanvas.value) return
+    terminating.value = true
+    
+    const signatureBase64 = termSignatureCanvas.value.toDataURL('image/png')
+    
+    try {
+        const response = await api.post(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/terminate`, {
+            signature_image: signatureBase64
+        })
+        
+        if (response.data.success) {
+            toast.success('Termination Submitted', {
+                description: 'The termination document has been signed and emailed to the supplier.'
+            })
+            
+            selectedSupplier.value.status = 'pending_termination'
+            showTerminationDialog.value = false
+            
+            await fetchSuppliers()
+        }
+    } catch (error) {
+        console.error(error)
+        toast.error('Termination Failed', {
+            description: error.response?.data?.message || 'Failed to submit termination request.'
+        })
+    } finally {
+        terminating.value = false
+    }
+}
+
+// --- Reactivation Methods ---
+const initiateReactivation = (supplier) => {
+  selectedSupplier.value = supplier
+  showReactivateDialog.value = true
+}
+
+const submitReactivation = async () => {
+  if (!selectedSupplier.value || !hasDrawnReactivate.value || !reactivateSignatureCanvas.value) return
+  
+  reactivating.value = true
+  const signatureBase64 = reactivateSignatureCanvas.value.toDataURL('image/png')
+  
+  try {
+    const response = await api.post(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/reactivate`, {
+        signature_image: signatureBase64
+    })
+    
+    if (response.data.success) {
+      toast.success('Reactivation Requested', {
+        description: 'The supplier has been notified to counter-sign the agreement.'
+      })
+      selectedSupplier.value.status = 'pending_reactivation'
+      showReactivateDialog.value = false
+      await fetchSuppliers()
+    }
+  } catch (error) {
+    console.error('Error reactivating:', error)
+    toast.error('Failed to reactivate', {
+      description: error.response?.data?.message || 'An error occurred while saving your signature.'
+    })
+  } finally {
+    reactivating.value = false
+  }
+}
+
+// --- Signature Pad Core Methods (Agreement) ---
 
 const initCanvas = () => {
   if (!signatureCanvas.value || !canvasContainer.value) return
@@ -692,9 +1158,9 @@ const initCanvas = () => {
   ctx.strokeStyle = '#1e1b4b' // Dark indigo ink
 }
 
-const getCoordinates = (e) => {
-  if (!signatureCanvas.value) return { x: 0, y: 0 }
-  const rect = signatureCanvas.value.getBoundingClientRect()
+const getCoordinates = (e, canvas) => {
+  if (!canvas) return { x: 0, y: 0 }
+  const rect = canvas.getBoundingClientRect()
   
   const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX
   const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY
@@ -708,14 +1174,14 @@ const getCoordinates = (e) => {
 const startDrawing = (e) => {
   isDrawing = true
   hasDrawn.value = true
-  const coords = getCoordinates(e)
+  const coords = getCoordinates(e, signatureCanvas.value)
   ctx.beginPath()
   ctx.moveTo(coords.x, coords.y)
 }
 
 const draw = (e) => {
   if (!isDrawing) return
-  const coords = getCoordinates(e)
+  const coords = getCoordinates(e, signatureCanvas.value)
   ctx.lineTo(coords.x, coords.y)
   ctx.stroke()
 }
@@ -735,11 +1201,120 @@ const clearSignature = () => {
   hasDrawn.value = false
 }
 
+// --- Signature Pad Core Methods (Reactivation) ---
+
+const initReactivateCanvas = () => {
+  if (!reactivateSignatureCanvas.value || !reactivateCanvasContainer.value) return
+  
+  reactivateSignatureCanvas.value.width = reactivateCanvasContainer.value.clientWidth
+  reactivateSignatureCanvas.value.height = reactivateCanvasContainer.value.clientHeight
+  
+  reactivateCtx = reactivateSignatureCanvas.value.getContext('2d')
+  reactivateCtx.lineWidth = 3
+  reactivateCtx.lineCap = 'round'
+  reactivateCtx.lineJoin = 'round'
+  reactivateCtx.strokeStyle = '#4f46e5' // Indigo for reactivation
+}
+
+const startDrawingReactivate = (e) => {
+  isDrawingReactivate = true
+  hasDrawnReactivate.value = true
+  const coords = getCoordinates(e, reactivateSignatureCanvas.value)
+  reactivateCtx.beginPath()
+  reactivateCtx.moveTo(coords.x, coords.y)
+}
+
+const drawReactivate = (e) => {
+  if (!isDrawingReactivate) return
+  const coords = getCoordinates(e, reactivateSignatureCanvas.value)
+  reactivateCtx.lineTo(coords.x, coords.y)
+  reactivateCtx.stroke()
+}
+
+const stopDrawingReactivate = () => {
+  if (!isDrawingReactivate) return
+  isDrawingReactivate = false
+  if (reactivateCtx) reactivateCtx.closePath()
+}
+
+const startDrawingReactivateTouch = (e) => startDrawingReactivate(e)
+const drawReactivateTouch = (e) => drawReactivate(e)
+
+const clearReactivateSignature = () => {
+  if (!reactivateCtx || !reactivateSignatureCanvas.value) return
+  reactivateCtx.clearRect(0, 0, reactivateSignatureCanvas.value.width, reactivateSignatureCanvas.value.height)
+  hasDrawnReactivate.value = false
+}
+
+// --- Signature Pad Core Methods (Termination) ---
+
+const initTermCanvas = () => {
+  if (!termSignatureCanvas.value || !termCanvasContainer.value) return
+  
+  termSignatureCanvas.value.width = termCanvasContainer.value.clientWidth
+  termSignatureCanvas.value.height = termCanvasContainer.value.clientHeight
+  
+  termCtx = termSignatureCanvas.value.getContext('2d')
+  termCtx.lineWidth = 3
+  termCtx.lineCap = 'round'
+  termCtx.lineJoin = 'round'
+  termCtx.strokeStyle = '#dc2626' // Red ink for termination intent
+}
+
+const startDrawingTerm = (e) => {
+  isDrawingTerm = true
+  hasDrawnTerm.value = true
+  const coords = getCoordinates(e, termSignatureCanvas.value)
+  termCtx.beginPath()
+  termCtx.moveTo(coords.x, coords.y)
+}
+
+const drawTerm = (e) => {
+  if (!isDrawingTerm) return
+  const coords = getCoordinates(e, termSignatureCanvas.value)
+  termCtx.lineTo(coords.x, coords.y)
+  termCtx.stroke()
+}
+
+const stopDrawingTerm = () => {
+  if (!isDrawingTerm) return
+  isDrawingTerm = false
+  termCtx.closePath()
+}
+
+const startDrawingTermTouch = (e) => startDrawingTerm(e)
+const drawTermTouch = (e) => drawTerm(e)
+
+const clearTermSignature = () => {
+  if (!termCtx || !termSignatureCanvas.value) return
+  termCtx.clearRect(0, 0, termSignatureCanvas.value.width, termSignatureCanvas.value.height)
+  hasDrawnTerm.value = false
+}
+
+
+// --- Watchers & Initializers ---
+
 watch(showAgreementDialog, async (newVal) => {
   if (newVal && selectedSupplier.value && !selectedSupplier.value.is_signed) {
     hasDrawn.value = false
     await nextTick()
     setTimeout(initCanvas, 50) 
+  }
+})
+
+watch(showReactivateDialog, async (newVal) => {
+  if (newVal) {
+    hasDrawnReactivate.value = false
+    await nextTick()
+    setTimeout(initReactivateCanvas, 50) 
+  }
+})
+
+watch(showTerminationDialog, async (newVal) => {
+  if (newVal) {
+    hasDrawnTerm.value = false
+    await nextTick()
+    setTimeout(initTermCanvas, 50) 
   }
 })
 
@@ -753,8 +1328,6 @@ const submitSignature = async () => {
   if (!selectedSupplier.value || !hasDrawn.value || !signatureCanvas.value) return
   
   signing.value = true
-  
-  // Extract Base64 Image
   const signatureBase64 = signatureCanvas.value.toDataURL('image/png')
   
   try {
@@ -767,11 +1340,10 @@ const submitSignature = async () => {
         description: 'Your signature has been permanently affixed to the document.'
       })
       
-      // Update local state temporarily
       selectedSupplier.value.is_signed = true
       selectedSupplier.value.signed_at = response.data.signed_at
-      selectedSupplier.value.distributor_signature_url = signatureBase64 // Preview locally until refresh
-      selectedSupplier.value.status = 'pending_supplier' // Update immediately to pending_supplier
+      selectedSupplier.value.distributor_signature_url = signatureBase64 
+      selectedSupplier.value.status = 'pending_supplier'
       
       await fetchSuppliers()
     }
