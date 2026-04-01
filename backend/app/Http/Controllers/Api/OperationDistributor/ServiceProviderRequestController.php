@@ -131,6 +131,10 @@ class ServiceProviderRequestController extends Controller
                         'status' => $req->status,
                         'agreement_url' => $req->agreement_path ? asset('storage/' . $req->agreement_path) : null,
                         'sp_signature_url' => $req->sp_signature_path ? asset('storage/' . $req->sp_signature_path) : null,
+                        'termination_url' => isset($req->termination_path) && $req->termination_path ? asset('storage/' . $req->termination_path) : null,
+                        // Track who signed the termination to dictate UI flow
+                        'sp_termination_signed_at' => $req->sp_termination_signed_at,
+                        'distributor_termination_signed_at' => $req->distributor_termination_signed_at,
                     ];
                 });
 
@@ -146,7 +150,7 @@ class ServiceProviderRequestController extends Controller
     }
 
     /**
-     * Approve partnership request, generate agreement, and dispatch emails (Background Lazy Load)
+     * Approve partnership request, generate agreement, and dispatch emails
      */
     public function approve(Request $request, $id): JsonResponse
     {
@@ -180,7 +184,6 @@ class ServiceProviderRequestController extends Controller
                 return response()->json(['success' => false, 'message' => 'Partnership request not found or unauthorized.'], 404);
             }
 
-            // Save Signature to Disk
             $signaturePath = null;
             if ($request->filled('signature')) {
                 $imageParts = explode(";base64,", $request->signature);
@@ -195,7 +198,6 @@ class ServiceProviderRequestController extends Controller
                 }
             }
 
-            // Data for Agreement & Emails
             $distributor = \App\Models\User::with('distributorRequirement')->find($distributorId);
             $distName = $distributor ? ($distributor->distributorRequirement->company_name ?? $distributor->full_name) : 'Authorized Distributor';
             
@@ -203,18 +205,14 @@ class ServiceProviderRequestController extends Controller
             $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Unknown Service Provider';
             $dateStr = Carbon::now()->format('F j, Y');
 
-            // --- EMBED SIGNATURES AS BASE64 IN HTML ---
-            // Fetch SP Signature and convert to base64
             $spSignatureBase64Str = '';
             if ($req->sp_signature_path && Storage::disk('public')->exists($req->sp_signature_path)) {
                 $spImageRaw = Storage::disk('public')->get($req->sp_signature_path);
                 $spSignatureBase64Str = 'data:image/png;base64,' . base64_encode($spImageRaw);
             }
 
-            // Distributor signature is already provided natively via request as base64!
             $distSignatureBase64Str = $request->signature ?? '';
 
-            // --- Generate Formal Agreement HTML ---
             $htmlContent = "
             <!DOCTYPE html>
             <html>
@@ -267,7 +265,7 @@ class ServiceProviderRequestController extends Controller
                         </div>
                         <div class='sig-details'>
                             <p><strong>Signed by:</strong> {$spName}</p>
-                            <p><strong>Date:</strong> " . ($req->sp_signed_at ? $req->sp_signed_at->format('F j, Y') : 'Unknown') . "</p>
+                            <p><strong>Date:</strong> " . ($req->sp_signed_at ? \Carbon\Carbon::parse($req->sp_signed_at)->format('F j, Y') : 'Unknown') . "</p>
                         </div>
                     </div>
                     <div class='signature-box'>
@@ -293,22 +291,23 @@ class ServiceProviderRequestController extends Controller
                 'approved_at' => Carbon::now(),
                 'agreement_path' => $fileName,
                 'distributor_signature_path' => $signaturePath,
-                'distributor_signed_at' => Carbon::now()
+                'distributor_signed_at' => Carbon::now(),
+                
+                // CRITICAL FIX: Reset old termination data upon reactivation approval
+                'termination_path' => null,
+                'distributor_termination_signed_at' => null,
+                'distributor_termination_signature_path' => null,
+                'sp_termination_signed_at' => null,
+                'sp_termination_signature_path' => null,
             ]);
 
-            // ==========================================
-            // BACKGROUND / LAZY-LOAD EMAIL DISPATCHER
-            // ==========================================
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
                 $distEmail = $distributor ? $distributor->email : $user->email;
                 $attachmentPath = storage_path('app/public/' . $fileName);
 
-                // app()->terminating executes immediately AFTER the HTTP response is sent to Vue.
-                // This makes the frontend super fast and creates a "lazy load" background effect.
                 app()->terminating(function () use ($spEmail, $spName, $distName, $distEmail, $attachmentPath) {
                     try {
-                        // 1. Email to Service Provider
                         if ($spEmail) {
                             $spSubject = "Partnership Request Approved - {$distName}";
                             $spHtml = "
@@ -327,7 +326,6 @@ class ServiceProviderRequestController extends Controller
                             });
                         }
 
-                        // 2. Email to Distributor
                         if ($distEmail) {
                             $distSubject = "New Partnership Established - {$spName}";
                             $distHtml = "
@@ -345,11 +343,11 @@ class ServiceProviderRequestController extends Controller
                             });
                         }
                     } catch (\Exception $mailException) {
-                        Log::error('Mail sending failed during background processing: ' . $mailException->getMessage());
+                        Log::error('Mail sending failed: ' . $mailException->getMessage());
                     }
                 });
             } catch (\Exception $e) {
-                Log::error('Failed to register terminating mail process: ' . $e->getMessage());
+                Log::error('Mail fail: ' . $e->getMessage());
             }
 
             return response()->json(['success' => true, 'message' => 'Partnership Approved and Final Agreement Document generated.'], 200);
@@ -360,7 +358,7 @@ class ServiceProviderRequestController extends Controller
     }
 
     /**
-     * Decline partnership request and dispatch email (Background Lazy Load)
+     * Decline partnership request and dispatch email
      */
     public function reject(Request $request, $id): JsonResponse
     {
@@ -394,12 +392,16 @@ class ServiceProviderRequestController extends Controller
 
             $req->update([
                 'status' => 'rejected',
-                'rejection_reason' => $request->reason
+                'rejection_reason' => $request->reason,
+                
+                // Clear termination fields in case they requested reactivation and it gets rejected.
+                'termination_path' => null,
+                'distributor_termination_signed_at' => null,
+                'distributor_termination_signature_path' => null,
+                'sp_termination_signed_at' => null,
+                'sp_termination_signature_path' => null,
             ]);
 
-            // ==========================================
-            // BACKGROUND / LAZY-LOAD EMAIL DISPATCHER
-            // ==========================================
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
                 $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Service Provider';
@@ -409,7 +411,6 @@ class ServiceProviderRequestController extends Controller
                 
                 $reason = $request->reason;
 
-                // Push email to background
                 app()->terminating(function () use ($spEmail, $spName, $distName, $reason) {
                     try {
                         if ($spEmail) {
@@ -435,17 +436,522 @@ class ServiceProviderRequestController extends Controller
                             });
                         }
                     } catch (\Exception $mailException) {
-                        Log::error('Mail sending failed during partnership rejection: ' . $mailException->getMessage());
+                        Log::error('Mail sending failed: ' . $mailException->getMessage());
                     }
                 });
             } catch (\Exception $e) {
-                Log::error('Failed to register terminating mail process: ' . $e->getMessage());
+                Log::error('Mail fail: ' . $e->getMessage());
             }
 
             return response()->json(['success' => true, 'message' => 'Partnership request declined.'], 200);
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to decline request.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get Raw HTML for Termination Agreement
+     */
+    public function getTerminationRaw($id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_manage')) {
+                return response()->json(['message' => 'Access Denied.'], 403);
+            }
+
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            $req = ServiceProviderDistributor::with('serviceProvider')->where('id', $id)
+                    ->where('distributor_id', $distributorId)
+                    ->first();
+
+            if (!$req) {
+                return response()->json(['success' => false, 'message' => 'Request not found.'], 404);
+            }
+
+            $distributor = \App\Models\User::with('distributorRequirement')->find($distributorId);
+            $distName = $distributor ? ($distributor->distributorRequirement->company_name ?? $distributor->full_name) : 'Authorized Distributor';
+            $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Service Provider';
+            $dateStr = Carbon::now()->format('F j, Y');
+
+            $html = "
+                <p>This Notice of Termination officially requests the revocation of the Commercial Partnership Agreement between <strong>{$distName}</strong> (Distributor) and <strong>{$spName}</strong> (Service Provider), requested on <strong>{$dateStr}</strong>.</p>
+                <p class='mt-3'><strong>Terms of Termination:</strong></p>
+                <ul class='list-disc pl-5 mt-2 space-y-1 text-slate-700'>
+                    <li>Upon approval by the Service Provider, access to the Distributor's wholesale catalog will be revoked.</li>
+                    <li>Any pending transactions or fulfillment obligations initiated prior to this date shall be honored.</li>
+                    <li>Both parties agree to continue upholding the confidentiality of any proprietary business intelligence shared during the active partnership period.</li>
+                </ul>
+            ";
+
+            return response()->json(['success' => true, 'html' => $html], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to generate termination terms.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Initiate Partnership Termination (Sets to Pending Termination)
+     */
+    public function terminate(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_manage')) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to terminate partnerships.'], 403);
+            }
+
+            $request->validate([
+                'signature' => 'required|string'
+            ]);
+
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            $req = ServiceProviderDistributor::with('serviceProvider')->where('id', $id)
+                    ->where('distributor_id', $distributorId)
+                    ->first();
+
+            if (!$req || $req->status !== 'active') {
+                return response()->json(['success' => false, 'message' => 'Active partnership not found or unauthorized.'], 404);
+            }
+
+            // Save Termination Signature
+            $signaturePath = null;
+            if ($request->filled('signature')) {
+                $imageParts = explode(";base64,", $request->signature);
+                if (count($imageParts) == 2) {
+                    $imageTypeAux = explode("image/", $imageParts[0]);
+                    $imageType = $imageTypeAux[1] ?? 'png';
+                    $imageBase64 = base64_decode($imageParts[1]);
+                    
+                    $fileName = 'distributor_' . $distributorId . '_sp_' . $req->service_provider_id . '_' . time() . '.' . $imageType;
+                    $signaturePath = 'agreements/terminations/signatures/' . $fileName;
+                    Storage::disk('public')->put($signaturePath, $imageBase64);
+                }
+            }
+
+            $distributor = \App\Models\User::with('distributorRequirement')->find($distributorId);
+            $distName = $distributor ? ($distributor->distributorRequirement->company_name ?? $distributor->full_name) : 'Authorized Distributor';
+            $authorizedName = $user->full_name ?? 'Authorized Representative';
+            $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Unknown Service Provider';
+            $dateStr = Carbon::now()->format('F j, Y');
+
+            $distSignatureBase64Str = $request->signature ?? '';
+
+            // Generate Termination HTML Document
+            $htmlContent = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <title>Notice of Partnership Termination Request</title>
+                <style>
+                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #f97316; padding-bottom: 20px; }
+                    h1 { color: #c2410c; margin-bottom: 5px; }
+                    .date-ref { text-align: right; margin-bottom: 30px; font-weight: bold; color: #475569; }
+                    .parties { background: #fff7ed; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #fed7aa; }
+                    .terms { margin-bottom: 40px; }
+                    .terms h3 { color: #9a3412; }
+                    .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+                    .signature-box { width: 45%; }
+                    .signature-line { border-bottom: 1px solid #94a3b8; margin-bottom: 10px; height: 120px; display: flex; align-items: flex-end; justify-content: center; position: relative; }
+                    .signature-line img { max-height: 100px; max-width: 100%; margin-bottom: 5px; }
+                    .sig-label { font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #475569; }
+                    .sig-details { font-size: 14px; color: #475569; }
+                </style>
+            </head>
+            <body>
+                <div class='header'>
+                    <h1>Notice of Partnership Termination Request</h1>
+                    <p>Official Revocation Request Awaiting Approval</p>
+                </div>
+
+                <div class='date-ref'>Request Date: {$dateStr}</div>
+                
+                <div class='parties'>
+                    <p>This Notice formally requests the termination of the Commercial Partnership Agreement between:</p>
+                    <p><strong>Distributor (Initiating Party):</strong> {$distName}</p>
+                    <p><strong>Service Provider:</strong> {$spName}</p>
+                </div>
+                
+                <div class='terms'>
+                    <h3>Terms of Revocation</h3>
+                    <p><strong>1. Access Revocation:</strong> Upon final approval by the Service Provider, access to the Distributor's wholesale catalog and partner-tier pricing will be revoked.</p>
+                    <p><strong>2. Transaction Fulfillment:</strong> Any pending transactions initiated prior to this date shall be processed normally, subject to standard review.</p>
+                    <p><strong>3. Mutual Confidentiality:</strong> Both parties are reminded of their obligation to protect proprietary business data obtained during the partnership period.</p>
+                </div>
+                
+                <div class='signatures'>
+                    <div class='signature-box'>
+                        <div class='sig-label'>Requested By (Distributor)</div>
+                        <div class='signature-line'>
+                            " . ($distSignatureBase64Str ? "<img src='{$distSignatureBase64Str}' alt='Distributor Signature' />" : "") . "
+                        </div>
+                        <div class='sig-details'>
+                            <p><strong>Signed by:</strong> {$authorizedName}</p>
+                            <p><strong>Date:</strong> {$dateStr}</p>
+                        </div>
+                    </div>
+                    <div class='signature-box'>
+                        <div class='sig-label'>Awaiting Approval (Service Provider)</div>
+                        <div class='signature-line'>
+                            <span style='color: #cbd5e1; font-style: italic;'>Pending Signature</span>
+                        </div>
+                        <div class='sig-details'>
+                            <p><strong>Signed by:</strong> Pending</p>
+                            <p><strong>Date:</strong> Pending</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
+
+            $htmlPath = 'agreements/terminations/documents/termination_sp_' . $req->service_provider_id . '_' . $distributorId . '_' . time() . '.html';
+            Storage::disk('public')->put($htmlPath, $htmlContent);
+
+            DB::table('service_provider_distributors')->where('id', $req->id)->update([
+                'status' => 'pending_termination',
+                'updated_at' => Carbon::now(),
+                'termination_path' => $htmlPath,
+                'distributor_termination_signed_at' => Carbon::now(),
+                'distributor_termination_signature_path' => $signaturePath,
+                
+                // Clear any lingering SP signatures here just to prevent conflict blocks
+                'sp_termination_signed_at' => null,
+                'sp_termination_signature_path' => null,
+            ]);
+
+            // Background Emails
+            try {
+                $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
+                $attachmentPath = storage_path('app/public/' . $htmlPath);
+
+                app()->terminating(function () use ($spEmail, $spName, $distName, $attachmentPath) {
+                    try {
+                        if ($spEmail) {
+                            $spSubject = "Action Required: Partnership Termination Requested - {$distName}";
+                            $spHtml = "
+                                <div style='font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; color: #333;'>
+                                    <h2 style='color: #f97316; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;'>Partnership Termination Requested</h2>
+                                    <p>Dear <b>{$spName}</b>,</p>
+                                    <p>This email is to formally notify you that <b>{$distName}</b> has initiated a request to terminate your commercial partnership.</p>
+                                    <p>An official Termination Document has been attached for your review.</p>
+                                    <div style='background-color: #fff7ed; padding: 15px; border-left: 4px solid #f97316; margin: 20px 0;'>
+                                        <p style='margin: 0;'><b>Action Required:</b> Please log in to your Service Provider portal to review and officially approve this termination request to formally close the partnership.</p>
+                                    </div>
+                                    <br/>
+                                    <p>Regards,<br/><b>The CaviteGoPaint System</b></p>
+                                </div>
+                            ";
+                            Mail::html($spHtml, function($msg) use ($spEmail, $spSubject, $attachmentPath) {
+                                $msg->to($spEmail)->subject($spSubject)->attach($attachmentPath);
+                            });
+                        }
+                    } catch (\Exception $mailException) {
+                        Log::error('Mail sending failed: ' . $mailException->getMessage());
+                    }
+                });
+            } catch (\Exception $e) {
+                Log::error('Mail fail: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Termination Request Sent to Service Provider.'], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to initiate termination.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Distributor Approves SP-Initiated Termination Request
+     */
+    public function approveTermination(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_manage')) {
+                return response()->json(['message' => 'Access Denied: You do not have permission to approve terminations.'], 403);
+            }
+
+            $request->validate([
+                'signature' => 'required|string'
+            ]);
+
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            $req = ServiceProviderDistributor::with('serviceProvider')->where('id', $id)
+                    ->where('distributor_id', $distributorId)
+                    ->first();
+
+            // Refactored to use empty() to catch any instances of empty strings causing false negatives.
+            if (!$req || $req->status !== 'pending_termination' || empty($req->sp_termination_signed_at)) {
+                return response()->json(['success' => false, 'message' => 'Valid pending SP termination request not found.'], 404);
+            }
+
+            // Save Distributor's Termination Signature
+            $signaturePath = null;
+            if ($request->filled('signature')) {
+                $imageParts = explode(";base64,", $request->signature);
+                $imageTypeAux = explode("image/", $imageParts[0]);
+                $imageType = $imageTypeAux[1] ?? 'png';
+                $imageBase64 = base64_decode($imageParts[1]);
+                
+                $fileName = 'term_dist_' . $distributorId . '_sp_' . $req->service_provider_id . '_' . time() . '.' . $imageType;
+                $signaturePath = 'agreements/terminations/signatures/' . $fileName;
+                Storage::disk('public')->put($signaturePath, $imageBase64);
+            }
+
+            $distributor = \App\Models\User::with('distributorRequirement')->find($distributorId);
+            $distName = $distributor ? ($distributor->distributorRequirement->company_name ?? $distributor->full_name) : 'Authorized Distributor';
+            $authorizedName = $user->full_name ?? 'Authorized Representative';
+            $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Unknown Service Provider';
+            $dateStr = Carbon::now()->format('F j, Y');
+
+            // Get base64 for SP Signature
+            $spSignatureStr = '';
+            if (!empty($req->sp_termination_signature_path) && Storage::disk('public')->exists($req->sp_termination_signature_path)) {
+                $spSignatureStr = 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($req->sp_termination_signature_path));
+            }
+
+            $distSignatureStr = $request->signature;
+
+            $htmlContent = "
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <title>Notice of Partnership Termination (Final)</title>
+                <style>
+                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #ef4444; padding-bottom: 20px; }
+                    h1 { color: #b91c1c; margin-bottom: 5px; }
+                    .date-ref { text-align: right; margin-bottom: 30px; font-weight: bold; color: #475569; }
+                    .parties { background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #fca5a5; }
+                    .terms { margin-bottom: 40px; }
+                    .terms h3 { color: #7f1d1d; }
+                    .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+                    .signature-box { width: 45%; }
+                    .signature-line { border-bottom: 1px solid #94a3b8; margin-bottom: 10px; height: 120px; display: flex; align-items: flex-end; justify-content: center; position: relative; }
+                    .signature-line img { max-height: 100px; max-width: 100%; margin-bottom: 5px; }
+                    .sig-label { font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #475569; }
+                    .sig-details { font-size: 14px; color: #475569; }
+                </style>
+            </head>
+            <body>
+                <div class='header'>
+                    <h1>Notice of Partnership Termination</h1>
+                    <p>Official Revocation of Access - Fully Executed</p>
+                </div>
+
+                <div class='date-ref'>Finalized Date: {$dateStr}</div>
+                
+                <div class='parties'>
+                    <p>This Notice formally dissolves the Commercial Partnership Agreement between:</p>
+                    <p><strong>Distributor (Approving Party):</strong> {$distName}</p>
+                    <p><strong>Service Provider (Initiating Party):</strong> {$spName}</p>
+                </div>
+                
+                <div class='terms'>
+                    <h3>Terms of Revocation</h3>
+                    <p><strong>1. Access Revocation:</strong> The Service Provider's access to the Distributor's wholesale catalog and partner-tier pricing is officially revoked.</p>
+                    <p><strong>2. Transaction Fulfillment:</strong> Any pending transactions initiated prior to this date shall be processed normally, subject to standard review.</p>
+                    <p><strong>3. Mutual Confidentiality:</strong> Both parties are reminded of their obligation to protect proprietary business data obtained during the partnership period.</p>
+                </div>
+                
+                <div class='signatures'>
+                    <div class='signature-box'>
+                        <div class='sig-label'>Requested By (Service Provider)</div>
+                        <div class='signature-line'>
+                            " . ($spSignatureStr ? "<img src='{$spSignatureStr}' alt='SP Signature' />" : "<span style='color: #cbd5e1; font-style: italic;'>No Signature Uploaded</span>") . "
+                        </div>
+                        <div class='sig-details'>
+                            <p><strong>Signed by:</strong> {$spName}</p>
+                            <p><strong>Date:</strong> " . Carbon::parse($req->sp_termination_signed_at)->format('F j, Y') . "</p>
+                        </div>
+                    </div>
+                    <div class='signature-box'>
+                        <div class='sig-label'>Approved By (Distributor)</div>
+                        <div class='signature-line'>
+                            <img src='{$distSignatureStr}' alt='Distributor Signature' />
+                        </div>
+                        <div class='sig-details'>
+                            <p><strong>Signed by:</strong> {$authorizedName}</p>
+                            <p><strong>Date:</strong> {$dateStr}</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ";
+
+            $htmlPath = 'agreements/terminations/documents/termination_final_dist_' . $distributorId . '_sp_' . $req->service_provider_id . '_' . time() . '.html';
+            Storage::disk('public')->put($htmlPath, $htmlContent);
+
+            DB::table('service_provider_distributors')->where('id', $req->id)->update([
+                'status' => 'disconnected',
+                'updated_at' => Carbon::now(),
+                'termination_path' => $htmlPath,
+                'distributor_termination_signed_at' => Carbon::now(),
+                'distributor_termination_signature_path' => $signaturePath
+            ]);
+
+            // Dispatch Emails
+            try {
+                $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
+                $distEmail = $distributor ? $distributor->email : $user->email;
+                $attachmentPath = storage_path('app/public/' . $htmlPath);
+
+                app()->terminating(function () use ($spEmail, $distEmail, $spName, $distName, $attachmentPath) {
+                    try {
+                        if ($distEmail) {
+                            $distSubject = "Partnership Terminated Successfully - {$spName}";
+                            $distHtml = "
+                                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
+                                    <h2 style='color: #ef4444;'>Termination Approved</h2>
+                                    <p>You have formally approved the termination request from <b>{$spName}</b>. The partnership is now disconnected.</p>
+                                    <p>A copy of the fully signed termination document is attached.</p>
+                                </div>";
+                            Mail::html($distHtml, function($msg) use ($distEmail, $distSubject, $attachmentPath) {
+                                $msg->to($distEmail)->subject($distSubject)->attach($attachmentPath);
+                            });
+                        }
+                        if ($spEmail) {
+                            $spSubject = "Partnership Formally Terminated - {$distName}";
+                            $spHtml = "
+                                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
+                                    <h2 style='color: #ef4444;'>Partnership Terminated</h2>
+                                    <p><b>{$distName}</b> has officially approved your termination request. Your wholesale access has been revoked.</p>
+                                    <p>A copy of the finalized document is attached for your records.</p>
+                                </div>";
+                            Mail::html($spHtml, function($msg) use ($spEmail, $spSubject, $attachmentPath) {
+                                $msg->to($spEmail)->subject($spSubject)->attach($attachmentPath);
+                            });
+                        }
+                    } catch (\Exception $mailException) {
+                        Log::error('Termination Mail Error: ' . $mailException->getMessage());
+                    }
+                });
+            } catch (\Exception $e) {
+                Log::error('Mail hook failed: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Termination successfully approved.'], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to approve termination.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Distributor Declines SP-Initiated Termination Request
+     */
+    public function declineTermination(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_manage')) {
+                return response()->json(['message' => 'Access Denied.'], 403);
+            }
+
+            $distributorId = null;
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                $distributorId = $opDist ? $opDist->parent_distributor_id : null;
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                $distributorId = $employee ? $employee->parent_distributor_id : null;
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            $req = ServiceProviderDistributor::with('serviceProvider')->where('id', $id)
+                    ->where('distributor_id', $distributorId)
+                    ->first();
+
+            if (!$req || $req->status !== 'pending_termination') {
+                return response()->json(['success' => false, 'message' => 'Valid pending termination not found.'], 404);
+            }
+
+            DB::table('service_provider_distributors')->where('id', $req->id)->update([
+                'status' => 'active',
+                'updated_at' => Carbon::now(),
+                'termination_path' => null,
+                'distributor_termination_signed_at' => null,
+                'distributor_termination_signature_path' => null,
+                'sp_termination_signed_at' => null,
+                'sp_termination_signature_path' => null,
+            ]);
+
+            // Dispatch Emails
+            try {
+                $distributor = \App\Models\User::with('distributorRequirement')->find($distributorId);
+                $distEmail = $distributor ? $distributor->email : $user->email;
+                $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
+                $spName = $req->serviceProvider ? $req->serviceProvider->full_name : 'Service Provider';
+                $distName = $distributor ? ($distributor->distributorRequirement->company_name ?? $distributor->full_name) : 'Authorized Distributor';
+
+                app()->terminating(function () use ($spEmail, $distEmail, $spName, $distName) {
+                    try {
+                        if ($spEmail) {
+                            $spSubject = "Notice: Termination Request Declined - {$distName}";
+                            $spHtml = "
+                                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
+                                    <h2 style='color: #f59e0b;'>Termination Declined</h2>
+                                    <p>Please be advised that <b>{$distName}</b> has <b>declined</b> your request to terminate the partnership.</p>
+                                    <p>The status of the commercial relationship remains <b>Active</b>.</p>
+                                </div>";
+                            Mail::html($spHtml, function($msg) use ($spEmail, $spSubject) {
+                                $msg->to($spEmail)->subject($spSubject);
+                            });
+                        }
+                    } catch (\Exception $mailException) {
+                        Log::error('Termination Decline Mail Error: ' . $mailException->getMessage());
+                    }
+                });
+            } catch (\Exception $e) {
+                Log::error('Mail hook failed: ' . $e->getMessage());
+            }
+
+            return response()->json(['success' => true, 'message' => 'Termination successfully declined. Partnership remains active.'], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to decline termination.', 'error' => $e->getMessage()], 500);
         }
     }
 }

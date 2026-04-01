@@ -1,11 +1,6 @@
 <template>
   <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen text-slate-200 relative">
-    <Teleport to="body">
-      <Toaster richColors position="top-right"
-      :expand="false"
-      :close-button="true"
-      :visible-toasts="1"/>
-    </Teleport>
+    
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
@@ -91,6 +86,13 @@
             >
               Active Partners ({{ activeCount }})
             </button>
+            <button 
+              @click="currentTab = 'disconnected'" 
+              :class="currentTab === 'disconnected' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'" 
+              class="flex-1 sm:flex-none px-5 py-2 rounded-lg text-sm font-medium transition-all"
+            >
+              Revoked / Terminating ({{ disconnectedCount }})
+            </button>
           </div>
           
           <div class="relative w-full sm:w-72">
@@ -114,7 +116,7 @@
           <div class="bg-slate-800 p-4 rounded-full mb-4">
             <Briefcase class="w-8 h-8 text-slate-400" />
           </div>
-          <h3 class="text-lg font-semibold text-white">No {{ currentTab === 'pending' ? 'Pending Requests' : 'Active Partners' }}</h3>
+          <h3 class="text-lg font-semibold text-white">No {{ currentTab === 'pending' ? 'Pending Requests' : currentTab === 'active' ? 'Active Partners' : 'Records Found' }}</h3>
           <p class="text-slate-400 text-sm max-w-sm mt-1">
             There are currently no records matching your criteria in this tab.
           </p>
@@ -165,6 +167,12 @@
                   <Badge v-else-if="req.status === 'active'" variant="secondary" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     Active
                   </Badge>
+                  <Badge v-else-if="req.status === 'pending_termination'" variant="secondary" class="bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    Terminating
+                  </Badge>
+                  <Badge v-else-if="req.status === 'disconnected'" variant="secondary" class="bg-red-500/10 text-red-400 border border-red-500/20">
+                    Revoked
+                  </Badge>
                 </TableCell>
 
                 <TableCell class="text-right">
@@ -178,16 +186,68 @@
                     <Eye class="h-4 w-4" />
                     Review
                   </Button>
-                  <Button 
-                    v-else-if="req.status === 'active'"
-                    variant="outline" 
-                    size="sm"
-                    class="h-8 gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300"
-                    @click="openAgreementDialog(req)"
-                  >
-                    <FileText class="h-4 w-4" />
-                    View Agreement
-                  </Button>
+                  
+                  <div v-else-if="req.status === 'active'" class="flex items-center justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      class="h-8 gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300"
+                      @click="openAgreementDialog(req)"
+                    >
+                      <FileText class="h-4 w-4" />
+                      Agreement
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      class="h-8 gap-2 bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                      @click="requirePermission('manage', () => initiateRevoke(req))"
+                    >
+                      <Link2Off class="h-4 w-4" />
+                      Revoke
+                    </Button>
+                  </div>
+
+                  <div v-else-if="req.status === 'pending_termination'" class="flex items-center justify-end gap-2">
+                    <template v-if="req.sp_termination_signed_at && !req.distributor_termination_signed_at">
+                      <span class="text-xs text-red-400 mr-2 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md">SP Requested Termination</span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        class="h-8 gap-2 bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                        @click="requirePermission('manage', () => openTerminationReviewDialog(req))"
+                      >
+                        <FileWarning class="h-4 w-4" />
+                        Review SP Request
+                      </Button>
+                    </template>
+                    <template v-else-if="req.distributor_termination_signed_at && !req.sp_termination_signed_at">
+                      <span class="text-xs text-orange-400 mr-2 bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md">Awaiting SP Approval</span>
+                      <Button 
+                        v-if="req.termination_url"
+                        variant="outline" 
+                        size="sm"
+                        class="h-8 gap-2 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+                        @click="viewTerminationDocument(req)"
+                      >
+                        <Eye class="h-4 w-4" />
+                        View Doc
+                      </Button>
+                    </template>
+                  </div>
+
+                  <div v-else-if="req.status === 'disconnected'" class="flex items-center justify-end gap-2">
+                    <Button 
+                      v-if="req.termination_url"
+                      variant="outline" 
+                      size="sm"
+                      class="h-8 gap-2 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+                      @click="viewTerminationDocument(req)"
+                    >
+                      <FileWarning class="h-4 w-4" />
+                      Termination Doc
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -331,6 +391,202 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog :open="showRevokeDialog" @update:open="closeRevokeDialog">
+      <DialogContent class="sm:max-w-[700px] w-[95vw] bg-slate-900 border-slate-800 text-slate-200 flex flex-col max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader class="px-5 py-4 border-b border-slate-800 shrink-0 bg-slate-900 z-10">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-red-500/20 border border-red-500/30 rounded-lg shrink-0">
+              <Link2Off class="h-5 w-5 text-red-400" />
+            </div>
+            <div>
+              <DialogTitle class="text-white text-left">Initiate Partnership Termination</DialogTitle>
+              <DialogDescription class="text-slate-400 text-left mt-1">
+                You are about to initiate the termination of the commercial partnership with <strong class="text-white">{{ selectedRequest?.provider_name }}</strong>.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div class="overflow-y-auto custom-scrollbar p-5 flex-1" v-if="selectedRequest">
+          <div class="grid gap-6">
+            <div class="space-y-3">
+              <label class="block text-sm font-medium text-slate-200">Official Termination Terms</label>
+              <div class="h-[250px] border border-slate-700 rounded-xl overflow-y-auto bg-white p-6 custom-scrollbar text-slate-800 text-sm shadow-inner" v-html="terminationHtml">
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="block text-sm font-medium text-slate-200 flex justify-between">
+                <span>Authorized Digital Signature <span class="text-red-400">*</span></span>
+                <button @click="clearSignature" class="text-xs text-indigo-400 hover:text-indigo-300">Clear Pad</button>
+              </label>
+              <div class="bg-white rounded-xl border border-slate-700 overflow-hidden relative shadow-inner">
+                <canvas 
+                  ref="signaturePad" 
+                  width="600" 
+                  height="150" 
+                  class="w-full h-[150px] touch-none cursor-crosshair"
+                  @mousedown="startDrawing" 
+                  @mousemove="draw" 
+                  @mouseup="stopDrawing" 
+                  @mouseleave="stopDrawing" 
+                  @touchstart.prevent="startDrawingTouch" 
+                  @touchmove.prevent="drawTouch" 
+                  @touchend.prevent="stopDrawing"
+                ></canvas>
+                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 font-medium tracking-wide">
+                  Sign here to officially request termination
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="flex items-start gap-3 mt-2 cursor-pointer group">
+                <div class="relative flex items-center justify-center mt-0.5 shrink-0">
+                  <input 
+                    type="checkbox" 
+                    v-model="agreedToTerms"
+                    class="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md bg-slate-900 checked:bg-red-500 checked:border-red-500 transition-colors cursor-pointer"
+                  />
+                  <svg class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span class="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed">
+                  I understand that by signing, I am formally requesting to terminate the partnership. A notification will be sent to the provider to review and approve this request.
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="px-5 py-4 border-t border-slate-800 flex flex-col-reverse sm:flex-row gap-2 sm:justify-between items-center bg-slate-900 shrink-0">
+           <Button variant="ghost" class="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-slate-800" @click="closeRevokeDialog" :disabled="isProcessing">
+             Cancel
+           </Button>
+           <Button 
+             class="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+             @click="confirmRevoke"
+             :disabled="!agreedToTerms || !hasSignature || isProcessing"
+           >
+             <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
+             <span v-if="isProcessing">Sending Request...</span>
+             <span v-else><FileWarning class="mr-2 h-4 w-4" /> Send Termination Request</span>
+           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showTerminationReviewDialog" @update:open="closeTerminationReviewDialog">
+      <DialogContent class="sm:max-w-[700px] w-[95vw] bg-slate-900 border-slate-800 text-slate-200 flex flex-col max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader class="px-5 py-4 border-b border-slate-800 shrink-0 bg-slate-900 z-10">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-red-500/20 border border-red-500/30 rounded-lg shrink-0">
+              <FileWarning class="h-5 w-5 text-red-400" />
+            </div>
+            <div>
+              <DialogTitle class="text-white text-left">Review Termination Request</DialogTitle>
+              <DialogDescription class="text-slate-400 text-left mt-1">
+                The service provider <strong class="text-white">{{ selectedTerminationRequest?.provider_name }}</strong> has requested to terminate the partnership.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div class="overflow-y-auto custom-scrollbar p-5 flex-1" v-if="selectedTerminationRequest">
+          <div class="grid gap-6">
+            
+            <div class="space-y-3">
+              <label class="block text-sm font-medium text-slate-200 flex justify-between">
+                <span>Termination Request Document</span>
+                <span class="text-xs font-normal text-red-400 flex items-center"><FileCheck class="w-3 h-3 mr-1" /> Signed by SP</span>
+              </label>
+              <div class="h-[250px] border border-slate-700 rounded-xl overflow-hidden bg-white shadow-inner">
+                <iframe 
+                  v-if="selectedTerminationRequest?.termination_url" 
+                  :src="selectedTerminationRequest.termination_url" 
+                  class="w-full h-full border-0"
+                ></iframe>
+                <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
+                  <FileX class="w-8 h-8 mb-2 opacity-50" />
+                  Document not available.
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="block text-sm font-medium text-slate-200 flex justify-between">
+                <span>Your Signature <span class="text-red-400">*</span></span>
+                <button @click="clearTermSignature" class="text-xs text-indigo-400 hover:text-indigo-300">Clear Pad</button>
+              </label>
+              <div class="bg-white rounded-xl border border-slate-700 overflow-hidden relative shadow-inner">
+                <canvas 
+                  ref="termSignaturePad" 
+                  width="600" 
+                  height="150" 
+                  class="w-full h-[150px] touch-none cursor-crosshair"
+                  @mousedown="startTermDrawing" 
+                  @mousemove="drawTerm" 
+                  @mouseup="stopTermDrawing" 
+                  @mouseleave="stopTermDrawing" 
+                  @touchstart.prevent="startTermDrawingTouch" 
+                  @touchmove.prevent="drawTermTouch" 
+                  @touchend.prevent="stopTermDrawing"
+                ></canvas>
+                <div v-if="!hasTermSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-300 font-medium tracking-wide">
+                  Sign here to approve termination
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-800">
+              <label class="flex items-start gap-3 mt-2 cursor-pointer group">
+                <div class="relative flex items-center justify-center mt-0.5 shrink-0">
+                  <input 
+                    type="checkbox" 
+                    v-model="agreedToTermination"
+                    class="peer appearance-none w-5 h-5 border-2 border-slate-600 rounded-md bg-slate-900 checked:bg-red-500 checked:border-red-500 transition-colors cursor-pointer"
+                  />
+                  <svg class="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span class="text-sm text-slate-300 group-hover:text-slate-200 transition-colors leading-relaxed">
+                  I understand that by signing, I am officially approving this termination request. The partnership will be permanently disconnected.
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="px-5 py-4 border-t border-slate-800 flex flex-col-reverse sm:flex-row gap-2 sm:justify-between items-center bg-slate-900 shrink-0">
+           <Button variant="ghost" class="w-full sm:w-auto text-slate-400 hover:text-white hover:bg-slate-800" @click="closeTerminationReviewDialog" :disabled="isProcessing">
+             Cancel
+           </Button>
+           <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                class="w-full sm:w-auto border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+                @click="submitDeclineTermination"
+                :disabled="isProcessing"
+              >
+                <X class="mr-2 h-4 w-4" />
+                Decline Request
+              </Button>
+              <Button 
+                class="w-full sm:w-auto bg-red-600 hover:bg-red-500 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+                @click="submitApproveTermination"
+                :disabled="!agreedToTermination || !hasTermSignature || isProcessing"
+              >
+                <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
+                <span v-if="isProcessing">Processing...</span>
+                <span v-else><Check class="mr-2 h-4 w-4" /> Approve Termination</span>
+              </Button>
+           </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <AlertDialog :open="showApproveDialog" @update:open="showApproveDialog = $event">
       <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] sm:max-w-md rounded-xl">
         <AlertDialogHeader>
@@ -411,7 +667,7 @@
               <FileText class="h-5 w-5 text-indigo-400" />
             </div>
             <div>
-              <DialogTitle class="text-white text-left">Official Partnership Agreement</DialogTitle>
+              <DialogTitle class="text-white text-left">{{ isViewingTermination ? 'Official Termination Document' : 'Official Partnership Agreement' }}</DialogTitle>
               <DialogDescription class="text-slate-400 text-left mt-1">
                 Signed document containing terms, conditions, and authorized signatures.
               </DialogDescription>
@@ -420,12 +676,16 @@
         </DialogHeader>
 
         <div class="flex-1 bg-slate-950 p-4 sm:p-6 overflow-hidden">
-          <div class="w-full h-full bg-white rounded-lg overflow-hidden border border-slate-700 shadow-inner">
+          <div class="w-full h-full bg-white rounded-lg overflow-hidden border border-slate-700 shadow-inner relative">
+             <div v-if="docLoading" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+                <Loader2 class="w-8 h-8 animate-spin text-indigo-500" />
+             </div>
             <iframe 
-              v-if="selectedAgreement?.agreement_url" 
-              :src="selectedAgreement.agreement_url" 
+              v-if="documentUrlToView" 
+              :src="documentUrlToView" 
               class="w-full h-full border-0"
-              title="Finalized Agreement"
+              @load="docLoading = false"
+              title="Finalized Document"
             ></iframe>
             <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
               <FileX class="w-8 h-8 mb-2 opacity-50" />
@@ -440,8 +700,8 @@
           </Button>
           <Button 
             class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white border-0"
-            @click="downloadAgreement(selectedAgreement?.agreement_url)"
-            :disabled="!selectedAgreement?.agreement_url"
+            @click="downloadAgreement(documentUrlToView)"
+            :disabled="!documentUrlToView"
           >
             <Download class="mr-2 h-4 w-4" />
             Download Document
@@ -461,7 +721,7 @@ import {
   Loader2, RefreshCw, Search, Eye, Check, X,
   Inbox, Users, CalendarRange, CheckCircle2,
   Calendar, Briefcase, UserCheck, FileText, Download,
-  FileCheck, FileX, ShieldAlert
+  FileCheck, FileX, ShieldAlert, Link2Off, FileWarning
 } from 'lucide-vue-next'
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -487,18 +747,31 @@ const showViewDialog = ref(false)
 const showApproveDialog = ref(false)
 const showRejectDialog = ref(false)
 const showAgreementDialog = ref(false) 
+const showRevokeDialog = ref(false)
+const showTerminationReviewDialog = ref(false)
 
 // Selection & Forms
 const selectedRequest = ref(null)
-const selectedAgreement = ref(null) 
+const selectedTerminationRequest = ref(null)
 const rejectReason = ref('')
+const terminationHtml = ref('')
+const isViewingTermination = ref(false)
+const documentUrlToView = ref('')
+const docLoading = ref(true)
+const agreedToTermination = ref(false)
 
-// Signature Pad State
+// Signature Pad State (Main)
 const signaturePad = ref(null)
 const isDrawing = ref(false)
 const ctx = ref(null)
 const hasSignature = ref(false)
 const finalSignatureBase64 = ref('') 
+
+// Signature Pad State (Termination Review)
+const termSignaturePad = ref(null)
+const isTermDrawing = ref(false)
+const termCtx = ref(null)
+const hasTermSignature = ref(false)
 
 // User Permissions setup via RBAC
 const permissions = ref({
@@ -523,7 +796,17 @@ const requirePermission = (action, callback) => {
 }
 
 const filteredRequests = computed(() => {
-  let list = requests.value.filter(req => req.status === currentTab.value)
+  let list = []
+  
+  if (currentTab.value === 'pending') {
+    list = requests.value.filter(req => req.status === 'pending')
+  } else if (currentTab.value === 'active') {
+    list = requests.value.filter(req => req.status === 'active')
+  } else if (currentTab.value === 'disconnected') {
+    // Show both fully disconnected and pending termination requests in this tab
+    list = requests.value.filter(req => req.status === 'disconnected' || req.status === 'pending_termination')
+  }
+  
   if (!searchQuery.value) return list
   
   const query = searchQuery.value.toLowerCase()
@@ -536,15 +819,18 @@ const filteredRequests = computed(() => {
 
 const pendingCount = computed(() => requests.value.filter(r => r.status === 'pending').length)
 const activeCount = computed(() => requests.value.filter(r => r.status === 'active').length)
+const disconnectedCount = computed(() => requests.value.filter(r => r.status === 'disconnected' || r.status === 'pending_termination').length)
+
 const newThisWeekCount = computed(() => {
   const oneWeekAgo = new Date()
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
   return requests.value.filter(r => new Date(r.date_requested) >= oneWeekAgo).length
 })
+
 const approvalRate = computed(() => {
-  const totalResolved = requests.value.filter(r => r.status === 'active' || r.status === 'rejected').length
+  const totalResolved = requests.value.filter(r => r.status === 'active' || r.status === 'rejected' || r.status === 'disconnected' || r.status === 'pending_termination').length
   if (totalResolved === 0) return '0%'
-  const approved = requests.value.filter(r => r.status === 'active').length
+  const approved = requests.value.filter(r => r.status === 'active' || r.status === 'disconnected' || r.status === 'pending_termination').length
   return Math.round((approved / totalResolved) * 100) + '%'
 })
 
@@ -597,7 +883,16 @@ const closeViewDialog = () => {
 }
 
 const openAgreementDialog = (req) => {
-  selectedAgreement.value = req
+  isViewingTermination.value = false
+  documentUrlToView.value = req.agreement_url
+  docLoading.value = true
+  showAgreementDialog.value = true
+}
+
+const viewTerminationDocument = (req) => {
+  isViewingTermination.value = true
+  documentUrlToView.value = req.termination_url
+  docLoading.value = true
   showAgreementDialog.value = true
 }
 
@@ -605,7 +900,7 @@ const downloadAgreement = (url) => {
   if (!url) return
   const link = document.createElement('a')
   link.href = url
-  link.download = 'Official_Partnership_Agreement.html'
+  link.download = isViewingTermination.value ? 'Official_Termination_Document.html' : 'Official_Partnership_Agreement.html'
   link.target = '_blank'
   document.body.appendChild(link)
   link.click()
@@ -617,6 +912,134 @@ const closeRejectDialog = () => {
   rejectReason.value = ''
 }
 
+// --- Initiating Revoke / Terminate (Distributor -> SP) ---
+const initiateRevoke = async (req) => {
+  selectedRequest.value = req
+  agreedToTerms.value = false
+  hasSignature.value = false
+  finalSignatureBase64.value = ''
+  terminationHtml.value = '<div class="flex items-center justify-center p-8"><span class="text-slate-500">Loading terms...</span></div>'
+  showRevokeDialog.value = true
+  
+  try {
+    const res = await api.get(`/operation-distributor/service-provider-requests/${req.id}/termination-raw`)
+    if(res.data.success) {
+      terminationHtml.value = res.data.html
+    }
+  } catch (error) {
+    terminationHtml.value = '<div class="text-red-400 p-4">Failed to load termination terms. Please try again.</div>'
+  }
+
+  nextTick(() => {
+    initSignaturePad()
+  })
+}
+
+const closeRevokeDialog = () => {
+  showRevokeDialog.value = false
+  agreedToTerms.value = false
+  hasSignature.value = false
+  finalSignatureBase64.value = ''
+  terminationHtml.value = ''
+}
+
+const confirmRevoke = async () => {
+  if (!agreedToTerms.value || !hasSignature.value || !selectedRequest.value) return
+  isProcessing.value = true
+  
+  finalSignatureBase64.value = signaturePad.value ? signaturePad.value.toDataURL('image/png') : ''
+
+  try {
+    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/terminate`, {
+      signature: finalSignatureBase64.value
+    })
+    
+    if (response.data.success) {
+      toast.success('Termination Initiated', {
+        description: 'The termination request has been sent to the provider for approval.',
+      })
+      
+      closeRevokeDialog()
+      currentTab.value = 'disconnected'
+      fetchData()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Termination request failed', { description: error.response?.data?.message || 'An error occurred while revoking.' })
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+// --- Review SP Termination Request (SP -> Distributor) ---
+const openTerminationReviewDialog = (req) => {
+  selectedTerminationRequest.value = req
+  agreedToTermination.value = false
+  hasTermSignature.value = false
+  showTerminationReviewDialog.value = true
+  
+  nextTick(() => {
+    initTermSignaturePad()
+  })
+}
+
+const closeTerminationReviewDialog = () => {
+  showTerminationReviewDialog.value = false
+  agreedToTermination.value = false
+  hasTermSignature.value = false
+  selectedTerminationRequest.value = null
+}
+
+const submitApproveTermination = async () => {
+  if (!agreedToTermination.value || !hasTermSignature.value || !selectedTerminationRequest.value) return
+  isProcessing.value = true
+  
+  const signature = termSignaturePad.value ? termSignaturePad.value.toDataURL('image/png') : ''
+
+  try {
+    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedTerminationRequest.value.id}/approve-termination`, {
+      signature: signature
+    })
+    
+    if (response.data.success) {
+      toast.success('Termination Approved', {
+        description: 'The partnership has been officially terminated and access revoked.',
+      })
+      closeTerminationReviewDialog()
+      fetchData()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Approval failed', { description: error.response?.data?.message || 'An error occurred.' })
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const submitDeclineTermination = async () => {
+  if (!selectedTerminationRequest.value) return
+  isProcessing.value = true
+
+  try {
+    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedTerminationRequest.value.id}/decline-termination`)
+    
+    if (response.data.success) {
+      toast.success('Termination Declined', {
+        description: 'The partnership status has been restored to Active.',
+      })
+      closeTerminationReviewDialog()
+      fetchData()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Decline failed', { description: error.response?.data?.message || 'An error occurred.' })
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+
+// --- Main Signature Pad ---
 const initSignaturePad = () => {
   if (!signaturePad.value) return
   ctx.value = signaturePad.value.getContext('2d')
@@ -682,6 +1105,69 @@ const clearSignature = () => {
   ctx.value.beginPath()
 }
 
+// --- Term Review Signature Pad ---
+const initTermSignaturePad = () => {
+  if (!termSignaturePad.value) return
+  termCtx.value = termSignaturePad.value.getContext('2d')
+  termCtx.value.lineWidth = 2.5
+  termCtx.value.lineCap = 'round'
+  termCtx.value.strokeStyle = '#000000'
+  clearTermSignature()
+}
+
+const startTermDrawing = (e) => {
+  isTermDrawing.value = true
+  hasTermSignature.value = true
+  drawTerm(e)
+}
+
+const drawTerm = (e) => {
+  if (!isTermDrawing.value || !termCtx.value) return
+  const rect = termSignaturePad.value.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  termCtx.value.lineTo(x, y)
+  termCtx.value.stroke()
+  termCtx.value.beginPath()
+  termCtx.value.moveTo(x, y)
+}
+
+const stopTermDrawing = () => {
+  isTermDrawing.value = false
+  if (termCtx.value) termCtx.value.beginPath()
+}
+
+const startTermDrawingTouch = (e) => {
+  const touch = e.touches[0]
+  const rect = termSignaturePad.value.getBoundingClientRect()
+  const x = touch.clientX - rect.left
+  const y = touch.clientY - rect.top
+  
+  isTermDrawing.value = true
+  hasTermSignature.value = true
+  termCtx.value.beginPath()
+  termCtx.value.moveTo(x, y)
+}
+
+const drawTermTouch = (e) => {
+  if (!isTermDrawing.value || !termCtx.value) return
+  const touch = e.touches[0]
+  const rect = termSignaturePad.value.getBoundingClientRect()
+  const x = touch.clientX - rect.left
+  const y = touch.clientY - rect.top
+  termCtx.value.lineTo(x, y)
+  termCtx.value.stroke()
+  termCtx.value.beginPath()
+  termCtx.value.moveTo(x, y)
+}
+
+const clearTermSignature = () => {
+  if (!termCtx.value || !termSignaturePad.value) return
+  termCtx.value.clearRect(0, 0, termSignaturePad.value.width, termSignaturePad.value.height)
+  hasTermSignature.value = false
+  termCtx.value.beginPath()
+}
+
 const initiateApprove = () => {
   if (!agreedToTerms.value || !hasSignature.value) return
   
@@ -701,11 +1187,6 @@ const confirmApprove = async () => {
     })
     
     if (response.data.success) {
-      const index = requests.value.findIndex(r => r.id === selectedRequest.value.id)
-      if (index !== -1) {
-        requests.value[index].status = 'active'
-      }
-      
       showApproveDialog.value = false
       agreedToTerms.value = false
       hasSignature.value = false
@@ -747,9 +1228,6 @@ const submitReject = async () => {
     })
     
     if (response.data.success) {
-      const index = requests.value.findIndex(r => r.id === selectedRequest.value.id)
-      if (index !== -1) requests.value[index].status = 'rejected'
-      
       showRejectDialog.value = false
       agreedToTerms.value = false
       selectedRequest.value = null
@@ -757,6 +1235,8 @@ const submitReject = async () => {
       toast.error('Proposal Declined', {
         description: 'The provider has been notified via email of your decision.',
       })
+      
+      fetchData()
     }
   } catch (error) {
     console.error(error)

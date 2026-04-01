@@ -274,6 +274,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/distributors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'index']);
         Route::post('/distributors/request', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestPartnership']);
+
+        Route::post('/distributors/{id}/approve-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'approveTermination']);
+        Route::post('/distributors/{id}/decline-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'declineTermination']);
+
+        Route::post('/distributors/{id}/request-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestTermination']);
+        Route::post('/distributors/{id}/request-reactivation', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestReactivation']);
     });
 
     // Distributor Requirements - Business Verification
@@ -697,6 +703,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'reject']);
+
+            Route::get('/{id}/termination-raw', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'getTerminationRaw']);
+            Route::post('/{id}/terminate', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'terminate']);
+           
+
+            Route::post('/{id}/approve-termination', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approveTermination']);
+            Route::post('/{id}/decline-termination', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'declineTermination']);
         });
 
         Route::get('/arrived-items', [\App\Http\Controllers\Api\OperationDistributor\ArrivedItemController::class, 'index']);
