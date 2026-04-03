@@ -159,7 +159,12 @@
                   {{ review.clientInitials }}
                 </div>
                 <div class="min-w-0">
-                  <div class="text-white font-bold truncate">{{ review.client }}</div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <div class="text-white font-bold truncate">{{ review.client }}</div>
+                    <Badge variant="outline" class="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4 border-gray-600 text-gray-400" :class="review.reviewerType === 'Service Provider' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'">
+                      {{ review.reviewerType }}
+                    </Badge>
+                  </div>
                   <div class="text-xs text-gray-500 font-medium truncate mt-0.5">Order: {{ review.orderId }}</div>
                 </div>
               </div>
@@ -247,6 +252,9 @@
             <div class="flex items-center text-amber-400 mb-2.5">
               <Star v-for="i in 5" :key="i" class="w-3.5 h-3.5 drop-shadow-sm" :class="i <= (respondingToReview?.rating || 0) ? 'fill-current' : 'text-gray-600'" />
               <span class="ml-2.5 text-xs font-bold text-gray-400 uppercase tracking-widest">{{ respondingToReview?.client }}</span>
+              <Badge variant="outline" class="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4 border-gray-600 text-gray-400 ml-2" :class="respondingToReview?.reviewerType === 'Service Provider' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'">
+                {{ respondingToReview?.reviewerType }}
+              </Badge>
             </div>
             <p class="text-sm text-gray-300 italic break-words font-medium">"{{ respondingToReview?.comment }}"</p>
           </div>
@@ -278,7 +286,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/utils/axios'
-import { Toaster, toast } from 'vue-sonner' // Added Toaster import
+import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

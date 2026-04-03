@@ -104,17 +104,42 @@ class ReviewManagementController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $formattedReviews = $reviews->map(function ($review) {
+        // Manually fetch SPs and SP Orders to prevent relationship missing errors
+        $spIds = $reviews->pluck('service_provider_id')->filter()->unique();
+        $spUsers = \App\Models\User::whereIn('id', $spIds)->get()->keyBy('id');
+
+        $spOrderIds = $reviews->pluck('sp_order_id')->filter()->unique();
+        $spOrders = \App\Models\ServiceProvider\SpOrder::whereIn('id', $spOrderIds)->get()->keyBy('id');
+
+        $formattedReviews = $reviews->map(function ($review) use ($spUsers, $spOrders) {
             $clientName = 'Customer';
-            if ($review->client) {
+            $reviewerType = 'Customer';
+            $orderNumber = 'Unknown';
+
+            // Check if it belongs to a Service Provider
+            if ($review->service_provider_id && isset($spUsers[$review->service_provider_id])) {
+                $sp = $spUsers[$review->service_provider_id];
+                $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
+                if (empty($clientName)) $clientName = $sp->name ?? 'Service Provider';
+                
+                $reviewerType = 'Service Provider';
+                
+                if ($review->sp_order_id && isset($spOrders[$review->sp_order_id])) {
+                    $orderNumber = $spOrders[$review->sp_order_id]->order_number;
+                }
+            } 
+            // Otherwise, it belongs to a normal Client
+            elseif ($review->client) {
                 $clientName = trim(($review->client->first_name ?? '') . ' ' . ($review->client->last_name ?? ''));
                 if (empty($clientName)) $clientName = $review->client->name ?? 'Customer';
+                $orderNumber = $review->order->order_number ?? 'Unknown';
             }
 
             return [
                 'id' => $review->id,
                 'client' => $clientName,
                 'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                'reviewerType' => $reviewerType, // Added Reviewer Type
                 'product' => $review->product->name ?? 'Unknown Product',
                 'rating' => (int) $review->rating,
                 'date' => Carbon::parse($review->created_at)->format('Y-m-d'),
@@ -122,7 +147,7 @@ class ReviewManagementController extends Controller
                 'status' => $review->status ?? 'pending',
                 'response' => $review->response,
                 'responseDate' => $review->response_date,
-                'orderId' => $review->order->order_number ?? 'Unknown'
+                'orderId' => $orderNumber
             ];
         });
 

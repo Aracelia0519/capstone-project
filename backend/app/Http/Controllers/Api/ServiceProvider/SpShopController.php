@@ -45,10 +45,15 @@ class SpShopController extends Controller
         
         $promotions = $promoQuery->get();
 
-        $publishedReviews = ProductReview::with('client')
+        // FIXED: Manually pull Service Providers to accurately identify SP Reviews
+        $allPublishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
-            ->get()
-            ->groupBy('product_id');
+            ->get();
+            
+        $spIdsAll = $allPublishedReviews->pluck('service_provider_id')->filter()->unique();
+        $spUsersAll = \App\Models\User::whereIn('id', $spIdsAll)->get()->keyBy('id');
+
+        $publishedReviews = $allPublishedReviews->groupBy('product_id');
 
         $paymentSettings = collect();
         if (Schema::hasTable('distributor_payment_settings')) {
@@ -111,16 +116,26 @@ class SpShopController extends Controller
             $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
             $reviewCount = $productReviews->count();
             
-            $formattedReviews = $productReviews->map(function($rev) {
+            // FIXED: Identify if the reviewer is a Client or Service Provider
+            $formattedReviews = $productReviews->map(function($rev) use ($spUsersAll) {
                 $clientName = 'Customer';
-                if ($rev->client) {
+                $reviewerType = 'Customer';
+
+                if ($rev->service_provider_id && isset($spUsersAll[$rev->service_provider_id])) {
+                    $sp = $spUsersAll[$rev->service_provider_id];
+                    $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
+                    if (empty($clientName)) $clientName = $sp->name ?? 'Service Provider';
+                    $reviewerType = 'Service Provider';
+                } elseif ($rev->client) {
                     $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
                     if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
                 }
+
                 return [
                     'id' => $rev->id,
                     'client' => $clientName,
                     'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                    'reviewerType' => $reviewerType, // Added reviewerType
                     'rating' => (int)$rev->rating,
                     'comment' => $rev->comment,
                     'response' => $rev->response,
@@ -222,24 +237,37 @@ class SpShopController extends Controller
             }
         }
 
+        // FIXED: Identifies whether Review is from a Client or Service Provider
         $productReviews = ProductReview::with('client')
             ->where('product_id', $productId)
             ->where('status', 'published')
             ->get();
+
+        $spIds = $productReviews->pluck('service_provider_id')->filter()->unique();
+        $spUsers = \App\Models\User::whereIn('id', $spIds)->get()->keyBy('id');
             
         $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
         $reviewCount = $productReviews->count();
             
-        $formattedReviews = $productReviews->map(function($rev) {
+        $formattedReviews = $productReviews->map(function($rev) use ($spUsers) {
             $clientName = 'Customer';
-            if ($rev->client) {
+            $reviewerType = 'Customer';
+
+            if ($rev->service_provider_id && isset($spUsers[$rev->service_provider_id])) {
+                $sp = $spUsers[$rev->service_provider_id];
+                $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
+                if (empty($clientName)) $clientName = $sp->name ?? 'Service Provider';
+                $reviewerType = 'Service Provider';
+            } elseif ($rev->client) {
                 $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
                 if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
             }
+
             return [
                 'id' => $rev->id,
                 'client' => $clientName,
                 'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                'reviewerType' => $reviewerType, // Added reviewerType
                 'rating' => (int)$rev->rating,
                 'comment' => $rev->comment,
                 'response' => $rev->response,

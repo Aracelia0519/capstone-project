@@ -221,6 +221,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/returns/{id}/tracking', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'submitReturnTracking']);
         });
 
+        Route::prefix('inventory')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SpInventoryController::class, 'index']);
+            Route::post('/add', [\App\Http\Controllers\Api\ServiceProvider\SpInventoryController::class, 'addFromOrder']);
+            Route::post('/{id}/use', [\App\Http\Controllers\Api\ServiceProvider\SpInventoryController::class, 'useProduct']);
+        });
+
         Route::prefix('shop')->group(function () {
             Route::get('/products/{distributor_id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProducts']);
             Route::get('/product/{id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProduct']);

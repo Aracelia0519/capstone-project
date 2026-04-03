@@ -36,10 +36,15 @@ class ShopController extends Controller
             ->whereRaw('used_count < usage_limit')
             ->get();
 
-        $publishedReviews = ProductReview::with('client')
+        // FIXED: Pull all published reviews and fetch Service Provider User Info
+        $allPublishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
-            ->get()
-            ->groupBy('product_id');
+            ->get();
+            
+        $spIdsAll = $allPublishedReviews->pluck('service_provider_id')->filter()->unique();
+        $spUsersAll = \App\Models\User::whereIn('id', $spIdsAll)->get()->keyBy('id');
+
+        $publishedReviews = $allPublishedReviews->groupBy('product_id');
 
         $paymentSettings = collect();
         if (Schema::hasTable('distributor_payment_settings')) {
@@ -101,16 +106,26 @@ class ShopController extends Controller
             $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
             $reviewCount = $productReviews->count();
             
-            $formattedReviews = $productReviews->map(function($rev) {
+            // FIXED: Identify if the reviewer is a Client or Service Provider
+            $formattedReviews = $productReviews->map(function($rev) use ($spUsersAll) {
                 $clientName = 'Customer';
-                if ($rev->client) {
+                $reviewerType = 'Customer';
+
+                if ($rev->service_provider_id && isset($spUsersAll[$rev->service_provider_id])) {
+                    $sp = $spUsersAll[$rev->service_provider_id];
+                    $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
+                    if (empty($clientName)) $clientName = $sp->name ?? 'Service Provider';
+                    $reviewerType = 'Service Provider';
+                } elseif ($rev->client) {
                     $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
                     if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
                 }
+
                 return [
                     'id' => $rev->id,
                     'client' => $clientName,
                     'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                    'reviewerType' => $reviewerType, // Added reviewerType
                     'rating' => (int)$rev->rating,
                     'comment' => $rev->comment,
                     'response' => $rev->response,
@@ -271,7 +286,6 @@ class ShopController extends Controller
             $shippingFee = 0;
         }
 
-        // FORCE SHIPPING FEE TO 0 IF PICKUP
         if ($request->payment_method === 'pick-up') {
             $shippingFee = 0;
             $fullAddress = "Store Pick-Up";
@@ -286,21 +300,16 @@ class ShopController extends Controller
         $distributorInfo = DB::table('distributor_requirements')->where('user_id', $request->distributor_id)->first();
         $distributorName = $distributorInfo ? ($distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor') : 'Distributor';
 
-        // =========================================================================
-        // 1. CALL PAYMONGO FIRST (GCASH ONLY)
-        // =========================================================================
         if ($request->payment_method === 'gcash') {
             try {
                 $client = new \GuzzleHttp\Client();
                 $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
-                // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
                 $billingDetails = [
                     'name' => trim($user->first_name . ' ' . $user->last_name),
                     'email' => $user->email,
                 ];
                 
-                // --- STRICT GCASH NUMBER VALIDATION ---
                 $gcashNumberToUse = null;
                 if (Schema::hasTable('client_payment_settings')) {
                     $clientPayment = DB::table('client_payment_settings')
@@ -320,7 +329,6 @@ class ShopController extends Controller
                 }
 
                 $billingDetails['phone'] = (string) $gcashNumberToUse;
-                // --------------------------------------
 
                 $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                     'headers' => [
@@ -338,7 +346,7 @@ class ShopController extends Controller
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Payment for Order ' . $orderNumber,
                                 'reference_number' => $orderNumber, 
-                                'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
+                                'billing' => $billingDetails, 
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -406,9 +414,6 @@ class ShopController extends Controller
             }
         }
 
-        // =========================================================================
-        // 2. DB TRANSACTION - COD & PICK-UP
-        // =========================================================================
         DB::beginTransaction();
         try {
             $order = ClientOrder::create([
@@ -417,7 +422,7 @@ class ShopController extends Controller
                 'total_amount' => $totalOrderAmount,
                 'shipping_fee' => $shippingFee,
                 'grand_total' => $grandTotal,
-                'payment_method' => $request->payment_method, // Handles cod and pick-up
+                'payment_method' => $request->payment_method, 
                 'status' => $orderStatus,
                 'delivery_address' => $fullAddress,
             ]);
@@ -504,7 +509,6 @@ class ShopController extends Controller
         $filePath = 'pending_orders/' . $orderNumber . '.json';
         $client = new \GuzzleHttp\Client();
 
-        // SCENARIO 1: Double-mount check. Order already exists in DB?
         $existingOrder = ClientOrder::where('order_number', $orderNumber)->first();
         if ($existingOrder) {
             return response()->json([
@@ -514,7 +518,6 @@ class ShopController extends Controller
             ]);
         }
 
-        // SCENARIO 2: Check if file exists using the ORDER NUMBER
         if (!Storage::disk('local')->exists($filePath)) {
             return response()->json(['success' => false, 'message' => 'Session invalid or already processed. File not found.'], 400);
         }
@@ -523,7 +526,6 @@ class ShopController extends Controller
         $sessionId = $cacheData['session_id']; 
         $isPaid = false;
 
-        // Try to verify with PayMongo API
         try {
             $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
                 'headers' => [
@@ -563,7 +565,6 @@ class ShopController extends Controller
             return response()->json(['success' => false, 'message' => 'PayMongo Status: Payment has not been officially completed.'], 400);
         }
 
-        // Execute DB Transaction
         DB::beginTransaction();
         try {
             $order = ClientOrder::create([
@@ -597,7 +598,6 @@ class ShopController extends Controller
                     'price' => $item['price'] 
                 ]);
 
-                // We track the distributor to credit funds (assuming 1 checkout = 1 distributor for direct order)
                 $distributorIdToCredit = $item['distributor_id'];
 
                 $receiptItems[] = [
@@ -635,14 +635,10 @@ class ShopController extends Controller
                 }
             }
 
-            // ========================================================================
-            // INSERT REMITTANCE AND FINANCIAL RECORDS
-            // ========================================================================
             if ($distributorIdToCredit) {
-                // 1. Insert Remittance
                 DB::table('ec_delivery_remittances')->insert([
                     'distributor_id' => $distributorIdToCredit,
-                    'delivery_personnel_id' => null, // Remitted by System
+                    'delivery_personnel_id' => null, 
                     'order_id' => $order->id,
                     'amount' => $cacheData['grand_total'],
                     'remittance_proof_path' => 'System Auto-GCash (PayMongo)',
@@ -650,7 +646,6 @@ class ShopController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // 2. Insert Order Financials tracking
                 DB::table('ec_order_financials')->insert([
                     'order_id' => $order->id,
                     'distributor_id' => $distributorIdToCredit,
@@ -661,7 +656,6 @@ class ShopController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // 3. Update or Insert Distributor's Overall Sales
                 $overallSales = DB::table('distributor_overall_sales')
                     ->where('distributor_id', $distributorIdToCredit)
                     ->first();
@@ -684,7 +678,6 @@ class ShopController extends Controller
                     ]);
                 }
             }
-            // ========================================================================
 
             foreach ($cacheData['applied_promotions'] as $promoId) {
                 DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
@@ -695,8 +688,6 @@ class ShopController extends Controller
             }
 
             DB::commit();
-            
-            // Delete the physical file once completed
             Storage::disk('local')->delete($filePath);
 
             return response()->json([

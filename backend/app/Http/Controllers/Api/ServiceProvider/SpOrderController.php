@@ -8,7 +8,7 @@ use App\Models\ServiceProvider\SpOrder;
 use App\Models\ServiceProvider\SpOrderItem;
 use App\Models\ServiceProvider\SpReturnRequest;
 use App\Models\ServiceProvider\SpReturnMessage;
-use App\Events\SpReturnMessageSent; // FIXED: Switched to SP specific event
+use App\Events\SpReturnMessageSent; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,18 +29,23 @@ class SpOrderController extends Controller
 
         $orderIds = $orders->pluck('id');
         
-        // FIXED: Querying the existing 'product_reviews' table
+        // FIXED: Querying the existing 'product_reviews' table using 'sp_order_id'
         $reviews = DB::table('product_reviews')
             ->where('service_provider_id', $user->id)
-            ->whereIn('order_id', $orderIds)
+            ->whereIn('sp_order_id', $orderIds)
             ->get();
 
         $orders->each(function ($order) use ($reviews) {
             $order->items->each(function ($item) use ($reviews, $order) {
-                $review = $reviews->where('order_id', $order->id)->where('product_id', $item->product_id)->first();
+                // FIXED: Matching against sp_order_id
+                $review = $reviews->where('sp_order_id', $order->id)->where('product_id', $item->product_id)->first();
                 $item->is_reviewed = $review ? true : false;
                 $item->review_rating = $review ? $review->rating : null;
                 $item->review_comment = $review ? $review->comment : null;
+
+                // Added active return check so frontend can disable inventory add
+                $item->has_active_return = SpReturnRequest::where('order_item_id', $item->id)
+                    ->whereNotIn('status', ['rejected', 'cancelled'])->exists();
 
                 if ($item->product && $item->product->image_url) {
                     if (!filter_var($item->product->image_url, FILTER_VALIDATE_URL) && !str_starts_with($item->product->image_url, 'data:')) {
@@ -132,17 +137,18 @@ class SpOrderController extends Controller
 
         $user = $request->user();
 
-        // FIXED: Using 'product_reviews' table with 'service_provider_id'
+        // FIXED: Using 'sp_order_id' instead of 'order_id'
         DB::table('product_reviews')->updateOrInsert(
             [
                 'service_provider_id' => $user->id,
-                'order_id' => $request->order_id,
+                'sp_order_id' => $request->order_id, // Map the payload to sp_order_id
                 'product_id' => $request->product_id,
             ],
             [
                 'rating' => $request->rating,
                 'comment' => $request->comment,
-                'client_id' => null, // Ensure client_id is null so we know it's an SP review
+                'client_id' => null, 
+                'order_id' => null, // Explicitly null the client's order_id column
                 'created_at' => now(),
                 'updated_at' => now()
             ]
@@ -189,7 +195,6 @@ class SpOrderController extends Controller
             'file_path' => 'storage/' . $path
         ]);
 
-        // FIXED: Using new SpReturnMessageSent event
         broadcast(new SpReturnMessageSent($message))->toOthers();
         broadcast(new SpReturnMessageSent($imageMsg))->toOthers();
 
@@ -237,7 +242,6 @@ class SpOrderController extends Controller
                 'type' => 'image',
                 'file_path' => 'storage/' . $path
             ]);
-            // FIXED: Using new SpReturnMessageSent event
             broadcast(new SpReturnMessageSent($msg))->toOthers();
         }
 
@@ -249,7 +253,6 @@ class SpOrderController extends Controller
                 'type' => 'text',
                 'message' => $request->message
             ]);
-            // FIXED: Using new SpReturnMessageSent event
             broadcast(new SpReturnMessageSent($msg2))->toOthers();
             $msg = $msg2; 
         }
@@ -284,7 +287,6 @@ class SpOrderController extends Controller
             'file_path' => 'storage/' . $path
         ]);
 
-        // FIXED: Using new SpReturnMessageSent event
         broadcast(new SpReturnMessageSent($msg))->toOthers();
 
         return response()->json(['success' => true, 'request' => $returnReq, 'message' => $msg]);

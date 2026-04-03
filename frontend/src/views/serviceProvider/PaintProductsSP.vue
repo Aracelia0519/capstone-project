@@ -96,6 +96,38 @@ const trackingNumber = ref('')
 const trackingProofFile = ref(null)
 const isSubmittingTracking = ref(false)
 
+// --- ADD TO INVENTORY STATE & LOGIC ---
+const isAddingToInventory = ref(false)
+const isInventoryConfirmOpen = ref(false)
+const itemToAddToInventory = ref(null)
+
+const confirmAddToInventory = (item) => {
+  if (item.has_active_return) {
+    toast.error('Cannot add to inventory while on return process.')
+    return
+  }
+  itemToAddToInventory.value = item
+  isInventoryConfirmOpen.value = true
+}
+
+const executeAddToInventory = async () => {
+  if (!itemToAddToInventory.value) return
+  isAddingToInventory.value = true
+  try {
+    const res = await api.post('/service-provider/inventory/add', { order_item_id: itemToAddToInventory.value.id })
+    if (res.data.success) {
+      toast.success('Added to inventory successfully!')
+      itemToAddToInventory.value.added_to_inventory = true
+      isInventoryConfirmOpen.value = false
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to add to inventory')
+  } finally {
+    isAddingToInventory.value = false
+    itemToAddToInventory.value = null
+  }
+}
+
 // --- WebSockets ---
 const initWebSockets = (userId) => {
   window.Pusher = Pusher
@@ -111,7 +143,6 @@ const initWebSockets = (userId) => {
     auth: { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
   })
 
-  // FIXED: Adjusted listener to hear the new .SpReturnMessageSent broadcast signature
   window.Echo.private(`return.chat.${userId}`)
     .listen('.SpReturnMessageSent', (e) => {
       if (isReturnChatOpen.value && returnRequest.value && e.message.return_request_id === returnRequest.value.id) {
@@ -127,7 +158,7 @@ const initWebSockets = (userId) => {
 const fetchOrders = async () => {
   isLoading.value = true
   try {
-    const response = await api.get('/service-provider/orders') // Adjust to your SP API route
+    const response = await api.get('/service-provider/orders')
     orders.value = response.data.map(order => ({ ...order, expanded: false }))
   } catch (error) {
     toast.error('Failed to load orders. Please try again.')
@@ -289,7 +320,7 @@ const drawRoute = async (force = false) => {
   if (!leafletMap || !currentPosition.value || !pickUpDetails.value.distributor_lat || !pickUpDetails.value.distributor_lng) return
   if (!force && lastRoutedPosition && calculateDistance(currentPosition.value.lat, currentPosition.value.lng, lastRoutedPosition.lat, lastRoutedPosition.lng) < 20) return
   lastRoutedPosition = { lat: currentPosition.value.lat, lng: currentPosition.value.lng }
-  const color = '#14b8a6' // teal-500
+  const color = '#14b8a6'
   try {
     const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${currentPosition.value.lng},${currentPosition.value.lat};${pickUpDetails.value.distributor_lng},${pickUpDetails.value.distributor_lat}?overview=full&geometries=geojson`)
     const data = await res.json()
@@ -548,6 +579,9 @@ const submitTrackingInfo = async () => {
           </div>
           
           <div class="flex items-center space-x-3 w-full md:w-auto">
+            <Button @click="router.push('/serviceProvider/inventory')" class="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 mr-2">
+              <Package class="w-4 h-4 mr-2" /> My Inventory
+            </Button>
             <div class="flex-1 md:w-50">
               <Select v-model="statusFilter">
                 <SelectTrigger class="w-full bg-slate-950 border-slate-800 text-slate-200">
@@ -665,38 +699,67 @@ const submitTrackingInfo = async () => {
           
           <div class="p-5 md:p-6">
             <div class="space-y-4">
-              <div v-for="item in order.items.slice(0, 2)" :key="item.id" class="flex items-center">
-                <div class="w-16 h-16 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center mr-4 shrink-0 overflow-hidden shadow-lg">
-                  <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                  <ImageIcon v-else class="w-6 h-6 text-slate-600" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-semibold text-slate-200 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                  <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
-                    <p class="text-sm text-slate-500">Qty: {{ item.quantity }}</p>
-                    <p class="text-sm font-semibold text-slate-300">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+              <div v-for="item in order.items.slice(0, 2)" :key="item.id" class="flex flex-col md:flex-row md:items-center p-4 rounded-xl border border-slate-800/50 bg-slate-950/30 gap-4">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                  <div class="w-16 h-16 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden shadow-lg">
+                    <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                    <ImageIcon v-else class="w-6 h-6 text-slate-600" />
                   </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="font-semibold text-slate-200 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-1">
+                      <p class="text-sm text-slate-500">Qty: {{ item.quantity }}</p>
+                      <p class="text-sm font-semibold text-slate-300">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="order.status === 'delivered'" class="mt-2 md:mt-0 md:ml-auto flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full md:w-auto shrink-0">
+                  <Button variant="ghost" @click="openReviewModal(order.id, item)" :disabled="item.is_reviewed" class="text-blue-400 hover:text-blue-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                    <Star class="w-4 h-4 mr-1.5" /> {{ item.is_reviewed ? 'Reviewed' : 'Review' }}
+                  </Button>
+                  <Button variant="ghost" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                    <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
+                  </Button>
+                  <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                    <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                  </Button>
                 </div>
               </div>
               
               <div v-if="order.items.length > 2" class="pt-2">
-                <Button variant="ghost" @click="toggleOrderDetails(order.id)" class="text-blue-400 hover:text-blue-300 hover:bg-slate-800/50 text-sm font-medium p-2 rounded-lg h-auto transition-colors">
+                <Button variant="ghost" @click="toggleOrderDetails(order.id)" class="text-blue-400 hover:text-blue-300 hover:bg-slate-800/50 text-sm font-medium p-2 rounded-lg h-auto transition-colors w-full sm:w-auto">
                   <span>{{ order.expanded ? 'Hide extra items' : `+${order.items.length - 2} more items` }}</span>
                   <ChevronUp v-if="order.expanded" class="w-4 h-4 ml-1" />
                   <ChevronDown v-else class="w-4 h-4 ml-1" />
                 </Button>
+
                 <div v-if="order.expanded" class="mt-4 space-y-4 pt-4 border-t border-slate-800">
-                  <div v-for="item in order.items.slice(2)" :key="item.id" class="flex items-center">
-                    <div class="w-14 h-14 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                      <ImageIcon v-else class="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h4 class="text-sm font-medium text-slate-300 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                      <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
-                        <p class="text-xs text-slate-500">Qty: {{ item.quantity }}</p>
-                        <p class="text-sm font-semibold text-slate-300">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                  <div v-for="item in order.items.slice(2)" :key="item.id" class="flex flex-col md:flex-row md:items-center p-4 rounded-xl border border-slate-800/50 bg-slate-950/30 gap-4">
+                    <div class="flex items-center gap-4 w-full md:w-auto">
+                      <div class="w-14 h-14 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                        <ImageIcon v-else class="w-5 h-5 text-slate-600" />
                       </div>
+                      <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-medium text-slate-300 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-1">
+                          <p class="text-xs text-slate-500">Qty: {{ item.quantity }}</p>
+                          <p class="text-sm font-semibold text-slate-300">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-if="order.status === 'delivered'" class="mt-2 md:mt-0 md:ml-auto flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full md:w-auto shrink-0">
+                      <Button variant="ghost" @click="openReviewModal(order.id, item)" :disabled="item.is_reviewed" class="text-blue-400 hover:text-blue-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                        <Star class="w-4 h-4 mr-1.5" /> {{ item.is_reviewed ? 'Reviewed' : 'Review' }}
+                      </Button>
+                      <Button variant="ghost" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                        <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
+                      </Button>
+                      <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                        <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -715,7 +778,7 @@ const submitTrackingInfo = async () => {
                     <span class="font-medium text-slate-300 max-w-[200px] truncate">{{ order.delivery_address || 'Pick-Up Location' }}</span>
                   </div>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2 w-full lg:w-auto">
                   <Button variant="outline" @click="viewOrderDetails(order)" class="border-blue-900/50 bg-slate-950 text-blue-400 hover:bg-slate-900 hover:text-blue-300 flex-1 sm:flex-none">
                     <FileText class="w-4 h-4 mr-2" /> Details
                   </Button>
@@ -914,7 +977,7 @@ const submitTrackingInfo = async () => {
     <Dialog v-model:open="isDetailsModalOpen">
       <DialogContent class="sm:max-w-200 md:max-w-237.5 lg:max-w-275 max-h-[90vh] overflow-y-auto w-[95vw] p-0 gap-0 rounded-2xl bg-slate-950 border-slate-800 shadow-2xl">
         <div class="bg-slate-900 p-6 md:p-8 border-b border-slate-800 sticky top-0 z-10 flex justify-between items-start gap-4">
-          <DialogHeader class="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <DialogHeader class="flex flex-col sm:flex-row justify-between items-start gap-4 w-full">
             <div>
               <DialogTitle class="text-2xl font-black text-white">
                 Order <span class="text-blue-400">{{ selectedOrder?.order_number }}</span>
@@ -943,38 +1006,45 @@ const submitTrackingInfo = async () => {
                   </h4>
                 </div>
                 <div class="p-4 md:p-6 space-y-4">
-                  <div v-for="item in selectedOrder?.items" :key="item.id" class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-slate-800 bg-slate-950/50">
-                    <div class="w-20 h-20 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                      <ImageIcon v-else class="w-8 h-8 text-slate-600" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h4 class="font-bold text-white truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                      <div class="flex items-end justify-between mt-3">
-                        <p class="text-sm font-medium text-slate-400">
-                          Qty: <span class="text-white">{{ item.quantity }}</span> × ₱{{ formatCurrency(item.price) }}
-                        </p>
-                        <p class="text-lg font-black text-white">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                  <div v-for="item in selectedOrder?.items" :key="item.id" class="flex flex-col p-4 rounded-xl border border-slate-800 bg-slate-950/50 gap-4">
+                    <div class="flex items-center gap-4 w-full">
+                      <div class="w-20 h-20 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                        <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                        <ImageIcon v-else class="w-8 h-8 text-slate-600" />
                       </div>
-
-                      <div v-if="selectedOrder?.status === 'delivered'" class="mt-4 pt-3 border-t border-slate-800">
-                        <div class="flex items-center gap-3">
-                          <Button v-if="!item.is_reviewed" @click="openReviewModal(selectedOrder.id, item)" size="sm" variant="outline" class="text-amber-400 border-amber-900/50 hover:bg-amber-900/30 bg-slate-900 flex-1">
-                            <Star class="w-4 h-4 mr-1.5" /> Write a Review
-                          </Button>
-                          <div v-else class="flex flex-col gap-1.5 bg-slate-950 p-3 rounded-lg border border-slate-800 flex-1">
-                            <div class="flex items-center justify-between">
-                              <div class="flex items-center text-amber-500">
-                                <Star v-for="i in 5" :key="i" :class="['w-4 h-4', i <= (item.review_rating || 0) ? 'fill-current' : 'text-slate-700']" />
-                                <span class="text-xs text-slate-500 ml-2 font-bold uppercase tracking-wider">Reviewed</span>
-                              </div>
-                            </div>
-                            <p v-if="item.review_comment" class="text-sm text-slate-400 italic mt-1">"{{ item.review_comment }}"</p>
-                          </div>
-                          <Button variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-400 border-red-900/50 hover:bg-red-900/30 bg-slate-900 shrink-0 h-10 px-4">
-                            <RotateCcw class="w-4 h-4 mr-1.5" /> Return
-                          </Button>
+                      <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-white truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                        <div class="flex flex-col sm:flex-row sm:items-end justify-between mt-3 gap-1">
+                          <p class="text-sm font-medium text-slate-400">
+                            Qty: <span class="text-white">{{ item.quantity }}</span> × ₱{{ formatCurrency(item.price) }}
+                          </p>
+                          <p class="text-lg font-black text-white">₱{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
                         </div>
+                      </div>
+                    </div>
+
+                    <div v-if="selectedOrder?.status === 'delivered'" class="pt-3 border-t border-slate-800 w-full">
+                      <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full">
+                        <Button v-if="!item.is_reviewed" @click="openReviewModal(selectedOrder.id, item)" size="sm" variant="outline" class="text-amber-400 border-amber-900/50 hover:bg-amber-900/30 bg-slate-900 w-full sm:w-auto sm:flex-1">
+                          <Star class="w-4 h-4 mr-1.5" /> Write a Review
+                        </Button>
+                        <div v-else class="flex flex-col gap-1.5 bg-slate-950 p-3 rounded-lg border border-slate-800 w-full sm:w-auto sm:flex-1">
+                          <div class="flex items-center justify-between">
+                            <div class="flex items-center text-amber-500">
+                              <Star v-for="i in 5" :key="i" :class="['w-4 h-4', i <= (item.review_rating || 0) ? 'fill-current' : 'text-slate-700']" />
+                              <span class="text-xs text-slate-500 ml-2 font-bold uppercase tracking-wider">Reviewed</span>
+                            </div>
+                          </div>
+                          <p v-if="item.review_comment" class="text-sm text-slate-400 italic mt-1">"{{ item.review_comment }}"</p>
+                        </div>
+                        
+                        <Button variant="outline" size="sm" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 border-indigo-900/50 hover:bg-indigo-900/30 bg-slate-900 shrink-0 h-10 px-4 w-full sm:w-auto sm:flex-1">
+                          <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
+                        </Button>
+
+                        <Button variant="outline" size="sm" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 border-red-900/50 hover:bg-red-900/30 bg-slate-900 shrink-0 h-10 px-4 w-full sm:w-auto sm:flex-1">
+                          <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1010,7 +1080,7 @@ const submitTrackingInfo = async () => {
     </Dialog>
 
     <Dialog v-model:open="isReviewModalOpen">
-      <DialogContent class="sm:max-w-125 p-6 rounded-2xl bg-slate-950 border-slate-800 shadow-2xl">
+      <DialogContent class="sm:max-w-125 p-6 rounded-2xl bg-slate-950 border-slate-800 shadow-2xl w-[95vw] mx-auto">
         <DialogHeader class="mb-4">
           <DialogTitle class="text-xl font-bold text-white">Review Product</DialogTitle>
           <DialogDescription class="text-slate-400 mt-2">
@@ -1020,7 +1090,7 @@ const submitTrackingInfo = async () => {
         <div class="space-y-6">
           <div>
             <label class="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">Overall Rating</label>
-            <div class="flex items-center gap-2 bg-slate-900 p-4 rounded-xl border border-slate-800 w-max">
+            <div class="flex items-center gap-2 bg-slate-900 p-4 rounded-xl border border-slate-800 w-full justify-center sm:w-max sm:justify-start">
               <button v-for="star in 5" :key="star" @click="setRating(star)" class="focus:outline-none transition-transform hover:scale-110 active:scale-95">
                 <Star :class="['w-8 h-8 drop-shadow-sm', star <= reviewForm.rating ? 'text-amber-400 fill-current' : 'text-slate-700']" />
               </button>
@@ -1031,9 +1101,9 @@ const submitTrackingInfo = async () => {
             <textarea v-model="reviewForm.comment" rows="4" placeholder="Share your thoughts..." class="w-full p-4 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all shadow-inner"></textarea>
           </div>
         </div>
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
-          <Button variant="outline" @click="isReviewModalOpen = false" class="border-slate-700 text-slate-300 bg-slate-900 hover:bg-slate-800 font-bold rounded-xl">Cancel</Button>
-          <Button @click="submitReview" :disabled="isSubmittingReview" class="bg-blue-600 hover:bg-blue-700 border-0 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 px-6">
+        <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+          <Button variant="outline" @click="isReviewModalOpen = false" class="border-slate-700 text-slate-300 bg-slate-900 hover:bg-slate-800 font-bold rounded-xl w-full sm:w-auto">Cancel</Button>
+          <Button @click="submitReview" :disabled="isSubmittingReview" class="bg-blue-600 hover:bg-blue-700 border-0 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 px-6 w-full sm:w-auto">
             <Loader2 v-if="isSubmittingReview" class="w-4 h-4 mr-2 animate-spin" />
             {{ isSubmittingReview ? 'Submitting...' : 'Submit Review' }}
           </Button>
@@ -1176,7 +1246,7 @@ const submitTrackingInfo = async () => {
         <div v-if="isAuthAlertOpen" class="fixed inset-0 z-[10000] bg-slate-950/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
       <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-slate-800 bg-slate-950 shadow-2xl max-w-md z-[10000]">
+        <AlertDialogContent class="rounded-2xl border-slate-800 bg-slate-950 shadow-2xl max-w-md w-[90vw] mx-auto z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2 text-white">
               <AlertCircle class="w-6 h-6 text-blue-500" /> Authentication Required
@@ -1185,13 +1255,36 @@ const submitTrackingInfo = async () => {
               You must be logged in to view and manage your orders.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter class="mt-6 sm:space-x-3">
-            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 border-0 text-white h-11 px-6 shadow-md shadow-blue-600/20">Log In</AlertDialogAction>
+          <AlertDialogFooter class="mt-6 flex flex-col sm:flex-row sm:space-x-3 gap-2 sm:gap-0">
+            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 h-11 w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 border-0 text-white h-11 px-6 shadow-md shadow-blue-600/20 w-full sm:w-auto">Log In</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </Teleport>
+
+    <Teleport to="body">
+      <AlertDialog :open="isInventoryConfirmOpen" @update:open="isInventoryConfirmOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-slate-800 bg-slate-950 shadow-2xl max-w-md w-[90vw] mx-auto z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2 text-white">
+              <Package class="w-6 h-6 text-indigo-500" /> Confirm Add to Inventory
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-slate-400 font-medium text-base mt-3">
+              Are you sure you want to add <span class="text-white font-bold">{{ itemToAddToInventory?.product?.name }}</span> to your inventory? Once added, you will no longer be able to return this item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 flex flex-col sm:flex-row sm:space-x-3 gap-2 sm:gap-0">
+            <AlertDialogCancel @click="isInventoryConfirmOpen = false" class="rounded-xl font-bold border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 h-11 w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="executeAddToInventory" :disabled="isAddingToInventory" class="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 border-0 text-white h-11 flex items-center justify-center w-full sm:w-auto">
+              <Loader2 v-if="isAddingToInventory" class="w-4 h-4 mr-2 animate-spin" />
+              Confirm Add
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Teleport>
+
   </div>
 </template>
 
