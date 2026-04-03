@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class FinanceTransactionController extends Controller
 {
@@ -61,7 +63,6 @@ class FinanceTransactionController extends Controller
 
         if (!$position) return $noAccess;
 
-        // FIXED: Now properly checks 'finance_transactions' instead of 'finance_budget_release'
         $access = DB::table('position_accessibilities')
             ->where('position_id', $position->id)
             ->where('permission_key', 'finance_transactions')
@@ -77,7 +78,7 @@ class FinanceTransactionController extends Controller
     }
 
     /**
-     * Fetch all transactions (Refunds)
+     * Fetch all transactions (Refunds for both Clients & Service Providers)
      */
     public function index(Request $request)
     {
@@ -93,8 +94,8 @@ class FinanceTransactionController extends Controller
 
         $distributorId = $this->getDistributorId($user);
 
-        // Fetch Refund Requests
-        $refunds = DB::table('ec_refund_requests')
+        // 1. Fetch Client Refund Requests
+        $clientRefunds = DB::table('ec_refund_requests')
             ->join('client_return_requests', 'ec_refund_requests.return_request_id', '=', 'client_return_requests.id')
             ->join('users as clients', 'client_return_requests.client_id', '=', 'clients.id')
             ->where('ec_refund_requests.distributor_id', $distributorId)
@@ -107,16 +108,42 @@ class FinanceTransactionController extends Controller
                 'clients.first_name',
                 'clients.last_name'
             )
-            ->orderBy('ec_refund_requests.created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($ref) {
+                $ref->role = 'Client';
+                return $ref;
+            });
 
-        $formatted = $refunds->map(function ($ref) {
+        // 2. Fetch Service Provider Refund Requests
+        $spRefunds = DB::table('ec_refund_requests')
+            ->join('sp_return_requests', 'ec_refund_requests.sp_return_request_id', '=', 'sp_return_requests.id')
+            ->join('users as sps', 'sp_return_requests.sp_id', '=', 'sps.id')
+            ->where('ec_refund_requests.distributor_id', $distributorId)
+            ->select(
+                'ec_refund_requests.id',
+                'ec_refund_requests.amount',
+                'ec_refund_requests.status',
+                'ec_refund_requests.client_gcash_number',
+                'ec_refund_requests.created_at',
+                'sps.first_name',
+                'sps.last_name'
+            )
+            ->get()
+            ->map(function ($ref) {
+                $ref->role = 'Service Provider';
+                return $ref;
+            });
+
+        // Merge both tables and sort by date
+        $allRefunds = $clientRefunds->concat($spRefunds)->sortByDesc('created_at')->values();
+
+        $formatted = $allRefunds->map(function ($ref) {
             return [
                 'id' => 'REF-' . str_pad($ref->id, 5, '0', STR_PAD_LEFT),
                 'db_id' => $ref->id,
                 'date' => date('Y-m-d', strtotime($ref->created_at)),
-                'party' => $ref->first_name . ' ' . $ref->last_name,
-                'role' => 'Client',
+                'party' => trim($ref->first_name . ' ' . $ref->last_name),
+                'role' => $ref->role,
                 'amount' => (float) $ref->amount,
                 'status' => $ref->status,
                 'type' => 'refund',
@@ -139,7 +166,6 @@ class FinanceTransactionController extends Controller
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
 
-        // Explicitly requires Approve level for processing financial outgoing
         if (!$permissions['can_approve']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to process and approve refunds.'], 403);
         }
@@ -150,7 +176,6 @@ class FinanceTransactionController extends Controller
             return response()->json(['message' => 'Only pending refunds can be processed.'], 400);
         }
 
-        // FIXED: Budget Validation - Checking only the raw current total_revenue
         $distributorId = $this->getDistributorId($user);
         $availableBudget = DB::table('distributor_overall_sales')
             ->where('distributor_id', $distributorId)
@@ -163,11 +188,9 @@ class FinanceTransactionController extends Controller
             ], 400);
         }
 
-        // FETCH BILLING DETAILS FROM USERS & DISTRIBUTOR_PAYMENT_SETTINGS
         $distributorUser = DB::table('users')->where('id', $distributorId)->first();
         $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
 
-        // STRICT GCASH NUMBER VALIDATION
         if (!$paymentSettings || empty($paymentSettings->gcash_number)) {
             return response()->json([
                 'success' => false,
@@ -175,7 +198,6 @@ class FinanceTransactionController extends Controller
             ], 400);
         }
 
-        // Format Name and Email for PayMongo Billing
         $billingName = $distributorUser ? trim($distributorUser->first_name . ' ' . $distributorUser->last_name) : 'Distributor';
         $billingEmail = $distributorUser ? $distributorUser->email : 'no-reply@example.com';
         $billingPhone = $paymentSettings->gcash_number;
@@ -202,7 +224,6 @@ class FinanceTransactionController extends Controller
                             'payment_method_types' => ['gcash'],
                             'description' => 'Refund Processing for ' . $transactionCode,
                             'reference_number' => $transactionCode, 
-                            // AUTO-FILL BILLING INFOS
                             'billing' => [
                                 'name' => $billingName,
                                 'email' => $billingEmail,
@@ -237,12 +258,14 @@ class FinanceTransactionController extends Controller
                 return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
             }
 
+            // ADDED: We now cache the ID of the user initiating the approval
             $cacheData = [
                 'session_id' => $sessionId,
                 'refund_id' => $refund->id,
                 'transaction_code' => $transactionCode,
                 'distributor_id' => $refund->distributor_id,
-                'amount' => $refund->amount
+                'amount' => $refund->amount,
+                'approved_by' => $user->id 
             ];
 
             Storage::disk('local')->put('pending_refunds/' . $transactionCode . '.json', json_encode($cacheData));
@@ -258,7 +281,7 @@ class FinanceTransactionController extends Controller
     }
 
     /**
-     * VERIFY GCASH PAYMENT AFTER REDIRECT
+     * VERIFY GCASH PAYMENT AFTER REDIRECT & SEND SUCCESS EMAIL
      */
     public function verifyGcashPayment(Request $request)
     {
@@ -268,7 +291,6 @@ class FinanceTransactionController extends Controller
         $client = new \GuzzleHttp\Client();
 
         if (!Storage::disk('local')->exists($filePath)) {
-            // Might already be processed, lets check DB
             $refId = (int) str_replace('REF-', '', $transactionCode);
             $refund = DB::table('ec_refund_requests')->where('id', $refId)->first();
             if ($refund && $refund->status === 'completed') {
@@ -322,17 +344,19 @@ class FinanceTransactionController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update Refund Status
+            // ADDED: Saving the `approved_by` logic dynamically from the cache
             DB::table('ec_refund_requests')
                 ->where('id', $cacheData['refund_id'])
-                ->update(['status' => 'completed', 'updated_at' => now()]);
+                ->update([
+                    'status' => 'completed', 
+                    'approved_by' => $cacheData['approved_by'] ?? null,
+                    'updated_at' => now()
+                ]);
 
-            // Deduct from total_revenue directly
             DB::table('distributor_overall_sales')
                 ->where('distributor_id', $cacheData['distributor_id'])
                 ->decrement('total_revenue', $cacheData['amount']);
 
-            // Create log in budget_deduction_logs
             DB::table('budget_deduction_logs')->insert([
                 'distributor_id' => $cacheData['distributor_id'],
                 'amount' => $cacheData['amount'],
@@ -343,6 +367,62 @@ class FinanceTransactionController extends Controller
 
             DB::commit();
             Storage::disk('local')->delete($filePath);
+
+            // ============================================
+            // EMAIL NOTIFICATION FOR COMPLETED REFUND (INLINE)
+            // ============================================
+            $refundRecord = DB::table('ec_refund_requests')->where('id', $cacheData['refund_id'])->first();
+            $userEmail = null;
+            $userName = null;
+
+            if ($refundRecord) {
+                if ($refundRecord->return_request_id) {
+                    $clientData = DB::table('client_return_requests')
+                        ->join('users', 'client_return_requests.client_id', '=', 'users.id')
+                        ->where('client_return_requests.id', $refundRecord->return_request_id)
+                        ->select('users.email', 'users.first_name', 'users.last_name')
+                        ->first();
+                    if ($clientData) {
+                        $userEmail = $clientData->email;
+                        $userName = trim($clientData->first_name . ' ' . $clientData->last_name);
+                    }
+                } elseif ($refundRecord->sp_return_request_id) {
+                    $spData = DB::table('sp_return_requests')
+                        ->join('users', 'sp_return_requests.sp_id', '=', 'users.id')
+                        ->where('sp_return_requests.id', $refundRecord->sp_return_request_id)
+                        ->select('users.email', 'users.first_name', 'users.last_name')
+                        ->first();
+                    if ($spData) {
+                        $userEmail = $spData->email;
+                        $userName = trim($spData->first_name . ' ' . $spData->last_name);
+                    }
+                }
+            }
+
+            if ($userEmail && $userName) {
+                try {
+                    $refundAmountFormatted = number_format($cacheData['amount'], 2);
+                    $htmlContent = "
+                        <div style='font-family: Arial, sans-serif; color: #333;'>
+                            <h2 style='color: #059669;'>Refund Processed Successfully</h2>
+                            <p>Hello <strong>{$userName}</strong>,</p>
+                            <p>We are pleased to inform you that your refund request (<strong>{$transactionCode}</strong>) has been successfully processed by the Finance Team.</p>
+                            <p>An amount of <strong style='font-size: 18px;'>₱{$refundAmountFormatted}</strong> has been transferred to your GCash account.</p>
+                            <p>Please check your GCash app to verify the transaction. If you have any questions, feel free to reach out to our support team.</p>
+                            <br>
+                            <p>Best regards,<br><strong>CaviteGoPaint Finance Team</strong></p>
+                        </div>
+                    ";
+
+                    Mail::html($htmlContent, function ($message) use ($userEmail, $transactionCode) {
+                        $message->to($userEmail)
+                                ->subject('Refund Processed Successfully - ' . $transactionCode);
+                    });
+                } catch (\Exception $emailEx) {
+                    Log::error('Failed to send refund completion email: ' . $emailEx->getMessage());
+                }
+            }
+            // ============================================
 
             return response()->json([
                 'success' => true,
@@ -356,24 +436,82 @@ class FinanceTransactionController extends Controller
     }
 
     /**
-     * Reject a refund request
+     * Reject a refund request & SEND REJECTION EMAIL
      */
     public function rejectRefund(Request $request, $id)
     {
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
 
-        // Explicitly requires Approve level for rejecting a financial transaction
         if (!$permissions['can_approve']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to reject refunds.'], 403);
         }
 
+        // ADDED: Set the `approved_by` identifier here.
         DB::table('ec_refund_requests')
             ->where('id', $id)
             ->update([
                 'status' => 'rejected',
+                'approved_by' => $user->id,
                 'updated_at' => now()
             ]);
+
+        // ============================================
+        // EMAIL NOTIFICATION FOR REJECTED REFUND (INLINE)
+        // ============================================
+        $refundRecord = DB::table('ec_refund_requests')->where('id', $id)->first();
+        $userEmail = null;
+        $userName = null;
+        $transactionCode = 'REF-' . str_pad($id, 5, '0', STR_PAD_LEFT);
+
+        if ($refundRecord) {
+            if ($refundRecord->return_request_id) {
+                $clientData = DB::table('client_return_requests')
+                    ->join('users', 'client_return_requests.client_id', '=', 'users.id')
+                    ->where('client_return_requests.id', $refundRecord->return_request_id)
+                    ->select('users.email', 'users.first_name', 'users.last_name')
+                    ->first();
+                if ($clientData) {
+                    $userEmail = $clientData->email;
+                    $userName = trim($clientData->first_name . ' ' . $clientData->last_name);
+                }
+            } elseif ($refundRecord->sp_return_request_id) {
+                $spData = DB::table('sp_return_requests')
+                    ->join('users', 'sp_return_requests.sp_id', '=', 'users.id')
+                    ->where('sp_return_requests.id', $refundRecord->sp_return_request_id)
+                    ->select('users.email', 'users.first_name', 'users.last_name')
+                    ->first();
+                if ($spData) {
+                    $userEmail = $spData->email;
+                    $userName = trim($spData->first_name . ' ' . $spData->last_name);
+                }
+            }
+        }
+
+        if ($userEmail && $userName && $refundRecord) {
+            try {
+                $refundAmountFormatted = number_format($refundRecord->amount, 2);
+                $htmlContent = "
+                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                        <h2 style='color: #DC2626;'>Refund Request Rejected</h2>
+                        <p>Hello <strong>{$userName}</strong>,</p>
+                        <p>We regret to inform you that your refund request (<strong>{$transactionCode}</strong>) for the amount of <strong>₱{$refundAmountFormatted}</strong> has been rejected by the Finance Team.</p>
+                        <p>This may be due to incomplete requirements, discrepancies in the submitted proof, or issues with your GCash account details.</p>
+                        <p>Please check your return request dashboard or contact our support team for more specific details regarding this rejection.</p>
+                        <br>
+                        <p>Best regards,<br><strong>CaviteGoPaint Finance Team</strong></p>
+                    </div>
+                ";
+
+                Mail::html($htmlContent, function ($message) use ($userEmail, $transactionCode) {
+                    $message->to($userEmail)
+                            ->subject('Refund Request Rejected - ' . $transactionCode);
+                });
+            } catch (\Exception $emailEx) {
+                Log::error('Failed to send refund rejection email: ' . $emailEx->getMessage());
+            }
+        }
+        // ============================================
 
         return response()->json([
             'success' => true,

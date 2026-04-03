@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
+use App\Models\ServiceProvider\SpOrder; // Added for Service Provider Orders
+use App\Models\User; // Added to fetch Service Provider details
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\HR\Employee;
@@ -117,22 +119,25 @@ class ECOrderController extends Controller
         
         $distributorId = $accessData['distributor_id'];
 
-        $query = ClientOrder::with(['client', 'items.product']);
+        // ===============================================
+        // 1. FETCH CLIENT ORDERS
+        // ===============================================
+        $clientQuery = ClientOrder::with(['client', 'items.product']);
 
-        // Scope to distributor if context is found, else fetch all
         if ($distributorId) {
-            $query->whereHas('items', function($q) use ($distributorId) {
+            $clientQuery->whereHas('items', function($q) use ($distributorId) {
                 $q->where('distributor_id', $distributorId);
             })->with(['items' => function($q) use ($distributorId) {
                 $q->where('distributor_id', $distributorId)->with('product');
             }]);
         }
 
-        $orders = $query->orderBy('created_at', 'desc')->get();
+        $clientOrders = $clientQuery->get();
 
-        $formattedOrders = $orders->map(function ($order) {
+        $formattedClientOrders = $clientOrders->map(function ($order) {
             return [
                 'id' => $order->id,
+                'order_type' => 'client', // Distinguish origin
                 'order_number' => $order->order_number,
                 'status' => $order->status,
                 'order_date' => $order->created_at->toIso8601String(),
@@ -156,10 +161,65 @@ class ECOrderController extends Controller
             ];
         });
 
+        // ===============================================
+        // 2. FETCH SERVICE PROVIDER ORDERS
+        // ===============================================
+        $spQuery = SpOrder::with(['items.product']);
+
+        if ($distributorId) {
+            $spQuery->whereHas('items', function($q) use ($distributorId) {
+                $q->where('distributor_id', $distributorId);
+            })->with(['items' => function($q) use ($distributorId) {
+                $q->where('distributor_id', $distributorId)->with('product');
+            }]);
+        }
+
+        $spOrders = $spQuery->get();
+
+        // Get Service Provider User records manually to append names
+        $spUserIds = $spOrders->pluck('service_provider_id')->unique();
+        $spUsers = User::whereIn('id', $spUserIds)->get()->keyBy('id');
+
+        $formattedSpOrders = $spOrders->map(function ($order) use ($spUsers) {
+            $spUser = $spUsers->get($order->service_provider_id);
+            return [
+                'id' => $order->id,
+                'order_type' => 'service_provider', // Distinguish origin
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'order_date' => $order->created_at->toIso8601String(),
+                'total_amount' => $order->total_amount,
+                'shipping_fee' => $order->shipping_fee,
+                'grand_total' => $order->grand_total,
+                'payment_method' => $order->payment_method,
+                'delivery_address' => $order->delivery_address,
+                'client_name' => $spUser ? $spUser->full_name : 'Unknown Service Provider', // Fallback to 'client_name' property for Vue UI ease
+                'client_phone' => $spUser ? $spUser->phone : 'N/A',
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->product ? $item->product->name : 'Unknown Product',
+                        'category' => $item->product ? $item->product->category : 'N/A',
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->price,
+                        'total' => $item->quantity * $item->price,
+                    ];
+                })
+            ];
+        });
+
+        // ===============================================
+        // 3. MERGE & SORT BY DATE
+        // ===============================================
+        $allOrders = collect($formattedClientOrders)
+            ->concat($formattedSpOrders)
+            ->sortByDesc('order_date')
+            ->values();
+
         // Return standardized wrapper matching ProcurementRequests
         return response()->json([
             'success' => true,
-            'data' => $formattedOrders,
+            'data' => $allOrders,
             'permissions' => $accessData['permissions']
         ]);
     }
@@ -174,7 +234,14 @@ class ECOrderController extends Controller
             return response()->json(['message' => 'Access Denied: You do not have permission to confirm orders.'], 403);
         }
 
-        $order = ClientOrder::findOrFail($id);
+        // Distinct table based on who placed the order
+        $type = $request->input('type', 'client');
+
+        if ($type === 'service_provider') {
+            $order = SpOrder::findOrFail($id);
+        } else {
+            $order = ClientOrder::findOrFail($id);
+        }
 
         if ($order->status !== 'pending') {
             return response()->json(['message' => 'Only pending orders can be confirmed'], 400);

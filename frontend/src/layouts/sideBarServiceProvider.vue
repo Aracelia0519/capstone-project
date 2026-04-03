@@ -209,7 +209,7 @@ const navigation = [
   {
     title: 'Resources',
     items: [
-      { name: 'Paint Products', path: '/serviceProvider/PaintProductsSP', icon: Package, color: 'text-blue-400', badge: 'Read Only', requiresVerify: true },
+      { name: 'Ordered Products', path: '/serviceProvider/PaintProductsSP', icon: Package, color: 'text-blue-400', requiresVerify: true },
       { name: 'Distributors', path: '/serviceProvider/Distributors', icon: Building, color: 'text-teal-400', requiresVerify: true },
       { name: 'Reports', path: '/serviceProvider/ReportsSP', icon: FileText, color: 'text-rose-400', requiresVerify: true },
       { name: 'Payment Settings', path: '/serviceProvider/SPPaymentSettings', icon: CreditCard, color: 'text-green-400', requiresVerify: true }

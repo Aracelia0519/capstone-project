@@ -50,6 +50,7 @@ interface DeliveryItem {
 
 interface Delivery {
   id: number
+  order_type: string // Added to support client vs SP badging
   order_number: string
   status: string
   client_name: string
@@ -693,8 +694,9 @@ onUnmounted(() => {
             >
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
-                  <h3 class="font-bold text-gray-100 text-lg truncate">
+                  <h3 class="font-bold text-gray-100 text-lg truncate flex items-center gap-2">
                     {{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name }}
+                    <Badge v-if="delivery.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
                   </h3>
                   <p class="text-xs text-gray-500 font-mono mt-0.5">{{ delivery.order_number }}</p>
                 </div>
@@ -717,8 +719,9 @@ onUnmounted(() => {
             
             <div class="flex justify-between items-start">
                <div>
-                  <h2 class="text-2xl font-black text-white leading-tight">
+                  <h2 class="text-2xl font-black text-white leading-tight flex items-center gap-2">
                     {{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.client_name }}
+                    <Badge v-if="activeDelivery.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
                   </h2>
                   <div class="flex items-center gap-2 mt-1">
                     <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.order_number }}</p>

@@ -83,6 +83,15 @@ const initWebSockets = (distId) => {
         fetchReturns()
       }
     })
+    .listen('.SpReturnMessageSent', (e) => {
+      if (isChatOpen.value && activeChatReq.value && e.message.return_request_id === activeChatReq.value.id) {
+        chatMessages.value.push(e.message)
+        scrollToBottom()
+      } else {
+        toast.info('New message in return chat')
+        fetchReturns()
+      }
+    })
 }
 
 const getFullImageUrl = (path) => {
@@ -160,7 +169,9 @@ const openDetailsModal = (req) => {
 const updateStatus = async (id, action) => {
     isUpdatingStatus.value = true
     try {
-        const res = await api.post(`/operation-distributor/returns/${id}/${action}`)
+        const res = await api.post(`/operation-distributor/returns/${id}/${action}`, {
+            request_type: selectedReturn.value.request_type
+        })
         if (res.data.success) {
             toast.success(`Request ${action}d successfully`)
             isDetailsModalOpen.value = false
@@ -212,6 +223,7 @@ const submitRefundRequest = async () => {
     const fd = new FormData()
     fd.append('amount', refundAmount.value)
     fd.append('receipt_proof', refundProofFile.value)
+    fd.append('request_type', activeRefundReq.value.request_type)
     
     // Safely send the final resolved string
     fd.append('client_gcash_number', finalGcashNumber)
@@ -264,7 +276,9 @@ const openChat = async (req) => {
     removeChatImage()
 
     try {
-        const res = await api.get(`/operation-distributor/returns/${req.id}/chat`)
+        const res = await api.get(`/operation-distributor/returns/${req.id}/chat`, {
+            params: { type: req.request_type }
+        })
         if (res.data.success) {
             chatMessages.value = res.data.messages || []
             scrollToBottom()
@@ -276,9 +290,6 @@ const openChat = async (req) => {
 
 const closeChat = () => {
     isChatOpen.value = false
-    if (window.Echo && distributorId.value) {
-        window.Echo.leave(`return.chat.${distributorId.value}`)
-    }
 }
 
 const sendChatMessage = async () => {
@@ -287,6 +298,7 @@ const sendChatMessage = async () => {
     const fd = new FormData()
     if (chatMessage.value.trim()) fd.append('message', chatMessage.value)
     if (chatImageFile.value) fd.append('image', chatImageFile.value)
+    fd.append('type', activeChatReq.value.request_type)
     
     try {
         const res = await api.post(`/operation-distributor/returns/${activeChatReq.value.id}/chat`, fd)
@@ -428,7 +440,10 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shrink-0">
                                     <span class="text-white font-bold text-xs">{{ req.client?.name?.charAt(0).toUpperCase() || 'C' }}</span>
                                 </div>
-                                <span class="text-gray-300 font-medium">{{ req.client?.name }}</span>
+                                <span class="text-gray-300 font-medium">
+                                    {{ req.client?.name }}
+                                    <Badge v-if="req.request_type === 'sp'" class="ml-2 bg-purple-500/20 text-purple-400 border-0 text-[10px] px-1.5 py-0 h-4">SP</Badge>
+                                </span>
                             </div>
                         </td>
                         <td class="p-4 text-gray-300 text-sm max-w-[200px] truncate" :title="req.order_item?.product?.name">
@@ -464,7 +479,10 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
                     <div class="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0" v-else><ImageIcon class="w-6 h-6 text-gray-500" /></div>
                     <div>
                         <h4 class="font-bold text-white">{{ selectedReturn?.order_item?.product?.name || 'Unknown' }}</h4>
-                        <p class="text-sm text-gray-400 mt-1">Client: <span class="font-semibold text-gray-300">{{ selectedReturn?.client?.name }}</span></p>
+                        <p class="text-sm text-gray-400 mt-1 flex items-center gap-2">
+                            Client: <span class="font-semibold text-gray-300">{{ selectedReturn?.client?.name }}</span>
+                            <Badge v-if="selectedReturn?.request_type === 'sp'" class="bg-purple-500/20 text-purple-400 border-0 text-[10px] px-1.5 py-0 h-4">SP</Badge>
+                        </p>
                         <p class="text-sm text-emerald-400 font-bold mt-1">Price: ₱{{ selectedReturn?.order_item?.price }}</p>
                         
                         <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
@@ -587,7 +605,10 @@ const completedCount = computed(() => returnRequests.value.filter(o => o.status 
                                 <span class="text-white font-bold">{{ activeChatReq?.client?.name?.charAt(0).toUpperCase() || 'C' }}</span>
                             </div>
                             <div>
-                                <h3 class="font-bold text-white leading-none">{{ activeChatReq?.client?.name }}</h3>
+                                <h3 class="font-bold text-white leading-none flex items-center gap-2">
+                                    {{ activeChatReq?.client?.name }}
+                                    <Badge v-if="activeChatReq?.request_type === 'sp'" class="bg-purple-500/20 text-purple-400 border-0 text-[9px] px-1.5 py-0 h-4">SP</Badge>
+                                </h3>
                                 <p class="text-xs text-gray-400 mt-1 truncate max-w-[200px]">{{ activeChatReq?.order_item?.product?.name }}</p>
                             </div>
                         </div>

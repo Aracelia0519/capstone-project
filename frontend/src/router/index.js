@@ -48,6 +48,9 @@ import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
 import SPChat from '@/views/serviceProvider/SPChat.vue'
 import SPPaymentSettings from '@/views/serviceProvider/SPPaymentSettings.vue'
 import SPCRM from '@/views/serviceProvider/SPCRM.vue'
+import SpShop from '@/views/serviceProvider/SpShop.vue'
+import SpCart from '@/views/serviceProvider/SpCart.vue'
+import SpProductDetails from '@/views/serviceProvider/SpProductDetails.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -704,6 +707,9 @@ const routes = [
         name: 'SPCRM',
         component: SPCRM
       },
+      { path: 'shop/:distributor_id', name: 'sp_shop', component: SpShop },
+      { path: 'cart', name: 'sp_cart', component: SpCart },
+      { path: 'ProductDetails/:id', name: 'sp_product_details', component: SpProductDetails }
     ]
   },
   {

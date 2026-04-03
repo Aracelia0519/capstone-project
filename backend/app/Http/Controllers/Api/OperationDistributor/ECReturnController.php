@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientReturnRequest;
 use App\Models\EcommerceClient\ClientReturnMessage;
-use App\Models\OperationDistributor\ECRefundRequest;
+use App\Models\ServiceProvider\SpReturnRequest;
+use App\Models\ServiceProvider\SpReturnMessage;
 use App\Events\ReturnMessageSent;
+use App\Events\SpReturnMessageSent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -90,38 +92,67 @@ class ECReturnController extends Controller
         $distId = $this->getDistributorId($user);
         $permissions = $this->getPermissions($user, 'ec_returns');
 
-        $returns = ClientReturnRequest::with(['orderItem.product', 'client'])
+        // 1. Fetch Client Returns
+        $clientReturns = ClientReturnRequest::with(['orderItem.product', 'client'])
             ->where('distributor_id', $distId)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // BULLETPROOF FIX: Deep injection
-        $returnData = $returns->map(function ($ret) {
-            $item = $ret->toArray(); 
-            
-            // Extract safely
-            $clientId = $ret->client_id ?? ($ret->client->id ?? null);
-            
-            $item['client_has_gcash'] = false;
-            $item['client_gcash_number'] = null;
-
-            if ($clientId) {
-                $paymentSetting = DB::table('client_payment_settings')->where('client_id', $clientId)->first();
+            ->get()
+            ->map(function ($ret) {
+                $item = $ret->toArray(); 
+                $item['request_type'] = 'client';
                 
-                if ($paymentSetting && !empty($paymentSetting->gcash_number)) {
-                    // Inject at root
-                    $item['client_has_gcash'] = true;
-                    $item['client_gcash_number'] = $paymentSetting->gcash_number;
+                $clientId = $ret->client_id ?? ($ret->client->id ?? null);
+                $item['client_has_gcash'] = false;
+                $item['client_gcash_number'] = null;
+
+                // FORCE NAME MAPPING FOR THE FRONTEND
+                if (isset($item['client'])) {
+                    $item['client']['name'] = $ret->client->full_name ?? trim(($ret->client->first_name ?? '') . ' ' . ($ret->client->last_name ?? ''));
+                    if (empty(trim($item['client']['name']))) {
+                        $item['client']['name'] = 'Unknown Client';
+                    }
+                } else {
+                    $item['client'] = ['name' => 'Unknown Client'];
+                }
+
+                if ($clientId) {
+                    $paymentSetting = DB::table('client_payment_settings')->where('client_id', $clientId)->first();
                     
-                    // Inject directly inside the client object array (un-strippable)
-                    if (isset($item['client'])) {
-                        $item['client']['has_gcash'] = true;
-                        $item['client']['gcash_number'] = $paymentSetting->gcash_number;
+                    if ($paymentSetting && !empty($paymentSetting->gcash_number)) {
+                        $item['client_has_gcash'] = true;
+                        $item['client_gcash_number'] = $paymentSetting->gcash_number;
+                        if (isset($item['client'])) {
+                            $item['client']['has_gcash'] = true;
+                            $item['client']['gcash_number'] = $paymentSetting->gcash_number;
+                        }
                     }
                 }
-            }
-            return $item;
-        })->toArray(); // Enforce strict PHP array output
+                return $item;
+            });
+
+        // 2. Fetch Service Provider Returns
+        $spReturns = SpReturnRequest::with(['orderItem.product'])
+            ->where('distributor_id', $distId)
+            ->get()
+            ->map(function ($ret) {
+                $item = $ret->toArray(); 
+                $item['request_type'] = 'sp';
+                
+                // Construct a mock 'client' structure for frontend compatibility
+                $spUser = DB::table('users')->where('id', $ret->sp_id)->first();
+                $item['client'] = [
+                    'id' => $spUser->id ?? null,
+                    'name' => $spUser ? trim($spUser->first_name . ' ' . $spUser->last_name) : 'Unknown Provider',
+                    'has_gcash' => false,
+                    'gcash_number' => null
+                ];
+                $item['client_has_gcash'] = false;
+                $item['client_gcash_number'] = null;
+
+                return $item;
+            });
+
+        // Merge and sort
+        $returnData = $clientReturns->concat($spReturns)->sortByDesc('created_at')->values()->toArray();
 
         return response()->json([
             'success' => true,
@@ -139,21 +170,37 @@ class ECReturnController extends Controller
         }
 
         $distId = $this->getDistributorId($user);
-        $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
-        
-        $returnReq->update(['status' => 'approved']);
+        $type = $request->input('request_type', 'client');
 
-        $msg = ClientReturnMessage::create([
-            'return_request_id' => $returnReq->id,
-            'sender_id' => $distId,
-            'receiver_id' => $returnReq->client_id,
-            'type' => 'system',
-            'message' => "Your return request has been approved. Please ship the item back to our distributor shop and provide the tracking details here."
-        ]);
+        if ($type === 'sp') {
+            $returnReq = SpReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            $returnReq->update(['status' => 'approved']);
 
-        broadcast(new ReturnMessageSent($msg))->toOthers();
+            $msg = SpReturnMessage::create([
+                'return_request_id' => $returnReq->id,
+                'sender_id' => $distId,
+                'receiver_id' => $returnReq->sp_id,
+                'type' => 'system',
+                'message' => "Your return request has been approved. Please ship the item back to our distributor shop and provide the tracking details here."
+            ]);
 
-        return response()->json(['success' => true, 'request' => $returnReq]);
+            broadcast(new SpReturnMessageSent($msg))->toOthers();
+        } else {
+            $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            $returnReq->update(['status' => 'approved']);
+
+            $msg = ClientReturnMessage::create([
+                'return_request_id' => $returnReq->id,
+                'sender_id' => $distId,
+                'receiver_id' => $returnReq->client_id,
+                'type' => 'system',
+                'message' => "Your return request has been approved. Please ship the item back to our distributor shop and provide the tracking details here."
+            ]);
+
+            broadcast(new ReturnMessageSent($msg))->toOthers();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Approved']);
     }
 
     public function rejectReturn(Request $request, $id)
@@ -164,21 +211,37 @@ class ECReturnController extends Controller
         }
 
         $distId = $this->getDistributorId($user);
-        $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
-        
-        $returnReq->update(['status' => 'rejected']);
+        $type = $request->input('request_type', 'client');
 
-        $msg = ClientReturnMessage::create([
-            'return_request_id' => $returnReq->id,
-            'sender_id' => $distId,
-            'receiver_id' => $returnReq->client_id,
-            'type' => 'system',
-            'message' => "Your return request has been rejected."
-        ]);
+        if ($type === 'sp') {
+            $returnReq = SpReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            $returnReq->update(['status' => 'rejected']);
 
-        broadcast(new ReturnMessageSent($msg))->toOthers();
+            $msg = SpReturnMessage::create([
+                'return_request_id' => $returnReq->id,
+                'sender_id' => $distId,
+                'receiver_id' => $returnReq->sp_id,
+                'type' => 'system',
+                'message' => "Your return request has been rejected."
+            ]);
 
-        return response()->json(['success' => true, 'request' => $returnReq]);
+            broadcast(new SpReturnMessageSent($msg))->toOthers();
+        } else {
+            $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            $returnReq->update(['status' => 'rejected']);
+
+            $msg = ClientReturnMessage::create([
+                'return_request_id' => $returnReq->id,
+                'sender_id' => $distId,
+                'receiver_id' => $returnReq->client_id,
+                'type' => 'system',
+                'message' => "Your return request has been rejected."
+            ]);
+
+            broadcast(new ReturnMessageSent($msg))->toOthers();
+        }
+
+        return response()->json(['success' => true, 'message' => 'Rejected']);
     }
 
     public function receiveItemAndRequestRefund(Request $request, $id)
@@ -191,40 +254,59 @@ class ECReturnController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'receipt_proof' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'client_gcash_number' => 'required|string' // Enforce string requirement for safety
+            'client_gcash_number' => 'required|string'
         ]);
 
         $distId = $this->getDistributorId($user);
-        $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
-
+        $type = $request->input('request_type', 'client');
         $path = $request->file('receipt_proof')->store('ec_refund_receipts', 'public');
 
         DB::beginTransaction();
         try {
-            $refundReq = ECRefundRequest::create([
-                'return_request_id' => $returnReq->id,
+            if ($type === 'sp') {
+                $returnReq = SpReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+                $returnReq->update(['status' => 'completed']);
+
+                $msg = SpReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->sp_id,
+                    'type' => 'system',
+                    'message' => "Shop has physically received your item. A refund request has been sent to Finance for processing."
+                ]);
+
+                broadcast(new SpReturnMessageSent($msg))->toOthers();
+            } else {
+                $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+                $returnReq->update(['status' => 'completed']);
+
+                $msg = ClientReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->client_id,
+                    'type' => 'system',
+                    'message' => "Shop has physically received your item. A refund request has been sent to Finance for processing."
+                ]);
+
+                broadcast(new ReturnMessageSent($msg))->toOthers();
+            }
+
+            // Secure raw DB insert because ECRefundRequest might not have sp_return_request_id in fillables
+            DB::table('ec_refund_requests')->insert([
+                'return_request_id' => $type === 'client' ? $returnReq->id : null,
+                'sp_return_request_id' => $type === 'sp' ? $returnReq->id : null,
                 'distributor_id' => $distId,
                 'requested_by' => $user->id,
                 'amount' => $request->amount,
-                'client_gcash_number' => $request->client_gcash_number, // We send it explicitly every time now
+                'client_gcash_number' => $request->client_gcash_number,
                 'receipt_proof_path' => 'storage/' . $path,
-                'status' => 'pending' // Finance will approve this
+                'status' => 'pending',
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
-
-            $returnReq->update(['status' => 'completed']);
-
-            $msg = ClientReturnMessage::create([
-                'return_request_id' => $returnReq->id,
-                'sender_id' => $distId,
-                'receiver_id' => $returnReq->client_id,
-                'type' => 'system',
-                'message' => "Shop has physically received your item. A refund request has been sent to Finance for processing."
-            ]);
-
-            broadcast(new ReturnMessageSent($msg))->toOthers();
 
             DB::commit();
-            return response()->json(['success' => true, 'request' => $returnReq, 'refund' => $refundReq]);
+            return response()->json(['success' => true, 'message' => 'Refund processed']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -239,16 +321,27 @@ class ECReturnController extends Controller
         }
 
         $distId = $this->getDistributorId($user);
-        $req = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+        $type = $request->query('type', 'client');
 
-        ClientReturnMessage::where('return_request_id', $req->id)
-            ->where('receiver_id', $distId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+        if ($type === 'sp') {
+            $req = SpReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            SpReturnMessage::where('return_request_id', $req->id)
+                ->where('receiver_id', $distId)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
 
-        $messages = ClientReturnMessage::where('return_request_id', $req->id)
-            ->with('sender')
-            ->orderBy('created_at', 'asc')->get();
+            $messages = SpReturnMessage::where('return_request_id', $req->id)
+                ->orderBy('created_at', 'asc')->get();
+        } else {
+            $req = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            ClientReturnMessage::where('return_request_id', $req->id)
+                ->where('receiver_id', $distId)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+
+            $messages = ClientReturnMessage::where('return_request_id', $req->id)
+                ->orderBy('created_at', 'asc')->get();
+        }
 
         return response()->json([
             'success' => true, 
@@ -271,32 +364,59 @@ class ECReturnController extends Controller
         ]);
 
         $distId = $this->getDistributorId($user);
-        $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
-
+        $type = $request->input('type', 'client');
         $msg = null;
 
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('ec_returns_chat', 'public');
-            $msg = ClientReturnMessage::create([
-                'return_request_id' => $returnReq->id,
-                'sender_id' => $distId,
-                'receiver_id' => $returnReq->client_id,
-                'type' => 'image',
-                'file_path' => 'storage/' . $path
-            ]);
-            broadcast(new ReturnMessageSent($msg))->toOthers();
-        }
+        if ($type === 'sp') {
+            $returnReq = SpReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('ec_returns_chat', 'public');
+                $msg = SpReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->sp_id,
+                    'type' => 'image',
+                    'file_path' => 'storage/' . $path
+                ]);
+                broadcast(new SpReturnMessageSent($msg))->toOthers();
+            }
 
-        if ($request->message) {
-            $msg2 = ClientReturnMessage::create([
-                'return_request_id' => $returnReq->id,
-                'sender_id' => $distId,
-                'receiver_id' => $returnReq->client_id,
-                'type' => 'text',
-                'message' => $request->message
-            ]);
-            broadcast(new ReturnMessageSent($msg2))->toOthers();
-            $msg = $msg2; 
+            if ($request->message) {
+                $msg2 = SpReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->sp_id,
+                    'type' => 'text',
+                    'message' => $request->message
+                ]);
+                broadcast(new SpReturnMessageSent($msg2))->toOthers();
+                $msg = $msg2; 
+            }
+        } else {
+            $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('ec_returns_chat', 'public');
+                $msg = ClientReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->client_id,
+                    'type' => 'image',
+                    'file_path' => 'storage/' . $path
+                ]);
+                broadcast(new ReturnMessageSent($msg))->toOthers();
+            }
+
+            if ($request->message) {
+                $msg2 = ClientReturnMessage::create([
+                    'return_request_id' => $returnReq->id,
+                    'sender_id' => $distId,
+                    'receiver_id' => $returnReq->client_id,
+                    'type' => 'text',
+                    'message' => $request->message
+                ]);
+                broadcast(new ReturnMessageSent($msg2))->toOthers();
+                $msg = $msg2; 
+            }
         }
 
         return response()->json(['success' => true, 'data' => $msg]);

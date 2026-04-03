@@ -117,7 +117,7 @@
     </div>
 
     <Card class="mb-8 overflow-hidden border-slate-200">
-      <div v-if="loading" class="p-12 text-center text-slate-500 flex flex-col items-center">
+      <div v-if="loading" class="p-12 text-center text-slate-50 flex flex-col items-center">
         <svg class="w-8 h-8 animate-spin text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
@@ -213,7 +213,7 @@
         <div v-if="selectedTransaction" class="p-6 bg-slate-50 space-y-5">
           <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
             <div>
-              <span class="text-xs text-slate-500 block mb-1">Payee (Client)</span>
+              <span class="text-xs text-slate-500 block mb-1">Payee (Recipient)</span>
               <span class="font-semibold text-slate-900">{{ selectedTransaction.party }}</span>
             </div>
             <div>

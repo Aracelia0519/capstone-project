@@ -201,8 +201,45 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
+    
+
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
+
+        Route::prefix('orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'index']);
+            Route::get('/{id}/pickup-details', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'getPickUpDetails']);
+            Route::post('/{id}/pickup-submit', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'submitPickUp']);
+            
+            // Reviews
+            Route::post('/reviews', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'submitReview']);
+            
+            // Returns & Chat
+            Route::post('/return-request', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'submitReturnRequest']);
+            Route::get('/items/{itemId}/return-chat', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'getReturnChat']);
+            Route::post('/returns/{id}/message', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'sendReturnMessage']);
+            Route::post('/returns/{id}/tracking', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'submitReturnTracking']);
+        });
+
+        Route::prefix('shop')->group(function () {
+            Route::get('/products/{distributor_id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProducts']);
+            Route::get('/product/{id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProduct']);
+            Route::post('/cart', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'addToCart']);
+            Route::post('/order-now', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'orderNow']);
+            Route::post('/verify-gcash', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'verifyGcashPayment']);
+
+            
+            Route::post('/cart-items/calculate-shipping', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'calculateShippingFee']);
+            Route::post('/shipping-fee', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'calculateShipping']);
+
+            Route::get('/cart-items', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'index']);
+            Route::put('/cart-items/{id}', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'update']);
+            Route::delete('/cart-items/{id}', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'destroy']);
+            Route::delete('/cart-items', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'clear']);
+            Route::post('/cart-items/checkout', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'checkout']);
+            Route::post('/cart-items/verify-gcash', [\App\Http\Controllers\Api\ServiceProvider\SpCartController::class, 'verifyGcashPayment']);
+        });
+        
 
         // -----------------------------------------------------
         // SERVICE PROVIDER PAYMENT SETTINGS SHITS

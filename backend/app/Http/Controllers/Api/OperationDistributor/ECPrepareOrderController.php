@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
+use App\Models\ServiceProvider\SpOrder; // Added for Service Provider Orders
 use App\Models\HR\Employee;
-use App\Models\OperationDistributor\ECOrderDelivery;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -92,20 +92,20 @@ class ECPrepareOrderController extends Controller
             $distributorId = $user->id;
         }
 
-        // Added 'ready_for_pickup' so it doesn't disappear from history after processing
-        $query = ClientOrder::with(['client', 'items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
+        // ==========================================
+        // 1. FETCH CLIENT ORDERS
+        // ==========================================
+        $clientOrdersQuery = ClientOrder::with(['client', 'items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
 
-        // Scope to distributor if context is found
         if ($distributorId) {
-            $query->whereHas('items', function($q) use ($distributorId) {
+            $clientOrdersQuery->whereHas('items', function($q) use ($distributorId) {
                 $q->where('distributor_id', $distributorId);
             })->with(['items' => function($q) use ($distributorId) {
                 $q->where('distributor_id', $distributorId)->with('product');
             }]);
         }
 
-        $orders = $query->get()->map(function ($order) {
-            // Fetch the latest delivery to check if it was rejected
+        $clientOrders = $clientOrdersQuery->get()->map(function ($order) {
             $latestDelivery = DB::table('ec_order_deliveries')
                 ->where('order_id', $order->id)
                 ->latest('id')
@@ -118,6 +118,7 @@ class ECPrepareOrderController extends Controller
 
             return [
                 'id' => $order->id,
+                'order_type' => 'client',
                 'order_number' => $order->order_number,
                 'status' => $order->status,
                 'order_date' => $order->created_at,
@@ -143,6 +144,65 @@ class ECPrepareOrderController extends Controller
                 })
             ];
         });
+
+        // ==========================================
+        // 2. FETCH SERVICE PROVIDER ORDERS
+        // ==========================================
+        $spOrdersQuery = SpOrder::with(['items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
+
+        if ($distributorId) {
+            $spOrdersQuery->whereHas('items', function($q) use ($distributorId) {
+                $q->where('distributor_id', $distributorId);
+            })->with(['items' => function($q) use ($distributorId) {
+                $q->where('distributor_id', $distributorId)->with('product');
+            }]);
+        }
+
+        $spOrders = $spOrdersQuery->get()->map(function ($order) {
+            $latestDelivery = DB::table('ec_order_deliveries')
+                ->where('sp_order_id', $order->id)
+                ->latest('id')
+                ->first();
+                
+            $isDeliveryRejected = false;
+            if ($latestDelivery && ($latestDelivery->status === 'rejected' || $latestDelivery->status === 'cancelled')) {
+                $isDeliveryRejected = true;
+            }
+
+            // Fetch SP User via DB to avoid explicit relationship requirements
+            $spUser = DB::table('users')->where('id', $order->service_provider_id)->first();
+
+            return [
+                'id' => $order->id,
+                'order_type' => 'sp',
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'order_date' => $order->created_at,
+                'total_amount' => $order->total_amount,
+                'shipping_fee' => $order->shipping_fee,
+                'grand_total' => $order->grand_total,
+                'payment_method' => $order->payment_method,
+                'delivery_address' => $order->delivery_address,
+                'client_name' => $spUser ? ($spUser->first_name . ' ' . $spUser->last_name) : 'Unknown Provider',
+                'client_phone' => $spUser ? $spUser->phone : 'No Contact Provided',
+                'rejection_reason' => $order->rejection_reason,
+                'is_delivery_rejected' => $isDeliveryRejected,
+                'latest_delivery_status' => $latestDelivery ? $latestDelivery->status : null,
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->product ? $item->product->name : 'Unknown Product',
+                        'category' => $item->product ? $item->product->category : 'Uncategorized',
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->price,
+                        'total' => $item->quantity * $item->price,
+                    ];
+                })
+            ];
+        });
+
+        // Merge both order lists and sort by date descending
+        $orders = $clientOrders->concat($spOrders)->sortByDesc('order_date')->values();
 
         // Return standardized wrapper matching RBAC structure
         return response()->json([
@@ -202,14 +262,21 @@ class ECPrepareOrderController extends Controller
             return response()->json(['message' => 'Access Denied: You do not have permission to dispatch orders.'], 403);
         }
 
-        $order = ClientOrder::findOrFail($id);
+        $rules = [
+            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'order_type' => 'required|in:client,sp' // Distinguish order source
+        ];
+
+        $orderType = $request->input('order_type', 'client');
+
+        if ($orderType === 'sp') {
+            $order = SpOrder::findOrFail($id);
+        } else {
+            $order = ClientOrder::findOrFail($id);
+        }
         
         // Determine if it's a Pick-Up Order
         $isPickUp = in_array(strtolower($order->payment_method), ['pick-up', 'pickup']);
-
-        $rules = [
-            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
-        ];
 
         // Conditionally require delivery personnel if it is NOT a pick-up
         if (!$isPickUp) {
@@ -223,12 +290,15 @@ class ECPrepareOrderController extends Controller
             $filename = 'ec_preparation_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('ec_preparations', $filename, 'public');
 
-            // Create Delivery/Proof Record
-            ECOrderDelivery::create([
-                'order_id' => $order->id,
+            // Insert using DB facade to prevent MassAssignment or Model mapping conflicts safely
+            DB::table('ec_order_deliveries')->insert([
+                'order_id' => $orderType === 'client' ? $order->id : null,
+                'sp_order_id' => $orderType === 'sp' ? $order->id : null,
                 'delivery_personnel_id' => $isPickUp ? null : $request->delivery_personnel_id,
                 'preparation_proof_path' => 'storage/' . $path,
-                'status' => $isPickUp ? 'ready_for_pickup' : 'assigned'
+                'status' => $isPickUp ? 'ready_for_pickup' : 'assigned',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // Mark the order as prepared or ready for pickup

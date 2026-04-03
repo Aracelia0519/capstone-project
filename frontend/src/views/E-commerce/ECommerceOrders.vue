@@ -65,6 +65,7 @@ interface OrderItem {
 
 interface Order {
   id: number
+  order_type: string // 'client' | 'service_provider'
   order_number: string
   status: string
   order_date: string
@@ -194,7 +195,10 @@ const confirmOrder = async () => {
   })
   
   try {
-    await api.post(`/operation-distributor/ecommerce-orders/${orderToConfirm.value.id}/confirm`)
+    // Send type flag to backend to distinguish database tables
+    await api.post(`/operation-distributor/ecommerce-orders/${orderToConfirm.value.id}/confirm`, {
+        type: orderToConfirm.value.order_type
+    })
     
     const orderIndex = orders.value.findIndex(o => o.id === orderToConfirm.value?.id)
     if (orderIndex !== -1) {
@@ -282,7 +286,7 @@ onMounted(() => {
         <AlertDialogHeader>
           <AlertDialogTitle class="flex items-center gap-2 text-base sm:text-lg">
             <AlertTriangle class="h-5 w-5 text-yellow-500 flex-shrink-0" />
-            <span>Confirm Client Order</span>
+            <span>Confirm {{ orderToConfirm?.order_type === 'service_provider' ? 'Provider' : 'Client' }} Order</span>
           </AlertDialogTitle>
           <AlertDialogDescription class="space-y-2 text-gray-400">
             <p class="text-sm">Are you sure you want to confirm this order?</p>
@@ -291,7 +295,7 @@ onMounted(() => {
                 <span class="font-medium text-gray-400">Order Code:</span>
                 <span class="text-right">{{ orderToConfirm.order_number }}</span>
                 
-                <span class="font-medium text-gray-400">Client:</span>
+                <span class="font-medium text-gray-400">{{ orderToConfirm.order_type === 'service_provider' ? 'Provider' : 'Client' }}:</span>
                 <span class="text-right">{{ orderToConfirm.client_name }}</span>
                 
                 <span class="font-medium text-gray-400">Grand Total:</span>
@@ -318,7 +322,7 @@ onMounted(() => {
       <div class="w-80 lg:w-96 border-r border-gray-800 flex flex-col h-full">
         <div class="p-4 border-b border-gray-800 flex items-center justify-between sticky top-0 z-10 backdrop-blur-sm">
           <h2 class="font-semibold text-lg flex items-center gap-2 text-white">
-            <Package class="h-5 w-5 text-blue-400" /> Client Orders
+            <Package class="h-5 w-5 text-blue-400" /> Incoming Orders
             <Badge v-if="incomingOrders.length > 0" class="ml-2 bg-blue-500/20 text-blue-400 border-0">
               {{ incomingOrders.length }}
             </Badge>
@@ -357,7 +361,10 @@ onMounted(() => {
                   <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
                   <div class="text-xs text-gray-500">{{ formatDate(order.order_date).split(',')[0] }}</div>
                 </div>
-                <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
+                <div class="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                  {{ order.client_name }} 
+                  <Badge v-if="order.order_type === 'service_provider'" class="bg-purple-500/20 text-purple-400 text-[9px] px-1.5 py-0 h-4 border-0 leading-none flex items-center rounded-sm">SP</Badge>
+                </div>
               </div>
               <div class="flex w-full items-center justify-between gap-2">
                   <Badge class="capitalize text-[10px] px-2 py-0 h-5 bg-amber-500/20 text-amber-400 border-0">
@@ -383,7 +390,9 @@ onMounted(() => {
                     <Badge class="capitalize text-[8px] px-1 py-0 h-4 bg-gray-800 text-gray-300 border-gray-700">
                       {{ order.status }}
                     </Badge>
-                    <h2 class="text-gray-300">{{ order.order_number }}</h2>
+                    <div class="flex flex-col items-start leading-none">
+                      <h2 class="text-gray-300 font-medium">{{ order.order_number }}</h2>
+                    </div>
                   </div>
                   <span class="font-medium text-gray-400">{{ formatCurrency(order.grand_total) }}</span>
                 </button>
@@ -401,7 +410,8 @@ onMounted(() => {
                Order Details
             </h1>
             <p class="text-sm text-gray-400">
-              Viewing order from {{ selectedOrder.client_name }}
+              Viewing order from {{ selectedOrder.client_name }} 
+              <span v-if="selectedOrder.order_type === 'service_provider'" class="text-purple-400 font-medium">(Service Provider)</span>
             </p>
           </div>
           <div v-else>
@@ -443,7 +453,7 @@ onMounted(() => {
               <Card class="bg-gray-900/40 border-gray-800 text-white shadow-none">
                 <CardHeader class="pb-3 border-b border-gray-800/50">
                   <CardTitle class="text-md flex items-center gap-2 text-gray-200">
-                      <User class="h-4 w-4 text-blue-400" /> Client Information
+                      <User class="h-4 w-4 text-blue-400" /> {{ selectedOrder.order_type === 'service_provider' ? 'Service Provider' : 'Client' }} Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent class="text-sm space-y-3 pt-4">
@@ -584,7 +594,10 @@ onMounted(() => {
                             <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
                             <div class="text-xs text-gray-500">{{ formatDate(order.order_date).split(',')[0] }}</div>
                           </div>
-                          <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
+                          <div class="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                            {{ order.client_name }}
+                            <Badge v-if="order.order_type === 'service_provider'" class="bg-purple-500/20 text-purple-400 text-[9px] px-1.5 py-0 h-4 border-0 leading-none flex items-center rounded-sm">SP</Badge>
+                          </div>
                         </div>
                         <div class="flex w-full items-center justify-between gap-2">
                             <Badge class="capitalize text-[10px] px-2 py-0 h-5" :class="order.status === 'pending' ? 'bg-amber-500/20 text-amber-400 border-0' : 'bg-gray-800 text-gray-300 border-gray-700'">
@@ -607,7 +620,8 @@ onMounted(() => {
               {{ selectedOrder ? selectedOrder.order_number : 'Orders' }}
             </h1>
             <p v-if="selectedOrder" class="text-xs text-gray-400">
-              {{ selectedOrder.client_name }}
+              {{ selectedOrder.client_name }} 
+              <span v-if="selectedOrder.order_type === 'service_provider'" class="text-purple-400">(SP)</span>
             </p>
             <p v-else class="text-xs text-gray-400">
               {{ incomingOrders.length }} pending
@@ -656,7 +670,7 @@ onMounted(() => {
           <Card class="bg-gray-900/40 border-gray-800 shadow-none text-white">
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2 text-gray-200">
-                <User class="h-4 w-4 text-blue-400" /> Client
+                <User class="h-4 w-4 text-blue-400" /> {{ selectedOrder.order_type === 'service_provider' ? 'Service Provider' : 'Client' }}
               </CardTitle>
             </CardHeader>
             <CardContent class="text-sm space-y-2">

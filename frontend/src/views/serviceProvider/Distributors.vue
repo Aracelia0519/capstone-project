@@ -188,9 +188,9 @@
             </div>
             
             <div v-else-if="distributor.status === 'active'" class="flex gap-2 sm:gap-3">
-               <button class="flex-1 py-2.5 sm:py-3 px-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all border border-slate-600 hover:border-slate-500 flex items-center justify-center gap-1.5">
+               <button @click="goToShop(distributor.id)" class="flex-1 py-2.5 sm:py-3 px-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all border border-slate-600 hover:border-slate-500 flex items-center justify-center gap-1.5">
                   <svg class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                  Procure
+                  Order
                </button>
                <button @click="downloadAgreement(distributor)" title="Download Agreement Document" class="p-2.5 sm:p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-slate-600 shrink-0">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -638,6 +638,10 @@ export default {
   },
   created() { this.fetchDistributors(); },
   methods: {
+    goToShop(distributorId) {
+      this.$router.push('/serviceProvider/shop/' + distributorId);
+    },
+    
     async fetchDistributors() {
       this.loading = true;
       try {
@@ -1078,6 +1082,7 @@ export default {
   },
   beforeUnmount() { document.body.style.overflow = ''; }
 }
+
 </script>
 
 <style scoped>

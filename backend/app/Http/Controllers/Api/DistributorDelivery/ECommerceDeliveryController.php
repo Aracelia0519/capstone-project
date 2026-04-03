@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\DistributorDelivery;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\EcommerceClient\ClientOrder;
+use App\Models\ServiceProvider\SpOrder;
 use App\Models\OperationDistributor\ECOrderDelivery;
 use App\Models\DistributorDelivery\ECDeliveryRemittance;
 use App\Models\HR\Employee;
@@ -36,47 +38,98 @@ class ECommerceDeliveryController extends Controller
             }
         }
 
-        $deliveries = ECOrderDelivery::with([
-            'order.items.product',
-            'order.client.clientRequirement.address'
-        ])
-        ->where('delivery_personnel_id', $employee->id)
-        ->whereIn('status', ['assigned', 'in_transit', 'remitting']) // ADDED remitting
-        ->get()
-        ->map(function ($delivery) use ($distLat, $distLng) {
-            $lat = null;
-            $lng = null;
-            $fullAddress = $delivery->order->delivery_address ?? 'No Address Provided';
+        $deliveries = ECOrderDelivery::where('delivery_personnel_id', $employee->id)
+            ->whereIn('status', ['assigned', 'in_transit', 'remitting'])
+            ->get()
+            ->map(function ($delivery) use ($distLat, $distLng) {
+                
+                $lat = null;
+                $lng = null;
+                $clientName = 'Unknown';
+                $clientPhone = 'N/A';
+                $fullAddress = 'No Address Provided';
+                $orderNumber = 'N/A';
+                $totalAmount = 0;
+                $paymentMethod = 'N/A';
+                $items = collect();
+                $orderType = 'client';
 
-            // Attempt to get exact coordinates from the client's verified address
-            if ($delivery->order && $delivery->order->client && $delivery->order->client->clientRequirement && $delivery->order->client->clientRequirement->address) {
-                $addressData = $delivery->order->client->clientRequirement->address;
-                $lat = $addressData->latitude;
-                $lng = $addressData->longitude;
-            }
+                // 1. Process Client Order
+                if ($delivery->order_id) {
+                    $order = ClientOrder::with(['client.clientRequirement.address', 'items.product'])->find($delivery->order_id);
+                    if ($order) {
+                        $orderType = 'client';
+                        $orderNumber = $order->order_number;
+                        $clientName = $order->client->full_name ?? 'Unknown Client';
+                        $clientPhone = $order->client->phone ?? 'N/A';
+                        $fullAddress = $order->delivery_address;
+                        $totalAmount = $order->grand_total;
+                        $paymentMethod = $order->payment_method;
+                        
+                        $items = $order->items->map(function ($item) {
+                            return [
+                                'name' => $item->product ? $item->product->name : 'Unknown Product',
+                                'quantity' => $item->quantity,
+                            ];
+                        });
 
-            return [
-                'id' => $delivery->id,
-                'order_id' => $delivery->order_id,
-                'order_number' => $delivery->order->order_number ?? 'N/A',
-                'status' => $delivery->status,
-                'client_name' => $delivery->order->client->full_name ?? 'Unknown',
-                'client_phone' => $delivery->order->client->phone ?? 'N/A',
-                'delivery_address' => $fullAddress,
-                'target_lat' => $lat,
-                'target_lng' => $lng,
-                'distributor_lat' => $distLat,
-                'distributor_lng' => $distLng,
-                'total_amount' => $delivery->order->grand_total ?? 0,
-                'payment_method' => $delivery->order->payment_method ?? 'N/A',
-                'items' => $delivery->order->items->map(function ($item) {
-                    return [
-                        'name' => $item->product ? $item->product->name : 'Unknown Product',
-                        'quantity' => $item->quantity,
-                    ];
-                })
-            ];
-        });
+                        if ($order->client && $order->client->clientRequirement && $order->client->clientRequirement->address) {
+                            $lat = $order->client->clientRequirement->address->latitude;
+                            $lng = $order->client->clientRequirement->address->longitude;
+                        }
+                    }
+                } 
+                // 2. Process Service Provider Order
+                elseif ($delivery->sp_order_id) {
+                    $order = SpOrder::with(['items.product'])->find($delivery->sp_order_id);
+                    if ($order) {
+                        $orderType = 'sp';
+                        $orderNumber = $order->order_number;
+                        $fullAddress = $order->delivery_address;
+                        $totalAmount = $order->grand_total;
+                        $paymentMethod = $order->payment_method;
+
+                        $spUser = DB::table('users')->where('id', $order->service_provider_id)->first();
+                        $clientName = $spUser ? ($spUser->first_name . ' ' . $spUser->last_name) : 'Unknown Provider';
+                        $clientPhone = $spUser->phone ?? 'N/A';
+
+                        $items = $order->items->map(function ($item) {
+                            return [
+                                'name' => $item->product ? $item->product->name : 'Unknown Product',
+                                'quantity' => $item->quantity,
+                            ];
+                        });
+
+                        $spReq = DB::table('service_provider_requirements')->where('user_id', $order->service_provider_id)->first();
+                        if ($spReq) {
+                            $spAddr = DB::table('service_provider_addresses')->where('service_provider_requirements_id', $spReq->id)->first();
+                            if ($spAddr) {
+                                $lat = $spAddr->latitude;
+                                $lng = $spAddr->longitude;
+                            }
+                        }
+                    }
+                }
+
+                return [
+                    'id' => $delivery->id,
+                    'order_type' => $orderType,
+                    'order_id' => $delivery->order_id,
+                    'sp_order_id' => $delivery->sp_order_id,
+                    'order_number' => $orderNumber,
+                    'status' => $delivery->status,
+                    'client_name' => $clientName,
+                    'client_phone' => $clientPhone,
+                    'delivery_address' => $fullAddress,
+                    'target_lat' => $lat,
+                    'target_lng' => $lng,
+                    'distributor_lat' => $distLat,
+                    'distributor_lng' => $distLng,
+                    'total_amount' => $totalAmount,
+                    'payment_method' => $paymentMethod,
+                    'items' => $items
+                ];
+            });
 
         return response()->json($deliveries);
     }
@@ -88,8 +141,10 @@ class ECommerceDeliveryController extends Controller
         
         $delivery->update(['status' => 'in_transit']);
         
-        if ($delivery->order) {
-            $delivery->order->update(['status' => 'shipped']);
+        if ($delivery->order_id) {
+            DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'shipped']);
+        } elseif ($delivery->sp_order_id) {
+            DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'shipped']);
         }
 
         return response()->json(['message' => 'Delivery started. Status updated to in transit.']);
@@ -98,8 +153,37 @@ class ECommerceDeliveryController extends Controller
     // Process arrival and complete the delivery
     public function arrive(Request $request, $id)
     {
-        $delivery = ECOrderDelivery::with('order.client.clientRequirement.address')->findOrFail($id);
-        $isCOD = ($delivery->order && strtolower($delivery->order->payment_method) === 'cod');
+        $delivery = ECOrderDelivery::findOrFail($id);
+        
+        $paymentMethod = 'N/A';
+        $targetLat = null;
+        $targetLng = null;
+
+        if ($delivery->order_id) {
+            $order = ClientOrder::with('client.clientRequirement.address')->find($delivery->order_id);
+            if ($order) {
+                $paymentMethod = $order->payment_method;
+                if ($order->client && $order->client->clientRequirement && $order->client->clientRequirement->address) {
+                    $targetLat = $order->client->clientRequirement->address->latitude;
+                    $targetLng = $order->client->clientRequirement->address->longitude;
+                }
+            }
+        } elseif ($delivery->sp_order_id) {
+            $order = SpOrder::find($delivery->sp_order_id);
+            if ($order) {
+                $paymentMethod = $order->payment_method;
+                $spReq = DB::table('service_provider_requirements')->where('user_id', $order->service_provider_id)->first();
+                if ($spReq) {
+                    $spAddr = DB::table('service_provider_addresses')->where('service_provider_requirements_id', $spReq->id)->first();
+                    if ($spAddr) {
+                        $targetLat = $spAddr->latitude;
+                        $targetLng = $spAddr->longitude;
+                    }
+                }
+            }
+        }
+
+        $isCOD = (strtolower($paymentMethod) === 'cod');
 
         $rules = [
             'latitude' => 'required|numeric',
@@ -112,14 +196,6 @@ class ECommerceDeliveryController extends Controller
         }
 
         $request->validate($rules);
-
-        // Target Coordinates Validation
-        $targetLat = null;
-        $targetLng = null;
-        if ($delivery->order && $delivery->order->client && $delivery->order->client->clientRequirement && $delivery->order->client->clientRequirement->address) {
-            $targetLat = $delivery->order->client->clientRequirement->address->latitude;
-            $targetLng = $delivery->order->client->clientRequirement->address->longitude;
-        }
 
         // Distance validation (Must be within 500 meters / 0.5km)
         if ($targetLat && $targetLng) {
@@ -152,9 +228,10 @@ class ECommerceDeliveryController extends Controller
             $delivery->status = $isCOD ? 'remitting' : 'delivered';
             $delivery->save();
 
-            if ($delivery->order) {
-                // To the client, the order is delivered whether COD or not. 
-                $delivery->order->update(['status' => 'delivered']);
+            if ($delivery->order_id) {
+                DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'delivered']);
+            } elseif ($delivery->sp_order_id) {
+                DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'delivered']);
             }
 
             DB::commit();
@@ -175,7 +252,7 @@ class ECommerceDeliveryController extends Controller
             'remittance_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
         ]);
 
-        $delivery = ECOrderDelivery::with('order')->findOrFail($id);
+        $delivery = ECOrderDelivery::findOrFail($id);
 
         if ($delivery->status !== 'remitting') {
             return response()->json(['message' => 'Delivery is not in remitting status.'], 400);
@@ -190,7 +267,6 @@ class ECommerceDeliveryController extends Controller
             $distAddr = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
             
             if ($distAddr && $distAddr->latitude && $distAddr->longitude) {
-                // Use kilometer based calculation to match arrive method (0.5km = 500m)
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $distAddr->latitude, $distAddr->longitude);
                 if ($distance > 0.5) {
                     return response()->json(['message' => 'You are too far from the Distributor HQ to remit funds. Distance: ' . round($distance * 1000) . ' meters'], 400);
@@ -211,24 +287,34 @@ class ECommerceDeliveryController extends Controller
             $delivery->status = 'delivered'; // Final state for EC Delivery tracking
             $delivery->save();
 
-            // Calculate Order Financials (VAT & Total Sales)
+            $distGrandTotal = 0;
+            if ($delivery->order_id) {
+                $order = DB::table('client_orders')->where('id', $delivery->order_id)->first();
+                if ($order) $distGrandTotal = $order->grand_total;
+            } elseif ($delivery->sp_order_id) {
+                $order = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
+                if ($order) $distGrandTotal = $order->grand_total;
+            }
+
             $distributorId = $employee->parent_distributor_id;
-            $distGrandTotal = $delivery->order ? $delivery->order->grand_total : 0;
             $distVatableSales = round($distGrandTotal / 1.12, 2);
             $distVatAmount = round($distGrandTotal - $distVatableSales, 2);
 
-            // 1. Insert into the new Remittance table for the Distributor's tracking
-            ECDeliveryRemittance::create([
+            // Insert using raw queries to easily handle conditional SP/Client insertion
+            DB::table('ec_delivery_remittances')->insert([
                 'distributor_id' => $distributorId,
                 'delivery_personnel_id' => $employee->id,
                 'order_id' => $delivery->order_id,
+                'sp_order_id' => $delivery->sp_order_id,
                 'amount' => $distGrandTotal,
                 'remittance_proof_path' => $delivery->remittance_proof_path,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            // 2. Log exact financial metrics for this completed COD order
             DB::table('ec_order_financials')->insert([
                 'order_id' => $delivery->order_id,
+                'sp_order_id' => $delivery->sp_order_id,
                 'distributor_id' => $distributorId,
                 'amount' => $distGrandTotal,
                 'vat_deduction' => $distVatAmount,
@@ -237,15 +323,10 @@ class ECommerceDeliveryController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // 3. Keep running tally of distributor's cumulative sales
-            $overallSales = DB::table('distributor_overall_sales')
-                ->where('distributor_id', $distributorId)
-                ->first();
-
+            // Keep running tally of distributor's cumulative sales
+            $overallSales = DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->first();
             if ($overallSales) {
-                DB::table('distributor_overall_sales')
-                    ->where('distributor_id', $distributorId)
-                    ->update([
+                DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->update([
                         'total_revenue' => $overallSales->total_revenue + $distVatableSales,
                         'total_sales_count' => $overallSales->total_sales_count + 1,
                         'updated_at' => now(),
@@ -278,13 +359,12 @@ class ECommerceDeliveryController extends Controller
             'reason' => 'required|string|max:1000'
         ]);
 
-        $delivery = ECOrderDelivery::with('order')->find($id);
+        $delivery = ECOrderDelivery::find($id);
 
         if (!$delivery) {
             return response()->json(['message' => 'Delivery not found.'], 404);
         }
 
-        // Fetch the user to retrieve the personnel's name
         $user = $request->user();
         $employee = Employee::where('user_id', $user->id)->first();
         $personnelName = $employee ? trim($employee->first_name . ' ' . $employee->last_name) : 'Unknown Delivery Personnel';
@@ -292,14 +372,20 @@ class ECommerceDeliveryController extends Controller
         DB::beginTransaction();
 
         try {
-            // Revert client_orders status to confirmed and store reason
-            if ($delivery->order) {
-                $delivery->order->status = 'confirmed';
-                $delivery->order->rejection_reason = "Rejected by {$personnelName}: " . $request->reason;
-                $delivery->order->save();
+            $reasonString = "Rejected by {$personnelName}: " . $request->reason;
+
+            if ($delivery->order_id) {
+                DB::table('client_orders')->where('id', $delivery->order_id)->update([
+                    'status' => 'confirmed',
+                    'rejection_reason' => $reasonString
+                ]);
+            } elseif ($delivery->sp_order_id) {
+                DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update([
+                    'status' => 'confirmed',
+                    'rejection_reason' => $reasonString
+                ]);
             }
 
-            // Remove the delivery assignment from ec_order_deliveries
             $delivery->delete();
 
             DB::commit();

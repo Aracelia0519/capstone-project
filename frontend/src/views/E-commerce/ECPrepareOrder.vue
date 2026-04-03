@@ -58,6 +58,7 @@ interface OrderItem {
 
 interface Order {
   id: number
+  order_type: string // 'client' | 'sp'
   order_number: string
   status: string
   order_date: string
@@ -143,17 +144,6 @@ const canSubmit = computed(() => {
   return selectedDeliveryMan.value !== '' && proofFile.value !== null
 })
 
-const statusIcon = (status: string) => {
-  switch(status.toLowerCase()) {
-    case 'pending': return Package
-    case 'confirmed': return Check
-    case 'prepared': return Package
-    case 'ready_for_pickup': return Package
-    case 'shipped': return Truck
-    default: return Package
-  }
-}
-
 // --- Actions ---
 
 const fetchOrders = async () => {
@@ -238,6 +228,9 @@ const submitPreparation = async () => {
   
   const formData = new FormData()
   
+  // Attach the Unified Order Details
+  formData.append('order_type', selectedOrder.value.order_type)
+
   // Only append delivery man ID if it is NOT a pick-up order
   if (!isPickUp.value) {
     formData.append('delivery_personnel_id', selectedDeliveryMan.value)
@@ -330,7 +323,11 @@ const formatDate = (dateString: string) => {
             >
               <div class="flex w-full flex-col gap-1">
                 <div class="flex items-center justify-between">
-                  <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
+                    <Badge v-if="order.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP Order</Badge>
+                    <Badge v-else class="text-[9px] px-1.5 py-0 h-4 bg-emerald-500/20 text-emerald-400 border-0">Client</Badge>
+                  </div>
                   <div class="text-xs text-gray-500">{{ formatDate(order.order_date).split(',')[0] }}</div>
                 </div>
                 <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
@@ -380,7 +377,7 @@ const formatDate = (dateString: string) => {
                Prepare Order Details
             </h1>
             <p class="text-sm text-gray-400">
-              Processing order for {{ selectedOrder.client_name }}
+              Processing <span class="capitalize">{{ selectedOrder.order_type === 'sp' ? 'Service Provider' : 'Client' }}</span> order for {{ selectedOrder.client_name }}
             </p>
           </div>
           <div v-else>
@@ -404,7 +401,7 @@ const formatDate = (dateString: string) => {
               <Card class="bg-gray-900/40 border-gray-800 text-white shadow-none">
                 <CardHeader class="pb-3 border-b border-gray-800/50">
                   <CardTitle class="text-md flex items-center gap-2 text-gray-200">
-                      <User class="h-4 w-4 text-blue-400" /> Client Information
+                      <User class="h-4 w-4 text-blue-400" /> Customer Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent class="text-sm space-y-3 pt-4">
@@ -473,7 +470,7 @@ const formatDate = (dateString: string) => {
                   
                   <div class="space-y-2" v-if="!isPickUp">
                      <Label class="text-gray-300 font-semibold">Assign Delivery Personnel <span class="text-red-400">*</span></Label>
-                     <h2 class="text-xs text-gray-500">Select the person who will deliver this order to the client.</h2>
+                     <h2 class="text-xs text-gray-500">Select the person who will deliver this order to the customer.</h2>
                      <div class="relative">
                         <select 
                           v-model="selectedDeliveryMan" 
@@ -593,7 +590,10 @@ const formatDate = (dateString: string) => {
                       >
                         <div class="flex w-full flex-col gap-1">
                           <div class="flex items-center justify-between">
-                            <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
+                            <div class="flex items-center gap-2">
+                              <span class="font-semibold text-gray-100">{{ order.order_number }}</span>
+                              <Badge v-if="order.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
+                            </div>
                             <div class="text-xs text-gray-500">{{ formatDate(order.order_date).split(',')[0] }}</div>
                           </div>
                           <div class="text-xs font-medium text-gray-400">{{ order.client_name }}</div>
@@ -641,7 +641,7 @@ const formatDate = (dateString: string) => {
           <Card class="bg-gray-900/40 border-gray-800 shadow-none text-white">
             <CardHeader class="pb-2">
               <CardTitle class="text-sm flex items-center gap-2 text-gray-200">
-                <User class="h-4 w-4 text-blue-400" /> Client
+                <User class="h-4 w-4 text-blue-400" /> Customer Information
               </CardTitle>
             </CardHeader>
             <CardContent class="text-sm space-y-2">
