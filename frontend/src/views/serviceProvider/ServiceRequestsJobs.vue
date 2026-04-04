@@ -83,7 +83,7 @@
             job.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
             job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
           ]">
-            {{ getStatusText(job.status) }}
+            {{ getCustomStatusText(job) }}
           </Badge>
         </div>
         
@@ -216,7 +216,7 @@
                      job.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
                      job.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
-                     {{ getStatusText(job.status) }}
+                     {{ getCustomStatusText(job) }}
                   </Badge>
                </div>
             </TableCell>
@@ -241,7 +241,7 @@
     </div>
 
     <Dialog v-model:open="showDetailsModal">
-      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <DialogTitle>Job Request Details</DialogTitle>
         </DialogHeader>
@@ -269,6 +269,48 @@
              </div>
           </div>
 
+          <div v-if="selectedJob.status === 'pending' && selectedJob.originalData.survey_agreement" class="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-xl">
+             <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-2 mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Survey Agreement Status
+             </h4>
+             <p class="text-gray-300 text-sm">
+                <span v-if="selectedJob.originalData.survey_agreement.status === 'pending_client'">Agreement created. Waiting for client's formal signature.</span>
+                <span v-else-if="selectedJob.originalData.survey_agreement.status === 'signed'">Client has signed the agreement! You may now proceed to survey the area.</span>
+                <span v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'">Survey currently in progress. Please log your measurements.</span>
+                <span v-else-if="selectedJob.originalData.survey_agreement.status === 'completed'">Survey Phase completed successfully. Ready for formal Approval.</span>
+             </p>
+             
+             <div v-if="selectedJob.originalData.survey_agreement.status !== 'pending_client'" class="mt-4 pt-3 border-t border-indigo-800/30 grid grid-cols-2 gap-4">
+                <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Your Signature</p>
+                   <img :src="selectedJob.originalData.survey_agreement.provider_signature_url" class="h-10 invert opacity-80" />
+                </div>
+                <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Client Signature</p>
+                   <img :src="selectedJob.originalData.survey_agreement.client_signature_url" class="h-10 invert opacity-80" />
+                </div>
+             </div>
+
+             <Button @click="showViewAgreementModal = true" size="sm" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 shadow-sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                View Full Agreement Document
+             </Button>
+
+             <div v-if="selectedJob.originalData.survey_agreement.status === 'signed'" class="mt-4">
+                 <Button @click="handleSurveyAction('start')" :disabled="isSurveyProcessing" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
+                     <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                     <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Start Survey</span>
+                 </Button>
+             </div>
+             <div v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'" class="mt-4">
+                 <Button @click="handleSurveyAction('complete')" :disabled="isSurveyProcessing" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
+                     <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                     <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> End & Complete Survey</span>
+                 </Button>
+             </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-5">
              <div>
                 <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
@@ -283,7 +325,7 @@
                      selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
                      selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
                   ]">
-                     {{ getStatusText(selectedJob.status) }}
+                     {{ getCustomStatusText(selectedJob) }}
                   </Badge>
              </div>
              
@@ -335,6 +377,29 @@
                  <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4 border-t border-blue-800/30 pt-3">
                     <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
                  </div>
+                 
+                 <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-4">
+                     <p class="text-red-400 text-sm font-bold mb-2">Unpaid Balance Action</p>
+                     <p class="text-xs text-gray-300 mb-3">Client has not fully paid. Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+
+                     <div class="flex gap-2 flex-wrap">
+                        <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                           <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                           <span v-else>Send Email Reminder</span>
+                        </Button>
+
+                        <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                           <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                           <span v-else>Generate Legal Report</span>
+                        </Button>
+                        
+                        <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                           Download Legal Report (PDF)
+                        </a>
+                     </div>
+                 </div>
+
              </div>
 
              <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
@@ -387,10 +452,18 @@
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-4 px-6 pb-6">
            <template v-if="selectedJob && selectedJob.status === 'pending'">
-             <Button class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" @click="promptRejectJob">Reject Request</Button>
-             <Button class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" @click="promptApproveJob">Approve Request</Button>
+             <Button variant="outline" class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" @click="promptRejectJob">Reject Request</Button>
+             
+             <Button v-if="!selectedJob.originalData.survey_agreement" class="bg-indigo-600 hover:bg-indigo-700 text-white" @click="openGenerateModal">
+                Generate Survey Agreement
+             </Button>
+
+             <Button v-else-if="selectedJob.originalData.survey_agreement.status === 'completed'" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" @click="promptApproveJob">
+                Officially Approve Request
+             </Button>
+
            </template>
            <template v-if="selectedJob && selectedJob.status === 'ongoing'">
              <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="promptCompleteJob(selectedJob)">Submit Proof of Completion</Button>
@@ -398,6 +471,84 @@
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog v-model:open="showGenerateAgreementModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]" @opened="initCanvas">
+          <DialogTitle class="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg> 
+             Sign & Generate Agreement
+          </DialogTitle>
+          <div class="py-2 space-y-4">
+             <p class="text-sm text-gray-300">Please review the generated agreement text and provide your official signature to bind the Survey Agreement.</p>
+             
+             <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 max-h-[180px] overflow-y-auto whitespace-pre-wrap text-[11px] text-gray-400 font-mono shadow-inner custom-scrollbar">
+                {{ agreementPreviewText }}
+             </div>
+             
+             <div class="space-y-2">
+                <p class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Draw Your Signature Below</p>
+                <div class="border border-slate-700 bg-slate-950 rounded-xl overflow-hidden touch-none relative">
+                   <canvas 
+                      ref="signaturePad" 
+                      width="400" 
+                      height="150" 
+                      class="w-full h-[150px] cursor-crosshair touch-none"
+                      @mousedown="startDrawing" 
+                      @mousemove="draw" 
+                      @mouseup="stopDrawing" 
+                      @mouseleave="stopDrawing"
+                      @touchstart="startDrawing" 
+                      @touchmove="draw" 
+                      @touchend="stopDrawing"
+                   ></canvas>
+                   <Button variant="ghost" size="sm" @click="clearSignature" class="absolute bottom-2 right-2 h-7 text-xs bg-slate-800/80 text-gray-400 hover:text-white">Clear</Button>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showGenerateAgreementModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
+             <Button @click="generateSurveyAgreement" :disabled="isGeneratingAgreement" class="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20">
+                <span v-if="isGeneratingAgreement" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Generating...</span>
+                <span v-else>Confirm & Send</span>
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showViewAgreementModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]">
+          <DialogTitle class="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+             View Survey Agreement
+          </DialogTitle>
+          <div class="py-2 space-y-4">
+             <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 max-h-[350px] overflow-y-auto whitespace-pre-wrap text-xs text-gray-300 font-mono shadow-inner custom-scrollbar">
+                {{ selectedJob?.originalData?.survey_agreement?.agreement_text || 'Loading agreement...' }}
+                
+                <div class="mt-6 pt-4 border-t border-slate-800 grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] text-gray-500 mb-1">Provider's Signature:</p>
+                        <img v-if="selectedJob?.originalData?.survey_agreement?.provider_signature_url" :src="selectedJob?.originalData?.survey_agreement?.provider_signature_url" class="h-12 invert opacity-80" />
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 mb-1">Client's Signature:</p>
+                        <img v-if="selectedJob?.originalData?.survey_agreement?.client_signature_url" :src="selectedJob?.originalData?.survey_agreement?.client_signature_url" class="h-12 invert opacity-80" />
+                        <p v-else class="text-[10px] text-amber-500 italic mt-2">Pending Client Signature</p>
+                    </div>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showViewAgreementModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             
+             <Button @click="downloadAgreement" class="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Download PDF
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
 
     <Dialog v-model:open="showCompleteModal">
        <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] md:max-w-[500px]">
@@ -455,7 +606,7 @@
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription class="text-slate-400">
             {{ actionType === 'approve' 
-               ? 'This will approve the job request and notify the client.' 
+               ? 'This will formally approve the job request, indicating you accept the work post-survey.' 
                : 'This will reject the job request. This action cannot be undone.' }}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -478,7 +629,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue' 
+import { ref, computed, onMounted, watch, nextTick } from 'vue' 
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
@@ -517,9 +668,100 @@ const completionProofInput = ref(null)
 const isCompleting = ref(false)
 const jobToComplete = ref(null)
 
+// Reminder & Report states
+const isSendingReminder = ref(false)
+const isGeneratingReport = ref(false)
+
 // GCash Modal States
 const showGcashModal = ref(false)
 const gcashDetails = ref(null)
+
+// Survey State Flags
+const isGeneratingAgreement = ref(false)
+const isSurveyProcessing = ref(false)
+const showGenerateAgreementModal = ref(false)
+const showViewAgreementModal = ref(false)
+
+// --- Signature Pad Logic
+const signaturePad = ref(null)
+const isDrawing = ref(false)
+let ctx = null
+
+const openGenerateModal = () => {
+    showGenerateAgreementModal.value = true
+}
+
+const initCanvas = () => {
+   if (!signaturePad.value) return
+   ctx = signaturePad.value.getContext('2d')
+   ctx.lineWidth = 3
+   ctx.lineCap = 'round'
+   ctx.strokeStyle = '#38bdf8' 
+   clearSignature()
+}
+
+watch(showGenerateAgreementModal, async (isOpen) => {
+  if (isOpen) {
+    await nextTick()
+    setTimeout(() => {
+      initCanvas()
+    }, 150)
+  }
+})
+
+const getPos = (e) => {
+   const rect = signaturePad.value.getBoundingClientRect()
+   const clientX = e.clientX || (e.touches && e.touches[0].clientX)
+   const clientY = e.clientY || (e.touches && e.touches[0].clientY)
+   
+   const scaleX = signaturePad.value.width / rect.width
+   const scaleY = signaturePad.value.height / rect.height
+
+   return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+   }
+}
+
+const startDrawing = (e) => {
+   e.preventDefault()
+   if (!ctx) initCanvas()
+   if (!ctx) return 
+
+   isDrawing.value = true
+   const pos = getPos(e)
+   ctx.beginPath()
+   ctx.moveTo(pos.x, pos.y)
+}
+
+const draw = (e) => {
+   e.preventDefault()
+   if (!isDrawing.value) return
+   const pos = getPos(e)
+   ctx.lineTo(pos.x, pos.y)
+   ctx.stroke()
+}
+
+const stopDrawing = () => {
+   isDrawing.value = false
+}
+
+const clearSignature = () => {
+   if(!ctx || !signaturePad.value) return
+   ctx.clearRect(0, 0, signaturePad.value.width, signaturePad.value.height)
+}
+
+const agreementPreviewText = computed(() => {
+   if (!selectedJob.value) return '';
+   
+   const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+   const clientName = selectedJob.value.client;
+   const location = selectedJob.value.location;
+   const serviceTitle = selectedJob.value.serviceDetails?.title || 'Custom Job';
+   
+   return `FORMAL SURVEY AGREEMENT\n\nDate Issued: ${date}\nService Provider: [Your Name]\nClient: ${clientName}\nService Location: ${location}\n\nBy signing this agreement, the Client formally authorizes the Service Provider to enter the specified premises to conduct a comprehensive site survey. This survey is required to evaluate the scope of work, verify measurements, and confirm the feasibility of the requested service: '${serviceTitle}'.\n\nThis agreement does not commit the Client to a final contract but ensures mutual understanding and safety during the inspection phase.`;
+});
+
 
 const activeFilter = ref({ value: 'all', label: 'All Jobs' })
 
@@ -548,13 +790,22 @@ const getStatusText = (status) => {
   return status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
+const getCustomStatusText = (job) => {
+    if (job.status === 'pending' && job.originalData.survey_agreement) {
+        if (job.originalData.survey_agreement.status === 'pending_client') return 'Wait Client Sign';
+        if (job.originalData.survey_agreement.status === 'signed') return 'Ready for Survey';
+        if (job.originalData.survey_agreement.status === 'in_progress') return 'Survey Ongoing';
+        if (job.originalData.survey_agreement.status === 'completed') return 'Survey Done';
+    }
+    return getStatusText(job.status);
+}
+
 const fetchJobRequests = async () => {
   try {
     const response = await api.get('/service-provider/job-requests')
     
     if (response.data.success) {
       jobs.value = response.data.data.map(req => {
-        // Automatically check if Official Deal exists to override displayed values
         const deal = req.official_deal;
         const term = req.payment_term;
 
@@ -566,11 +817,9 @@ const fetchJobRequests = async () => {
           serviceDetails: {
             title: req.service_offering ? req.service_offering.title : 'General Service',
             category: req.service_offering ? req.service_offering.category : 'Uncategorized',
-            // Prioritize Official Deal price
             price: deal?.price || (req.service_offering ? req.service_offering.price : 0),
             price_type: req.service_offering ? req.service_offering.price_type : '',
             duration: req.service_offering ? req.service_offering.duration : 'N/A',
-            // Prioritize Official Deal Description
             description: deal?.description || (req.service_offering ? req.service_offering.description : '')
           },
 
@@ -583,6 +832,10 @@ const fetchJobRequests = async () => {
           originalData: req
         };
       })
+      if (selectedJob.value) {
+          const updated = jobs.value.find(j => j.id === selectedJob.value.id);
+          if(updated) selectedJob.value = updated;
+      }
     }
   } catch (error) {
     console.error('Error fetching service requests:', error)
@@ -597,6 +850,93 @@ onMounted(() => {
 const viewJobDetails = (job) => {
   selectedJob.value = job
   showDetailsModal.value = true
+}
+
+// --- Survey Actions ---
+const generateSurveyAgreement = async () => {
+    if(!selectedJob.value) return;
+    
+    const signatureBase64 = signaturePad.value.toDataURL('image/png');
+    if(signatureBase64.length < 5000) {
+        toast.error("Please provide your signature.");
+        return;
+    }
+
+    isGeneratingAgreement.value = true;
+    try {
+        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/survey-agreement`, {
+            provider_signature: signatureBase64
+        });
+        if(response.data.success) {
+            toast.success(response.data.message);
+            showGenerateAgreementModal.value = false;
+            fetchJobRequests();
+        }
+    } catch(err) {
+        toast.error('Failed to generate agreement.');
+    } finally {
+        isGeneratingAgreement.value = false;
+    }
+}
+
+const downloadAgreement = () => {
+    if (!selectedJob.value?.originalData?.survey_agreement) return;
+    const agreement = selectedJob.value.originalData.survey_agreement;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Survey Agreement Document</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #000; }
+                .signature-block { margin-top: 60px; display: flex; justify-content: space-between; }
+                .signature { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 10px; margin-top: 80px; position: relative;}
+                .sig-img { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); max-height: 80px; }
+                h2 { text-align: center; margin-bottom: 30px; }
+            </style>
+        </head>
+        <body>
+            <h2>Formal Survey Agreement</h2>
+            <pre style="font-family: inherit; white-space: pre-wrap; font-size: 14px;">${agreement.agreement_text}</pre>
+            <div class="signature-block">
+                <div class="signature">
+                    ${agreement.provider_signature_url ? `<img src="${agreement.provider_signature_url}" class="sig-img"/>` : ''}
+                    <p><strong>Service Provider Signature</strong></p>
+                </div>
+                <div class="signature">
+                    ${agreement.client_signature_url ? `<img src="${agreement.client_signature_url}" class="sig-img"/>` : ''}
+                    <p><strong>Client Signature</strong></p>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 60px; font-size: 12px; color: #666;">Generated electronically on ${new Date().toLocaleDateString()}</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 750);
+}
+
+const handleSurveyAction = async (action) => {
+    if(!selectedJob.value) return;
+    isSurveyProcessing.value = true;
+    try {
+        const endpoint = action === 'start' ? 'start-survey' : 'complete-survey';
+        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
+        if(response.data.success) {
+            toast.success(response.data.message);
+            fetchJobRequests();
+        }
+    } catch(err) {
+        toast.error(`Failed to ${action} survey.`);
+    } finally {
+        isSurveyProcessing.value = false;
+    }
 }
 
 const promptCompleteJob = (job) => {
@@ -624,7 +964,7 @@ const submitCompletion = async () => {
          toast.success(res.data.message)
          showCompleteModal.value = false
          showDetailsModal.value = false
-         fetchJobRequests() // Re-fetch to get updated status and proof data
+         fetchJobRequests() 
       }
    } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to submit proof.')
@@ -648,7 +988,6 @@ const openGcashModal = async () => {
   }
 }
 
-// Action Handlers
 const promptApproveJob = () => {
   actionType.value = 'approve'
   showConfirmDialog.value = true
@@ -672,7 +1011,7 @@ const handleConfirmAction = async () => {
         const index = jobs.value.findIndex(j => j.id === selectedJob.value.id)
         if (index !== -1) jobs.value[index].status = 'verifying'
         
-        toast.success('Job request approved successfully.')
+        toast.success('Job request officially approved successfully.')
         showDetailsModal.value = false
       }
     } else if (actionType.value === 'reject') {
@@ -703,20 +1042,44 @@ const approveProof = async (termId) => {
       const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
       if (res.data.success) {
          toast.success('Payment verified successfully!')
-         await fetchJobRequests() // Get the updated total paid and balance
-         
-         // Dynamically update the selected job in the modal without closing it
-         if (selectedJob.value) {
-            const updatedJob = jobs.value.find(j => j.id === selectedJob.value.id)
-            if (updatedJob) {
-               selectedJob.value = updatedJob
-            }
-         }
+         await fetchJobRequests()
       }
    } catch(error) {
       toast.error('Failed to verify payment proof.')
    } finally {
       isApprovingProof.value = false
+   }
+}
+
+const sendReminder = async (termId) => {
+   if (!termId) return
+   isSendingReminder.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/remind`)
+      if (res.data.success) {
+         toast.success('Payment reminder email sent successfully to the client.')
+         await fetchJobRequests()
+      }
+   } catch (error) {
+      toast.error('Failed to send payment reminder.')
+   } finally {
+      isSendingReminder.value = false
+   }
+}
+
+const generateReport = async (termId) => {
+   if (!termId) return
+   isGeneratingReport.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/legal-report`)
+      if (res.data.success) {
+         toast.success('Legal report generated successfully. Client has been notified.')
+         await fetchJobRequests()
+      }
+   } catch (error) {
+      toast.error('Failed to generate legal report.')
+   } finally {
+      isGeneratingReport.value = false
    }
 }
 
@@ -726,7 +1089,7 @@ const goToChat = (job) => {
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { height: 6px; }
+.custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); border-radius: 3px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to right, #3b82f6, #0ea5e9); border-radius: 3px; }
 </style>

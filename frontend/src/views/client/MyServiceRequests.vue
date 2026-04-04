@@ -75,8 +75,8 @@
               
               <div class="flex-1 min-w-0">
                 <div class="flex flex-col xs:flex-row xs:items-center gap-2 xs:gap-3 mb-2 sm:mb-3">
-                  <Badge :class="['font-semibold border uppercase tracking-wider text-[10px]', getStatusClasses(request.status)]">
-                    {{ request.statusLabel }}
+                  <Badge :class="['font-semibold border uppercase tracking-wider text-[10px]', getStatusClasses(request.status, request.raw.survey_agreement)]">
+                    {{ getCustomStatusLabel(request) }}
                   </Badge>
                   <span class="text-xs sm:text-sm text-gray-400">{{ request.date }}</span>
                 </div>
@@ -165,19 +165,19 @@
                   <span class="text-[11px] text-gray-400">Requested: <span class="text-gray-200">{{ request.requestedDate }}</span></span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div :class="['w-2 h-2 rounded-full', getIndicatorColor(request.status)]"></div>
+                  <div :class="['w-2 h-2 rounded-full', getIndicatorColor(request.status, request.raw.survey_agreement)]"></div>
                   <span class="text-[11px] text-gray-400">Last Update: <span class="text-gray-200">{{ request.currentStageDate }}</span></span>
                 </div>
               </div>
               
-              <div :class="['text-xs font-bold uppercase tracking-widest', getStatusTextColor(request.status)]">
-                {{ getStatusMessage(request.status) }}
+              <div :class="['text-xs font-bold uppercase tracking-widest', getStatusTextColor(request.status, request.raw.survey_agreement)]">
+                {{ getStatusMessage(request.status, request.raw.survey_agreement) }}
               </div>
             </div>
             
             <Progress 
               :model-value="request.progress" 
-              :class="['h-2 bg-gray-800', getProgressBarTheme(request.status)]" 
+              :class="['h-2 bg-gray-800', getProgressBarTheme(request.status, request.raw.survey_agreement)]" 
             />
           </div>
         </CardContent>
@@ -207,6 +207,41 @@
         </div>
         
         <div v-if="selectedRequest" class="px-6 py-5 space-y-6">
+
+           <div v-if="selectedRequest.status === 'pending' && selectedRequest.raw.survey_agreement" class="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-2xl p-5 border border-indigo-700/50 shadow-inner">
+             
+             <h4 v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+               <CheckCircle2 class="w-4 h-4" />
+               Action Required: Sign Survey Agreement
+             </h4>
+             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+               <CheckCircle2 class="w-4 h-4" />
+               Survey Agreement Signed
+             </h4>
+             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+               <Clock class="w-4 h-4" />
+               Survey Currently In Progress
+             </h4>
+             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'completed'" class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+               <CheckCircle2 class="w-4 h-4" />
+               Survey Completed - Pending Final Approval
+             </h4>
+
+             <p v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-xs text-gray-300 mb-4">The service provider has generated a formal agreement to conduct a site survey. Please review and sign to proceed.</p>
+             <p v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-xs text-gray-300 mb-4">You have agreed to the survey terms. The provider will begin the survey shortly.</p>
+             <p v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-xs text-gray-300 mb-4">The provider is currently evaluating the site.</p>
+
+             <div v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="flex gap-3 pt-2">
+                <Button @click="openSignAgreementModal" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20 animate-pulse-slow">
+                   Review & Sign Agreement
+                </Button>
+             </div>
+             <div v-else class="flex gap-3 pt-2">
+                <Button @click="openSignAgreementModal" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white shadow-lg border border-slate-700">
+                   View Signed Agreement
+                </Button>
+             </div>
+           </div>
 
            <div v-if="selectedRequest.status === 'completion_review'" class="bg-gradient-to-br from-pink-900/20 to-pink-800/20 rounded-2xl p-5 border border-pink-700/50 shadow-inner">
              <h4 class="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
@@ -264,6 +299,15 @@
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
                  <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
                </div>
+             </div>
+
+             <div v-if="selectedRequest.raw.payment_term.legal_report_path" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
+                <p class="text-sm font-bold text-red-500 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> FINAL NOTICE / LEGAL REPORT ISSUED</p>
+                <p class="text-xs text-gray-300 mt-1">Due to non-payment of the remaining balance after 3 reminders, the Service Provider has generated a formal non-payment report for potential legal action. Please settle your balance immediately.</p>
+             </div>
+             <div v-else-if="selectedRequest.raw.payment_term.reminder_count > 0" class="mb-4 bg-amber-900/30 border border-amber-500/50 p-3 rounded-xl">
+                <p class="text-sm font-bold text-amber-500 flex items-center gap-2"><AlertCircle class="w-4 h-4"/> PAYMENT REMINDER</p>
+                <p class="text-xs text-gray-300 mt-1">You have received <span class="font-bold">{{ selectedRequest.raw.payment_term.reminder_count }}</span> reminder(s) from the Service Provider to pay your remaining balance. Failure to pay after 3 reminders will result in a formal non-payment report.</p>
              </div>
 
              <div v-if="selectedRequest.raw.payment_term.status === 'agreed' || (selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0)">
@@ -431,7 +475,7 @@
                </div>
                <div class="space-y-1">
                  <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
-                 <Badge :class="getStatusClasses(selectedRequest.status)" class="mt-0.5">{{ selectedRequest.statusLabel }}</Badge>
+                 <Badge :class="getStatusClasses(selectedRequest.status, selectedRequest.raw.survey_agreement)" class="mt-0.5">{{ getCustomStatusLabel(selectedRequest) }}</Badge>
                </div>
              </div>
 
@@ -444,6 +488,65 @@
            <div class="h-2"></div>
         </div>
       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showSignAgreementModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]">
+          <DialogTitle class="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+             <ClipboardList class="w-5 h-5" /> Formal Survey Agreement
+          </DialogTitle>
+          <div class="py-2 space-y-4">
+             <p class="text-sm text-gray-300">Please review the agreement generated by the service provider. By drawing your signature and clicking 'I Agree & Sign', you formally allow the provider to survey your premises.</p>
+             
+             <div class="bg-slate-950 border border-slate-700 rounded-xl p-4 max-h-[250px] overflow-y-auto whitespace-pre-wrap text-xs text-gray-300 font-mono shadow-inner custom-scrollbar">
+                {{ selectedRequest?.raw.survey_agreement?.agreement_text || 'Loading agreement...' }}
+                
+                <div v-if="selectedRequest?.raw.survey_agreement?.status !== 'pending_client'" class="mt-6 pt-4 border-t border-slate-800 grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] text-gray-500 mb-1">Provider's Signature:</p>
+                        <img :src="selectedRequest?.raw.survey_agreement?.provider_signature_url" class="h-12 invert opacity-80" />
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-gray-500 mb-1">Your Signature:</p>
+                        <img :src="selectedRequest?.raw.survey_agreement?.client_signature_url" class="h-12 invert opacity-80" />
+                    </div>
+                </div>
+             </div>
+
+             <div v-if="selectedRequest?.raw.survey_agreement?.status === 'pending_client'" class="space-y-2 mt-4">
+                <p class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Draw Your Signature Below</p>
+                <div class="border border-slate-700 bg-slate-950 rounded-xl overflow-hidden touch-none relative">
+                   <canvas 
+                      ref="signaturePad" 
+                      width="400" 
+                      height="150" 
+                      class="w-full h-[150px] cursor-crosshair touch-none"
+                      @mousedown="startDrawing" 
+                      @mousemove="draw" 
+                      @mouseup="stopDrawing" 
+                      @mouseleave="stopDrawing"
+                      @touchstart="startDrawing" 
+                      @touchmove="draw" 
+                      @touchend="stopDrawing"
+                   ></canvas>
+                   <Button variant="ghost" size="sm" @click="clearSignature" class="absolute bottom-2 right-2 h-7 text-xs bg-slate-800/80 text-gray-400 hover:text-white">Clear</Button>
+                </div>
+             </div>
+
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showSignAgreementModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             
+             <Button v-if="selectedRequest?.raw.survey_agreement?.status !== 'pending_client'" @click="downloadAgreement" class="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
+                <Download class="w-4 h-4 mr-2" /> Download PDF
+             </Button>
+
+             <Button v-if="selectedRequest?.raw.survey_agreement?.status === 'pending_client'" @click="signAgreement" :disabled="isSigningAgreement" class="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20">
+                <span v-if="isSigningAgreement" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Signing...</span>
+                <span v-else>I Agree & Sign</span>
+             </Button>
+          </div>
+       </DialogContent>
     </Dialog>
 
     <Dialog v-model:open="showReviewModal">
@@ -506,7 +609,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
@@ -518,14 +621,14 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+// --- Added AlertCircle and AlertTriangle imports
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 
-// --- State Management ---
 const activeFilter = ref('all')
 const serviceRequests = ref([])
 const isLoading = ref(true)
@@ -533,28 +636,94 @@ const isLoading = ref(true)
 const isModalOpen = ref(false)
 const selectedRequest = ref(null)
 
-// Payment State
 const proofInput = ref(null)
 const isUploadingProof = ref(false)
 const isPaying = ref(false)
 
-// Work Completion State
 const isApprovingWork = ref(false)
 const showRejectModal = ref(false)
 const rejectionReason = ref('')
 const isRejectingWork = ref(false)
 
-// Review State
 const showReviewModal = ref(false)
 const jobToReview = ref(null)
 const reviewForm = ref({ rating: 5, comment: '' })
 const isSubmittingReview = ref(false)
 
-// Reply State
 const clientReplyText = ref('')
 const isSubmittingReply = ref(false)
 
-// --- Data Fetching ---
+// --- Survey Agreement State
+const showSignAgreementModal = ref(false)
+const isSigningAgreement = ref(false)
+
+// --- Signature Pad Logic
+const signaturePad = ref(null)
+const isDrawing = ref(false)
+let ctx = null
+
+const initCanvas = () => {
+   if (!signaturePad.value) return
+   ctx = signaturePad.value.getContext('2d')
+   ctx.lineWidth = 3
+   ctx.lineCap = 'round'
+   ctx.strokeStyle = '#38bdf8' 
+   clearSignature()
+}
+
+// --- FIX: Wait for the modal to open before initializing canvas ---
+watch(showSignAgreementModal, async (isOpen) => {
+  if (isOpen) {
+    await nextTick()
+    setTimeout(() => {
+      initCanvas()
+    }, 150)
+  }
+})
+
+const getPos = (e) => {
+   const rect = signaturePad.value.getBoundingClientRect()
+   const clientX = e.clientX || (e.touches && e.touches[0].clientX)
+   const clientY = e.clientY || (e.touches && e.touches[0].clientY)
+   
+   const scaleX = signaturePad.value.width / rect.width
+   const scaleY = signaturePad.value.height / rect.height
+
+   return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+   }
+}
+
+const startDrawing = (e) => {
+   e.preventDefault()
+   // FAIL-SAFE: If pen is missing, try initializing again
+   if (!ctx) initCanvas()
+   if (!ctx) return 
+
+   isDrawing.value = true
+   const pos = getPos(e)
+   ctx.beginPath()
+   ctx.moveTo(pos.x, pos.y)
+}
+
+const draw = (e) => {
+   e.preventDefault()
+   if (!isDrawing.value) return
+   const pos = getPos(e)
+   ctx.lineTo(pos.x, pos.y)
+   ctx.stroke()
+}
+
+const stopDrawing = () => {
+   isDrawing.value = false
+}
+
+const clearSignature = () => {
+   if(!ctx || !signaturePad.value) return
+   ctx.clearRect(0, 0, signaturePad.value.width, signaturePad.value.height)
+}
+
 const fetchRequests = async () => {
   isLoading.value = true
   try {
@@ -562,6 +731,14 @@ const fetchRequests = async () => {
     if (response.data.success) {
       serviceRequests.value = response.data.data.map(req => {
         let progress = 10;
+        
+        if (req.status === 'pending' && req.survey_agreement) {
+            if (req.survey_agreement.status === 'pending_client') progress = 15;
+            else if (req.survey_agreement.status === 'signed') progress = 20;
+            else if (req.survey_agreement.status === 'in_progress') progress = 25;
+            else if (req.survey_agreement.status === 'completed') progress = 28;
+        }
+
         if (req.status === 'verifying') progress = 30;
         else if (req.status === 'approved') progress = 50;
         else if (req.status === 'ongoing') progress = 70;
@@ -592,7 +769,6 @@ const fetchRequests = async () => {
         }
       })
 
-      // Auto update modal state if it's open
       if (selectedRequest.value) {
          const updatedReq = serviceRequests.value.find(r => r.id === selectedRequest.value.id)
          if(updatedReq) selectedRequest.value = updatedReq
@@ -605,7 +781,81 @@ const fetchRequests = async () => {
   }
 }
 
-// --- Payment Actions ---
+const openSignAgreementModal = () => {
+    showSignAgreementModal.value = true
+}
+
+const signAgreement = async () => {
+    if(!selectedRequest.value) return;
+
+    const signatureBase64 = signaturePad.value.toDataURL('image/png');
+    if(signatureBase64.length < 5000) {
+        toast.error("Please draw your signature to agree.");
+        return;
+    }
+
+    isSigningAgreement.value = true;
+    try {
+        const response = await api.post(`/client/services/requests/${selectedRequest.value.id}/sign-survey`, {
+            client_signature: signatureBase64
+        });
+        if(response.data.success) {
+            toast.success(response.data.message);
+            showSignAgreementModal.value = false;
+            fetchRequests();
+        }
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to sign the agreement.');
+    } finally {
+        isSigningAgreement.value = false;
+    }
+}
+
+// --- NEW DOWNLOAD FUNCTION ---
+const downloadAgreement = () => {
+    if (!selectedRequest.value?.raw?.survey_agreement) return;
+    const agreement = selectedRequest.value.raw.survey_agreement;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Survey Agreement Document</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #000; }
+                .signature-block { margin-top: 60px; display: flex; justify-content: space-between; }
+                .signature { text-align: center; width: 45%; border-top: 1px solid #000; padding-top: 10px; margin-top: 80px; position: relative;}
+                .sig-img { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); max-height: 80px; }
+                h2 { text-align: center; margin-bottom: 30px; }
+            </style>
+        </head>
+        <body>
+            <h2>Formal Survey Agreement</h2>
+            <pre style="font-family: inherit; white-space: pre-wrap; font-size: 14px;">${agreement.agreement_text}</pre>
+            <div class="signature-block">
+                <div class="signature">
+                    ${agreement.provider_signature_url ? `<img src="${agreement.provider_signature_url}" class="sig-img"/>` : ''}
+                    <p><strong>Service Provider Signature</strong></p>
+                </div>
+                <div class="signature">
+                    ${agreement.client_signature_url ? `<img src="${agreement.client_signature_url}" class="sig-img"/>` : ''}
+                    <p><strong>Client Signature</strong></p>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 60px; font-size: 12px; color: #666;">Generated electronically on ${new Date().toLocaleDateString()}</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    // Allow images time to load before printing/saving to PDF
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 750);
+}
+// ------------------------------
+
 const uploadProofOfPayment = async (termId) => {
   if (!proofInput.value || !proofInput.value.files[0]) {
     toast.error("Please select an image file first.")
@@ -622,13 +872,13 @@ const uploadProofOfPayment = async (termId) => {
     })
     if(res.data.success) {
       toast.success(res.data.message)
-      await fetchRequests() // re-fetch to update statuses
+      await fetchRequests() 
     }
   } catch(error) {
     toast.error(error.response?.data?.message || "Failed to upload proof.")
   } finally {
     isUploadingProof.value = false
-    if(proofInput.value) proofInput.value.value = null // clear input
+    if(proofInput.value) proofInput.value.value = null 
   }
 }
 
@@ -651,14 +901,13 @@ const verifyServicePayment = async (termId) => {
     if (res.data.success) {
       toast.success(res.data.message || "Payment completed successfully!")
       fetchRequests() 
-      router.replace({ query: {} }) // remove query string
+      router.replace({ query: {} }) 
     }
   } catch(error) {
     toast.error("Error verifying payment or payment is not complete.")
   }
 }
 
-// --- Completion Actions ---
 const approveCompletion = async () => {
    if(!selectedRequest.value) return
    isApprovingWork.value = true
@@ -701,7 +950,6 @@ const rejectCompletion = async () => {
    }
 }
 
-// --- Review Actions ---
 const openReviewModal = (request) => {
   jobToReview.value = request
   reviewForm.value = { rating: 5, comment: '' }
@@ -738,7 +986,7 @@ const submitClientReply = async (reviewId) => {
         toast.success('Reply submitted successfully!');
         selectedRequest.value.raw.service_review.client_reply = clientReplyText.value;
         clientReplyText.value = '';
-        fetchRequests(); // Reload data
+        fetchRequests(); 
      }
   } catch (error) {
      toast.error(error.response?.data?.message || 'Failed to submit reply');
@@ -756,7 +1004,6 @@ onMounted(async () => {
   }
 })
 
-// --- Computeds ---
 const statusCounts = computed(() => {
   return serviceRequests.value.reduce((acc, request) => {
     acc[request.status] = (acc[request.status] || 0) + 1
@@ -786,26 +1033,32 @@ const statsCards = computed(() => [
     iconClass: 'text-cyan-400', 
     icon: Zap 
   },
-  { 
-    label: 'Review/Pending', 
-    value: (statusCounts.value['pending'] || 0) + (statusCounts.value['verifying'] || 0) + (statusCounts.value['completion_review'] || 0), 
-    colorClass: 'text-amber-300', 
-    bgClass: 'bg-amber-500/10', 
-    iconClass: 'text-amber-400', 
-    icon: Clock 
+  {
+    label: 'Review/Pending',
+    value: (statusCounts.value['pending'] || 0) + (statusCounts.value['verifying'] || 0) + (statusCounts.value['completion_review'] || 0),
+    colorClass: 'text-amber-300',
+    bgClass: 'bg-amber-500/10',
+    iconClass: 'text-amber-400',
+    icon: Clock
   },
-  { 
-    label: 'Completed', 
-    value: statusCounts.value['completed'] || 0, 
-    colorClass: 'text-emerald-300', 
-    bgClass: 'bg-emerald-500/10', 
-    iconClass: 'text-emerald-400', 
-    icon: CheckCircle2 
+  {
+    label: 'Completed',
+    value: statusCounts.value['completed'] || 0,
+    colorClass: 'text-emerald-300',
+    bgClass: 'bg-emerald-500/10',
+    iconClass: 'text-emerald-400',
+    icon: CheckCircle2
   }
 ])
 
-// --- Helper Methods ---
-const getStatusClasses = (status) => {
+const getStatusClasses = (status, survey = null) => {
+  if (status === 'pending' && survey) {
+      if (survey.status === 'pending_client') return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
+      if (survey.status === 'signed') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+      if (survey.status === 'in_progress') return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+      if (survey.status === 'completed') return 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+  }
+
   const classes = {
     'pending': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     'verifying': 'bg-blue-500/10 text-blue-400 border-blue-500/30',
@@ -817,7 +1070,19 @@ const getStatusClasses = (status) => {
   return classes[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/30'
 }
 
-const getIndicatorColor = (status) => {
+const getCustomStatusLabel = (req) => {
+    if (req.status === 'pending' && req.raw.survey_agreement) {
+        const s = req.raw.survey_agreement.status;
+        if(s === 'pending_client') return 'Sign Agreement';
+        if(s === 'signed') return 'Agreement Signed';
+        if(s === 'in_progress') return 'Survey Ongoing';
+        if(s === 'completed') return 'Survey Done';
+    }
+    return req.statusLabel;
+}
+
+const getIndicatorColor = (status, survey = null) => {
+  if (status === 'pending' && survey) return 'bg-indigo-500'
   if (status === 'pending') return 'bg-amber-500'
   if (status === 'verifying') return 'bg-blue-500'
   if (status === 'ongoing') return 'bg-cyan-500'
@@ -826,7 +1091,8 @@ const getIndicatorColor = (status) => {
   return 'bg-emerald-500'
 }
 
-const getStatusTextColor = (status) => {
+const getStatusTextColor = (status, survey = null) => {
+  if (status === 'pending' && survey) return 'text-indigo-400'
   if (status === 'pending') return 'text-amber-400'
   if (status === 'verifying') return 'text-blue-400'
   if (status === 'ongoing') return 'text-cyan-400'
@@ -835,7 +1101,8 @@ const getStatusTextColor = (status) => {
   return 'text-emerald-400'
 }
 
-const getProgressBarTheme = (status) => {
+const getProgressBarTheme = (status, survey = null) => {
+  if (status === 'pending' && survey) return '[&>div]:bg-indigo-500'
   if (status === 'pending') return '[&>div]:bg-amber-500'
   if (status === 'verifying') return '[&>div]:bg-blue-500'
   if (status === 'ongoing') return '[&>div]:bg-cyan-500'
@@ -844,7 +1111,13 @@ const getProgressBarTheme = (status) => {
   return '[&>div]:bg-emerald-500'
 }
 
-const getStatusMessage = (status) => {
+const getStatusMessage = (status, survey = null) => {
+  if (status === 'pending' && survey) {
+      if(survey.status === 'pending_client') return 'Awaiting your signature';
+      if(survey.status === 'signed') return 'Awaiting survey start';
+      if(survey.status === 'in_progress') return 'Survey currently active';
+      if(survey.status === 'completed') return 'Awaiting formal SP approval';
+  }
   const messages = {
     'pending': 'Awaiting confirmation',
     'verifying': 'Awaiting official deal',

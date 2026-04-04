@@ -44,7 +44,6 @@ class ClientServiceRequestController extends Controller
                 $service->image_paths = $formattedPaths;
             }
 
-            // Fetch the Official Deal and Payment Term if they exist
             $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
             $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->latest()->first() : null;
             
@@ -54,7 +53,6 @@ class ClientServiceRequestController extends Controller
                     $paymentTerm->proof_of_payment_url = $baseUrl . '/storage/' . ltrim($cleanProof, '/');
                 }
 
-                // DYNAMIC BALANCE CALCULATION: Sum all completed transactions for THIS DEAL
                 $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
                 $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
                     ->where('status', 'completed')
@@ -62,9 +60,11 @@ class ClientServiceRequestController extends Controller
                 
                 $paymentTerm->total_paid = $totalPaid;
                 $paymentTerm->balance = max(0, $deal->price - $totalPaid);
+                
+                $paymentTerm->reminder_count = $paymentTerm->reminder_count ?? 0;
+                $paymentTerm->legal_report_path = $paymentTerm->legal_report_path ? $baseUrl . '/storage/' . ltrim($paymentTerm->legal_report_path, '/') : null;
             }
 
-            // Fetch Latest Completion Proofs
             $latestCompletion = ServiceJobCompletion::where('client_service_request_id', $req->id)->latest()->first();
             if ($latestCompletion && !empty($latestCompletion->proof_images)) {
                 $formattedProofs = array_map(function ($path) use ($baseUrl) {
@@ -74,13 +74,26 @@ class ClientServiceRequestController extends Controller
                 $latestCompletion->proof_images_url = $formattedProofs;
             }
 
-            // Fetch Review if already submitted
             $review = ServiceReview::where('client_service_request_id', $req->id)->first();
+
+            $surveyAgreement = DB::table('service_survey_agreements')
+                ->where('client_service_request_id', $req->id)
+                ->first();
+
+            if ($surveyAgreement) {
+                if ($surveyAgreement->provider_signature) {
+                    $surveyAgreement->provider_signature_url = $baseUrl . '/storage/' . $surveyAgreement->provider_signature;
+                }
+                if ($surveyAgreement->client_signature) {
+                    $surveyAgreement->client_signature_url = $baseUrl . '/storage/' . $surveyAgreement->client_signature;
+                }
+            }
 
             $req->official_deal = $deal;
             $req->payment_term = $paymentTerm;
             $req->latest_completion = $latestCompletion;
             $req->service_review = $review;
+            $req->survey_agreement = $surveyAgreement;
             
             return $req;
         });
@@ -89,6 +102,52 @@ class ClientServiceRequestController extends Controller
             'success' => true,
             'data' => $formattedRequests
         ]);
+    }
+
+    public function signSurveyAgreement(Request $request, $id)
+    {
+        $request->validate([
+            'client_signature' => 'required|string'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $clientId = Auth::id();
+            
+            $agreement = DB::table('service_survey_agreements')
+                ->where('client_service_request_id', $id)
+                ->where('client_id', $clientId)
+                ->first();
+
+            if (!$agreement) {
+                return response()->json(['success' => false, 'message' => 'Agreement not found.'], 404);
+            }
+
+            $signaturePath = $this->saveBase64Image($request->client_signature, 'survey_agreements/signatures/client');
+
+            DB::table('service_survey_agreements')
+                ->where('id', $agreement->id)
+                ->update([
+                    'status' => 'signed',
+                    'client_signature' => $signaturePath,
+                    'client_signed_at' => now()
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Survey Agreement officially signed. The Service Provider will begin the survey shortly.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to sign the agreement.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function uploadProof(Request $request, $termId)
@@ -105,7 +164,6 @@ class ClientServiceRequestController extends Controller
             $term->status = 'awaiting_proof_approval'; 
             $term->save();
 
-            // Calculate exact amount dynamically
             $deal = $term->deal;
             $amount = (float) $deal->price;
             
@@ -117,10 +175,8 @@ class ClientServiceRequestController extends Controller
             $remainingBalance = $amount - $totalPaid;
 
             if ($totalPaid > 0) {
-                // Paying the remaining balance
                 $payableAmount = $remainingBalance;
             } else {
-                // Initial percentage payment
                 $percentage = 100;
                 if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
                     $percentage = (float) $matches[1];
@@ -128,7 +184,6 @@ class ClientServiceRequestController extends Controller
                 $payableAmount = ($amount * ($percentage / 100));
             }
 
-            // Create a NEW transaction record (Do NOT use firstOrNew so it doesn't overwrite completed ones)
             $transaction = new ServicePaymentTransaction();
             $transaction->payment_term_id = $term->id;
             $transaction->client_id = $term->client_id;
@@ -153,7 +208,6 @@ class ClientServiceRequestController extends Controller
         $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
         $amount = (float) $deal->price;
 
-        // Dynamic Balance Checking
         $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
         $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
             ->where('status', 'completed')
@@ -166,11 +220,9 @@ class ClientServiceRequestController extends Controller
         }
 
         if ($totalPaid > 0) {
-            // Second payment for balance
             $payableAmount = $remainingBalance;
             $paymentName = $serviceName . ' (Remaining Balance)';
         } else {
-            // First payment based on percentage
             $percentage = 100;
             if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
                 $percentage = (float) $matches[1];
@@ -183,13 +235,11 @@ class ClientServiceRequestController extends Controller
             $client = new \GuzzleHttp\Client();
             $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
-            // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
             $billingDetails = [
                 'name' => trim($user->first_name . ' ' . $user->last_name),
                 'email' => $user->email,
             ];
             
-            // --- STRICT GCASH NUMBER VALIDATION ---
             $gcashNumberToUse = null;
             if (Schema::hasTable('client_payment_settings')) {
                 $clientPayment = DB::table('client_payment_settings')
@@ -209,7 +259,6 @@ class ClientServiceRequestController extends Controller
             }
 
             $billingDetails['phone'] = (string) $gcashNumberToUse;
-            // --------------------------------------
 
             $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                 'headers' => [
@@ -227,7 +276,7 @@ class ClientServiceRequestController extends Controller
                             'payment_method_types' => ['gcash'],
                             'description' => 'Service Payment - ' . $serviceName,
                             'reference_number' => 'SRV-' . $term->id . '-' . time(), 
-                            'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
+                            'billing' => $billingDetails,
                             'line_items' => [
                                 [
                                     'currency' => 'PHP',
@@ -278,7 +327,6 @@ class ClientServiceRequestController extends Controller
         if (!$term) return response()->json(['success' => false, 'message' => 'Payment term not found'], 404);
 
         if (!Storage::disk('local')->exists($filePath)) {
-            // If it's already verified, just ignore quietly so UI isn't interrupted
             return response()->json(['success' => true, 'message' => 'Payment already verified.', 'already_processed' => true]);
         }
 
@@ -328,7 +376,6 @@ class ClientServiceRequestController extends Controller
 
         DB::beginTransaction();
         try {
-            // Record the transaction as successfully Completed FIRST
             ServicePaymentTransaction::create([
                 'payment_term_id' => $term->id,
                 'client_id' => $term->client_id,
@@ -339,7 +386,6 @@ class ClientServiceRequestController extends Controller
                 'status' => 'completed'
             ]);
 
-            // Always set current term to paid. The UI will determine if it's fully paid based on balance
             $term->status = 'paid';
             $term->save();
 
@@ -397,7 +443,6 @@ class ClientServiceRequestController extends Controller
                 $completion->save();
             }
 
-            // Return to ongoing state
             $job->status = 'ongoing';
             $job->save();
 
@@ -444,7 +489,6 @@ class ClientServiceRequestController extends Controller
             'client_reply' => 'required|string|max:1000'
         ]);
 
-        // Securely find the review ensuring the logged-in user is the original author
         $review = ServiceReview::where('client_id', Auth::id())->findOrFail($id);
 
         if (!$review->reply) {
@@ -459,5 +503,18 @@ class ClientServiceRequestController extends Controller
         $review->save();
 
         return response()->json(['success' => true, 'message' => 'Your reply has been posted successfully.']);
+    }
+
+    private function saveBase64Image($base64String, $pathPrefix) {
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64String, $type)) {
+            $base64String = substr($base64String, strpos($base64String, ',') + 1);
+            $type = strtolower($type[1]);
+            if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) { return null; }
+            $base64String = base64_decode(str_replace(' ', '+', $base64String));
+            $fileName = $pathPrefix . '_' . time() . '_' . uniqid() . '.' . $type;
+            Storage::disk('public')->put($fileName, $base64String);
+            return $fileName;
+        }
+        return null;
     }
 }

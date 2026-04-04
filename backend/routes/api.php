@@ -121,6 +121,10 @@ Route::middleware('auth:sanctum')->group(function () {
             
             Route::post('/deals/{dealId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToDeal']);
             Route::post('/payment-terms/{termId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToPaymentTerm']); // NEW
+
+            Route::post('/send-image', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'sendImage']);
+            Route::put('/messages/{id}', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'updateMessage']);
+            Route::delete('/messages/{id}', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'deleteMessage']);
         });
 
         Route::prefix('requirements')->group(function () {
@@ -148,6 +152,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitClientReply']);
             Route::post('/request', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'requestService']);
             Route::get('/my-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'index']);
+
+            Route::post('/requests/{id}/sign-survey', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'signSurveyAgreement']);
 
             // NEW PAYMENT ROUTES FOR OFFICIAL TERMS
             Route::post('/payment-terms/{termId}/upload-proof', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'uploadProof']);
@@ -262,6 +268,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/contacts', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getContacts']);
             Route::get('/messages/{clientId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getMessages']);
             Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
+
+            Route::post('/send-image', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendImage']);
+            Route::put('/messages/{id}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'updateMessage']);
+            Route::delete('/messages/{id}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'deleteMessage']);
         });
 
         // -----------------------------------------------------
@@ -276,7 +286,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/job-requests/gcash-details', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'getGcashDetails']);
         Route::post('/job-requests/payment-terms/{termId}/approve', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'approvePaymentProof']);
 
+        Route::post('/job-requests/payment-terms/{termId}/remind', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'sendPaymentReminder']);
+        Route::post('/job-requests/payment-terms/{termId}/legal-report', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'generateLegalReport']);
+
         Route::get('/job-requests', [ServiceJobController::class, 'index']);
+
+        Route::post('/job-requests/{id}/survey-agreement', [ServiceJobController::class, 'createSurveyAgreement']);
+        Route::post('/job-requests/{id}/start-survey', [ServiceJobController::class, 'startSurvey']);
+        Route::post('/job-requests/{id}/complete-survey', [ServiceJobController::class, 'completeSurvey']);
+
+        Route::post('/job-requests/{id}/survey-agreement', [ServiceJobController::class, 'createSurveyAgreement']);
+        Route::post('/job-requests/{id}/start-survey', [ServiceJobController::class, 'startSurvey']);
+        Route::post('/job-requests/{id}/complete-survey', [ServiceJobController::class, 'completeSurvey']);
+
         Route::post('/job-requests/{id}/approve', [ServiceJobController::class, 'approve']);
         Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
         Route::post('/job-requests/{id}/complete', [ServiceJobController::class, 'submitCompletion']); // NEW
