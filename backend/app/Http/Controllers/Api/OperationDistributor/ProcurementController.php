@@ -234,9 +234,11 @@ class ProcurementController extends Controller
                         'payment_settings' => $paymentSettings ? [
                             'is_cod_enabled' => (bool)$paymentSettings->is_cod_enabled,
                             'is_gcash_enabled' => (bool)$paymentSettings->is_gcash_enabled,
+                            'is_bank_enabled' => (bool)$paymentSettings->is_bank_enabled,
                         ] : [
                             'is_cod_enabled' => true, 
-                            'is_gcash_enabled' => false
+                            'is_gcash_enabled' => false,
+                            'is_bank_enabled' => false
                         ]
                     ];
                 })
@@ -287,7 +289,7 @@ class ProcurementController extends Controller
                 'priority' => 'required|in:low,medium,high',
                 'delivery_address' => 'required|string',
                 'shipping_method' => 'nullable|string|in:standard,express,pickup',
-                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance,gcash',
+                'payment_terms' => 'nullable|string|in:net30,net60,cod,advance,gcash,bank',
                 'instructions' => 'nullable|string',
                 'required_by_date' => 'nullable|date|after:today'
             ]);

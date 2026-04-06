@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class PartnerSupplierController extends Controller
@@ -134,14 +135,14 @@ class PartnerSupplierController extends Controller
                     }
 
                     // Safe access to requirement properties
-                    $companyName = $req ? $req->company_name : $supplier->full_name;
+                    $companyName = $req && $req->company_name ? $req->company_name : $supplier->full_name;
                     $idPhoto = ($req && $req->valid_id_photo) ? $req->valid_id_photo : null;
                     $regNumber = ($req && $req->business_registration_number) ? $req->business_registration_number : 'N/A';
 
                     // Prepare Response Object
                     return [
                         'id' => $supplier->id,
-                        'name' => $companyName ?? $supplier->full_name,
+                        'name' => $companyName,
                         'contact_person' => $supplier->full_name,
                         'email' => $supplier->email,
                         'logo' => $idPhoto 
@@ -171,6 +172,199 @@ class PartnerSupplierController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Create a new Supplier natively and Auto-Request Partnership
+     */
+    public function createSupplier(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Level-Based backend RBAC check for creating requests (maps to 'manage')
+        $permissions = $this->getPermissions($user);
+        if (!$permissions['can_manage']) {
+            return response()->json(['message' => 'Access Denied: You do not have permission to create suppliers.'], 403);
+        }
+
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'required|string|max:20',
+            'company_name' => 'required|string|max:255'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Create Supplier User ONLY (Supplier Requirements table insertion removed per request)
+            $supplierUser = User::create([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'role' => 'supplier',
+                'status' => 'pending', 
+                'password' => $request->last_name 
+            ]);
+
+            // 2. Determine Distributor ID for the Partnership
+            $distributorId = null;
+
+            if ($user->role === 'operational_distributor') {
+                $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+                if ($opDist) {
+                    $distributorId = $opDist->parent_distributor_id;
+                }
+            } elseif ($user->role === 'employee') {
+                $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+                if ($employee) {
+                    $distributorId = $employee->parent_distributor_id;
+                }
+            } elseif ($user->role === 'distributor') {
+                $distributorId = $user->id;
+            }
+
+            // 3. Auto-Request Partnership
+            if ($distributorId) {
+                $initialStatus = in_array($user->role, ['operational_distributor', 'employee']) 
+                    ? 'pending_internal' 
+                    : 'pending_supplier';
+
+                $partnership = DistributorSupplier::create([
+                    'distributor_id' => $distributorId,
+                    'supplier_id' => $supplierUser->id,
+                    'created_by' => $user->id,
+                    'status' => $initialStatus,
+                    'request_message' => 'Auto-generated partnership request from native account creation.'
+                ]);
+
+                // Generate Formal Terms and Conditions HTML Document
+                $distributorUser = User::find($distributorId);
+                $date = now()->format('F d, Y');
+                $companyNameForDoc = $request->company_name; // Fallback to provided company name from wizard
+                
+                $htmlContent = "
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Supply Partnership Agreement</title>
+                    <style>
+                        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+                        h1 { color: #1e3a8a; text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px;}
+                        h2 { color: #2563eb; margin-top: 30px; font-size: 1.2rem; border-left: 4px solid #3b82f6; padding-left: 10px;}
+                        .meta { background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #e2e8f0; }
+                        .meta p { margin: 8px 0; font-size: 0.95rem; }
+                        .footer { margin-top: 50px; font-size: 0.85rem; color: #64748b; text-align: center; border-top: 1px solid #cbd5e1; padding-top: 20px; }
+                        .content { font-size: 0.95rem; text-align: justify; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Supply Partnership Agreement</h1>
+                    <div class='meta'>
+                        <p><strong>Effective Date:</strong> {$date}</p>
+                        <p><strong>Distributor (Buyer):</strong> {$distributorUser->full_name}</p>
+                        <p><strong>Supplier (Seller):</strong> {$supplierUser->full_name} ({$companyNameForDoc})</p>
+                    </div>
+                    
+                    <div class='content'>
+                        <h2>1. Introduction and Scope</h2>
+                        <p>This Supply Partnership Agreement (\"Agreement\") establishes the official business relationship between the Distributor and the Supplier. The Supplier agrees to provide products to the Distributor according to the terms defined herein and within the operations of the e-commerce supply chain platform.</p>
+
+                        <h2>2. Orders and Fulfillment</h2>
+                        <p>The Distributor shall place procurement orders securely through the platform. The Supplier commits to fulfilling these orders in a timely and professional manner, subject to stock availability and operational capacity.</p>
+
+                        <h2>3. Pricing, Invoicing, and Payments</h2>
+                        <p>Product pricing is dynamically determined by the Supplier's active catalog at the time of order placement. Payment terms (e.g., GCash, Cash on Delivery, Bank Transfer) must be explicitly agreed upon per transaction or established as a default by the Supplier.</p>
+
+                        <h2>4. Shipping, Delivery, and Risk of Loss</h2>
+                        <p>For items shipped directly by the Supplier or its logistics personnel, the risk of loss, theft, or damage passes to the Distributor upon successful delivery and physical confirmation of receipt.</p>
+
+                        <h2>5. Returns, Warranties, and Defective Goods</h2>
+                        <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module within the allowable timeframe.</p>
+
+                        <h2>6. Confidentiality and Data Protection</h2>
+                        <p>Both parties agree to rigorously maintain the confidentiality of proprietary business information encountered during this partnership.</p>
+
+                        <h2>7. Term, Suspension, and Termination</h2>
+                        <p>This Agreement remains actively binding until officially terminated by either party. Termination can be executed through the platform's partnership management settings.</p>
+                    </div>
+
+                    <div class='footer'>
+                        <p>Electronically generated and mutually agreed upon via the Platform on {$date}.</p>
+                        <p>Digital Document Hash: " . Str::uuid() . "</p>
+                        <p>This document is a legally binding system record.</p>
+                    </div>
+                </body>
+                </html>
+                ";
+
+                $fileName = 'agreements/supplier_partnerships/partnership_' . $partnership->id . '_' . time() . '.html';
+                Storage::disk('public')->put($fileName, $htmlContent);
+
+                if (Schema::hasColumn('distributor_suppliers', 'agreement_path')) {
+                    $partnership->agreement_path = $fileName;
+                    $partnership->save();
+                }
+            }
+
+            // 4. Fire Emails to Supplier and Distributor
+            $distributorEmail = isset($distributorUser) ? $distributorUser->email : $user->email;
+            $supplierEmail = $supplierUser->email;
+            $password = $request->last_name;
+            $companyName = $request->company_name;
+
+            // Send to Supplier
+            $supplierMessage = "
+                <div style='font-family: sans-serif; max-width: 600px; margin: auto;'>
+                    <h2 style='color: #1e3a8a;'>Welcome to CaviteGo Paint!</h2>
+                    <p>Hello {$supplierUser->first_name},</p>
+                    <p>An account has been created for your company <strong>{$companyName}</strong> as a Partner Supplier within our network.</p>
+                    <div style='background: #f1f5f9; padding: 15px; border-radius: 8px;'>
+                        <p style='margin: 0;'><strong>Login Email:</strong> {$supplierEmail}</p>
+                        <p style='margin: 0;'><strong>Temporary Password:</strong> {$password}</p>
+                    </div>
+                    <p>Please log in to your portal to upload your legal verifications (DTI, Mayor's Permit, etc.) and complete your setup.</p>
+                    <p>Additionally, a business partnership request has been automatically initiated with our distribution center.</p>
+                    <br>
+                    <p>Thank you,<br>The CaviteGo Paint Team</p>
+                </div>
+            ";
+            Mail::html($supplierMessage, function ($message) use ($supplierEmail) {
+                $message->to($supplierEmail)->subject('Your New Supplier Account Details');
+            });
+
+            // Send to Distributor
+            $distributorMessage = "
+                <div style='font-family: sans-serif; max-width: 600px; margin: auto;'>
+                    <h2 style='color: #1e3a8a;'>New Supplier Account Registered</h2>
+                    <p>Hello,</p>
+                    <p>A new supplier account for <strong>{$companyName}</strong> has been successfully created in the system by {$user->first_name} {$user->last_name}.</p>
+                    <p>An automatic partnership request has been generated and is currently awaiting the necessary platform approvals.</p>
+                    <br>
+                    <p>System Notification,<br>CaviteGo Paint Platform</p>
+                </div>
+            ";
+            Mail::html($distributorMessage, function ($message) use ($distributorEmail, $companyName) {
+                $message->to($distributorEmail)->subject("New Supplier Created: {$companyName}");
+            });
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Supplier created successfully! The credentials and notifications have been emailed.',
+                'data' => $supplierUser
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating supplier: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 
     /**
      * Send a partnership request and generate formal terms document.
@@ -242,6 +436,10 @@ class PartnerSupplierController extends Controller
             $distributorUser = User::find($distributorId);
             $date = now()->format('F d, Y');
             
+            // Get Company name safely
+            $req = $supplierUser->supplierRequirements;
+            $companyName = $req && $req->company_name ? $req->company_name : $supplierUser->full_name;
+
             $htmlContent = "
             <!DOCTYPE html>
             <html>
@@ -262,7 +460,7 @@ class PartnerSupplierController extends Controller
                 <div class='meta'>
                     <p><strong>Effective Date:</strong> {$date}</p>
                     <p><strong>Distributor (Buyer):</strong> {$distributorUser->full_name}</p>
-                    <p><strong>Supplier (Seller):</strong> {$supplierUser->full_name}</p>
+                    <p><strong>Supplier (Seller):</strong> {$supplierUser->full_name} ({$companyName})</p>
                 </div>
                 
                 <div class='content'>

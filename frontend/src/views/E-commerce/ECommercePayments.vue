@@ -68,7 +68,7 @@
         <Card class="lg:col-span-2 bg-gray-900/50 backdrop-blur-sm border-gray-800 text-white">
           <CardContent class="p-6">
             <h3 class="text-lg font-semibold mb-6">Payment Method Distribution</h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div v-for="method in paymentMethods" :key="method.name" 
                    class="bg-gray-800/50 rounded-xl p-4 text-center hover:bg-gray-800 transition-colors">
                 <div :class="[
@@ -77,7 +77,7 @@
                 ]">
                   <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="method.name === 'GCash'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    <path v-else-if="method.name === 'PayMaya'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path v-else-if="method.name === 'Bank Transfer'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
                     <path v-else-if="method.name === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     <path v-else-if="method.name === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -129,7 +129,7 @@
                   <SelectItem value="COD">COD</SelectItem>
                   <SelectItem value="GCash">GCash</SelectItem>
                   <SelectItem value="Pick-Up">Pick-Up</SelectItem>
-                  <SelectItem value="Bank Transfer" disabled>Bank Transfer</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -212,6 +212,7 @@
                       <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path v-if="payment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         <path v-else-if="payment.method === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        <path v-else-if="payment.method === 'Bank Transfer'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
                         <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
                     </div>
@@ -305,6 +306,7 @@
                         <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path v-if="selectedPayment.method === 'COD'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                           <path v-else-if="selectedPayment.method === 'Pick-Up'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                          <path v-else-if="selectedPayment.method === 'Bank Transfer'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" />
                           <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
@@ -378,7 +380,7 @@
           <p class="text-gray-400 text-sm mt-1">Configure available payment methods for your customers.</p>
         </DialogHeader>
 
-        <div class="space-y-6 py-4">
+        <div class="space-y-6 py-4 max-h-[60vh] overflow-y-auto pr-2">
           <div class="flex items-center justify-between bg-gray-800/50 p-4 rounded-xl border border-gray-700">
             <div>
               <h4 class="font-medium text-white">Cash on Delivery (COD)</h4>
@@ -422,6 +424,40 @@
               </div>
             </transition>
           </div>
+
+          <div class="space-y-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-medium text-white">Bank Transfer</h4>
+                <p class="text-sm text-gray-400">Accept direct bank deposits.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                <input type="checkbox" v-model="settingsForm.is_bank_enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+              </label>
+            </div>
+
+            <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
+              <div v-if="settingsForm.is_bank_enabled" class="space-y-4 pt-2 border-t border-gray-700">
+                <div class="space-y-2">
+                  <Label class="text-gray-300">Bank Name <span class="text-red-500">*</span></Label>
+                  <Input type="text" v-model="settingsForm.bank_name" placeholder="e.g. BDO, BPI"
+                         class="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
+                </div>
+                <div class="space-y-2">
+                  <Label class="text-gray-300">Account Name <span class="text-red-500">*</span></Label>
+                  <Input type="text" v-model="settingsForm.bank_account_name" placeholder="e.g. Julian Namoc"
+                         class="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
+                </div>
+                <div class="space-y-2">
+                  <Label class="text-gray-300">Account Number <span class="text-red-500">*</span></Label>
+                  <Input type="text" v-model="settingsForm.bank_account_number" placeholder="Enter account number"
+                         class="bg-gray-900 border-gray-700 text-white placeholder:text-gray-500" />
+                </div>
+              </div>
+            </transition>
+          </div>
+
         </div>
 
         <div class="flex justify-end space-x-3 mt-2 pt-4 border-t border-gray-800">
@@ -501,7 +537,11 @@ const settingsForm = ref({
   is_cod_enabled: true,
   is_gcash_enabled: false,
   is_pickup_enabled: false,
-  gcash_number: ''
+  is_bank_enabled: false,
+  gcash_number: '',
+  bank_name: '',
+  bank_account_name: '',
+  bank_account_number: ''
 })
 
 const statusClasses = {
@@ -554,7 +594,11 @@ const fetchPaymentSettings = async () => {
         is_cod_enabled: !!response.data.data.is_cod_enabled,
         is_gcash_enabled: !!response.data.data.is_gcash_enabled,
         is_pickup_enabled: !!response.data.data.is_pickup_enabled,
-        gcash_number: response.data.data.gcash_number || ''
+        is_bank_enabled: !!response.data.data.is_bank_enabled,
+        gcash_number: response.data.data.gcash_number || '',
+        bank_name: response.data.data.bank_name || '',
+        bank_account_name: response.data.data.bank_account_name || '',
+        bank_account_number: response.data.data.bank_account_number || ''
       }
     }
   } catch (error) {
@@ -577,6 +621,12 @@ const saveSettings = async () => {
   if (settingsForm.value.is_gcash_enabled && !settingsForm.value.gcash_number?.trim()) {
     toast.error("Please enter a GCash Mobile Number.")
     return
+  }
+  if (settingsForm.value.is_bank_enabled) {
+    if (!settingsForm.value.bank_name?.trim() || !settingsForm.value.bank_account_name?.trim() || !settingsForm.value.bank_account_number?.trim()) {
+      toast.error("Please enter the Bank Name, Account Name, and Account Number.")
+      return
+    }
   }
 
   isSavingSettings.value = true

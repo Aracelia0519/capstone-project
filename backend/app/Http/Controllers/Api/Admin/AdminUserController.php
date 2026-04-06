@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
-
 class AdminUserController extends Controller
 {
     /**
@@ -105,10 +104,7 @@ class AdminUserController extends Controller
             'distributor' => User::where('role', 'distributor')->count(),
             'service_provider' => User::where('role', 'service_provider')->count(),
             'client' => User::where('role', 'client')->count(),
-            'operational_distributor' => User::where('role', 'operational_distributor')->count(),
-            'hr_manager' => User::where('role', 'hr_manager')->count(),
-            'finance_manager' => User::where('role', 'finance_manager')->count(),
-            'supplier' => User::where('role', 'supplier')->count(), // Added supplier count
+            'supplier' => User::where('role', 'supplier')->count(), 
             'active' => User::where('status', 'active')->count(),
             'inactive' => User::where('status', 'inactive')->count(),
             'pending' => User::where('status', 'pending')->count(),
@@ -173,26 +169,8 @@ class AdminUserController extends Controller
                     $verificationDetails = $this->getServiceProviderRequirements($user->serviceProviderRequirement);
                 }
                 break;
-                
-            case 'operational_distributor':
-                if ($user->operationalDistributor) {
-                    $verificationDetails = $this->getOperationalDistributorDetails($user->operationalDistributor);
-                }
-                break;
-                
-            case 'hr_manager':
-                if ($user->hrManager) {
-                    $verificationDetails = $this->getHRManagerDetails($user->hrManager);
-                }
-                break;
-                
-            case 'finance_manager':
-                if ($user->financeManager) {
-                    $verificationDetails = $this->getFinanceManagerDetails($user->financeManager);
-                }
-                break;
 
-            case 'supplier': // Added Supplier Logic
+            case 'supplier': 
                 $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
                 if ($supplierRequirement) {
                     $verificationStatus = $supplierRequirement->status;
@@ -258,7 +236,7 @@ class AdminUserController extends Controller
      */
     private function getSupplierRequirements(SupplierRequirements $requirement)
     {
-        $requirement->load('address'); // Eager load address
+        $requirement->load('address'); 
         
         return [
             'id' => $requirement->id,
@@ -268,7 +246,6 @@ class AdminUserController extends Controller
             'id_number' => $requirement->id_number,
             'business_registration_number' => $requirement->business_registration_number,
             
-            // URLs using Storage::url
             'valid_id_photo' => $requirement->valid_id_photo,
             'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
             
@@ -284,7 +261,6 @@ class AdminUserController extends Controller
             'business_registration_photo' => $requirement->business_registration_photo,
             'business_registration_photo_url' => $requirement->business_registration_photo ? Storage::url($requirement->business_registration_photo) : null,
             
-            // Address details
             'address' => $requirement->address,
             
             'status' => $requirement->status,
@@ -336,106 +312,6 @@ class AdminUserController extends Controller
     }
 
     /**
-     * Get operational distributor details with URLs
-     */
-    private function getOperationalDistributorDetails(OperationalDistributor $operationalDistributor)
-    {
-        return [
-            'id' => $operationalDistributor->id,
-            'parent_distributor_id' => $operationalDistributor->parent_distributor_id,
-            'parent_distributor_name' => $operationalDistributor->parentDistributor->full_name ?? null,
-            'first_name' => $operationalDistributor->first_name,
-            'last_name' => $operationalDistributor->last_name,
-            'full_name' => $operationalDistributor->getFullNameAttribute(),
-            'email' => $operationalDistributor->email,
-            'phone' => $operationalDistributor->phone,
-            'address' => $operationalDistributor->address,
-            'valid_id_type' => $operationalDistributor->valid_id_type,
-            'valid_id_type_display' => $operationalDistributor->getIdTypeNameAttribute(),
-            'id_number' => $operationalDistributor->id_number,
-            'valid_id_photo' => $operationalDistributor->valid_id_photo,
-            'valid_id_photo_url' => $operationalDistributor->getValidIdPhotoUrlAttribute(),
-            'status' => $operationalDistributor->status,
-            'created_at' => $operationalDistributor->created_at,
-            'updated_at' => $operationalDistributor->updated_at,
-        ];
-    }
-
-    /**
-     * Get HR manager details with URLs
-     */
-    private function getHRManagerDetails(HRManager $hrManager)
-    {
-        return [
-            'id' => $hrManager->id,
-            'parent_distributor_id' => $hrManager->parent_distributor_id,
-            'parent_distributor_name' => $hrManager->parentDistributor->full_name ?? null,
-            'first_name' => $hrManager->first_name,
-            'last_name' => $hrManager->last_name,
-            'full_name' => $hrManager->getFullNameAttribute(),
-            'email' => $hrManager->email,
-            'phone' => $hrManager->phone,
-            'address' => $hrManager->address,
-            'position' => $hrManager->position,
-            'employment_type' => $hrManager->employment_type,
-            'employment_type_display' => $hrManager->getEmploymentTypeNameAttribute(),
-            'hire_date' => $hrManager->hire_date,
-            'formatted_hire_date' => $hrManager->getFormattedHireDateAttribute(),
-            'salary' => $hrManager->salary,
-            'formatted_salary' => $hrManager->getFormattedSalaryAttribute(),
-            'valid_id_type' => $hrManager->valid_id_type,
-            'valid_id_type_display' => $hrManager->getIdTypeNameAttribute(),
-            'id_number' => $hrManager->id_number,
-            'valid_id_photo' => $hrManager->valid_id_photo,
-            'valid_id_photo_url' => $hrManager->getValidIdPhotoUrlAttribute(),
-            'resume' => $hrManager->resume,
-            'resume_url' => $hrManager->getResumeUrlAttribute(),
-            'employment_contract' => $hrManager->employment_contract,
-            'employment_contract_url' => $hrManager->getEmploymentContractUrlAttribute(),
-            'status' => $hrManager->status,
-            'created_at' => $hrManager->created_at,
-            'updated_at' => $hrManager->updated_at,
-        ];
-    }
-
-    /**
-     * Get finance manager details with URLs
-     */
-    private function getFinanceManagerDetails(FinanceManager $financeManager)
-    {
-        return [
-            'id' => $financeManager->id,
-            'parent_distributor_id' => $financeManager->parent_distributor_id,
-            'parent_distributor_name' => $financeManager->parentDistributor->full_name ?? null,
-            'first_name' => $financeManager->first_name,
-            'last_name' => $financeManager->last_name,
-            'full_name' => $financeManager->getFullNameAttribute(),
-            'email' => $financeManager->email,
-            'phone' => $financeManager->phone,
-            'address' => $financeManager->address,
-            'valid_id_type' => $financeManager->valid_id_type,
-            'valid_id_type_display' => $financeManager->getIdTypeNameAttribute(),
-            'id_number' => $financeManager->id_number,
-            'valid_id_photo' => $financeManager->valid_id_photo,
-            'valid_id_photo_url' => $financeManager->getValidIdPhotoUrlAttribute(),
-            'employment_type' => $financeManager->employment_type,
-            'employment_type_display' => $financeManager->getEmploymentTypeNameAttribute(),
-            'hire_date' => $financeManager->hire_date,
-            'formatted_hire_date' => $financeManager->getFormattedHireDateAttribute(),
-            'salary' => $financeManager->salary,
-            'formatted_salary' => $financeManager->getFormattedSalaryAttribute(),
-            'position' => $financeManager->position,
-            'resume' => $financeManager->resume,
-            'resume_url' => $financeManager->getResumeUrlAttribute(),
-            'employment_contract' => $financeManager->employment_contract,
-            'employment_contract_url' => $financeManager->getEmploymentContractUrlAttribute(),
-            'status' => $financeManager->status,
-            'created_at' => $financeManager->created_at,
-            'updated_at' => $financeManager->updated_at,
-        ];
-    }
-
-    /**
      * Get role display name
      */
     private function getRoleDisplayName($role)
@@ -445,10 +321,7 @@ class AdminUserController extends Controller
             'distributor' => 'Distributor',
             'service_provider' => 'Service Provider',
             'client' => 'Client',
-            'operational_distributor' => 'Operational Distributor',
-            'hr_manager' => 'HR Manager',
-            'finance_manager' => 'Finance Manager',
-            'supplier' => 'Supplier', // Added Supplier
+            'supplier' => 'Supplier', 
         ];
         
         return $roleNames[$role] ?? ucfirst(str_replace('_', ' ', $role));
@@ -464,10 +337,7 @@ class AdminUserController extends Controller
             'distributor' => '#51C16B',
             'service_provider' => '#9B59B6',
             'client' => '#7F8C8D',
-            'operational_distributor' => '#F39C12',
-            'hr_manager' => '#3498DB',
-            'finance_manager' => '#E74C3C',
-            'supplier' => '#FF7043', // Added Supplier Color
+            'supplier' => '#FF7043', 
         ];
         
         return $colors[$role] ?? '#95A5A6';
@@ -491,11 +361,7 @@ class AdminUserController extends Controller
             $user = User::with([
                 'distributorRequirement',
                 'clientRequirement',
-                'serviceProviderRequirement',
-                'operationalDistributor.parentDistributor',
-                'hrManager.parentDistributor',
-                'financeManager.parentDistributor',
-                // For supplier, we check if relationship exists in User model, or query manually
+                'serviceProviderRequirement'
             ])->find($id);
             
             if (!$user) {
@@ -531,32 +397,8 @@ class AdminUserController extends Controller
                         ];
                     }
                     break;
-                    
-                case 'operational_distributor':
-                    if ($user->operationalDistributor) {
-                        $requirements = [
-                            'operational_distributor' => $this->getOperationalDistributorDetails($user->operationalDistributor)
-                        ];
-                    }
-                    break;
-                    
-                case 'hr_manager':
-                    if ($user->hrManager) {
-                        $requirements = [
-                            'hr_manager' => $this->getHRManagerDetails($user->hrManager)
-                        ];
-                    }
-                    break;
-                    
-                case 'finance_manager':
-                    if ($user->financeManager) {
-                        $requirements = [
-                            'finance_manager' => $this->getFinanceManagerDetails($user->financeManager)
-                        ];
-                    }
-                    break;
 
-                case 'supplier': // Added Supplier Logic
+                case 'supplier':
                     $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
                     if ($supplierRequirement) {
                          $requirements = [
@@ -600,9 +442,18 @@ class AdminUserController extends Controller
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:8',
-                'role' => 'required|in:admin,distributor,service_provider,client,operational_distributor,hr_manager,finance_manager,supplier', // Added supplier
-                'phone' => 'nullable|string|max:20',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'regex:/[a-z]/',      // must contain at least one lowercase letter
+                    'regex:/[A-Z]/',      // must contain at least one uppercase letter
+                    'regex:/[0-9]/',      // must contain at least one digit
+                    'regex:/[@$!%*#?&]/', // must contain a special character
+                    'confirmed'           // ensure password match
+                ],
+                'role' => 'required|in:admin,distributor,service_provider,client,supplier', // removed unnecessary roles
+                'phone' => 'required|string|max:20|regex:/^09\d{9}$/', // Must be proper PH length without spaces
                 'address' => 'nullable|string',
                 'status' => 'in:pending,active,inactive',
             ]);
@@ -619,7 +470,8 @@ class AdminUserController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
-                'password' => bcrypt($request->password),
+                // Passing Raw request password because the model automatically hashes it.
+                'password' => $request->password, 
                 'role' => $request->role,
                 'phone' => $request->phone,
                 'address' => $request->address,
@@ -829,26 +681,8 @@ class AdminUserController extends Controller
                         ]);
                     }
                     break;
-                    
-                case 'operational_distributor':
-                    if ($user->operationalDistributor) {
-                        $user->operationalDistributor->update(['status' => 'active']);
-                    }
-                    break;
-                    
-                case 'hr_manager':
-                    if ($user->hrManager) {
-                        $user->hrManager->update(['status' => 'active']);
-                    }
-                    break;
-                    
-                case 'finance_manager':
-                    if ($user->financeManager) {
-                        $user->financeManager->update(['status' => 'active']);
-                    }
-                    break;
                 
-                case 'supplier': // Added Supplier Logic
+                case 'supplier': 
                     $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
                     if ($supplierRequirement) {
                         $supplierRequirement->update([
@@ -951,26 +785,8 @@ class AdminUserController extends Controller
                         ]);
                     }
                     break;
-                    
-                case 'operational_distributor':
-                    if ($user->operationalDistributor) {
-                        $user->operationalDistributor->update(['status' => 'inactive']);
-                    }
-                    break;
-                    
-                case 'hr_manager':
-                    if ($user->hrManager) {
-                        $user->hrManager->update(['status' => 'inactive']);
-                    }
-                    break;
-                    
-                case 'finance_manager':
-                    if ($user->financeManager) {
-                        $user->financeManager->update(['status' => 'inactive']);
-                    }
-                    break;
 
-                case 'supplier': // Added Supplier Logic
+                case 'supplier': 
                     $supplierRequirement = SupplierRequirements::where('user_id', $user->id)->first();
                     if ($supplierRequirement) {
                         $supplierRequirement->update([
@@ -1031,7 +847,16 @@ class AdminUserController extends Controller
             }
             
             $validator = Validator::make($request->all(), [
-                'password' => 'required|string|min:8|confirmed',
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'regex:/[a-z]/',
+                    'regex:/[A-Z]/',
+                    'regex:/[0-9]/',
+                    'regex:/[@$!%*#?&]/',
+                    'confirmed'
+                ],
             ]);
             
             if ($validator->fails()) {
@@ -1043,7 +868,7 @@ class AdminUserController extends Controller
             }
             
             $user->update([
-                'password' => bcrypt($request->password)
+                'password' => $request->password // No hashing necessary, model casts
             ]);
             
             return response()->json([

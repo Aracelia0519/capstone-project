@@ -608,7 +608,6 @@
 
     </div>
 
-    <Toaster />
   </div>
 </template>
 

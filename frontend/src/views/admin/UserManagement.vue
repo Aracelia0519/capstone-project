@@ -83,7 +83,8 @@
             <select 
               v-model="statusFilter" 
               @change="fetchUsers"
-              class="h-10 w-full sm:w-[150px] rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              class="appearance-none flex h-10 w-full sm:w-[150px] items-center justify-between rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto;"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -479,92 +480,30 @@
     </div>
   </div>
 
-  <div v-if="(viewingUser.role === 'hr_manager' && userRequirements.hr_manager) || (viewingUser.role === 'finance_manager' && userRequirements.finance_manager)">
-    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
-      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Employment Details</h4>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Position</Label>
-          <p class="font-medium text-slate-900">
-            {{ viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.position : userRequirements.finance_manager.position }}
-          </p>
-        </div>
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Salary</Label>
-          <p class="font-medium text-slate-900">
-            {{ formatCurrency(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.salary : userRequirements.finance_manager.salary) }}
-          </p>
-        </div>
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Employment Type</Label>
-          <p class="font-medium text-slate-900">
-            {{ viewingUser.role === 'hr_manager' ? (userRequirements.hr_manager.employment_type_display || userRequirements.hr_manager.employment_type) : (userRequirements.finance_manager.employment_type_display || userRequirements.finance_manager.employment_type) }}
-          </p>
-        </div>
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Hire Date</Label>
-          <p class="font-medium text-slate-900">
-            {{ formatDate(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.hire_date : userRequirements.finance_manager.hire_date) }}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-      <i class="fas fa-folder text-slate-400"></i> Employment Documents
-    </h4>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url"
-           class="group relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer"
-           @click="showImageModal(viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url, 'Valid ID')">
-        <img :src="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.valid_id_photo_url : userRequirements.finance_manager.valid_id_photo_url" class="w-full h-full object-cover">
-        <div class="absolute bottom-0 left-0 right-0 p-2 bg-black/50 text-white text-xs font-medium text-center">Valid ID</div>
-      </div>
-
-      <Button v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.resume_url : userRequirements.finance_manager.resume_url" 
-              variant="outline" class="h-full min-h-[100px] flex flex-col gap-2 hover:bg-slate-50 hover:border-blue-300" 
-              as="a" :href="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.resume_url : userRequirements.finance_manager.resume_url" target="_blank">
-        <i class="fas fa-file-pdf text-red-500 text-2xl"></i>
-        <span>View Resume</span>
-      </Button>
-
-      <Button v-if="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.employment_contract_url : userRequirements.finance_manager.employment_contract_url" 
-              variant="outline" class="h-full min-h-[100px] flex flex-col gap-2 hover:bg-slate-50 hover:border-blue-300" 
-              as="a" :href="viewingUser.role === 'hr_manager' ? userRequirements.hr_manager.employment_contract_url : userRequirements.finance_manager.employment_contract_url" target="_blank">
-        <i class="fas fa-file-contract text-blue-500 text-2xl"></i>
-        <span>View Contract</span>
-      </Button>
-    </div>
-  </div>
-
-  <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider) || (viewingUser.role === 'operational_distributor' && userRequirements.operational_distributor)">
+  <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider)">
     <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6 flex items-center justify-between">
       <div class="space-y-1">
         <Label class="text-xs text-slate-500">ID Type</Label>
         <p class="font-medium text-slate-900">
           {{ viewingUser.role === 'client' ? (userRequirements.client.valid_id_type_display || userRequirements.client.valid_id_type) : 
-             viewingUser.role === 'service_provider' ? (userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type) :
-             (userRequirements.operational_distributor.valid_id_type_display || userRequirements.operational_distributor.valid_id_type) }}
+             (userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type) }}
         </p>
       </div>
       <div class="space-y-1 text-right">
         <Label class="text-xs text-slate-500">ID Number</Label>
         <p class="font-medium text-slate-900 font-mono">
           {{ viewingUser.role === 'client' ? userRequirements.client.id_number : 
-             viewingUser.role === 'service_provider' ? userRequirements.service_provider.id_number :
-             userRequirements.operational_distributor.id_number }}
+             userRequirements.service_provider.id_number }}
         </p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div v-if="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : 
-                 viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url :
-                 userRequirements.operational_distributor.valid_id_photo_url">
+      <div v-if="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url">
         <h6 class="text-sm font-medium text-slate-700 mb-3">Valid ID</h6>
         <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
-             @click="showImageModal(viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url : userRequirements.operational_distributor.valid_id_photo_url, 'Valid ID')">
-          <img :src="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : viewingUser.role === 'service_provider' ? userRequirements.service_provider.valid_id_photo_url : userRequirements.operational_distributor.valid_id_photo_url" class="w-full h-48 object-cover">
+             @click="showImageModal(viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url, 'Valid ID')">
+          <img :src="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url" class="w-full h-48 object-cover">
           <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <i class="fas fa-expand text-white text-xl"></i>
           </div>
@@ -607,95 +546,192 @@
 
     <Dialog :open="showAddUserModal" @update:open="val => val ? null : closeAddUserModal()">
       <div v-if="showAddUserModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <Card class="w-full max-w-2xl shadow-xl">
-          <CardHeader class="border-b">
+        <Card class="w-full max-w-3xl shadow-xl max-h-[90vh] flex flex-col">
+          <CardHeader class="border-b shrink-0 pb-4">
             <div class="flex items-center justify-between">
               <div>
                 <CardTitle>Add New User</CardTitle>
-                <p class="text-sm text-slate-500 mt-1">Create a new user account</p>
+                <p class="text-sm text-slate-500 mt-1">Step {{ addUserStep }} of 4: {{ addUserSteps[addUserStep - 1].title }}</p>
               </div>
               <Button variant="ghost" size="icon" @click="closeAddUserModal()">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times text-slate-500"></i>
               </Button>
             </div>
+             <div class="mt-4">
+                <div class="flex justify-between mb-2">
+                  <div v-for="step in 4" :key="step" class="flex flex-col items-center flex-1">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors"
+                         :class="step === addUserStep ? 'border-blue-600 bg-blue-600 text-white' : (step < addUserStep ? 'border-green-500 bg-green-500 text-white' : 'border-slate-300 bg-white text-slate-400')">
+                      <i v-if="step < addUserStep" class="fas fa-check text-xs"></i>
+                      <span v-else class="text-sm font-medium">{{ step }}</span>
+                    </div>
+                    <span class="text-[11px] mt-1 font-medium" :class="step === addUserStep ? 'text-blue-600' : 'text-slate-500'">{{ addUserSteps[step - 1].short }}</span>
+                  </div>
+                </div>
+                <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                   <div class="h-full bg-blue-600 transition-all duration-300" :style="`width: ${((addUserStep - 1) / 3) * 100}%`"></div>
+                </div>
+             </div>
           </CardHeader>
-          <CardContent class="p-6">
-            <form @submit.prevent="addNewUser">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent class="p-6 overflow-y-auto flex-1">
+             <div v-if="addUserStep === 1" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div v-for="role in availableRoles" :key="role.value"
+                     @click="newUser.role = role.value"
+                     class="cursor-pointer p-4 rounded-xl border-2 transition-all hover:shadow-md"
+                     :class="newUser.role === role.value ? 'border-blue-600 bg-blue-50/50 ring-4 ring-blue-100/50' : 'border-slate-200 hover:border-blue-300'">
+                     <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white" :class="role.colorClass">
+                           <i :class="role.icon"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800">{{ role.label }}</h4>
+                     </div>
+                     <p class="text-xs text-slate-500 leading-relaxed">{{ role.description }}</p>
+                </div>
+             </div>
+
+             <div v-if="addUserStep === 2" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div class="space-y-2">
                     <Label>First Name <span class="text-red-500">*</span></Label>
-                    <Input v-model="newUser.first_name" required />
+                    <Input v-model="newUser.first_name" @input="validateStep2(true)" :class="{'border-red-500 focus:ring-red-500': validationErrors.first_name}" />
+                    <span v-if="validationErrors.first_name" class="text-xs text-red-500">{{ validationErrors.first_name }}</span>
                  </div>
                  <div class="space-y-2">
                     <Label>Last Name <span class="text-red-500">*</span></Label>
-                    <Input v-model="newUser.last_name" required />
+                    <Input v-model="newUser.last_name" @input="validateStep2(true)" :class="{'border-red-500 focus:ring-red-500': validationErrors.last_name}" />
+                    <span v-if="validationErrors.last_name" class="text-xs text-red-500">{{ validationErrors.last_name }}</span>
                  </div>
                  <div class="space-y-2">
-                    <Label>Email <span class="text-red-500">*</span></Label>
-                    <Input type="email" v-model="newUser.email" required />
+                    <Label>Email Address <span class="text-red-500">*</span></Label>
+                    <div class="relative">
+                      <i class="fas fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                      <Input type="email" v-model="newUser.email" @input="validateStep2(true)" placeholder="user@example.com" class="pl-9" :class="{'border-red-500 focus:ring-red-500': validationErrors.email}" />
+                    </div>
+                    <span v-if="validationErrors.email" class="text-xs text-red-500">{{ validationErrors.email }}</span>
                  </div>
                  <div class="space-y-2">
-                    <Label>Phone</Label>
-                    <Input type="tel" v-model="newUser.phone" />
+                    <Label>Phone Number <span class="text-red-500">*</span></Label>
+                    <div class="relative">
+                      <i class="fas fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                      <Input type="tel" v-model="newUser.phone" @input="formatPhoneAndValidate" placeholder="09XX XXX XXXX" class="pl-9" :class="{'border-red-500 focus:ring-red-500': validationErrors.phone}" />
+                    </div>
+                    <span v-if="validationErrors.phone" class="text-xs text-red-500">{{ validationErrors.phone }}</span>
                  </div>
                  <div class="md:col-span-2 space-y-2">
-                    <Label>Address</Label>
-                    <Input v-model="newUser.address" />
+                    <Label>Full Address</Label>
+                    <div class="relative">
+                      <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                      <Input v-model="newUser.address" class="pl-9" placeholder="Unit, Street, Barangay, City, Province" />
+                    </div>
                  </div>
-                 <div class="space-y-2">
-                    <Label>Role <span class="text-red-500">*</span></Label>
-                    <select 
-                       v-model="newUser.role" 
-                       required
-                       class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                       <option value="">Select Role</option>
-                       <option value="admin">Administrator</option>
-                       <option value="distributor">Distributor</option>
-                       <option value="service_provider">Service Provider</option>
-                       <option value="client">Client</option>
-                       <option value="operational_distributor">Operational Distributor</option>
-                       <option value="hr_manager">HR Manager</option>
-                       <option value="finance_manager">Finance Manager</option>
-                       <option value="supplier">Supplier</option>
-                    </select>
-                 </div>
-                 <div class="space-y-2">
-                    <Label>Status</Label>
-                    <select 
+             </div>
+
+             <div v-if="addUserStep === 3" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div class="space-y-2 md:col-span-2">
+                    <Label>Initial Account Status</Label>
+                    <select
                        v-model="newUser.status"
-                       class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                       class="appearance-none flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                       style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto;"
                     >
                        <option value="active">Active</option>
                        <option value="inactive">Inactive</option>
                        <option value="pending">Pending</option>
                     </select>
                  </div>
-                 
                  <div class="space-y-2">
                     <Label>Password <span class="text-red-500">*</span></Label>
                     <div class="relative">
-                       <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password" required />
-                       <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700">
+                       <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password" @input="validateStep3(true)" :class="{'border-red-500 focus:ring-red-500': validationErrors.password}" />
+                       <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 focus:outline-none">
                           <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                        </button>
                     </div>
+                    <div v-if="newUser.password" class="space-y-2 mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <div class="flex items-center gap-2">
+                        <div class="h-1.5 flex-1 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full transition-all duration-300" :class="passwordStrengthClass" :style="`width: ${passwordStrengthScore}%`"></div>
+                        </div>
+                        <span class="text-xs font-bold" :class="passwordStrengthTextClass">{{ passwordStrength }}</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-1.5 mt-2">
+                        <div v-for="(req, i) in passwordRequirements" :key="i" class="flex items-center space-x-1.5 text-[10px]" :class="req.met ? 'text-green-600' : 'text-slate-500'">
+                          <i :class="req.met ? 'fas fa-check-circle' : 'far fa-circle'"></i>
+                          <span>{{ req.text }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span v-if="validationErrors.password" class="text-xs text-red-500">{{ validationErrors.password }}</span>
                  </div>
                  <div class="space-y-2">
                     <Label>Confirm Password <span class="text-red-500">*</span></Label>
-                    <Input :type="showPassword ? 'text' : 'password'" v-model="newUser.password_confirmation" required />
+                    <div class="relative">
+                       <Input :type="showConfirmPassword ? 'text' : 'password'" v-model="newUser.password_confirmation" @input="validateStep3(true)" :class="{'border-red-500 focus:ring-red-500': validationErrors.password_confirmation}" />
+                       <button type="button" @click="showConfirmPassword = !showConfirmPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 focus:outline-none">
+                          <i :class="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                       </button>
+                    </div>
+                    <span v-if="validationErrors.password_confirmation" class="text-xs text-red-500">{{ validationErrors.password_confirmation }}</span>
                  </div>
-              </div>
+             </div>
 
-              <div class="flex justify-end gap-3 mt-6 pt-6 border-t">
-                 <Button type="button" variant="outline" @click="closeAddUserModal()">Cancel</Button>
-                 <Button type="submit" :disabled="addingUser" class="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
-                    <i v-if="addingUser" class="fas fa-spinner fa-spin mr-2"></i>
-                    {{ addingUser ? 'Creating...' : 'Create User' }}
-                 </Button>
-              </div>
-            </form>
+             <div v-if="addUserStep === 4" class="space-y-6">
+                <div class="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
+                   <h4 class="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                      <i class="fas fa-clipboard-check text-blue-600"></i> Account Summary
+                   </h4>
+                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                      <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Role</span> 
+                        <span class="font-medium flex items-center gap-2 text-slate-800">
+                          <i :class="getRoleIcon(newUser.role)" class="text-blue-500"></i>
+                          {{ newUser.role.replace('_', ' ') }}
+                        </span>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Status</span> 
+                        <span class="font-medium capitalize text-slate-800 flex items-center gap-1.5">
+                           <span class="w-2 h-2 rounded-full" :class="getStatusDotClass(newUser.status)"></span>
+                           {{ newUser.status }}
+                        </span>
+                      </div>
+                      <div class="flex flex-col sm:col-span-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Full Name</span> 
+                        <span class="font-medium text-slate-800">{{ newUser.first_name }} {{ newUser.last_name }}</span>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Contact Phone</span> 
+                        <span class="font-medium text-slate-800">{{ newUser.phone }}</span>
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Email Address</span> 
+                        <span class="font-medium text-slate-800">{{ newUser.email }}</span>
+                      </div>
+                      <div class="flex flex-col sm:col-span-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Location / Address</span> 
+                        <span class="font-medium text-slate-800">{{ newUser.address || 'No address provided' }}</span>
+                      </div>
+                   </div>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-lg border border-amber-200 flex gap-3 text-amber-800">
+                   <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                   <p class="text-xs leading-relaxed">
+                      Please verify all information above. This user will receive a welcome email, but they will still need to verify their email address and submit their requirements for full approval if required by their role.
+                   </p>
+                </div>
+             </div>
           </CardContent>
+          <div class="border-t p-4 bg-slate-50/50 flex justify-between shrink-0 rounded-b-xl">
+             <Button type="button" variant="outline" @click="addUserStep > 1 ? prevAddUserStep() : closeAddUserModal()" class="w-24">
+                {{ addUserStep > 1 ? 'Back' : 'Cancel' }}
+             </Button>
+             <Button v-if="addUserStep < 4" type="button" @click="nextAddUserStep" class="bg-blue-600 hover:bg-blue-700 text-white w-24">
+                Next
+             </Button>
+             <Button v-else type="button" @click="addNewUser" :disabled="addingUser" class="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[140px] shadow-md hover:shadow-lg transition-all">
+                <i v-if="addingUser" class="fas fa-spinner fa-spin mr-2"></i>
+                {{ addingUser ? 'Creating...' : 'Create Account' }}
+             </Button>
+          </div>
         </Card>
       </div>
     </Dialog>
@@ -735,17 +771,15 @@
           <div class="flex items-center justify-between p-4 border-b">
             <h3 class="font-bold text-lg">{{ currentImageTitle }}</h3>
             <Button variant="ghost" size="icon" @click="closeImageModal">
-               <i class="fas fa-times">X</i>
+               <i class="fas fa-times text-slate-500"></i>
             </Button>
           </div>
           <div class="flex-1 p-4 bg-slate-900 flex items-center justify-center overflow-auto">
              <img :src="currentImageUrl" class="max-w-full max-h-[70vh] rounded shadow-lg object-contain" />
           </div>
-          <div class="p-4 border-t flex justify-end">
-            <Button variant="ghost" size="icon" @click="closeImageModal">
-               <i class="fas fa-times">Close</i>
-            </Button>
-             <Button as="a" :href="currentImageUrl" target="_blank" variant="secondary">
+          <div class="p-4 border-t flex justify-end gap-2">
+            <Button variant="outline" @click="closeImageModal">Close</Button>
+             <Button as="a" :href="currentImageUrl" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white">
                 <i class="fas fa-external-link-alt mr-2"></i> Open Original
              </Button>
           </div>
@@ -773,11 +807,9 @@
 </template>
 
 <script>
-// IMPORTANT: Adjust this path based on where your axios.js file is stored.
 import api from '@/utils/axios'; 
-
 import { toast } from 'vue-sonner';
-// Shadcn Components Imports
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -816,20 +848,15 @@ export default {
   },
   data() {
     return {
-      // Tabs data
       tabs: [
         { label: 'All Users', value: 'all', icon: 'fas fa-users' },
         { label: 'Admins', value: 'admin', icon: 'fas fa-user-shield' },
         { label: 'Distributors', value: 'distributor', icon: 'fas fa-truck' },
-        { label: 'Suppliers', value: 'supplier', icon: 'fas fa-boxes' }, // Added Supplier
+        { label: 'Suppliers', value: 'supplier', icon: 'fas fa-boxes' },
         { label: 'Service Providers', value: 'service_provider', icon: 'fas fa-tools' },
-        { label: 'Clients', value: 'client', icon: 'fas fa-user' },
-        { label: 'Operational', value: 'operational_distributor', icon: 'fas fa-cogs' },
-        { label: 'HR Managers', value: 'hr_manager', icon: 'fas fa-user-tie' },
-        { label: 'Finance', value: 'finance_manager', icon: 'fas fa-chart-line' }
+        { label: 'Clients', value: 'client', icon: 'fas fa-user' }
       ],
       
-      // State
       activeTab: 'all',
       searchQuery: '',
       statusFilter: 'all',
@@ -839,8 +866,8 @@ export default {
       showViewModal: false,
       showImageModalFlag: false,
       showPassword: false,
+      showConfirmPassword: false,
       
-      // Reject Modal State
       showRejectModal: false,
       rejectReason: '',
       userToReject: null,
@@ -850,7 +877,6 @@ export default {
       loadingRequirements: false,
       addingUser: false,
       
-      // Data
       users: [],
       statistics: {},
       pagination: {
@@ -862,7 +888,23 @@ export default {
         to: 0
       },
       
-      // User objects
+      // Wizard Data
+      addUserStep: 1,
+      validationErrors: {},
+      addUserSteps: [
+        { title: 'Select Role', short: 'Role' },
+        { title: 'Personal Details', short: 'Personal' },
+        { title: 'Security', short: 'Security' },
+        { title: 'Review', short: 'Review' }
+      ],
+      availableRoles: [
+        { value: 'admin', label: 'Administrator', description: 'System moderation & control', icon: 'fas fa-user-shield', colorClass: 'bg-red-500' },
+        { value: 'distributor', label: 'Distributor', description: 'Sell & distribute products', icon: 'fas fa-truck', colorClass: 'bg-purple-500' },
+        { value: 'supplier', label: 'Supplier', description: 'Supply raw materials', icon: 'fas fa-boxes', colorClass: 'bg-orange-500' },
+        { value: 'service_provider', label: 'Service Provider', description: 'Offer painting services', icon: 'fas fa-tools', colorClass: 'bg-emerald-500' },
+        { value: 'client', label: 'Client', description: 'Purchase paints & track orders', icon: 'fas fa-user', colorClass: 'bg-amber-500' }
+      ],
+      
       newUser: {
         first_name: '',
         last_name: '',
@@ -878,10 +920,8 @@ export default {
       userRequirements: null,
       currentImageUrl: '',
       currentImageTitle: '',
-      
       debounceTimer: null,
       
-      // Alert Dialog State
       alertDialog: {
         open: false,
         title: '',
@@ -889,6 +929,51 @@ export default {
         action: null,
         loading: false
       }
+    }
+  },
+  computed: {
+    passwordStrength() {
+      if (!this.newUser.password) return '';
+      const score = this.passwordStrengthScore;
+      if (score < 40) return 'Weak';
+      if (score < 70) return 'Fair';
+      if (score < 90) return 'Good';
+      return 'Strong';
+    },
+    passwordStrengthScore() {
+      if (!this.newUser.password) return 0;
+      let score = 0;
+      const p = this.newUser.password;
+      if (p.length >= 8) score += 20;
+      if (p.length >= 12) score += 10;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score += 20;
+      if (/\d/.test(p)) score += 20;
+      if (/[!@#$%^&*(),.?":{}|<>]/.test(p)) score += 30;
+      return Math.min(100, score);
+    },
+    passwordStrengthClass() {
+      const s = this.passwordStrength;
+      if (s === 'Weak') return 'bg-red-500';
+      if (s === 'Fair') return 'bg-amber-500';
+      if (s === 'Good') return 'bg-blue-500';
+      return 'bg-emerald-500';
+    },
+    passwordStrengthTextClass() {
+      const s = this.passwordStrength;
+      if (s === 'Weak') return 'text-red-500';
+      if (s === 'Fair') return 'text-amber-600';
+      if (s === 'Good') return 'text-blue-600';
+      return 'text-emerald-600';
+    },
+    passwordRequirements() {
+      const p = this.newUser.password || '';
+      return [
+        { text: '8+ chars', met: p.length >= 8 },
+        { text: 'Upper', met: /[A-Z]/.test(p) },
+        { text: 'Lower', met: /[a-z]/.test(p) },
+        { text: 'Number', met: /\d/.test(p) },
+        { text: 'Special', met: /[!@#$%^&*(),.?":{}|<>]/.test(p) }
+      ];
     }
   },
   mounted() {
@@ -905,7 +990,6 @@ export default {
     }
   },
   methods: {
-    // Alert Dialog Helper
     confirmAction(title, description, action) {
       this.alertDialog = {
         open: true,
@@ -928,7 +1012,6 @@ export default {
       this.alertDialog.open = false;
     },
 
-    // Fetch users with role-based filtering
     async fetchUsers() {
       this.loading = true;
       try {
@@ -939,9 +1022,7 @@ export default {
           search: this.searchQuery || undefined,
           role: this.activeTab !== 'all' ? this.activeTab : undefined
         };
-
         const response = await api.get('/admin/users', { params });
-
         if (response.data.success) {
           this.users = response.data.users;
           this.pagination = response.data.pagination;
@@ -956,59 +1037,41 @@ export default {
       }
     },
     
-    // Fetch statistics
     async fetchStatistics() {
       try {
         try {
           const response = await api.get('/admin/users/statistics');
-          
           if (response.data.success) {
             this.statistics = response.data.statistics;
             return;
           }
-        } catch (apiError) {
-          // Silent catch for stats API failure, fallback to calculation
-        }
-        
-        // Fallback: Calculate from existing users data
+        } catch (apiError) {}
         this.calculateStatisticsFromUsers();
-        
       } catch (error) {
         this.calculateStatisticsFromUsers();
       }
     },
 
     calculateStatisticsFromUsers() {
-      // Calculate statistics from the users you already have
       const stats = {
         total: this.users.length,
         admin: this.users.filter(u => u.role === 'admin').length,
         distributor: this.users.filter(u => u.role === 'distributor').length,
         service_provider: this.users.filter(u => u.role === 'service_provider').length,
         client: this.users.filter(u => u.role === 'client').length,
-        operational_distributor: this.users.filter(u => u.role === 'operational_distributor').length,
-        hr_manager: this.users.filter(u => u.role === 'hr_manager').length,
-        finance_manager: this.users.filter(u => u.role === 'finance_manager').length,
-        supplier: this.users.filter(u => u.role === 'supplier').length, // Added Supplier Count
+        supplier: this.users.filter(u => u.role === 'supplier').length,
         active: this.users.filter(u => u.status === 'active').length,
         inactive: this.users.filter(u => u.status === 'inactive').length,
         pending: this.users.filter(u => u.status === 'pending').length,
       };
-      
       this.statistics = stats;
     },
     
-    // Fetch user requirements
     async fetchUserRequirements(userId) {
       this.loadingRequirements = true;
       try {
         const storageUrl = 'http://localhost:8000';
-        //const storageUrl = 'https://api.capstone001.com';
-        
-        // Reset requirements
         this.userRequirements = null;
-        
-        // Fetch user details which should include requirements data
         const response = await api.get(`/admin/users/${userId}`);
         
         if (response.data.success) {
@@ -1033,106 +1096,46 @@ export default {
                     this.userRequirements = {
                       distributor: {
                         ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
-                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
-                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
-                        business_registration_photo_url: user.verification_details.business_registration_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
+                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                        business_registration_photo_url: user.verification_details.business_registration_photo ? `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
                       }
                     };
                   }
                   break;
-                  
                 case 'client':
                   if (user.verification_details) {
                     this.userRequirements = {
                       client: {
                         ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null
                       }
                     };
                   }
                   break;
-                  
                 case 'service_provider':
                   if (user.verification_details) {
                     this.userRequirements = {
                       service_provider: {
                         ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.selfie_with_id_photo}` : null
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
+                        selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? `${storageUrl}/storage/${user.verification_details.selfie_with_id_photo}` : null
                       }
                     };
                   }
                   break;
-                  
-                case 'hr_manager':
-                  if (user.verification_details) {
-                    this.userRequirements = {
-                      hr_manager: {
-                        ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        resume_url: user.verification_details.resume ? 
-                          `${storageUrl}/storage/${user.verification_details.resume}` : null,
-                        employment_contract_url: user.verification_details.employment_contract ? 
-                          `${storageUrl}/storage/${user.verification_details.employment_contract}` : null
-                      }
-                    };
-                  }
-                  break;
-                  
-                case 'finance_manager':
-                  if (user.verification_details) {
-                    this.userRequirements = {
-                      finance_manager: {
-                        ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        resume_url: user.verification_details.resume ? 
-                          `${storageUrl}/storage/${user.verification_details.resume}` : null,
-                        employment_contract_url: user.verification_details.employment_contract ? 
-                          `${storageUrl}/storage/${user.verification_details.employment_contract}` : null
-                      }
-                    };
-                  }
-                  break;
-                  
-                case 'operational_distributor':
-                  if (user.verification_details) {
-                    this.userRequirements = {
-                      operational_distributor: {
-                        ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null
-                      }
-                    };
-                  }
-                  break;
-
-                case 'supplier': // Added Supplier fallback
+                case 'supplier':
                   if (user.verification_details) {
                     this.userRequirements = {
                       supplier: {
                         ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
-                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
-                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
-                        business_registration_photo_url: user.verification_details.business_registration_photo ? 
-                          `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
+                        valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
+                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
+                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
+                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
+                        business_registration_photo_url: user.verification_details.business_registration_photo ? `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
                       }
                     };
                   }
@@ -1147,21 +1150,18 @@ export default {
       }
     },
     
-    // Show image in modal
     showImageModal(imageUrl, title) {
       this.currentImageUrl = imageUrl;
       this.currentImageTitle = title;
       this.showImageModalFlag = true;
     },
     
-    // Close image modal
     closeImageModal() {
       this.showImageModalFlag = false;
       this.currentImageUrl = '';
       this.currentImageTitle = '';
     },
     
-    // Debounced search
     debouncedFetchUsers() {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = setTimeout(() => {
@@ -1170,15 +1170,11 @@ export default {
       }, 500);
     },
     
-    // Pagination methods
     getPaginationRange() {
       const range = [];
       const start = Math.max(1, this.currentPage - 2);
       const end = Math.min(this.pagination.last_page, start + 4);
-      
-      for (let i = start; i <= end; i++) {
-        range.push(i);
-      }
+      for (let i = start; i <= end; i++) range.push(i);
       return range;
     },
     
@@ -1189,18 +1185,76 @@ export default {
       }
     },
     
-    // User actions
     async viewUser(user) {
       this.viewingUser = { ...user };
       this.showViewModal = true;
-      // Fetch user requirements
       await this.fetchUserRequirements(user.id);
+    },
+
+    // Wizard Functions
+    validateStep2(silent = false) {
+      const errors = {};
+      let isValid = true;
+
+      if (!this.newUser.first_name?.trim()) { errors.first_name = 'Required'; isValid = false; }
+      if (!this.newUser.last_name?.trim()) { errors.last_name = 'Required'; isValid = false; }
+      if (!this.newUser.email) { errors.email = 'Required'; isValid = false; }
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.newUser.email)) { errors.email = 'Invalid email format'; isValid = false; }
+
+      if (!this.newUser.phone?.trim()) { errors.phone = 'Required'; isValid = false; }
+      else {
+        const num = this.newUser.phone.replace(/\D/g, '');
+        if (num.length < 11 || !num.startsWith('09')) { errors.phone = 'Invalid PH format (09XX XXX XXXX)'; isValid = false; }
+      }
+
+      if (!silent) this.validationErrors = { ...this.validationErrors, first_name: errors.first_name, last_name: errors.last_name, email: errors.email, phone: errors.phone };
+      return isValid;
+    },
+    
+    validateStep3(silent = false) {
+      const errors = {};
+      let isValid = true;
+
+      if (!this.newUser.password) { errors.password = 'Required'; isValid = false; }
+      else if (this.passwordStrengthScore < 100 && this.newUser.password.length < 8) { errors.password = 'Password too weak'; isValid = false; }
+
+      if (!this.newUser.password_confirmation) { errors.password_confirmation = 'Required'; isValid = false; }
+      else if (this.newUser.password !== this.newUser.password_confirmation) { errors.password_confirmation = 'Passwords must match'; isValid = false; }
+
+      if (!silent) this.validationErrors = { ...this.validationErrors, password: errors.password, password_confirmation: errors.password_confirmation };
+      return isValid;
+    },
+    
+    formatPhoneAndValidate() {
+      let val = this.newUser.phone.replace(/\D/g, '');
+      if (val.length > 11) val = val.substring(0, 11);
+      if (val.length > 6) val = val.replace(/(\d{4})(\d{3})(\d+)/, '$1 $2 $3');
+      else if (val.length > 4) val = val.replace(/(\d{4})(\d+)/, '$1 $2');
+      this.newUser.phone = val;
+      this.validateStep2(true);
+    },
+    
+    nextAddUserStep() {
+      if (this.addUserStep === 1) {
+          if (!this.newUser.role) return toast.error('Please select a role to continue.');
+          this.addUserStep++;
+      } else if (this.addUserStep === 2) {
+          if (this.validateStep2()) this.addUserStep++;
+      } else if (this.addUserStep === 3) {
+          if (this.validateStep3()) this.addUserStep++;
+      }
+    },
+    
+    prevAddUserStep() {
+      if (this.addUserStep > 1) this.addUserStep--;
     },
     
     async addNewUser() {
+      if (!this.validateStep2(false) || !this.validateStep3(false)) return;
       this.addingUser = true;
       try {
-        const response = await api.post('/admin/users', this.newUser);
+        const payload = { ...this.newUser, phone: this.newUser.phone.replace(/\D/g, '') };
+        const response = await api.post('/admin/users', payload);
         
         if (response.data.success) {
           toast.success('User created successfully');
@@ -1215,17 +1269,14 @@ export default {
       }
     },
     
-    // Approve user (activate account and approve requirements)
     approveUser(user) {
       this.confirmAction(
         'Approve User',
         `Are you sure you want to approve ${user.full_name}? This will activate their account and approve all requirements. An email notification will be sent.`,
         async () => {
           try {
-            // First, try the approve endpoint
             try {
               const approveResponse = await api.post(`/admin/users/${user.id}/approve`, {});
-              
               if (approveResponse.data.success) {
                 toast.success('User approved successfully');
                 this.closeViewModal();
@@ -1233,34 +1284,21 @@ export default {
                 this.fetchStatistics();
                 return;
               }
-            } catch (approveError) {
-              // Proceed to fallback
-            }
+            } catch (approveError) {}
             
-            // Fallback to activate endpoint
             const userResponse = await api.post(`/admin/users/${user.id}/activate`, {});
-            
             if (userResponse.data.success) {
               toast.success('User activated successfully');
-              
-              // If user is distributor, also approve their requirements
               if (user.role === 'distributor' && user.verification_status === 'pending') {
                 try {
                   const distributorReq = await api.get('/distributor/requirements/admin/pending');
-                  
                   const pendingReq = distributorReq.data.data?.find(req => req.user_id === user.id);
                   if (pendingReq) {
-                    await api.put(`/distributor/requirements/admin/${pendingReq.id}`, {
-                      status: 'approved',
-                      rejection_reason: null
-                    });
+                    await api.put(`/distributor/requirements/admin/${pendingReq.id}`, { status: 'approved', rejection_reason: null });
                     toast.success('Distributor requirements approved');
                   }
-                } catch (error) {
-                  // Silent fail for nested requirement approval
-                }
+                } catch (error) {}
               }
-              
               this.closeViewModal();
               this.fetchUsers();
               this.fetchStatistics();
@@ -1284,19 +1322,12 @@ export default {
       this.rejectReason = '';
     },
 
-    // Reject user (with reason and lazy loading modal)
     async confirmRejectUser() {
-      if (!this.rejectReason.trim()) {
-        toast.error('Please provide a rejection reason');
-        return;
-      }
-      
+      if (!this.rejectReason.trim()) return toast.error('Please provide a rejection reason');
       this.processingRejection = true;
       try {
-        // First, try the reject endpoint
         try {
           const rejectResponse = await api.post(`/admin/users/${this.userToReject.id}/reject`, { reason: this.rejectReason });
-          
           if (rejectResponse.data.success) {
             toast.success(`User rejected successfully.`);
             this.closeRejectModal();
@@ -1305,31 +1336,19 @@ export default {
             this.fetchStatistics();
             return;
           }
-        } catch (rejectError) {
-          // Proceed to fallback
-        }
+        } catch (rejectError) {}
         
-        // Fallback to deactivate endpoint
         const userResponse = await api.post(`/admin/users/${this.userToReject.id}/deactivate`, {});
-        
         if (userResponse.data.success) {
-          // If user is distributor, also reject their requirements
           if (this.userToReject.role === 'distributor' && this.userToReject.verification_status === 'pending') {
             try {
               const distributorReq = await api.get('/distributor/requirements/admin/pending');
-              
               const pendingReq = distributorReq.data.data?.find(req => req.user_id === this.userToReject.id);
               if (pendingReq) {
-                await api.put(`/distributor/requirements/admin/${pendingReq.id}`, {
-                  status: 'rejected',
-                  rejection_reason: this.rejectReason
-                });
+                await api.put(`/distributor/requirements/admin/${pendingReq.id}`, { status: 'rejected', rejection_reason: this.rejectReason });
               }
-            } catch (error) {
-              // Silent fail for nested requirement rejection
-            }
+            } catch (error) {}
           }
-          
           toast.success(`User rejected successfully.`);
           this.closeRejectModal();
           this.closeViewModal();
@@ -1343,7 +1362,6 @@ export default {
       }
     },
     
-    // Activate user
     activateUser(user) {
       this.confirmAction(
         'Activate User',
@@ -1351,7 +1369,6 @@ export default {
         async () => {
           try {
             const response = await api.post(`/admin/users/${user.id}/activate`, {});
-            
             if (response.data.success) {
               toast.success('User activated successfully');
               this.fetchUsers();
@@ -1364,7 +1381,6 @@ export default {
       );
     },
     
-    // Deactivate user
     deactivateUser(user) {
       this.confirmAction(
         'Deactivate User',
@@ -1372,7 +1388,6 @@ export default {
         async () => {
           try {
             const response = await api.post(`/admin/users/${user.id}/deactivate`, {});
-            
             if (response.data.success) {
               toast.success('User deactivated successfully');
               this.fetchUsers();
@@ -1385,12 +1400,10 @@ export default {
       );
     },
     
-    // Review requirements (for distributors and suppliers)
     async reviewRequirements(user) {
       toast.info('Redirecting to requirements review page...');
     },
     
-    // Modal methods
     closeViewModal() {
       this.showViewModal = false;
       this.viewingUser = {};
@@ -1400,6 +1413,8 @@ export default {
     
     closeAddUserModal() {
       this.showAddUserModal = false;
+      this.addUserStep = 1;
+      this.validationErrors = {};
       this.newUser = {
         first_name: '',
         last_name: '',
@@ -1412,24 +1427,20 @@ export default {
         password_confirmation: ''
       };
       this.showPassword = false;
+      this.showConfirmPassword = false;
     },
     
-    // Format currency
     formatCurrency(amount) {
       if (!amount) return '₱0.00';
       return '₱' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
     },
     
-    // Style helper methods
     getRoleBadgeClass(role) {
       const classes = {
         'admin': 'border-red-200 bg-red-50 text-red-700 hover:bg-red-50',
         'distributor': 'border-green-200 bg-green-50 text-green-700 hover:bg-green-50',
         'service_provider': 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50',
         'client': 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50',
-        'operational_distributor': 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50',
-        'hr_manager': 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50',
-        'finance_manager': 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-50',
         'supplier': 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50'
       };
       return classes[role] || 'border-slate-200 bg-slate-50 text-slate-700';
@@ -1441,17 +1452,13 @@ export default {
         'distributor': 'fas fa-truck',
         'service_provider': 'fas fa-tools',
         'client': 'fas fa-user',
-        'operational_distributor': 'fas fa-cogs',
-        'hr_manager': 'fas fa-user-tie',
-        'finance_manager': 'fas fa-chart-line',
-        'supplier': 'fas fa-boxes' // Added Supplier
+        'supplier': 'fas fa-boxes'
       };
       return icons[role] || 'fas fa-user';
     },
     
     getVerificationBadgeClass(status) {
       if (!status) return 'bg-slate-100 text-slate-600 hover:bg-slate-200';
-      
       const classes = {
         'approved': 'bg-green-100 text-green-700 hover:bg-green-200',
         'verified': 'bg-green-100 text-green-700 hover:bg-green-200',
@@ -1463,7 +1470,6 @@ export default {
     
     getVerificationIcon(status) {
       if (!status) return 'fas fa-question-circle';
-      
       const icons = {
         'approved': 'fas fa-check-circle',
         'verified': 'fas fa-check-circle',
@@ -1500,25 +1506,13 @@ export default {
       return icons[status] || 'fas fa-question-circle text-slate-600';
     },
     
-    getStatusColorClass(status) {
-      const classes = {
-        'active': 'bg-green-100',
-        'inactive': 'bg-red-100',
-        'pending': 'bg-amber-100'
-      };
-      return classes[status] || 'bg-slate-100';
-    },
-    
     getVerificationDetails(user) {
       if (!user.verification_details) return '';
-      
       const details = user.verification_details;
-      if (user.role === 'distributor') {
+      if (user.role === 'distributor' || user.role === 'supplier') {
         return details.company_name || '';
       } else if (user.role === 'client' || user.role === 'service_provider') {
         return details.valid_id_type || '';
-      } else if (user.role === 'supplier') { // Added Supplier logic
-        return details.company_name || '';
       }
       return '';
     },
@@ -1536,7 +1530,6 @@ export default {
     
     handleError(error) {
       let errorMessage = 'An error occurred';
-      
       if (error.code === 'ERR_NETWORK') {
         errorMessage = 'Cannot connect to server. Make sure Laravel backend is running.';
       } else if (error.response) {
@@ -1563,7 +1556,6 @@ export default {
       } else {
         errorMessage = 'An error occurred: ' + error.message;
       }
-      
       toast.error(errorMessage);
     }
   }

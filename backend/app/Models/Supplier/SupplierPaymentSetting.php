@@ -16,12 +16,17 @@ class SupplierPaymentSetting extends Model
         'supplier_id',
         'is_cod_enabled',
         'is_gcash_enabled',
+        'is_bank_enabled',
         'gcash_number',
+        'bank_name',
+        'bank_account_name',
+        'bank_account_number',
     ];
 
     protected $casts = [
         'is_cod_enabled' => 'boolean',
         'is_gcash_enabled' => 'boolean',
+        'is_bank_enabled' => 'boolean',
     ];
 
     public function supplier()

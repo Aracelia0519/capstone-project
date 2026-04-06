@@ -307,8 +307,27 @@
                     <select v-model="requestForm.payment_terms" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
                       <option v-if="selectedSupplierSettings.is_cod_enabled" value="cod">Cash on Delivery</option>
                       <option v-if="selectedSupplierSettings.is_gcash_enabled" value="gcash">GCash</option>
-                      <option v-if="!selectedSupplierSettings.is_cod_enabled && !selectedSupplierSettings.is_gcash_enabled" value="" disabled>No Payment Methods Available</option>
+                      <option v-if="selectedSupplierSettings.is_bank_enabled" value="bank">Bank Transfer</option>
+                      <option v-if="!selectedSupplierSettings.is_cod_enabled && !selectedSupplierSettings.is_gcash_enabled && !selectedSupplierSettings.is_bank_enabled" value="" disabled>No Payment Methods Available</option>
                     </select>
+
+                    <div v-if="calculatedCartTotal > 10000" class="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg flex items-start gap-3 transition-all duration-300">
+                      <div class="mt-0.5 text-blue-400 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </div>
+                      <div>
+                        <h4 class="text-sm font-semibold text-blue-300">Suggestion</h4>
+                        <p class="text-xs text-blue-200 mt-1">
+                          Since your total order cost is <strong class="text-white">₱{{ formatCurrency(calculatedCartTotal) }}</strong> (above ₱10,000), our system highly recommends using <strong>Bank Transfer</strong> for a safer and more reliable transaction limit.
+                        </p>
+                        <button v-if="selectedSupplierSettings.is_bank_enabled && requestForm.payment_terms !== 'bank'" type="button" @click="requestForm.payment_terms = 'bank'" class="mt-3 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded transition-colors shadow-sm">
+                          Apply Bank Transfer
+                        </button>
+                        <p v-else-if="!selectedSupplierSettings.is_bank_enabled" class="text-xs text-red-300 mt-2 italic">
+                          Note: The selected supplier does not currently support Bank Transfers.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -416,7 +435,7 @@ const requestForm = ref({
 // Supplier Settings Computed
 const selectedSupplierSettings = computed(() => {
   const supplier = suppliers.value.find(s => s.id === requestForm.value.supplier_id)
-  return supplier?.payment_settings || { is_cod_enabled: true, is_gcash_enabled: false }
+  return supplier?.payment_settings || { is_cod_enabled: true, is_gcash_enabled: false, is_bank_enabled: false }
 })
 
 // Updated to the new Level-Based framework
@@ -560,6 +579,8 @@ const selectSupplierFromWizard = (supplier) => {
     requestForm.value.payment_terms = 'cod'
   } else if (supplier.payment_settings?.is_gcash_enabled) {
     requestForm.value.payment_terms = 'gcash'
+  } else if (supplier.payment_settings?.is_bank_enabled) {
+    requestForm.value.payment_terms = 'bank'
   } else {
     requestForm.value.payment_terms = ''
   }

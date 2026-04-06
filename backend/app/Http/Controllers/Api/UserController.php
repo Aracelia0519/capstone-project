@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -138,7 +137,7 @@ class UserController extends Controller
                 'last_name' => 'sometimes|string|max:255',
                 'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
                 'phone' => 'nullable|string|max:20',
-                'role' => ['sometimes', Rule::in(['client', 'distributor', 'service_provider', 'admin'])],
+                'role' => ['sometimes', Rule::in(['client', 'distributor', 'service_provider', 'admin', 'supplier'])], // Removed extraneous
                 'status' => ['sometimes', Rule::in(['pending', 'active', 'inactive'])]
             ]);
 
@@ -199,7 +198,7 @@ class UserController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                    'message' => 'User deleted successfully'
+                'message' => 'User deleted successfully'
             ]);
 
         } catch (\Exception $e) {
@@ -364,9 +363,19 @@ class UserController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        // Used rigorous validation parity 
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed'
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&]/',
+                'confirmed'
+            ]
         ]);
 
         if ($validator->fails()) {
@@ -377,8 +386,8 @@ class UserController extends Controller
             ], 422);
         }
 
-        // Verify current password
-        if (!Hash::check($request->current_password, $user->password)) {
+        // Verify current password, Model checks with raw input for verification via Hash facade
+        if (!\Illuminate\Support\Facades\Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Current password is incorrect'
@@ -387,7 +396,7 @@ class UserController extends Controller
 
         try {
             $user->update([
-                'password' => Hash::make($request->password)
+                'password' => $request->password // No hashing necessary, model casts
             ]);
 
             return response()->json([

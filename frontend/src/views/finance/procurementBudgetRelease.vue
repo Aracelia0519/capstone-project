@@ -212,16 +212,33 @@
                 <div class="text-3xl font-black text-emerald-600 mb-1">
                   ₱{{ selectedRequest.totalAmount.toLocaleString() }}
                 </div>
-                <div class="text-sm font-semibold mb-3 flex items-center gap-1" :class="selectedRequest.payment_terms === 'gcash' ? 'text-blue-600' : 'text-slate-600'">
-                  <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4" /> 
+                <div class="text-sm font-semibold mb-3 flex items-center gap-1" :class="activePaymentTerms === 'gcash' ? 'text-blue-600' : (activePaymentTerms === 'bank' ? 'text-indigo-600' : 'text-slate-600')">
+                  <CreditCard v-if="activePaymentTerms === 'gcash'" class="w-4 h-4" /> 
+                  <Landmark v-else-if="activePaymentTerms === 'bank'" class="w-4 h-4" /> 
                   <Wallet v-else class="w-4 h-4" /> 
-                  Via {{ selectedRequest.payment_terms === 'gcash' ? 'GCash' : 'COD / Offline' }}
+                  Via {{ activePaymentTerms === 'gcash' ? 'GCash' : (activePaymentTerms === 'bank' ? 'Bank Transfer' : 'COD / Offline') }}
                 </div>
                 <Badge :class="['w-fit mt-auto', statusClasses[selectedRequest.status]]">
                   {{ selectedRequest.status === 'd-approved' ? 'Dist. Approved (Pending Release)' : (selectedRequest.status === 'ready' ? 'Funds Released' : selectedRequest.status) }}
                 </Badge>
               </CardContent>
             </Card>
+          </div>
+
+          <div v-if="selectedRequest.status === 'd-approved' && selectedRequest.totalAmount > 10000 && activePaymentTerms === 'gcash'" class="p-4 bg-blue-900/10 border border-blue-200 rounded-xl flex items-start gap-3 transition-all duration-300 shadow-sm">
+            <ShieldAlert class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 class="text-sm font-semibold text-blue-800">DSS Recommendation: High-Value Transaction</h4>
+              <p class="text-xs text-blue-700 mt-1">
+                This transaction exceeds ₱10,000. E-wallet services like GCash frequently experience system limits, timeouts, or delays for large volumes. We highly recommend utilizing a <strong>Bank Transfer</strong> for a more secure and reliable transaction processing.
+              </p>
+              <Button v-if="selectedRequest.is_bank_enabled" size="sm" @click="activePaymentTerms = 'bank'" class="mt-3 bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-0 h-8">
+                Switch to Bank Transfer
+              </Button>
+              <p v-else class="text-xs text-red-500 mt-2 italic">
+                Note: The supplier currently does not have Bank Transfer enabled in their settings.
+              </p>
+            </div>
           </div>
 
           <div v-if="selectedRequest.status === 'd-approved' && selectedRequest.totalAmount > availableBudget" class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 shadow-sm">
@@ -286,12 +303,14 @@
                       <Button variant="outline" @click="requirePermission('approve', () => isRejecting = true)" class="w-full sm:w-auto bg-white hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300 shadow-sm">
                          Reject Request
                       </Button>
-                      <Button :class="['w-full sm:w-auto shadow-sm text-white', selectedRequest.payment_terms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700', {'opacity-50 cursor-not-allowed': selectedRequest.totalAmount > availableBudget}]" 
+
+                      <Button :class="['w-full sm:w-auto shadow-sm text-white', activePaymentTerms === 'gcash' ? 'bg-blue-600 hover:bg-blue-700' : (activePaymentTerms === 'bank' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'), {'opacity-50 cursor-not-allowed': selectedRequest.totalAmount > availableBudget}]" 
                               @click="requirePermission('approve', initiateApprove)"
                               :disabled="selectedRequest.totalAmount > availableBudget">
-                         <CreditCard v-if="selectedRequest.payment_terms === 'gcash'" class="w-4 h-4 mr-2" />
+                         <CreditCard v-if="activePaymentTerms === 'gcash'" class="w-4 h-4 mr-2" />
+                         <Landmark v-else-if="activePaymentTerms === 'bank'" class="w-4 h-4 mr-2" />
                          <Coins v-else class="w-4 h-4 mr-2" />
-                         {{ selectedRequest.payment_terms === 'gcash' ? 'Proceed to GCash' : 'Release Budget & Approve' }}
+                         {{ ['gcash', 'bank'].includes(activePaymentTerms) ? 'Proceed to ' + (activePaymentTerms === 'bank' ? 'Bank Transfer' : 'GCash') : 'Release Budget & Approve' }}
                       </Button>
                    </template>
                    
@@ -328,7 +347,7 @@
         </AlertDialogHeader>
         <AlertDialogFooter class="flex-col sm:flex-row gap-3 mt-6">
           <AlertDialogCancel @click="alertOpen = false" class="bg-white text-slate-700 hover:bg-slate-100 border-slate-300 mt-0 shadow-sm font-medium">Cancel</AlertDialogCancel>
-          <AlertDialogAction @click="executeAction" :disabled="isProcessing" :class="[alertConfig.confirmClass, 'shadow-sm font-medium flex items-center justify-center']">
+          <AlertDialogAction @click="executeAction" :disabled="isProcessing" :class="[alertConfig.confirmClass, 'shadow-sm font-medium flex items-center justify-center border-0']">
             <span v-if="isProcessing" class="mr-2 animate-spin">
               <RefreshCw class="w-4 h-4" />
             </span>
@@ -347,7 +366,8 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { 
   RefreshCw, MapPin, AlertCircle, Building2,
-  FileText, Clock, CheckCircle2, Wallet, Coins, ShoppingCart, CreditCard
+  FileText, Clock, CheckCircle2, Wallet, Coins, ShoppingCart, CreditCard,
+  ShieldAlert, Landmark
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -377,6 +397,7 @@ const isProcessing = ref(false)
 const requests = ref([])
 const availableBudget = ref(0)
 const selectedRequest = ref(null)
+const activePaymentTerms = ref('') // Added tracking to handle local payment switching via DSS
 
 // Modal actions state
 const isRejecting = ref(false)
@@ -471,17 +492,17 @@ const fetchRequests = async () => {
   }
 }
 
-// Intercept GCash Redirects
+// Intercept Redirects - Automatically handles both GCash and Stripe Bank Transfers seamlessly via unified backend route
 const verifyGcashPayment = async (requestCode) => {
   loading.value = true
-  toast.info('Verifying GCash Payment... Please wait.')
+  toast.info('Verifying Payment... Please wait.')
   
   await new Promise(resolve => setTimeout(resolve, 2500));
   
   try {
     const response = await api.post('/finance/budget-release/verify-gcash', { request_code: requestCode })
     if (response.data.success) {
-      toast.success('Payment Confirmed!', { description: 'Budget released successfully via GCash.' })
+      toast.success('Payment Confirmed!', { description: 'Budget released successfully.' })
       router.replace({ query: {} }) // Clear URL
     }
   } catch (error) {
@@ -503,12 +524,14 @@ onMounted(() => {
 // Handlers
 const viewDetails = (req) => {
   selectedRequest.value = req
+  activePaymentTerms.value = req.payment_terms
   isRejecting.value = false
   rejectReason.value = ''
 }
 
 const closeModal = () => {
   selectedRequest.value = null
+  activePaymentTerms.value = ''
 }
 
 const initiateApprove = () => {
@@ -519,16 +542,29 @@ const initiateApprove = () => {
   }
 
   pendingAction.value = 'approve'
-  const isGcash = selectedRequest.value.payment_terms === 'gcash'
-  
-  alertConfig.value = {
-    title: isGcash ? 'Proceed to GCash Payment' : 'Confirm Budget Release',
-    description: isGcash 
-      ? `You are about to transfer ₱${selectedRequest.value.totalAmount.toLocaleString()} to the supplier via GCash. You will be redirected securely.`
-      : `You are about to release ₱${selectedRequest.value.totalAmount.toLocaleString()} for Request ${selectedRequest.value.id}. This action will log a budget deduction and set the request to Ready. Do you wish to proceed?`,
-    confirmText: isGcash ? 'Proceed to GCash' : 'Yes, Release Funds',
-    confirmClass: isGcash ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+
+  // Determine Warning vs Standard flow depending on DSS adherence
+  if (activePaymentTerms.value === 'gcash' && selectedRequest.value.totalAmount > 10000) {
+    alertConfig.value = {
+      title: 'High-Value GCash Transaction Warning',
+      description: 'You have opted to proceed with GCash for a transaction exceeding ₱10,000. Please acknowledge that large e-wallet transfers carry a higher risk of system malfunctions, daily limit errors, and transaction delays. Are you absolutely sure you wish to commit to this payment method instead of utilizing the more reliable Bank Transfer option?',
+      confirmText: 'Acknowledge Risk & Proceed',
+      confirmClass: 'bg-red-600 hover:bg-red-700 text-white'
+    }
+  } else {
+    const isOnline = ['gcash', 'bank'].includes(activePaymentTerms.value)
+    const methodText = activePaymentTerms.value === 'bank' ? 'Bank Transfer' : 'GCash'
+    
+    alertConfig.value = {
+      title: isOnline ? `Proceed to ${methodText} Payment` : 'Confirm Budget Release',
+      description: isOnline 
+        ? `You are about to transfer ₱${selectedRequest.value.totalAmount.toLocaleString()} to the supplier via ${methodText}. You will be redirected securely.`
+        : `You are about to release ₱${selectedRequest.value.totalAmount.toLocaleString()} for Request ${selectedRequest.value.id}. This action will log a budget deduction and set the request to Ready. Do you wish to proceed?`,
+      confirmText: isOnline ? `Proceed to ${methodText}` : 'Yes, Release Funds',
+      confirmClass: isOnline ? (activePaymentTerms.value === 'bank' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white') : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+    }
   }
+
   alertOpen.value = true
 }
 
@@ -567,13 +603,14 @@ const markAsApproved = async () => {
     // 1. Get the current exact URL path dynamically (works for both /finance and /special-rbac)
     const currentPath = window.location.origin + route.path
 
-    // 2. Send the return_url to the backend
+    // 2. Send the return_url and optionally the updated payment_terms
     const response = await api.post(`/finance/budget-release/${selectedRequest.value.db_id}/approve`, {
-      return_url: currentPath
+      return_url: currentPath,
+      payment_terms: activePaymentTerms.value
     })
     
     if (response.data.checkout_url) {
-        toast.success('Redirecting for GCash checkout...')
+        toast.success('Redirecting for payment checkout...')
         setTimeout(() => {
             window.location.href = response.data.checkout_url
         }, 1500)

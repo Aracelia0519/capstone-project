@@ -46,7 +46,11 @@ class SupplierPaymentSettingController extends Controller
             [
                 'is_cod_enabled' => true,
                 'is_gcash_enabled' => false,
-                'gcash_number' => null
+                'is_bank_enabled' => false,
+                'gcash_number' => null,
+                'bank_name' => null,
+                'bank_account_name' => null,
+                'bank_account_number' => null
             ]
         );
 
@@ -64,8 +68,13 @@ class SupplierPaymentSettingController extends Controller
         $request->validate([
             'is_cod_enabled' => 'required|boolean',
             'is_gcash_enabled' => 'required|boolean',
+            'is_bank_enabled' => 'required|boolean',
             // GCash number is strictly required only if GCash is enabled
-            'gcash_number' => 'required_if:is_gcash_enabled,true|nullable|string|max:20'
+            'gcash_number' => 'required_if:is_gcash_enabled,true|nullable|string|max:20',
+            // Bank details are strictly required only if Bank Transfer is enabled
+            'bank_name' => 'required_if:is_bank_enabled,true|nullable|string|max:255',
+            'bank_account_name' => 'required_if:is_bank_enabled,true|nullable|string|max:255',
+            'bank_account_number' => 'required_if:is_bank_enabled,true|nullable|string|max:255'
         ]);
 
         $user = Auth::user();
@@ -76,7 +85,11 @@ class SupplierPaymentSettingController extends Controller
             [
                 'is_cod_enabled' => $request->is_cod_enabled,
                 'is_gcash_enabled' => $request->is_gcash_enabled,
+                'is_bank_enabled' => $request->is_bank_enabled,
                 'gcash_number' => $request->is_gcash_enabled ? $request->gcash_number : null,
+                'bank_name' => $request->is_bank_enabled ? $request->bank_name : null,
+                'bank_account_name' => $request->is_bank_enabled ? $request->bank_account_name : null,
+                'bank_account_number' => $request->is_bank_enabled ? $request->bank_account_number : null,
             ]
         );
 

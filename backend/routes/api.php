@@ -721,6 +721,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('partners')->group(function () {
         Route::get('/suppliers', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'index']);
         Route::post('/request', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'store']);
+
+        Route::post('/create-supplier', [\App\Http\Controllers\Api\OperationDistributor\PartnerSupplierController::class, 'createSupplier']);
     });
 
     // ==========================================

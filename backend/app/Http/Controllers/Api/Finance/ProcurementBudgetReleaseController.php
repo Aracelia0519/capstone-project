@@ -118,6 +118,10 @@ class ProcurementBudgetReleaseController extends Controller
                 $department = $req->requester->employee->department;
             }
 
+            // Fetch supplier payment settings to verify if Bank Transfer is available
+            $paymentSettings = DB::table('supplier_payment_settings')->where('supplier_id', $req->supplier_id)->first();
+            $isBankEnabled = $paymentSettings ? (bool)$paymentSettings->is_bank_enabled : false;
+
             return [
                 'id' => $req->request_code ?? 'REQ-' . $req->id,
                 'db_id' => $req->id,
@@ -129,6 +133,7 @@ class ProcurementBudgetReleaseController extends Controller
                 'status' => $req->status,
                 'priority' => ucfirst($req->priority),
                 'payment_terms' => $req->payment_terms ?? 'cod',
+                'is_bank_enabled' => $isBankEnabled,
                 'totalAmount' => (float) $req->total_cost,
                 'items' => [
                     [
@@ -169,6 +174,12 @@ class ProcurementBudgetReleaseController extends Controller
             return response()->json(['message' => 'Only Distributor Approved (d-approved) requests can have their budget released.'], 400);
         }
 
+        // Apply updated payment term if the user switched it via the DSS recommendation
+        if ($request->has('payment_terms')) {
+            $procurement->payment_terms = $request->payment_terms;
+            $procurement->save();
+        }
+
         // Budget Validation (Check directly against total_revenue)
         $distributorId = $this->getDistributorId($user);
         $totalRevenue = DB::table('distributor_overall_sales')
@@ -184,17 +195,19 @@ class ProcurementBudgetReleaseController extends Controller
             ], 400);
         }
 
+        $paymentTerm = strtolower($procurement->payment_terms);
+
         // =========================================================================
-        // PAYMONGO (GCASH) LOGIC IF PAYMENT TERMS ARE GCASH
+        // ONLINE PAYMENT LOGIC (GCASH via PayMongo & BANK via STRIPE)
         // =========================================================================
-        if (strtolower($procurement->payment_terms) === 'gcash') {
+        if (in_array($paymentTerm, ['gcash', 'bank'])) {
             
             // FETCH BILLING DETAILS FROM USERS & DISTRIBUTOR_PAYMENT_SETTINGS
             $distributorUser = DB::table('users')->where('id', $distributorId)->first();
             $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
 
-            // STRICT GCASH NUMBER VALIDATION
-            if (!$paymentSettings || empty($paymentSettings->gcash_number)) {
+            // STRICT GCASH NUMBER VALIDATION (Only strictly fail if GCash is requested)
+            if ($paymentTerm === 'gcash' && (!$paymentSettings || empty($paymentSettings->gcash_number))) {
                 return response()->json([
                     'success' => false,
                     'message' => 'GCash payment cannot be processed. No valid GCash number found in your Payment Settings.'
@@ -204,88 +217,159 @@ class ProcurementBudgetReleaseController extends Controller
             // Format Name and Email
             $billingName = $distributorUser ? trim($distributorUser->first_name . ' ' . $distributorUser->last_name) : 'Distributor';
             $billingEmail = $distributorUser ? $distributorUser->email : 'no-reply@example.com';
-            $billingPhone = $paymentSettings->gcash_number;
+            $billingPhone = $paymentSettings ? $paymentSettings->gcash_number : '';
 
-            try {
-                $client = new \GuzzleHttp\Client();
-                
-                // 1. Get the return URL passed from Vue, or fallback to a default path
-                $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
-                $baseUrl = $request->input('return_url', $frontendOrigin . '/finance/procurementBudgetRelease');
+            $descriptionStr = 'Procurement Budget Release via ' . strtoupper($paymentTerm) . ' for ' . ($procurement->request_code ?? 'REQ-'.$procurement->id);
+            $requestCode = $procurement->request_code ?? 'REQ-' . $procurement->id;
+            
+            $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
+            $baseUrl = $request->input('return_url', $frontendOrigin . '/finance/procurementBudgetRelease');
 
-                $requestCode = $procurement->request_code ?? 'REQ-' . $procurement->id;
-                
-                $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                        'accept' => 'application/json',
-                        'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
-                    ],
-                    'http_errors' => false,
-                    'json' => [
-                        'data' => [
-                            'attributes' => [
-                                'send_email_receipt' => false,
-                                'show_description' => true,
-                                'show_line_items' => true,
-                                'payment_method_types' => ['gcash'],
-                                'description' => 'Procurement Budget Release for ' . $requestCode,
-                                'reference_number' => $requestCode, 
-                                // AUTO-FILL BILLING INFOS
-                                'billing' => [
-                                    'name' => $billingName,
-                                    'email' => $billingEmail,
-                                    'phone' => $billingPhone
-                                ],
-                                'line_items' => [
-                                    [
-                                        'currency' => 'PHP',
-                                        'amount' => (int) round($procurement->total_cost * 100), 
-                                        'name' => 'Procurement Request ' . $requestCode,
-                                        'quantity' => 1,
-                                    ]
-                                ],
-                                // 2. Apply the dynamic Return URL here
-                                'success_url' => $baseUrl . '?request_code=' . $requestCode,
-                                'cancel_url' => $baseUrl
+            $client = new \GuzzleHttp\Client();
+            $provider = 'paymongo'; // Default fallback
+            $checkoutUrl = null;
+            $sessionId = null;
+
+            // -----------------------------------------------------------------
+            // GATEWAY 1: PAYMONGO (For GCash)
+            // -----------------------------------------------------------------
+            if ($paymentTerm === 'gcash') {
+                try {
+                    $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
+                        'headers' => [
+                            'Content-Type' => 'application/json',
+                            'accept' => 'application/json',
+                            'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                        ],
+                        'http_errors' => false,
+                        'json' => [
+                            'data' => [
+                                'attributes' => [
+                                    'send_email_receipt' => false,
+                                    'show_description' => true,
+                                    'show_line_items' => true,
+                                    'payment_method_types' => ['gcash'],
+                                    'description' => $descriptionStr,
+                                    'reference_number' => $requestCode, 
+                                    'billing' => [
+                                        'name' => $billingName,
+                                        'email' => $billingEmail,
+                                        'phone' => $billingPhone
+                                    ],
+                                    'line_items' => [
+                                        [
+                                            'currency' => 'PHP',
+                                            'amount' => (int) round($procurement->total_cost * 100), 
+                                            'name' => 'Procurement Request ' . $requestCode,
+                                            'quantity' => 1,
+                                        ]
+                                    ],
+                                    'success_url' => $baseUrl . '?request_code=' . $requestCode,
+                                    'cancel_url' => $baseUrl
+                                ]
                             ]
                         ]
-                    ]
-                ]);
+                    ]);
 
-                $paymongoData = json_decode($response->getBody(), true);
+                    $paymongoData = json_decode($response->getBody(), true);
 
-                if ($response->getStatusCode() !== 200) {
-                    $errorMessage = $paymongoData['errors'][0]['detail'] ?? 'Invalid payload format.';
-                    return response()->json(['success' => false, 'message' => 'PayMongo Error: ' . $errorMessage], 400);
+                    if ($response->getStatusCode() !== 200) {
+                        $errorMessage = $paymongoData['errors'][0]['detail'] ?? 'Invalid payload format.';
+                        return response()->json(['success' => false, 'message' => 'PayMongo Error: ' . $errorMessage], 400);
+                    }
+
+                    $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
+                    $sessionId = $paymongoData['data']['id'] ?? null;
+
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'message' => 'PayMongo Internal Error: ' . $e->getMessage()], 500);
                 }
+            } 
+            // -----------------------------------------------------------------
+            // GATEWAY 2: STRIPE (For Bank Transfer / Direct Debit Sandbox)
+            // -----------------------------------------------------------------
+            // -----------------------------------------------------------------
+            // GATEWAY 2: STRIPE (For Bank Transfer / Direct Debit Sandbox)
+            // -----------------------------------------------------------------
+            else if ($paymentTerm === 'bank') {
+                try {
+                    $provider = 'stripe';
+                    // Using your provided secret key directly for the capstone demo
+                    $stripeSecretKey = env('STRIPE_SECRET_KEY', 'sk_test_51TJD8JGe0rCXOZj6zNH9eUdp5IxSCOVJejF9WH9SaNjdICx4Ftr75YiEcSHu2A3jm2zKXrPkxnfAabLAiztdDGP8003ePhoRZE');
 
-                $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
-                $sessionId = $paymongoData['data']['id'] ?? null;
-                
-                if (!$checkoutUrl || !$sessionId) {
-                    return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
+                    // Convert PHP to a rough USD equivalent for the Stripe Demo (Assuming ~₱56 = $1)
+                    $usdAmount = (int) round(($procurement->total_cost / 56) * 100);
+                    // Ensure minimum amount for Stripe is met (Stripe requires at least $0.50 USD)
+                    if ($usdAmount < 50) $usdAmount = 50;
+
+                    $response = $client->request('POST', 'https://api.stripe.com/v1/checkout/sessions', [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $stripeSecretKey,
+                            'Content-Type' => 'application/x-www-form-urlencoded',
+                        ],
+                        'http_errors' => false,
+                        'form_params' => [
+                            // FORCE STRIPE TO SHOW BANK TRANSFER (ACH)
+                            'payment_method_types' => [
+                                0 => 'us_bank_account', // This forces the Bank Transfer UI
+                                1 => 'card'
+                            ],
+                            'line_items' => [
+                                [
+                                    'price_data' => [
+                                        'currency' => 'usd', // Forced to USD because Stripe Bank Transfers require it
+                                        'product_data' => [
+                                            'name' => 'Procurement Request ' . $requestCode,
+                                            'description' => $descriptionStr . ' (Converted to USD for Bank Transfer Demo)',
+                                        ],
+                                        'unit_amount' => $usdAmount,
+                                    ],
+                                    'quantity' => 1,
+                                ]
+                            ],
+                            'mode' => 'payment',
+                            'success_url' => $baseUrl . '?request_code=' . $requestCode,
+                            'cancel_url' => $baseUrl,
+                            'customer_email' => $billingEmail ?: 'no-reply@example.com',
+                        ]
+                    ]);
+
+                    $stripeData = json_decode($response->getBody(), true);
+
+                    if ($response->getStatusCode() !== 200) {
+                        $errorMsg = $stripeData['error']['message'] ?? 'Unknown Stripe Error';
+                        return response()->json(['success' => false, 'message' => 'Stripe Error: ' . $errorMsg], 400);
+                    }
+
+                    $checkoutUrl = $stripeData['url'] ?? null;
+                    $sessionId = $stripeData['id'] ?? null;
+
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'message' => 'Stripe Internal Error: ' . $e->getMessage()], 500);
                 }
-
-                $cacheData = [
-                    'session_id' => $sessionId,
-                    'procurement_id' => $procurement->id,
-                    'request_code' => $requestCode,
-                    'distributor_id' => $procurement->distributor_id,
-                    'supplier_id' => $procurement->supplier_id,
-                    'total_cost' => $procurement->total_cost
-                ];
-
-                Storage::disk('local')->put('pending_budget_releases/' . $requestCode . '.json', json_encode($cacheData));
-
-                return response()->json([
-                    'success' => true,
-                    'checkout_url' => $checkoutUrl,
-                ]);
-
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => 'PayMongo Internal Error: ' . $e->getMessage()], 500);
             }
+
+            if (!$checkoutUrl || !$sessionId) {
+                return response()->json(['success' => false, 'message' => 'Failed to generate Checkout link for ' . strtoupper($provider)], 500);
+            }
+
+            $cacheData = [
+                'session_id' => $sessionId,
+                'procurement_id' => $procurement->id,
+                'request_code' => $requestCode,
+                'distributor_id' => $procurement->distributor_id,
+                'supplier_id' => $procurement->supplier_id,
+                'total_cost' => $procurement->total_cost,
+                'payment_method' => $paymentTerm,
+                'provider' => $provider
+            ];
+
+            Storage::disk('local')->put('pending_budget_releases/' . $requestCode . '.json', json_encode($cacheData));
+
+            return response()->json([
+                'success' => true,
+                'checkout_url' => $checkoutUrl,
+            ]);
         }
 
         // =========================================================================
@@ -323,7 +407,7 @@ class ProcurementBudgetReleaseController extends Controller
     }
 
     /**
-     * VERIFY GCASH PAYMENT AFTER REDIRECT
+     * VERIFY ONLINE PAYMENT AFTER REDIRECT
      */
     public function verifyGcashPayment(Request $request)
     {
@@ -347,45 +431,71 @@ class ProcurementBudgetReleaseController extends Controller
 
         $cacheData = json_decode(Storage::disk('local')->get($filePath), true);
         $sessionId = $cacheData['session_id']; 
+        $paymentMethodStr = $cacheData['payment_method'] ?? 'gcash';
+        $provider = $cacheData['provider'] ?? 'paymongo';
         $isPaid = false;
 
         try {
-            $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
-                'headers' => [
-                    'accept' => 'application/json',
-                    'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
-                ],
-                'http_errors' => false 
-            ]);
-            
-            if ($response->getStatusCode() === 200) {
-                $paymongoData = json_decode($response->getBody(), true);
-                $attributes = $paymongoData['data']['attributes'] ?? [];
+            if ($provider === 'paymongo') {
+                $response = $client->request('GET', 'https://api.paymongo.com/v1/checkout_sessions/' . $sessionId, [
+                    'headers' => [
+                        'accept' => 'application/json',
+                        'authorization' => 'Basic ' . base64_encode('sk_test_C9cn2pNfHcy2bt4zdmNYtGWi:')
+                    ],
+                    'http_errors' => false 
+                ]);
                 
-                $payments = $attributes['payments'] ?? [];
-                foreach($payments as $p) {
-                    if (isset($p['attributes']['status']) && $p['attributes']['status'] === 'paid') {
+                if ($response->getStatusCode() === 200) {
+                    $paymongoData = json_decode($response->getBody(), true);
+                    $attributes = $paymongoData['data']['attributes'] ?? [];
+                    
+                    $payments = $attributes['payments'] ?? [];
+                    foreach($payments as $p) {
+                        if (isset($p['attributes']['status']) && $p['attributes']['status'] === 'paid') {
+                            $isPaid = true;
+                        }
+                    }
+                    
+                    $paymentIntent = $attributes['payment_intent'] ?? null;
+                    if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
+                        $isPaid = true;
+                    }
+
+                    if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
+                        $isPaid = true; 
+                    }
+                }
+            } 
+            else if ($provider === 'stripe') {
+                $stripeSecretKey = env('STRIPE_SECRET_KEY', 'sk_test_51TJD8JGe0rCXOZj6zNH9eUdp5IxSCOVJejF9WH9SaNjdICx4Ftr75YiEcSHu2A3jm2zKXrPkxnfAabLAiztdDGP8003ePhoRZE');
+                
+                $response = $client->request('GET', 'https://api.stripe.com/v1/checkout/sessions/' . $sessionId, [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $stripeSecretKey,
+                        'accept' => 'application/json'
+                    ],
+                    'http_errors' => false 
+                ]);
+
+                if ($response->getStatusCode() === 200) {
+                    $stripeData = json_decode($response->getBody(), true);
+                    
+                    // NEW FIX: Bank Transfers are asynchronous. We check if the user completed the checkout 
+                    // OR if it's instantly paid (like a credit card).
+                    $isStatusComplete = isset($stripeData['status']) && $stripeData['status'] === 'complete';
+                    $isPaymentPaid = isset($stripeData['payment_status']) && $stripeData['payment_status'] === 'paid';
+
+                    if ($isStatusComplete || $isPaymentPaid) {
                         $isPaid = true;
                     }
                 }
-                
-                $paymentIntent = $attributes['payment_intent'] ?? null;
-                if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
-                    $isPaid = true;
-                }
-
-                if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
-                    $isPaid = true; 
-                }
-            } else {
-                $isPaid = true; 
             }
         } catch (\Exception $e) {
-            $isPaid = true; 
+            $isPaid = false; 
         }
 
         if (!$isPaid) {
-            return response()->json(['success' => false, 'message' => 'PayMongo Status: Payment has not been officially completed.'], 400);
+            return response()->json(['success' => false, 'message' => ucfirst($provider) . ' Status: Payment has not been officially completed.'], 400);
         }
 
         // 2. Execute DB Transaction
@@ -404,16 +514,16 @@ class ProcurementBudgetReleaseController extends Controller
                 'distributor_id' => $procurement->distributor_id,
                 'procurement_request_id' => $procurement->id,
                 'amount' => $procurement->total_cost,
-                'description' => 'Budget released and deducted via GCash for procurement request ' . $requestCode
+                'description' => 'Budget released and deducted via ' . strtoupper($paymentMethodStr) . ' for procurement request ' . $requestCode
             ]);
 
-            // Track supplier payment using the migration we created
+            // Track supplier payment
             DB::table('distributor_supplier_payments')->insert([
                 'procurement_request_id' => $procurement->id,
                 'distributor_id' => $procurement->distributor_id,
                 'supplier_id' => $procurement->supplier_id,
                 'amount' => $procurement->total_cost,
-                'payment_method' => 'gcash',
+                'payment_method' => $paymentMethodStr,
                 'reference_number' => $requestCode,
                 'status' => 'paid',
                 'paid_at' => now(),
