@@ -1,35 +1,50 @@
 <template>
-  <main class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 font-sans antialiased overflow-x-hidden">
+  <main class="bg-slate-950 text-slate-200 font-sans antialiased overflow-x-hidden">
     
-    <div class="w-full min-h-screen bg-slate-900/20 backdrop-blur-3xl flex flex-col relative overflow-hidden">
+    <section class="relative w-full h-screen overflow-hidden bg-slate-950">
       
-      <!-- CaviteGo Paint Header - ENLARGED -->
-      <div class="px-8 lg:px-12 pt-10 pb-6 flex flex-col gap-6 border-b border-slate-700/30">
+      <spline-viewer 
+        url="https://prod.spline.design/lFsfkwYcQzrH9Yus/scene.splinecode"
+        class="hidden md:block absolute inset-0 w-full h-full z-0"
+      ></spline-viewer>
+
+      <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent pointer-events-none z-10"></div>
+
+      <div class="absolute bottom-20 left-0 w-full px-8 lg:px-12 flex flex-col gap-6 z-20 pointer-events-none">
         <div class="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
-          <div class="flex items-center gap-4">
-            
-            <h1 class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+          
+          <div class="flex items-center gap-4 md:hidden">
+            <h1 class="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent drop-shadow-2xl">
               CAVITEGO PAINT
             </h1>
           </div>
+
         </div>
-        <div class="max-w-4xl">
-          <p class="text-base md:text-lg lg:text-xl text-slate-300 leading-relaxed border-l-4 border-cyan-500 pl-6">
+        <div class="max-w-4xl bg-slate-950/40 backdrop-blur-md p-5 rounded-2xl border-l-4 border-cyan-500 pointer-events-auto shadow-2xl">
+          <p class="text-base md:text-lg lg:text-xl text-slate-200 leading-relaxed drop-shadow-md">
             An Integrated Management System for paint distributors and service providers in Cavite, 
             featuring Decision Support System, Virtual Color Mixing, and companion mobile application.
           </p>
         </div>
-        <div class="flex gap-3 mt-2 flex-wrap">
-          <span class="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs font-bold text-cyan-400">IMS</span>
-          <span class="px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-full text-xs font-bold text-purple-400">DSS</span>
-          <span class="px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-full text-xs font-bold text-blue-400">VR Mixing</span>
-          <span class="px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-full text-xs font-bold text-pink-400">Mobile App</span>
-          <span class="px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-xs font-bold text-amber-400">HR</span>
-          <span class="px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full text-xs font-bold text-green-400">Finance</span>
+        <div class="flex gap-3 mt-2 flex-wrap pointer-events-auto">
+          <span class="px-4 py-2 bg-cyan-900/40 backdrop-blur-md border border-cyan-500/40 rounded-full text-xs font-bold text-cyan-300 shadow-lg">IMS</span>
+          <span class="px-4 py-2 bg-purple-900/40 backdrop-blur-md border border-purple-500/40 rounded-full text-xs font-bold text-purple-300 shadow-lg">DSS</span>
+          <span class="px-4 py-2 bg-blue-900/40 backdrop-blur-md border border-blue-500/40 rounded-full text-xs font-bold text-blue-300 shadow-lg">VR Mixing</span>
+          <span class="px-4 py-2 bg-pink-900/40 backdrop-blur-md border border-pink-500/40 rounded-full text-xs font-bold text-pink-300 shadow-lg">Mobile App</span>
+          <span class="px-4 py-2 bg-amber-900/40 backdrop-blur-md border border-amber-500/40 rounded-full text-xs font-bold text-amber-300 shadow-lg">EM</span>
+          <span class="px-4 py-2 bg-green-900/40 backdrop-blur-md border border-green-500/40 rounded-full text-xs font-bold text-green-300 shadow-lg">Finance</span>
         </div>
       </div>
+
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none opacity-80 animate-bounce">
+        <span class="text-[10px] uppercase tracking-widest text-cyan-400 font-bold drop-shadow-lg">Scroll to Explore</span>
+        <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+      </div>
+
+    </section>
+
+    <div class="w-full min-h-screen bg-slate-900/20 backdrop-blur-3xl flex flex-col relative overflow-hidden z-10 border-t border-slate-700/50 pt-8">
       
-      <!-- Hero Section with IMS Value Proposition - Full width, no top padding -->
       <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 p-8 lg:p-10 flex-grow">
         
         <div class="lg:col-span-8 relative min-h-[500px] rounded-[45px] overflow-hidden border border-slate-700/50 shadow-inner group">
@@ -60,10 +75,6 @@
         </div>
 
         <div class="lg:col-span-4 flex flex-col gap-6">
-          <!-- Decision Support System Module -->
-          
-
-          <!-- Mobile Application Module (with download link added) -->
           <div class="bg-slate-900/40 backdrop-blur-xl rounded-[45px] p-8 h-1/2 flex flex-col justify-end relative overflow-hidden group border border-slate-700/50 shadow-xl">
              <img src="/mobile-app.jpg" class="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-110 transition-transform duration-1000" />
             <div class="relative z-10">
@@ -75,7 +86,7 @@
               <span class="text-[10px] font-black tracking-[0.3em] uppercase text-purple-400">Mobile App</span>
               <h3 class="text-3xl font-bold mt-2 text-white">On-The-Go Access</h3>
               <p class="text-xs text-slate-400 mt-2">Android companion app for field operations</p>
-              <!-- Download button added here -->
+              
               <a 
                 href="https://median.co/share/eenpqek#apk" 
                 target="_blank" 
@@ -114,12 +125,9 @@
         </div>
       </section>
 
-      <!-- Core Business Modules Section - Three Column Layout -->
       <section class="grid grid-cols-1 lg:grid-cols-12 gap-12 p-8 lg:p-10">
         
-        <!-- LEFT COLUMN - SCM and CRM Modules -->
         <div class="lg:col-span-4 space-y-6">
-          <!-- Supply Chain Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-blue-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -133,7 +141,6 @@
             <img src="/scm-meeting.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
 
-          <!-- CRM & Chat Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-purple-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -146,7 +153,6 @@
             <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] group-hover:bg-purple-600/20 transition-all"></div>
             <img src="/crm-engagement.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
-          <!-- Logistics Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-orange-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -160,7 +166,6 @@
             <img src="/logistics-truck.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
 
-          <!-- Material Procurement Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-indigo-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -171,16 +176,13 @@
               <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Order</button>
             </div>
             <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] group-hover:bg-indigo-600/20 transition-all"></div>
-            <!-- Industrial warehouse with raw materials -->
             <img src="/procurement-warehouse.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
         </div>
 
-        <!-- MIDDLE COLUMN - IMS Description and Developer Info -->
         <div class="lg:col-span-4 space-y-8">
           <div class="space-y-4">
             <p class="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400 text-center">Cavite Paint IMS</p>
-            <!-- Mobile Responsive Heading -->
             <h1
               class="font-bold text-center leading-tight
                     text-3xl sm:text-4xl md:text-5xl lg:text-6xl
@@ -192,11 +194,10 @@
               System
             </h1>
           </div>
-          <p class="text-sm sm:text-base text-slate-500 leading-relaxed max-w-sm">
+          <p class="text-sm sm:text-base text-slate-500 leading-relaxed max-w-sm mx-auto text-center">
             A centralized platform for paint distributors and service providers in Cavite, integrating 12 core modules for seamless operations.
           </p>
           
-          <!-- Developer Info Cards -->
           <div class="flex flex-col gap-4">
             <div class="bg-slate-800/40 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50">
               <div class="flex items-center gap-3 mb-2">
@@ -226,20 +227,17 @@
           </div>
         </div>
 
-        <!-- RIGHT COLUMN - Additional Modules (Now positioned at the middle) -->
         <div class="lg:col-span-4 space-y-6">
-          <!-- Section Header -->
           <div class="mb-12">
             <span class="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Additional Modules</span>
             <div class="w-12 h-0.5 bg-gradient-to-r from-cyan-500 to-purple-500 mt-2"></div>
           </div>
           
-          <!-- HR Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-amber-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
-                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">HR Module</span>
-                <h4 class="text-3xl font-bold mt-2 text-white">Human Resources</h4>
+                <span class="text-[10px] font-black text-slate-600 tracking-widest uppercase">EM Module</span>
+                <h4 class="text-3xl font-bold mt-2 text-white">Employee Management</h4>
                 <p class="text-sm text-slate-500 mt-4 leading-relaxed max-w-[180px]">Employee records, roles, and performance monitoring for distributors.</p>
               </div>
               <button class="w-fit px-6 py-2.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 hover:bg-white hover:text-black transition-all">Manage</button>
@@ -248,7 +246,6 @@
             <img src="/hr-team.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
 
-          <!-- Finance Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-green-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -262,7 +259,6 @@
             <img src="/finance-calculator.jpg" class="absolute right-[-5%] bottom-[-5%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
 
-          <!-- E-Commerce Module -->
           <div class="bg-slate-900/40 rounded-[45px] p-10 relative overflow-hidden group border border-slate-700/50 hover:border-pink-500/30 transition-colors">
             <div class="relative z-10 h-full flex flex-col justify-between min-h-[160px]">
               <div>
@@ -276,11 +272,9 @@
             <img src="/ecommerce-store.jpg" class="absolute right-[-10%] bottom-[-10%] w-72 h-72 object-cover rounded-full opacity-25 group-hover:opacity-50 group-hover:scale-110 transition-all duration-700 mix-blend-lighten" />
           </div>
 
-          
         </div>
       </section>
 
-      <!-- System Features Grid with SVG Icons -->
       <div class="bg-slate-950/50 border-t border-slate-700/30 p-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div v-for="(feature, i) in systemFeatures" :key="i" class="flex flex-col items-center group cursor-pointer">
           <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-slate-700 group-hover:border-cyan-400 flex items-center justify-center mb-3 transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-cyan-500/20">
@@ -289,16 +283,43 @@
           <span class="text-[9px] font-black uppercase tracking-widest text-center text-slate-500 group-hover:text-cyan-400 transition-colors">{{ feature.name }}</span>
         </div>
       </div>
-
       
     </div>
   </main>
 </template>
 
 <script setup>
-import { h } from 'vue';
+import { h, onMounted, onUnmounted } from 'vue';
 
-// SVG Icon Components (same as before - keeping them for brevity)
+// Dynamically load the Spline viewer module and patch scroll hijack
+onMounted(() => {
+  if (!document.querySelector('script[src="https://unpkg.com/@splinetool/viewer@1.12.81/build/spline-viewer.js"]')) {
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = 'https://unpkg.com/@splinetool/viewer@1.12.81/build/spline-viewer.js';
+    document.head.appendChild(script);
+  }
+
+  // Force scroll when hovering over the Spline Viewer
+  const handleScroll = (e) => {
+    // If the event target is the spline viewer or canvas inside it
+    if (e.target.closest('spline-viewer')) {
+      window.scrollBy({
+        top: e.deltaY,
+        behavior: 'auto'
+      });
+    }
+  };
+
+  // Add passive listener to window to bypass Spline's preventDefault
+  window.addEventListener('wheel', handleScroll, { passive: true });
+
+  onUnmounted(() => {
+    window.removeEventListener('wheel', handleScroll);
+  });
+});
+
+// SVG Icon Components
 const InventoryIcon = {
   render() {
     return h('svg', {
@@ -531,7 +552,7 @@ const systemFeatures = [
   { name: 'Decision Support System', icon: DSSIcon },
   { name: 'Virtual Color Mixing', icon: VirtualMixIcon },
   { name: 'Mobile Application', icon: MobileIcon },
-  { name: 'Human Resources', icon: HRIcon },
+  { name: 'Employee Management', icon: HRIcon },
   { name: 'Finance Module', icon: FinanceIcon },
   { name: 'Supply Chain Mgmt', icon: SCMIcon },
   { name: 'Customer Relations', icon: CRMIcon },

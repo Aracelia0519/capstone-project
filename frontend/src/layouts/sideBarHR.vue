@@ -164,7 +164,6 @@ const hrNavItems = ref([
 
 const toolsNavItems = ref([
   { id: 'reports', text: 'EM Reports', route: '/HR/reportsHR', permissionKey: 'reports' },
-  { id: 'settings', text: 'EM Settings', route: '/HR/settings', permissionKey: 'settings' },
 ])
 
 const isItemAccessible = (permissionKey) => {

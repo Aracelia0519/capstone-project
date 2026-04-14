@@ -1,4 +1,5 @@
 <template>
+  
   <div class="min-h-screen bg-gradient-to-br p-4 sm:p-6 text-slate-200">
     <header class="text-center mb-8 sm:mb-12">
       <div class="inline-flex items-center gap-3 mb-4">
@@ -11,6 +12,7 @@
       </div>
       <p class="text-gray-400 text-lg">Create and explore color combinations with advanced visualization tools</p>
     </header>
+    
 
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mb-4"></div>
@@ -27,6 +29,8 @@
         Go to Dashboard
       </Button>
     </div>
+    
+    
 
     <main v-else class="max-w-6xl mx-auto">
       <div class="mb-6 flex justify-end">

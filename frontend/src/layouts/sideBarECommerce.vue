@@ -59,16 +59,7 @@
 
     <SidebarFooter class="px-3 py-4 border-t border-slate-800/50 bg-slate-900 space-y-1">
       <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton as-child tooltip="Profile" class="h-11 w-full rounded-xl text-white/70 hover:text-white hover:bg-slate-800/50">
-            <router-link to="/ECommerce/profile" class="flex items-center w-full px-2">
-              <div class="shrink-0 flex items-center justify-center w-6 h-6">
-                <UserCircle class="w-5 h-5 text-slate-400" />
-              </div>
-              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">Profile</span>
-            </router-link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        
 
         <SidebarMenuItem>
           <SidebarMenuButton 

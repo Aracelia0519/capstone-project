@@ -53,16 +53,7 @@
 
     <SidebarFooter class="px-3 py-4 border-t border-slate-800/50 bg-slate-900 space-y-1">
       <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton as-child tooltip="Profile" class="h-11 w-full rounded-xl text-white/70 hover:text-white hover:bg-slate-800/50">
-            <router-link to="/finance/profile" class="flex items-center w-full px-2">
-              <div class="shrink-0 flex items-center justify-center w-6 h-6">
-                <UserCircle class="w-5 h-5 text-slate-400" />
-              </div>
-              <span v-if="state === 'expanded' || isMobile" class="ml-3 text-sm font-medium nav-text-clip">Profile</span>
-            </router-link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        
 
         <SidebarMenuItem>
           <SidebarMenuButton 
@@ -155,11 +146,11 @@ const navigation = [
     title: 'Operations',
     items: [
       { name: 'Invoices / Billing', path: '/finance/invoices', icon: FileText, color: 'text-emerald-400', badge: '8' },
-      { name: 'Reports', path: '/finance/reportFinance', icon: BarChart3, color: 'text-teal-400' },
       { name: 'Procurement', path: '/finance/procurementRequestFinance', icon: ShoppingCart, color: 'text-emerald-400', badge: 'Req' },
       { name: 'Budget Release', path: '/finance/procurementBudgetRelease', icon: Wallet, color: 'text-green-400', badge: 'Head' },
       { name: 'Payroll Request', path: '/finance/PayrollRequestFinance', icon: Users, color: 'text-emerald-400', badge: 'Pending' },
-      { name: 'Payroll Paid', path: '/finance/PayrollPaidFinance', icon: UserCheck, color: 'text-emerald-400', badge: 'New' }
+      { name: 'Payroll Paid', path: '/finance/PayrollPaidFinance', icon: UserCheck, color: 'text-emerald-400', badge: 'New' },
+      { name: 'Reports', path: '/finance/reportFinance', icon: BarChart3, color: 'text-teal-400' },
     ]
   }
 ]

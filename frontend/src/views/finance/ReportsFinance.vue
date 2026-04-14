@@ -1,9 +1,9 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-      <div class="mb-4 sm:mb-0">
+  <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+      <div>
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3 mb-2">
-          <span class="p-2 bg-teal-100 text-teal-600 rounded-lg">
+          <span class="p-2 bg-teal-100 text-teal-600 rounded-lg shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -12,563 +12,580 @@
         </h1>
         <p class="text-sm text-gray-600">Summarize and analyze financial data</p>
       </div>
-      <div class="flex gap-3">
-        <Button class="bg-teal-600 hover:bg-teal-700 text-white gap-2" @click="generateReport">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <button @click="triggerExport('full')" 
+                class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-lg shadow-sm hover:opacity-90 transition-opacity">
+          <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          <span>Generate Report</span>
-        </Button>
+          Export Full CSV
+        </button>
+        <button @click="showReportBuilder = true" 
+                class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg shadow-sm hover:opacity-90 transition-opacity">
+          <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          Custom Report
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/50">
+        <h2 class="text-base font-semibold text-gray-800">Report Parameters</h2>
+      </div>
+      <div class="p-4 sm:p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+          
+          <div class="space-y-2">
+            <Label class="block text-sm font-medium text-gray-700">Period Filter</Label>
+            <Select v-model="parameters.period">
+              <SelectTrigger class="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm h-[42px] border bg-white text-gray-700">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent class="bg-white border border-gray-200 shadow-md">
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div v-if="parameters.period === 'custom'" class="space-y-2">
+            <Label class="block text-sm font-medium text-gray-700">Start Date</Label>
+            <Input type="date" v-model="parameters.startDate" class="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm h-[42px] px-3 border bg-white text-gray-700" />
+          </div>
+          
+          <div v-if="parameters.period === 'custom'" class="space-y-2">
+            <Label class="block text-sm font-medium text-gray-700">End Date</Label>
+            <Input type="date" v-model="parameters.endDate" class="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm h-[42px] px-3 border bg-white text-gray-700" />
+          </div>
+
+          <div class="pt-2 sm:col-span-2 md:col-span-1 md:ml-auto w-full">
+            <button @click="fetchData" :disabled="isLoading" class="w-full h-[42px] inline-flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-colors">
+              <span v-if="isLoading">Generating...</span>
+              <span v-else>Generate Report</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="mb-8">
-      <div class="mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-2">Report Types</h2>
-        <p class="text-sm text-gray-600">Select report type to generate</p>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card 
-          v-for="type in reportTypes" 
-          :key="type.id"
-          class="border-2 cursor-pointer transition-all duration-200 hover:border-teal-300 hover:shadow-md"
-          :class="{ 'border-teal-500 bg-teal-50': selectedType === type.id, 'border-gray-200': selectedType !== type.id }"
-          @click="selectedType = type.id"
-        >
-          <div class="p-6">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-              :class="selectedType === type.id ? 'bg-teal-200 text-teal-700' : 'bg-teal-100 text-teal-600'">
-              <component :is="type.icon" class="w-6 h-6" />
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ type.name }}</h3>
-            <p class="text-sm text-gray-600 mb-4">{{ type.description }}</p>
-            <div class="flex items-center gap-2 text-xs text-gray-500">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Last generated: {{ type.lastGenerated }}</span>
-            </div>
+      <h2 class="text-lg font-bold text-gray-900 mb-4">Core Financial Overview</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-5 shadow-sm text-white">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-medium opacity-90 text-sm">Lifetime Available Funds</h3>
+            <svg class="w-6 h-6 opacity-75 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-        </Card>
+          <div class="text-2xl md:text-3xl font-bold truncate" :title="'₱' + formatNumber(reportData.overallSalesLifetime)">₱{{ formatNumber(reportData.overallSalesLifetime) }}</div>
+          <div class="text-xs opacity-80 mt-2">Overall money collected (All-Time)</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-5 shadow-sm text-white">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-medium opacity-90 text-sm">Period Gross Sales</h3>
+            <svg class="w-6 h-6 opacity-75 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div class="text-2xl md:text-3xl font-bold truncate" :title="'₱' + formatNumber(reportData.totalSales)">₱{{ formatNumber(reportData.totalSales) }}</div>
+          <div class="text-xs opacity-80 mt-2">Client & SP Orders during selected period</div>
+        </div>
+
+        <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-5 shadow-sm text-white">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-medium opacity-90 text-sm">Period Net Cash Flow</h3>
+            <svg class="w-6 h-6 opacity-75 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div class="text-2xl md:text-3xl font-bold truncate" :title="'₱' + formatNumber(reportData.netPeriodCashFlow)">₱{{ formatNumber(reportData.netPeriodCashFlow) }}</div>
+          <div class="text-xs opacity-80 mt-2">Sales minus VAT, Procurement, Refunds, & Payroll</div>
+        </div>
+
       </div>
     </div>
 
-    <Card class="mb-8 border-gray-200">
-      <div class="p-6">
-        <div class="mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">Report Parameters</h2>
-          <p class="text-sm text-gray-600">Configure report settings</p>
-        </div>
+    <div class="mb-8">
+      <h2 class="text-lg font-bold text-gray-900 mb-4">Period Expenses & Deductions Breakdown</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Period</label>
-              <Select v-model="parameters.period">
-                <SelectTrigger class="focus:ring-teal-500">
-                  <SelectValue placeholder="Select Period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div v-if="parameters.period === 'custom'" class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Start Date</label>
-              <Input type="date" v-model="parameters.startDate" class="focus-visible:ring-teal-500" />
-            </div>
-            
-            <div v-if="parameters.period === 'custom'" class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">End Date</label>
-              <Input type="date" v-model="parameters.endDate" class="focus-visible:ring-teal-500" />
-            </div>
-            
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Format</label>
-              <Select v-model="parameters.format">
-                <SelectTrigger class="focus:ring-teal-500">
-                  <SelectValue placeholder="Select Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                  <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="excel">Excel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div class="space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Group By</label>
-              <Select v-model="parameters.groupBy">
-                <SelectTrigger class="focus:ring-teal-500">
-                  <SelectValue placeholder="Group By" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Day</SelectItem>
-                  <SelectItem value="week">Week</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
-                  <SelectItem value="category">Category</SelectItem>
-                  <SelectItem value="payment_method">Payment Method</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div class="flex flex-wrap gap-3 justify-end">
-            <Button variant="outline" @click="resetParameters">
-              Reset
-            </Button>
-            <Button class="bg-teal-600 hover:bg-teal-700 text-white" @click="previewReport">
-              Preview Report
-            </Button>
-            <Button class="bg-green-600 hover:bg-green-700 text-white" @click="exportReport">
-              Export Report
-            </Button>
-          </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+          <div class="text-sm font-medium text-gray-500 mb-1">VAT Remitted</div>
+          <div class="text-xl md:text-2xl font-bold text-gray-900 truncate">₱{{ formatNumber(reportData.totalVat) }}</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+          <div class="text-sm font-medium text-gray-500 mb-1">Procurement Costs (Requests)</div>
+          <div class="text-xl md:text-2xl font-bold text-gray-900 truncate">₱{{ formatNumber(reportData.procurementBudgetReleased) }}</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+          <div class="text-sm font-medium text-gray-500 mb-1">Payroll Disbursed</div>
+          <div class="text-xl md:text-2xl font-bold text-gray-900 truncate">₱{{ formatNumber(reportData.totalPayrollDisbursed) }}</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+          <div class="text-sm font-medium text-gray-500 mb-1">Refunds Processed</div>
+          <div class="text-xl md:text-2xl font-bold text-gray-900 truncate">₱{{ formatNumber(reportData.refundsProcessed) }}</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="space-y-8">
+      
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Sales Transactions</h3>
+          <span class="bg-teal-100 text-teal-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ reportData.salesTransactions.length }} Records</span>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] w-full">
+          <Table class="min-w-full">
+            <TableHeader class="bg-white sticky top-0 z-10 shadow-sm">
+              <TableRow>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Reference</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Type</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Gross Amount</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">VAT Deducted</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="reportData.salesTransactions.length === 0">
+                <TableCell colspan="5" class="text-center text-gray-500 py-6">No sales data found for selected period.</TableCell>
+              </TableRow>
+              <TableRow v-for="(item, index) in reportData.salesTransactions" :key="'sale-'+index" class="hover:bg-gray-50">
+                <TableCell class="font-medium text-gray-900 whitespace-nowrap">{{ item.reference }}</TableCell>
+                <TableCell class="text-gray-600 whitespace-nowrap">{{ item.type }}</TableCell>
+                <TableCell class="text-right font-medium text-emerald-600 whitespace-nowrap">₱{{ formatNumber(item.amount) }}</TableCell>
+                <TableCell class="text-right text-amber-600 whitespace-nowrap">- ₱{{ formatNumber(item.vat) }}</TableCell>
+                <TableCell class="text-right text-gray-500 whitespace-nowrap">{{ formatDate(item.date) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       </div>
-    </Card>
 
-    <Dialog v-model:open="showPreview">
-      <DialogContent class="max-w-6xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader class="p-6 border-b border-gray-200">
-          <DialogTitle>Report Preview</DialogTitle>
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Procurement Expenditures (From Requests)</h3>
+          <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ reportData.procurementTransactions.length }} Records</span>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] w-full">
+          <Table class="min-w-full">
+            <TableHeader class="bg-white sticky top-0 z-10 shadow-sm">
+              <TableRow>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Req Code</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Product</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Status</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Total Cost</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="reportData.procurementTransactions.length === 0">
+                <TableCell colspan="5" class="text-center text-gray-500 py-6">No released procurement data found for selected period.</TableCell>
+              </TableRow>
+              <TableRow v-for="(item, index) in reportData.procurementTransactions" :key="'proc-'+index" class="hover:bg-gray-50">
+                <TableCell class="font-medium text-gray-900 whitespace-nowrap">{{ item.reference }}</TableCell>
+                <TableCell class="text-gray-600 truncate max-w-xs" :title="item.description">{{ item.description }}</TableCell>
+                <TableCell>
+                  <span class="px-2 py-1 rounded text-xs whitespace-nowrap bg-blue-100 text-blue-800 border border-blue-200">{{ item.status }}</span>
+                </TableCell>
+                <TableCell class="text-right font-medium text-red-600 whitespace-nowrap">- ₱{{ formatNumber(item.amount) }}</TableCell>
+                <TableCell class="text-right text-gray-500 whitespace-nowrap">{{ formatDate(item.date) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Budget Deduction Logs</h3>
+          <span class="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ reportData.budgetDeductionLogs.length }} Records</span>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] w-full">
+          <Table class="min-w-full">
+            <TableHeader class="bg-white sticky top-0 z-10 shadow-sm">
+              <TableRow>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Log ID</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Description</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Deducted Amount</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Date Logged</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="reportData.budgetDeductionLogs.length === 0">
+                <TableCell colspan="4" class="text-center text-gray-500 py-6">No deduction logs found for selected period.</TableCell>
+              </TableRow>
+              <TableRow v-for="(item, index) in reportData.budgetDeductionLogs" :key="'log-'+index" class="hover:bg-gray-50">
+                <TableCell class="font-medium text-gray-900 whitespace-nowrap">LOG-{{ item.reference }}</TableCell>
+                <TableCell class="text-gray-600 truncate max-w-sm" :title="item.description">{{ item.description }}</TableCell>
+                <TableCell class="text-right font-medium text-indigo-600 whitespace-nowrap">₱{{ formatNumber(item.amount) }}</TableCell>
+                <TableCell class="text-right text-gray-500 whitespace-nowrap">{{ formatDate(item.date) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Payroll Disbursements</h3>
+          <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ reportData.payrollTransactions.length }} Records</span>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] w-full">
+          <Table class="min-w-full">
+            <TableHeader class="bg-white sticky top-0 z-10 shadow-sm">
+              <TableRow>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Payment Ref</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Employee Name</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Net Pay</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Date Paid</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="reportData.payrollTransactions.length === 0">
+                <TableCell colspan="4" class="text-center text-gray-500 py-6">No payroll data found for selected period.</TableCell>
+              </TableRow>
+              <TableRow v-for="(item, index) in reportData.payrollTransactions" :key="'pay-'+index" class="hover:bg-gray-50">
+                <TableCell class="font-medium text-gray-900 whitespace-nowrap">{{ item.reference }}</TableCell>
+                <TableCell class="text-gray-600 whitespace-nowrap">{{ item.description }}</TableCell>
+                <TableCell class="text-right font-medium text-red-600 whitespace-nowrap">- ₱{{ formatNumber(item.amount) }}</TableCell>
+                <TableCell class="text-right text-gray-500 whitespace-nowrap">{{ formatDate(item.date) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+          <h3 class="text-base font-bold text-gray-900">Refunds Processed</h3>
+          <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ reportData.refundTransactions.length }} Records</span>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] w-full">
+          <Table class="min-w-full">
+            <TableHeader class="bg-white sticky top-0 z-10 shadow-sm">
+              <TableRow>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Refund ID</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700">Reason</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Amount Refunded</TableHead>
+                <TableHead class="whitespace-nowrap font-semibold text-gray-700 text-right">Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-if="reportData.refundTransactions.length === 0">
+                <TableCell colspan="4" class="text-center text-gray-500 py-6">No refunds processed during selected period.</TableCell>
+              </TableRow>
+              <TableRow v-for="(item, index) in reportData.refundTransactions" :key="'ref-'+index" class="hover:bg-gray-50">
+                <TableCell class="font-medium text-gray-900 whitespace-nowrap">REF-{{ item.reference }}</TableCell>
+                <TableCell class="text-gray-600 truncate max-w-xs" :title="item.description">{{ item.description }}</TableCell>
+                <TableCell class="text-right font-medium text-red-600 whitespace-nowrap">- ₱{{ formatNumber(item.amount) }}</TableCell>
+                <TableCell class="text-right text-gray-500 whitespace-nowrap">{{ formatDate(item.date) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+    </div>
+
+    <Dialog v-model:open="showReportBuilder">
+      <DialogContent class="bg-white border-gray-200 text-gray-900 w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl">
+        <DialogHeader>
+          <DialogTitle class="text-lg md:text-xl font-bold">Custom Finance Report</DialogTitle>
         </DialogHeader>
-        
-        <div class="p-6 overflow-y-auto report-preview-content flex-1">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-6 border-b border-gray-200">
-            <div>
-              <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ selectedReportType?.name }} Report</h2>
-              <p class="text-sm text-gray-600">Period: {{ getPeriodText() }}</p>
-            </div>
-            <div class="text-sm text-gray-600 space-y-1 mt-2 md:mt-0">
-              <p>Generated: {{ new Date().toLocaleDateString() }}</p>
-              <p>Format: {{ parameters.format.toUpperCase() }}</p>
-            </div>
+        <div class="space-y-4 pt-2 md:pt-4">
+          <p class="text-gray-600 text-sm mb-4">Select the specific datasets you want to include in your customized CSV export.</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.metrics" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Core Financial Overview</span>
+            </label>
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.sales" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Sales Transactions</span>
+            </label>
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.procurement" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Procurement Expenditures</span>
+            </label>
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.budgetLogs" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Budget Deduction Logs</span>
+            </label>
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.payroll" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Payroll Disbursements</span>
+            </label>
+            <label class="flex items-center space-x-3 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+              <input type="checkbox" v-model="customConfig.refunds" class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 bg-white" />
+              <span class="text-gray-800 font-medium text-sm md:text-base">Refunds Processed</span>
+            </label>
           </div>
           
-          <div class="mb-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-100 rounded-xl p-4 text-center">
-                <span class="block text-sm text-gray-600 mb-2">Total Revenue</span>
-                <span class="block text-xl font-bold text-gray-900">₱1,245,800</span>
-              </div>
-              <div class="bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-100 rounded-xl p-4 text-center">
-                <span class="block text-sm text-gray-600 mb-2">Total Expenses</span>
-                <span class="block text-xl font-bold text-gray-900">₱589,300</span>
-              </div>
-              <div class="bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-100 rounded-xl p-4 text-center">
-                <span class="block text-sm text-gray-600 mb-2">Net Profit</span>
-                <span class="block text-xl font-bold text-gray-900">₱656,500</span>
-              </div>
-              <div class="bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-100 rounded-xl p-4 text-center">
-                <span class="block text-sm text-gray-600 mb-2">Profit Margin</span>
-                <span class="block text-xl font-bold text-gray-900">52.7%</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-              <div class="h-64">
-                <div class="h-full flex flex-col justify-end">
-                  <div class="flex items-end justify-between w-full h-5/6 px-4">
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 60%"></div>
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 75%"></div>
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 85%"></div>
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 70%"></div>
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 90%"></div>
-                    <div class="w-8 bg-gradient-to-t from-teal-400 to-teal-200 rounded-t-lg" style="height: 95%"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
-              <div class="h-64">
-                <div class="h-full flex flex-col lg:flex-row items-center justify-center gap-8">
-                  <div class="relative w-32 h-32 rounded-full bg-gray-100 overflow-hidden">
-                    <div class="absolute inset-0 origin-center bg-blue-400" style="transform: rotate(0deg) skewY(60deg)"></div>
-                    <div class="absolute inset-0 origin-center bg-green-400" style="transform: rotate(162deg) skewY(60deg)"></div>
-                    <div class="absolute inset-0 origin-center bg-yellow-400" style="transform: rotate(270deg) skewY(60deg)"></div>
-                    <div class="absolute inset-0 origin-center bg-red-400" style="transform: rotate(324deg) skewY(60deg)"></div>
-                  </div>
-                  <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-sm text-gray-700">
-                      <span class="w-3 h-3 rounded-full bg-blue-400"></span>
-                      <span>Supplies (45%)</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-gray-700">
-                      <span class="w-3 h-3 rounded-full bg-green-400"></span>
-                      <span>Payroll (30%)</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-gray-700">
-                      <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
-                      <span>Utilities (15%)</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-gray-700">
-                      <span class="w-3 h-3 rounded-full bg-red-400"></span>
-                      <span>Other (10%)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="space-y-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-900 mb-3">Top Revenue Sources</h3>
-            <Table>
-              <TableHeader class="bg-gray-50">
-                <TableRow>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Percentage</TableHead>
-                  <TableHead>Growth</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell class="font-medium text-gray-700">Paint Sales</TableCell>
-                  <TableCell class="text-gray-700">₱589,200</TableCell>
-                  <TableCell class="text-gray-700">47.3%</TableCell>
-                  <TableCell class="font-medium text-green-600">↑ 12.5%</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell class="font-medium text-gray-700">Service Fees</TableCell>
-                  <TableCell class="text-gray-700">₱356,800</TableCell>
-                  <TableCell class="text-gray-700">28.6%</TableCell>
-                  <TableCell class="font-medium text-green-600">↑ 8.2%</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell class="font-medium text-gray-700">Equipment Rental</TableCell>
-                  <TableCell class="text-gray-700">₱189,500</TableCell>
-                  <TableCell class="text-gray-700">15.2%</TableCell>
-                  <TableCell class="font-medium text-green-600">↑ 15.7%</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell class="font-medium text-gray-700">Other Income</TableCell>
-                  <TableCell class="text-gray-700">₱110,300</TableCell>
-                  <TableCell class="text-gray-700">8.9%</TableCell>
-                  <TableCell class="font-medium text-red-600">↓ 2.1%</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-            
-            <h3 class="text-lg font-semibold text-gray-900 mb-3">Outstanding Invoices</h3>
-            <Table>
-              <TableHeader class="bg-gray-50">
-                <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell class="text-gray-700">INV-2024-003</TableCell>
-                  <TableCell class="text-gray-700">Maria Santos</TableCell>
-                  <TableCell class="text-gray-700">2024-01-27</TableCell>
-                  <TableCell class="text-gray-700">₱3,000</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive" class="bg-red-100 text-red-800 hover:bg-red-100 shadow-none">Overdue</Badge>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell class="text-gray-700">INV-2024-006</TableCell>
-                  <TableCell class="text-gray-700">Service Pro Inc.</TableCell>
-                  <TableCell class="text-gray-700">2024-01-24</TableCell>
-                  <TableCell class="text-gray-700">₱4,300</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive" class="bg-red-100 text-red-800 hover:bg-red-100 shadow-none">Overdue</Badge>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell class="text-gray-700">INV-2024-010</TableCell>
-                  <TableCell class="text-gray-700">Sarah Wilson</TableCell>
-                  <TableCell class="text-gray-700">2024-01-20</TableCell>
-                  <TableCell class="text-gray-700">₱3,100</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive" class="bg-red-100 text-red-800 hover:bg-red-100 shadow-none">Overdue</Badge>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          
-          <div class="border-t border-gray-200 pt-6 mt-6">
-            <div class="flex flex-wrap justify-between text-sm text-gray-600">
-              <p><strong>Report Generated By:</strong> Finance System</p>
-              <p><strong>Date:</strong> {{ new Date().toLocaleDateString() }}</p>
-              <p><strong>Page:</strong> 1 of 1</p>
-            </div>
-            <div class="text-center text-gray-400 mt-4">
-              <span>CaviteGo Paint - Confidential</span>
-            </div>
+          <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 mt-6 pt-4 border-t border-gray-200">
+            <button @click="showReportBuilder = false" class="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">Cancel</button>
+            <button @click="triggerExport('custom')" :disabled="!hasCustomSelection" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50">
+              Generate Custom Report
+            </button>
           </div>
         </div>
-        
-        <DialogFooter class="p-6 border-t border-gray-200 bg-white">
-          <Button variant="outline" @click="showPreview = false">
-            Close Preview
-          </Button>
-          <Button class="bg-teal-600 hover:bg-teal-700 text-white" @click="exportReport">
-            Export Now
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
 
-    <div class="mb-8">
-      <div class="mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-2">Recently Generated Reports</h2>
-        <p class="text-sm text-gray-600">Access your previously generated reports</p>
-      </div>
-      
-      <div class="space-y-4">
-        <Card v-for="report in recentReports" :key="report.id" class="p-6 border-gray-200">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between">
-            <div class="flex items-center gap-4 mb-4 sm:mb-0">
-              <div class="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center flex-shrink-0">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ report.name }}</h3>
-                <p class="text-sm text-gray-600">
-                  Generated {{ report.generated }} • {{ report.period }} • {{ report.format }}
-                </p>
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <Button variant="outline" class="gap-2 text-gray-700" size="sm" @click="viewReport(report)">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                View
-              </Button>
-              <Button class="bg-teal-600 hover:bg-teal-700 text-white gap-2" size="sm" @click="downloadReport(report)">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
+    <Dialog v-model:open="showConfirmDialog">
+      <DialogContent class="bg-white border-gray-200 text-gray-900 w-[90vw] sm:max-w-md shadow-xl rounded-xl">
+        <DialogHeader>
+          <DialogTitle class="text-lg md:text-xl flex items-center text-teal-700 font-bold">
+            <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Confirm CSV Export
+          </DialogTitle>
+        </DialogHeader>
+        <div class="py-2 md:py-4">
+          <p class="text-sm md:text-base text-gray-600">Are you sure you want to generate and download the <strong class="text-gray-900">{{ exportType === 'full' ? 'Full' : 'Custom' }} Financial Report</strong>? This will compile the selected data for the <strong>{{ parameters.period.toUpperCase() }}</strong> period into a CSV file.</p>
+        </div>
+        <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 mt-4">
+          <button @click="showConfirmDialog = false" class="w-full sm:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">Cancel</button>
+          <button @click="exportCSV" class="w-full sm:w-auto px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium shadow-sm transition-colors">Yes, Download CSV</button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { ref, computed, onMounted } from 'vue'
+import api from '@/utils/axios'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 
-// Define icon components inline
-const RevenueIcon = {
-  template: `
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  `
-}
+// State Variables
+const isLoading = ref(false)
+const showConfirmDialog = ref(false)
+const showReportBuilder = ref(false)
+const exportType = ref('full')
 
-const CollectionIcon = {
-  template: `
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  `
-}
-
-const OutstandingIcon = {
-  template: `
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.882 16.5c-.77.833.192 2.5 1.732 2.5z" />
-    </svg>
-  `
-}
-
-const ProfitIcon = {
-  template: `
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  `
-}
-
-// State
-const selectedType = ref('revenue')
-const showPreview = ref(false)
 const parameters = ref({
-  period: 'monthly',
-  startDate: new Date().toISOString().split('T')[0],
+  period: 'yearly',
+  startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
   endDate: new Date().toISOString().split('T')[0],
-  format: 'pdf',
-  groupBy: 'month'
 })
 
-// Report types data
-const reportTypes = ref([
-  {
-    id: 'revenue',
-    name: 'Revenue Report',
-    description: 'Detailed revenue analysis',
-    icon: RevenueIcon,
-    lastGenerated: '2 days ago'
-  },
-  {
-    id: 'collection',
-    name: 'Payment Collection',
-    description: 'Payment collection performance',
-    icon: CollectionIcon,
-    lastGenerated: '1 week ago'
-  },
-  {
-    id: 'outstanding',
-    name: 'Outstanding Invoices',
-    description: 'Pending and overdue invoices',
-    icon: OutstandingIcon,
-    lastGenerated: 'Today'
-  },
-  {
-    id: 'profit',
-    name: 'Profit & Loss',
-    description: 'Comprehensive P&L statement',
-    icon: ProfitIcon,
-    lastGenerated: '3 days ago'
-  }
-])
-
-// Recent reports
-const recentReports = ref([
-  {
-    id: 1,
-    name: 'Monthly Revenue Report - January 2024',
-    generated: '2 days ago',
-    period: 'January 2024',
-    format: 'PDF',
-    size: '2.4 MB'
-  },
-  {
-    id: 2,
-    name: 'Q4 2023 Collection Report',
-    generated: '1 week ago',
-    period: 'Q4 2023',
-    format: 'Excel',
-    size: '1.8 MB'
-  },
-  {
-    id: 3,
-    name: 'Outstanding Invoices - Weekly',
-    generated: 'Today',
-    period: 'This Week',
-    format: 'CSV',
-    size: '0.8 MB'
-  },
-  {
-    id: 4,
-    name: 'Annual Profit & Loss 2023',
-    generated: '3 days ago',
-    period: '2023',
-    format: 'PDF',
-    size: '3.2 MB'
-  }
-])
-
-// Computed properties
-const selectedReportType = computed(() => {
-  return reportTypes.value.find(type => type.id === selectedType.value)
+// Custom Report Configuration
+const customConfig = ref({
+  metrics: true,
+  sales: true,
+  procurement: true,
+  budgetLogs: true,
+  payroll: true,
+  refunds: true
 })
 
-// Methods
-const getPeriodText = () => {
-  const periodMap = {
-    daily: 'Daily',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-    quarterly: 'Quarterly',
-    yearly: 'Yearly',
-    custom: `Custom (${parameters.value.startDate} to ${parameters.value.endDate})`
+const hasCustomSelection = computed(() => {
+  return customConfig.value.metrics || 
+         customConfig.value.sales || 
+         customConfig.value.procurement || 
+         customConfig.value.budgetLogs ||
+         customConfig.value.payroll || 
+         customConfig.value.refunds
+})
+
+// Data payload returned from API
+const reportData = ref({
+  overallSalesLifetime: 0,
+  totalSales: 0,
+  totalVat: 0,
+  procurementBudgetReleased: 0,
+  refundsProcessed: 0,
+  totalPayrollDisbursed: 0,
+  netPeriodCashFlow: 0,
+  
+  // Data Tables Arrays
+  salesTransactions: [],
+  procurementTransactions: [],
+  budgetDeductionLogs: [],
+  payrollTransactions: [],
+  refundTransactions: []
+})
+
+// Utilities
+const formatNumber = (num) => {
+  if (!num) return '0.00'
+  return parseFloat(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' })
+}
+
+// Fetch Logic
+const fetchData = async () => {
+  try {
+    isLoading.value = true
+    
+    const params = {
+      period: parameters.value.period,
+    }
+    
+    if (parameters.value.period === 'custom') {
+      params.startDate = parameters.value.startDate
+      params.endDate = parameters.value.endDate
+    }
+
+    const response = await api.get('/finance/reports', { params })
+    
+    if (response.data.success) {
+      reportData.value = response.data.data
+    }
+  } catch (error) {
+    console.error("Error fetching financial data:", error)
+    alert("Failed to generate financial report. Check permissions or connection.")
+  } finally {
+    isLoading.value = false
   }
-  return periodMap[parameters.value.period] || parameters.value.period
 }
 
-const generateReport = () => {
-  showPreview.value = true
+// Dialog Triggers
+const triggerExport = (type) => {
+  exportType.value = type
+  showConfirmDialog.value = true
 }
 
-const previewReport = () => {
-  showPreview.value = true
-}
+// CSV Export Logic (BUG FIX: using Blob instead of encodeURI to support huge tables!)
+const exportCSV = () => {
+  showConfirmDialog.value = false
+  const type = exportType.value
 
-const exportReport = () => {
-  alert(`Exporting ${selectedReportType.value.name} as ${parameters.value.format.toUpperCase()}`)
-}
+  let csvContent = "\uFEFF" // Add BOM for Excel UTF-8 rendering
 
-const resetParameters = () => {
-  parameters.value = {
-    period: 'monthly',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    format: 'pdf',
-    groupBy: 'month'
+  // 1. Title & Summary Metrics
+  if (type === 'full' || (type === 'custom' && customConfig.value.metrics)) {
+    csvContent += "FINANCIAL REPORT SUMMARY\n"
+    csvContent += `Period,${parameters.value.period.toUpperCase()}\n`
+    if (parameters.value.period === 'custom') {
+      csvContent += `Range,${parameters.value.startDate} to ${parameters.value.endDate}\n`
+    }
+    csvContent += "\n"
+
+    csvContent += "Metric,Value (PHP)\n"
+    csvContent += `Lifetime Available Funds (All-Time),${reportData.value.overallSalesLifetime}\n`
+    csvContent += `Period Gross Sales,${reportData.value.totalSales}\n`
+    csvContent += `Period VAT Deductions,${reportData.value.totalVat}\n`
+    csvContent += `Procurement Expenditures (From Requests),${reportData.value.procurementBudgetReleased}\n`
+    csvContent += `Payroll Disbursed,${reportData.value.totalPayrollDisbursed}\n`
+    csvContent += `Refunds Processed,${reportData.value.refundsProcessed}\n`
+    csvContent += `Period Net Cash Flow,${reportData.value.netPeriodCashFlow}\n\n`
+  }
+
+  // 2. Sales Transactions
+  if (type === 'full' || (type === 'custom' && customConfig.value.sales)) {
+    csvContent += "SALES TRANSACTIONS\n"
+    csvContent += "Reference,Type,Gross Amount,VAT Deducted,Date\n"
+    reportData.value.salesTransactions?.forEach(item => {
+      csvContent += `"${item.reference}","${item.type}",${item.amount},${item.vat},"${item.date}"\n`
+    })
+    csvContent += "\n"
+  }
+
+  // 3. Procurement Expenditures
+  if (type === 'full' || (type === 'custom' && customConfig.value.procurement)) {
+    csvContent += "PROCUREMENT EXPENDITURES (REQUESTS)\n"
+    csvContent += "Req Code,Product,Status,Total Cost,Date\n"
+    reportData.value.procurementTransactions?.forEach(item => {
+      csvContent += `"${item.reference}","${item.description}","${item.status}",${item.amount},"${item.date}"\n`
+    })
+    csvContent += "\n"
+  }
+
+  // 4. Budget Deduction Logs
+  if (type === 'full' || (type === 'custom' && customConfig.value.budgetLogs)) {
+    csvContent += "BUDGET DEDUCTION LOGS\n"
+    csvContent += "Log ID,Description,Deducted Amount,Date Logged\n"
+    reportData.value.budgetDeductionLogs?.forEach(item => {
+      csvContent += `"LOG-${item.reference}","${item.description}",${item.amount},"${item.date}"\n`
+    })
+    csvContent += "\n"
+  }
+
+  // 5. Payroll Disbursements
+  if (type === 'full' || (type === 'custom' && customConfig.value.payroll)) {
+    csvContent += "PAYROLL DISBURSEMENTS\n"
+    csvContent += "Payment Ref,Employee Name,Net Pay,Date Paid\n"
+    reportData.value.payrollTransactions?.forEach(item => {
+      csvContent += `"${item.reference}","${item.description}",${item.amount},"${item.date}"\n`
+    })
+    csvContent += "\n"
+  }
+
+  // 6. Refunds Processed
+  if (type === 'full' || (type === 'custom' && customConfig.value.refunds)) {
+    csvContent += "REFUNDS PROCESSED\n"
+    csvContent += "Refund ID,Reason,Amount Refunded,Date\n"
+    reportData.value.refundTransactions?.forEach(item => {
+      csvContent += `"REF-${item.reference}","${item.description}",${item.amount},"${item.date}"\n`
+    })
+  }
+
+  // Generate Download using Blob (Bypasses URL string limits)
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.setAttribute("href", url)
+  
+  const filePrefix = type === 'custom' ? 'Custom' : 'Full'
+  link.setAttribute("download", `Detailed_Finance_${filePrefix}_Report_${new Date().getTime()}.csv`)
+  
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url) // Clean up memory
+
+  if (type === 'custom') {
+    showReportBuilder.value = false
   }
 }
 
-const viewReport = (report) => {
-  alert(`Viewing report: ${report.name}`)
-}
-
-const downloadReport = (report) => {
-  alert(`Downloading report: ${report.name}`)
-}
+// Init
+onMounted(() => {
+  fetchData()
+})
 </script>
-
-<style scoped>
-/* Report preview scrollbar */
-.report-preview-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.report-preview-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.report-preview-content::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-.report-preview-content::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-@media print {
-  .report-preview {
-    position: static;
-    background: white;
-  }
-}
-</style>

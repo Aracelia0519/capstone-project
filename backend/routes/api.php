@@ -345,6 +345,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/distributors/{id}/request-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestTermination']);
         Route::post('/distributors/{id}/request-reactivation', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestReactivation']);
+
+        Route::prefix('reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SPReportController::class, 'getPerformanceData']);
+            Route::post('/export', [\App\Http\Controllers\Api\ServiceProvider\SPReportController::class, 'exportReport']);
+        });
     });
 
     // Distributor Requirements - Business Verification
@@ -540,6 +545,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\HR\LeaveRequestController::class, 'index']);
             Route::put('/{id}/status', [\App\Http\Controllers\Api\HR\LeaveRequestController::class, 'updateStatus']);
         });
+
+        Route::get('/reports', [\App\Http\Controllers\Api\HR\HRReportController::class, 'getReportData']);
     });
 
     // Procurement Requests Routes
@@ -595,6 +602,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Finance\PayrollDisbursementController::class, 'index']);
             Route::post('/{id}/pay', [\App\Http\Controllers\Api\Finance\PayrollDisbursementController::class, 'markAsPaid']);
         });
+
+        // Finance Reports
+        Route::get('/reports', [\App\Http\Controllers\Api\Finance\FinanceReportController::class, 'getDashboardData']);
     });
 
     // Employee Individual Routes
@@ -815,6 +825,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/receive-refund', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'receiveItemAndRequestRefund']);
             Route::get('/{id}/chat', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'getReturnChat']);
             Route::post('/{id}/chat', [\App\Http\Controllers\Api\OperationDistributor\ECReturnController::class, 'sendReturnMessage']);
+        });
+
+        // E-Commerce Reports (Operational Distributor)
+        Route::prefix('reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECommerceReportController::class, 'getDashboardData']);
         });
 
     });

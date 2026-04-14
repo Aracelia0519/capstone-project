@@ -16,6 +16,7 @@
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
     "@iconify/vue": "^5.0.0",
+    "@splinetool/viewer": "^1.12.81",
     "@tanstack/vue-table": "^8.21.3",
     "@types/leaflet": "^1.9.21",
     "@vueuse/core": "^14.2.1",

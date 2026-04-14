@@ -1,37 +1,6 @@
 <template>
   <div class="min-h-screen text-slate-50 pb-20">
-    <Teleport to="body">
-  <Toaster
-    position="top-right"
-    :expand="false"
-    :rich-colors="false"
-    :close-button="true"
-    :theme="'light'"
-    :visible-toasts="1"
-    :container-style="{
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: 9999999,
-      pointerEvents: 'none',
-    }"
-    :toast-options="{
-      style: {
-        background: 'white',
-        color: 'black',
-        border: 'none',
-        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-        padding: '16px 20px',          
-        fontSize: '15px',              
-        minWidth: '280px',             
-        maxWidth: '400px',
-        borderRadius: '10px',          
-        pointerEvents: 'auto',
-      },
-    }"
-  />
-</Teleport>
+    
 
     <header class="sticky top-0 z-40  backdrop-blur-md border-b border-gray-800 shadow-xl">
       <div class="px-4 sm:px-6 lg:px-8 py-4">
