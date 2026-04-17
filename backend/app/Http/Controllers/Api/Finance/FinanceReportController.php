@@ -287,11 +287,6 @@ class FinanceReportController extends Controller
                 ->orderByDesc('payrolls.paid_at')
                 ->get();
 
-            // ==========================================
-            // 6. NET PERIOD CASH FLOW
-            // ==========================================
-            $netPeriodCashFlow = $totalSales - $totalVat - $procurementBudgetReleased - $refundsProcessed - $totalPayrollDisbursed;
-
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -302,7 +297,6 @@ class FinanceReportController extends Controller
                     'procurementBudgetReleased' => $procurementBudgetReleased,
                     'refundsProcessed' => $refundsProcessed,
                     'totalPayrollDisbursed' => $totalPayrollDisbursed,
-                    'netPeriodCashFlow' => $netPeriodCashFlow,
                     
                     // Transaction Lists for Data Tables
                     'salesTransactions' => $salesTransactions,

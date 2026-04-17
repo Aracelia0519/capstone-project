@@ -28,29 +28,31 @@ class ECommerceDashboardController extends Controller
             }
         }
 
+        // Matching ECommerceReports Valid Statuses
+        $validStatuses = ['confirmed', 'prepared', 'ready_for_pickup', 'shipped', 'delivered', 'completed'];
+
+        // Base queries for items to get relevant Order IDs
+        $clientItemQuery = DB::table('client_order_items')->where('distributor_id', $distributorId);
+        $spItemQuery = DB::table('sp_order_items')->where('distributor_id', $distributorId);
+
+        $clientOrderIds = (clone $clientItemQuery)->pluck('order_id')->unique();
+        $spOrderIds = (clone $spItemQuery)->pluck('sp_order_id')->unique();
+
         // 1. Dashboard Top Stats
-        $totalOrders = DB::table('client_order_items')
-            ->where('distributor_id', $distributorId)
-            ->distinct('order_id')
-            ->count('order_id');
+        $totalOrders = $clientOrderIds->count() + $spOrderIds->count();
 
-        $totalRevenue = (float) DB::table('ec_delivery_remittances')
-            ->where('distributor_id', $distributorId)
-            ->sum('amount');
+        // Total Sales (Combined from valid client and sp orders matching ECommerceReports)
+        $clientSales = DB::table('client_orders')->whereIn('id', $clientOrderIds)->whereIn('status', $validStatuses)->sum('grand_total');
+        $spSales = DB::table('sp_orders')->whereIn('id', $spOrderIds)->whereIn('status', $validStatuses)->sum('grand_total');
+        $totalSales = $clientSales + $spSales;
 
-        $pendingOrders = DB::table('client_order_items')
-            ->join('client_orders', 'client_order_items.order_id', '=', 'client_orders.id')
-            ->where('client_order_items.distributor_id', $distributorId)
-            ->where('client_orders.status', 'pending')
-            ->distinct('client_order_items.order_id')
-            ->count('client_order_items.order_id');
+        // Pending Orders
+        $pendingOrders = DB::table('client_orders')->whereIn('id', $clientOrderIds)->where('status', 'pending')->count()
+                       + DB::table('sp_orders')->whereIn('id', $spOrderIds)->where('status', 'pending')->count();
 
-        $completedOrders = DB::table('client_order_items')
-            ->join('client_orders', 'client_order_items.order_id', '=', 'client_orders.id')
-            ->where('client_order_items.distributor_id', $distributorId)
-            ->where('client_orders.status', 'delivered')
-            ->distinct('client_order_items.order_id')
-            ->count('client_order_items.order_id');
+        // Completed Orders
+        $completedOrders = DB::table('client_orders')->whereIn('id', $clientOrderIds)->where('status', 'delivered')->count()
+                         + DB::table('sp_orders')->whereIn('id', $spOrderIds)->where('status', 'delivered')->count();
 
         // 2. Sales Overview Data (Last 7 Days)
         $salesData = [];
@@ -60,16 +62,24 @@ class ECommerceDashboardController extends Controller
             $startOfDay = $date->copy()->startOfDay();
             $endOfDay = $date->copy()->endOfDay();
 
-            $dayRevenue = (float) DB::table('ec_delivery_remittances')
-                ->join('client_orders', 'ec_delivery_remittances.order_id', '=', 'client_orders.id')
-                ->where('ec_delivery_remittances.distributor_id', $distributorId)
-                ->whereBetween('client_orders.created_at', [$startOfDay, $endOfDay])
-                ->sum('ec_delivery_remittances.amount');
+            $dayClientSales = DB::table('client_orders')
+                ->whereIn('id', $clientOrderIds)
+                ->whereIn('status', $validStatuses)
+                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->sum('grand_total');
+
+            $daySpSales = DB::table('sp_orders')
+                ->whereIn('id', $spOrderIds)
+                ->whereIn('status', $validStatuses)
+                ->whereBetween('created_at', [$startOfDay, $endOfDay])
+                ->sum('grand_total');
+                
+            $daySales = $dayClientSales + $daySpSales;
 
             $salesData[] = [
                 'day' => $dayName,
-                'raw_amount' => $dayRevenue,
-                'amount' => number_format($dayRevenue, 2)
+                'raw_amount' => $daySales,
+                'amount' => number_format($daySales, 2)
             ];
         }
 
@@ -79,21 +89,19 @@ class ECommerceDashboardController extends Controller
         }
 
         // 3. Order Status Donut Chart
-        $allDistributorOrders = DB::table('client_order_items')
-            ->join('client_orders', 'client_order_items.order_id', '=', 'client_orders.id')
-            ->where('client_order_items.distributor_id', $distributorId)
-            ->select('client_orders.id', 'client_orders.status')
-            ->distinct('client_orders.id')
-            ->get();
+        $clientOrdersStatus = DB::table('client_orders')->whereIn('id', $clientOrderIds)->pluck('status');
+        $spOrdersStatus = DB::table('sp_orders')->whereIn('id', $spOrderIds)->pluck('status');
+        
+        $allStatuses = $clientOrdersStatus->merge($spOrdersStatus);
 
         $statusCounts = [
-            'Completed' => $allDistributorOrders->where('status', 'delivered')->count(),
-            'Pending' => $allDistributorOrders->where('status', 'pending')->count(),
-            'Processing' => $allDistributorOrders->whereIn('status', ['confirmed', 'prepared', 'shipped'])->count(),
-            'Cancelled' => $allDistributorOrders->where('status', 'cancelled')->count(),
+            'Completed' => $allStatuses->filter(fn($s) => $s == 'delivered')->count(),
+            'Pending' => $allStatuses->filter(fn($s) => $s == 'pending')->count(),
+            'Processing' => $allStatuses->filter(fn($s) => in_array($s, ['confirmed', 'prepared', 'shipped', 'ready_for_pickup']))->count(),
+            'Cancelled' => $allStatuses->filter(fn($s) => in_array($s, ['cancelled', 'rejected']))->count(),
         ];
 
-        $totalForPercentage = $totalOrders > 0 ? $totalOrders : 1;
+        $totalForPercentage = $allStatuses->count() > 0 ? $allStatuses->count() : 1;
         $orderStatus = [
             ['name' => 'Completed', 'count' => $statusCounts['Completed'], 'percentage' => round(($statusCounts['Completed'] / $totalForPercentage) * 100), 'color' => 'bg-green-500'],
             ['name' => 'Pending', 'count' => $statusCounts['Pending'], 'percentage' => round(($statusCounts['Pending'] / $totalForPercentage) * 100), 'color' => 'bg-yellow-500'],
@@ -101,81 +109,99 @@ class ECommerceDashboardController extends Controller
             ['name' => 'Cancelled', 'count' => $statusCounts['Cancelled'], 'percentage' => round(($statusCounts['Cancelled'] / $totalForPercentage) * 100), 'color' => 'bg-red-500'],
         ];
 
-        // 4. Recent Transactions
-        $recentOrderIds = DB::table('client_order_items')
-            ->where('distributor_id', $distributorId)
+        // 4. Recent Transactions (Combining Client and SP Orders)
+        $recentClientOrders = DB::table('client_orders')
+            ->whereIn('id', $clientOrderIds)
+            ->select('id', 'order_number', 'grand_total', 'status', 'created_at', 'client_id as user_id', DB::raw("'client' as type"));
+            
+        $recentSpOrders = DB::table('sp_orders')
+            ->whereIn('id', $spOrderIds)
+            ->select('id', 'order_number', 'grand_total', 'status', 'created_at', 'service_provider_id as user_id', DB::raw("'sp' as type"));
+        
+        $recentOrdersRaw = $recentClientOrders->unionAll($recentSpOrders)
             ->orderBy('created_at', 'desc')
-            ->pluck('order_id')
-            ->unique()
-            ->take(5);
-
-        $recentTransactions = ClientOrder::with(['client', 'items' => function($q) use ($distributorId) {
-                $q->where('distributor_id', $distributorId);
-            }])
-            ->whereIn('id', $recentOrderIds)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($order) use ($distributorId) {
-                
-                $remittance = DB::table('ec_delivery_remittances')
-                    ->where('order_id', $order->id)
-                    ->where('distributor_id', $distributorId)
-                    ->first();
-                    
-                $amount = $remittance ? (float) $remittance->amount : (float) $order->grand_total;
-
-                $uiStatus = 'Processing';
-                if ($order->status == 'delivered') $uiStatus = 'Completed';
-                if ($order->status == 'pending') $uiStatus = 'Pending';
-                if ($order->status == 'cancelled') $uiStatus = 'Cancelled';
-
-                // FIXED: Use first_name and last_name from the User model instead of "name"
-                $clientName = 'Unknown Client';
-                if ($order->client) {
-                    $clientName = trim($order->client->first_name . ' ' . $order->client->last_name);
-                    if (empty($clientName)) {
-                        $clientName = 'Unknown Client';
-                    }
-                }
-
-                return [
-                    'id' => $order->id,
-                    'orderId' => $order->order_number,
-                    'client' => $clientName,
-                    'amount' => number_format($amount, 2),
-                    'status' => $uiStatus
-                ];
-            })->values(); // Ensure it converts nicely to JSON
-
-        // 5. Best Selling Products
-        $bestSellingData = DB::table('client_order_items')
-            ->select('client_order_items.product_id', DB::raw('SUM(client_order_items.quantity) as total_sold'), DB::raw('SUM(client_order_items.price * client_order_items.quantity) as total_sales'))
-            ->join('client_orders', 'client_order_items.order_id', '=', 'client_orders.id')
-            ->where('client_order_items.distributor_id', $distributorId)
-            ->where('client_orders.status', 'delivered')
-            ->groupBy('client_order_items.product_id')
-            ->orderByDesc('total_sold')
             ->limit(5)
             ->get();
 
-        $productIds = $bestSellingData->pluck('product_id');
+        $recentTransactions = $recentOrdersRaw->map(function($order) {
+            $uiStatus = 'Processing';
+            if ($order->status == 'delivered') $uiStatus = 'Completed';
+            elseif ($order->status == 'pending') $uiStatus = 'Pending';
+            elseif ($order->status == 'cancelled') $uiStatus = 'Cancelled';
+
+            $clientName = 'Unknown Client';
+            if ($order->user_id) {
+                $user = DB::table('users')->where('id', $order->user_id)->first();
+                if ($user) {
+                    $clientName = trim($user->first_name . ' ' . $user->last_name);
+                }
+            }
+
+            return [
+                'id' => $order->id . '_' . $order->type,
+                'orderId' => $order->order_number,
+                'client' => $clientName,
+                'amount' => number_format((float)$order->grand_total, 2),
+                'status' => $uiStatus
+            ];
+        })->values();
+
+        // 5. Best Selling Products (Combining Client and SP Sales)
+        $clientProducts = DB::table('client_order_items')
+            ->join('client_orders', 'client_orders.id', '=', 'client_order_items.order_id')
+            ->where('client_order_items.distributor_id', $distributorId)
+            ->where('client_orders.status', 'delivered')
+            ->select('product_id', DB::raw('SUM(quantity) as total_sold'), DB::raw('SUM(client_order_items.price * quantity) as total_sales'))
+            ->groupBy('product_id')
+            ->get();
+
+        $spProducts = DB::table('sp_order_items')
+            ->join('sp_orders', 'sp_orders.id', '=', 'sp_order_items.sp_order_id')
+            ->where('sp_order_items.distributor_id', $distributorId)
+            ->where('sp_orders.status', 'delivered')
+            ->select('product_id', DB::raw('SUM(quantity) as total_sold'), DB::raw('SUM(sp_order_items.price * quantity) as total_sales'))
+            ->groupBy('product_id')
+            ->get();
+
+        $mergedProducts = [];
+        foreach ([$clientProducts, $spProducts] as $dataset) {
+            foreach ($dataset as $item) {
+                if (!isset($mergedProducts[$item->product_id])) {
+                    $mergedProducts[$item->product_id] = [
+                        'product_id' => $item->product_id,
+                        'total_sold' => 0,
+                        'total_sales' => 0
+                    ];
+                }
+                $mergedProducts[$item->product_id]['total_sold'] += $item->total_sold;
+                $mergedProducts[$item->product_id]['total_sales'] += $item->total_sales;
+            }
+        }
+
+        // Sort by total sold and take the top 5
+        usort($mergedProducts, function($a, $b) {
+            return $b['total_sold'] - $a['total_sold'];
+        });
+        $mergedProducts = array_slice($mergedProducts, 0, 5);
+
+        $productIds = array_column($mergedProducts, 'product_id');
         $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
-        $bestSellingProducts = $bestSellingData->map(function($item) use ($products) {
-            $product = $products->get($item->product_id);
+        $bestSellingProducts = collect($mergedProducts)->map(function($item) use ($products) {
+            $product = $products->get($item['product_id']);
             return [
-                'id' => $item->product_id,
+                'id' => $item['product_id'],
                 'name' => $product ? $product->name : 'Unknown Product',
                 'category' => $product ? $product->category : 'Uncategorized',
-                'sales' => number_format((float) $item->total_sales, 2),
-                'sold' => (int) $item->total_sold
+                'sales' => number_format((float) $item['total_sales'], 2),
+                'sold' => (int) $item['total_sold']
             ];
-        })->values(); // Ensure it converts nicely to JSON
+        })->values();
 
         return response()->json([
             'stats' => [
                 'totalOrders' => $totalOrders,
-                'totalRevenue' => number_format($totalRevenue, 2),
+                'totalSales' => number_format($totalSales, 2),
                 'pendingOrders' => $pendingOrders,
                 'completedOrders' => $completedOrders,
             ],

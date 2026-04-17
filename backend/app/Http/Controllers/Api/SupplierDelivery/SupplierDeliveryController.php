@@ -175,8 +175,11 @@ class SupplierDeliveryController extends Controller
 
         $request->validate($rules);
 
-        // Optional Backend Coordinate Verification 
-        if ($req && $req->distributor_id) {
+        // Fetch bypass flag
+        $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
+
+        // Optional Backend Coordinate Verification (Bypassed if true)
+        if (!$bypassLocation && $req && $req->distributor_id) {
             $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
             if ($distReq) {
                 $address = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
@@ -260,12 +263,15 @@ class SupplierDeliveryController extends Controller
             return response()->json(['message' => 'Delivery is not in remitting status.'], 400);
         }
 
+        $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
+
         // Validate proximity to supplier
         $user = $request->user();
         $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
         $supplierReq = DB::table('supplier_requirements')->where('user_id', $personnel->supplier_id)->first();
         
-        if ($supplierReq) {
+        // Distance validation (Bypassed if true)
+        if (!$bypassLocation && $supplierReq) {
             $suppAddr = DB::table('supplier_addresses')->where('supplier_requirements_id', $supplierReq->id)->first()
                      ?? DB::table('supplier_addresses')->where('supplier_id', $personnel->supplier_id)->first();
             

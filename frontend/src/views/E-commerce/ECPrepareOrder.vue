@@ -290,7 +290,6 @@ const formatDate = (dateString: string) => {
 
 <template>
   <div class="flex h-full w-full flex-col text-gray-100 relative">
-    <Toaster richColors position="top-right" expand />
 
     <div class="hidden md:flex h-full w-full overflow-hidden">
       <div class="w-80 lg:w-96 border-r border-gray-800 flex flex-col h-full">

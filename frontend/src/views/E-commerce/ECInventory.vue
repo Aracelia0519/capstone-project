@@ -1,8 +1,6 @@
 <template>
   <div class="inventory-container p-4 md:p-6">
-    <Teleport to="body">
-      <Toaster position="top-right" theme="dark" class="!z-[999999]" style="z-index: 999999;" />
-    </Teleport>
+    
 
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">

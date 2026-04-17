@@ -31,12 +31,26 @@ import {
   UploadCloud,
   Menu,
   Info,
-  Ban
+  Ban,
+  Unlock,
+  Lock
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
+
+// Shadcn AlertDialog Imports
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // --- State ---
 const deliveries = ref([])
@@ -47,6 +61,9 @@ const currentPosition = ref(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
 const isDrawerOpen = ref(true)
+
+// Presentation Bypass State
+const bypassLocation = ref(false)
 
 // Reject State
 const showRejectForm = ref(false)
@@ -61,6 +78,14 @@ const paymentProofPreview = ref(null)
 
 const remittanceProofFile = ref(null)
 const remittanceProofPreview = ref(null)
+
+// Confirmation Dialog State
+const isAlertDialogOpen = ref(false)
+const alertDialogConfig = ref({
+  title: '',
+  description: '',
+  action: null
+})
 
 // Map Variables
 let leafletMap = null
@@ -169,7 +194,6 @@ const initMap = () => {
 const drawRoute = async (force = false) => {
   if (!leafletMap) return
   
-  // If no active delivery, clean up line
   if (!activeDeliveryId.value || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) {
     if (routeLine) {
       leafletMap.removeLayer(routeLine)
@@ -178,13 +202,12 @@ const drawRoute = async (force = false) => {
     return
   }
 
-  // Anti-spam constraint: Only fetch new road data if forced, or if vehicle moved > 20 meters
   if (!force && lastRoutedPosition) {
     const distMoved = calculateDistance(
       currentPosition.value.lat, currentPosition.value.lng,
       lastRoutedPosition.lat, lastRoutedPosition.lng
     )
-    if (distMoved < 20) return // Skip fetch to save API limits
+    if (distMoved < 20) return 
   }
 
   lastRoutedPosition = { lat: currentPosition.value.lat, lng: currentPosition.value.lng }
@@ -198,7 +221,6 @@ const drawRoute = async (force = false) => {
     const endLng = activeTargetLng.value
     const endLat = activeTargetLat.value
 
-    // Fetch road route from Open Source Routing Machine
     const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
     const data = await response.json()
 
@@ -207,7 +229,6 @@ const drawRoute = async (force = false) => {
         leafletMap.removeLayer(routeLine)
       }
       
-      // OSRM returns coordinates in [lng, lat], Leaflet needs [lat, lng]
       const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
       
       routeLine = L.polyline(coords, {
@@ -226,7 +247,6 @@ const drawRoute = async (force = false) => {
   }
 }
 
-// Fallback to straight line if OSRM is unreachable
 const drawFallbackRoute = (color) => {
   if (routeLine) leafletMap.removeLayer(routeLine)
   routeLine = L.polyline(
@@ -294,7 +314,7 @@ const startTracking = () => {
         initMap()
       } else if (userMarker) {
         userMarker.setLatLng([newPos.lat, newPos.lng])
-        drawRoute(false) // Redraw route live as vehicle moves
+        drawRoute(false) 
         
         if (isFirstLoad && !activeDeliveryId.value) {
           leafletMap.setView([newPos.lat, newPos.lng], 15)
@@ -336,7 +356,20 @@ const requestLocation = () => {
   )
 }
 
-// --- API Calls ---
+// --- API Calls & Dialog Logic ---
+
+const triggerConfirm = (title, description, actionCallback) => {
+  alertDialogConfig.value = { title, description, action: actionCallback }
+  isAlertDialogOpen.value = true
+}
+
+const executeConfirmAction = () => {
+  if (alertDialogConfig.value.action) {
+    alertDialogConfig.value.action()
+  }
+  isAlertDialogOpen.value = false
+}
+
 const fetchDeliveries = async () => {
   try {
     const res = await api.get('/supplier-delivery')
@@ -351,17 +384,23 @@ const fetchDeliveries = async () => {
 }
 
 const startDelivery = async (id) => {
-  isProcessing.value = true
-  try {
-    await api.post(`/supplier-delivery/${id}/start`)
-    toast.success('Trip started!')
-    await fetchDeliveries()
-    focusDelivery(id)
-  } catch (error) {
-    toast.error('Failed to start delivery')
-  } finally {
-    isProcessing.value = false
-  }
+  triggerConfirm(
+    'Start Delivery Trip',
+    'Are you sure you want to start this delivery trip?',
+    async () => {
+      isProcessing.value = true
+      try {
+        await api.post(`/supplier-delivery/${id}/start`)
+        toast.success('Trip started!')
+        await fetchDeliveries()
+        focusDelivery(id)
+      } catch (error) {
+        toast.error('Failed to start delivery')
+      } finally {
+        isProcessing.value = false
+      }
+    }
+  )
 }
 
 const arriveAndComplete = async () => {
@@ -376,41 +415,48 @@ const arriveAndComplete = async () => {
     return
   }
 
-  isProcessing.value = true
-  const formData = new FormData()
-  formData.append('latitude', currentPosition.value.lat)
-  formData.append('longitude', currentPosition.value.lng)
-  formData.append('proof_image', arrivalProofFile.value)
-  
-  if (activeDelivery.value.paymentTerms === 'COD' && paymentProofFile.value) {
-    formData.append('payment_image', paymentProofFile.value)
-  }
+  triggerConfirm(
+    'Confirm Arrival',
+    'Are you sure you want to confirm arrival and completion of this delivery?',
+    async () => {
+      isProcessing.value = true
+      const formData = new FormData()
+      formData.append('latitude', currentPosition.value.lat)
+      formData.append('longitude', currentPosition.value.lng)
+      formData.append('proof_image', arrivalProofFile.value)
+      formData.append('bypass_location', bypassLocation.value ? 'true' : 'false')
+      
+      if (activeDelivery.value.paymentTerms === 'COD' && paymentProofFile.value) {
+        formData.append('payment_image', paymentProofFile.value)
+      }
 
-  try {
-    await api.post(`/supplier-delivery/${activeDelivery.value.id}/arrive`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    
-    if (activeDelivery.value.paymentTerms === 'COD') {
-       toast.success('Delivered! Please return to HQ to remit collected funds.')
-    } else {
-       toast.success('Delivery Completed Successfully!')
-       clearActiveDelivery()
-    }
+      try {
+        await api.post(`/supplier-delivery/${activeDelivery.value.id}/arrive`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        
+        if (activeDelivery.value.paymentTerms === 'COD') {
+           toast.success('Delivered! Please return to HQ to remit collected funds.')
+        } else {
+           toast.success('Delivery Completed Successfully!')
+           clearActiveDelivery()
+        }
 
-    removeProof()
-    removePayment()
-    await fetchDeliveries()
-    if (activeDeliveryId.value) focusDelivery(activeDeliveryId.value)
-  } catch (error) {
-    if(error.response && error.response.status === 400) {
-       toast.error(error.response.data.message || 'Distance validation failed.')
-    } else {
-       toast.error('Failed to complete delivery.')
+        removeProof()
+        removePayment()
+        await fetchDeliveries()
+        if (activeDeliveryId.value) focusDelivery(activeDeliveryId.value)
+      } catch (error) {
+        if(error.response && error.response.status === 400) {
+           toast.error(error.response.data.message || 'Distance validation failed.')
+        } else {
+           toast.error('Failed to complete delivery.')
+        }
+      } finally {
+        isProcessing.value = false
+      }
     }
-  } finally {
-    isProcessing.value = false
-  }
+  )
 }
 
 const remitAndComplete = async () => {
@@ -420,50 +466,63 @@ const remitAndComplete = async () => {
     return
   }
 
-  isProcessing.value = true
-  const formData = new FormData()
-  formData.append('latitude', currentPosition.value.lat)
-  formData.append('longitude', currentPosition.value.lng)
-  formData.append('remittance_image', remittanceProofFile.value)
+  triggerConfirm(
+    'Confirm Remittance',
+    'Are you sure you want to confirm turnover of remitted funds to HQ?',
+    async () => {
+      isProcessing.value = true
+      const formData = new FormData()
+      formData.append('latitude', currentPosition.value.lat)
+      formData.append('longitude', currentPosition.value.lng)
+      formData.append('remittance_image', remittanceProofFile.value)
+      formData.append('bypass_location', bypassLocation.value ? 'true' : 'false')
 
-  try {
-    await api.post(`/supplier-delivery/${activeDelivery.value.id}/remit`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    
-    toast.success('Funds successfully remitted. Delivery cycle complete!')
-    removeRemittance()
-    clearActiveDelivery()
-    await fetchDeliveries()
-  } catch (error) {
-    if(error.response && error.response.status === 400) {
-       toast.error(error.response.data.message || 'Distance validation failed.')
-    } else {
-       toast.error('Failed to remit funds.')
+      try {
+        await api.post(`/supplier-delivery/${activeDelivery.value.id}/remit`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        
+        toast.success('Funds successfully remitted. Delivery cycle complete!')
+        removeRemittance()
+        clearActiveDelivery()
+        await fetchDeliveries()
+      } catch (error) {
+        if(error.response && error.response.status === 400) {
+           toast.error(error.response.data.message || 'Distance validation failed.')
+        } else {
+           toast.error('Failed to remit funds.')
+        }
+      } finally {
+        isProcessing.value = false
+      }
     }
-  } finally {
-    isProcessing.value = false
-  }
+  )
 }
 
 const submitReject = async () => {
   if (!rejectReason.value.trim() || !activeDeliveryId.value) return
   
-  isProcessing.value = true
-  try {
-    await api.post(`/supplier-delivery/${activeDeliveryId.value}/reject`, {
-      reason: rejectReason.value
-    })
-    toast.success('Delivery rejected successfully')
-    showRejectForm.value = false
-    rejectReason.value = ''
-    clearActiveDelivery()
-    await fetchDeliveries()
-  } catch (error) {
-    toast.error(error.response?.data?.message || 'Failed to reject delivery')
-  } finally {
-    isProcessing.value = false
-  }
+  triggerConfirm(
+    'Reject Assignment',
+    'Are you sure you want to reject this assigned delivery? This action cannot be undone.',
+    async () => {
+      isProcessing.value = true
+      try {
+        await api.post(`/supplier-delivery/${activeDeliveryId.value}/reject`, {
+          reason: rejectReason.value
+        })
+        toast.success('Delivery rejected successfully')
+        showRejectForm.value = false
+        rejectReason.value = ''
+        clearActiveDelivery()
+        await fetchDeliveries()
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to reject delivery')
+      } finally {
+        isProcessing.value = false
+      }
+    }
+  )
 }
 
 // --- Helpers ---
@@ -474,7 +533,7 @@ const focusDelivery = (id) => {
   rejectReason.value = ''
   
   updateMapMarkers()
-  drawRoute(true) // Force draw the route when a delivery is focused
+  drawRoute(true) 
   
   nextTick(() => {
     const delivery = deliveries.value.find(d => d.id === id)
@@ -503,7 +562,7 @@ const clearActiveDelivery = () => {
   rejectReason.value = ''
   
   updateMapMarkers()
-  drawRoute(true) // Will erase the line
+  drawRoute(true) 
   
   if (leafletMap && currentPosition.value) {
      leafletMap.setView([currentPosition.value.lat, currentPosition.value.lng], 15)
@@ -564,6 +623,21 @@ onUnmounted(() => {
 <template>
   <div class="absolute inset-0 flex flex-col overflow-hidden bg-transparent text-gray-100 font-sans">
     
+    <AlertDialog :open="isAlertDialogOpen" @update:open="isAlertDialogOpen = $event">
+      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white shadow-2xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle class="text-xl font-bold text-gray-100">{{ alertDialogConfig.title }}</AlertDialogTitle>
+          <AlertDialogDescription class="text-gray-400">
+            {{ alertDialogConfig.description }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="isAlertDialogOpen = false" class="bg-transparent border-gray-700 text-white hover:bg-gray-800 transition-colors">Cancel</AlertDialogCancel>
+          <AlertDialogAction @click="executeConfirmAction" class="bg-blue-600 hover:bg-blue-700 text-white border-0 transition-colors">Confirm</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
       <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
         <div class="relative">
@@ -627,6 +701,19 @@ onUnmounted(() => {
         </div>
         
         <div class="pointer-events-auto flex flex-col gap-2 items-end">
+          
+          <Button 
+            @click="bypassLocation = !bypassLocation" 
+            size="sm" 
+            :variant="bypassLocation ? 'destructive' : 'outline'" 
+            class="bg-gray-900/90 backdrop-blur-md shadow-xl rounded-full px-3 mb-2 transition-all"
+            :class="bypassLocation ? 'border-red-500 text-white hover:bg-red-600' : 'border-gray-700 text-gray-400 hover:bg-gray-800'"
+          >
+            <Unlock class="w-4 h-4 mr-1.5" v-if="bypassLocation" />
+            <Lock class="w-4 h-4 mr-1.5" v-else />
+            {{ bypassLocation ? 'Bypass ON' : 'Bypass OFF' }}
+          </Button>
+
           <Button 
             @click="toggleDrawer" 
             size="icon" 
@@ -702,8 +789,9 @@ onUnmounted(() => {
                     <Badge v-if="activeDelivery.isReplacement" class="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30">Return Replacement</Badge>
                   </div>
                </div>
-               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
-                  {{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away
+               <Badge v-if="distanceToActive !== null" :class="isWithinRange || bypassLocation ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
+                  <span v-if="bypassLocation">Bypassed Validation</span>
+                  <span v-else>{{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away</span>
                </Badge>
             </div>
 
@@ -768,7 +856,7 @@ onUnmounted(() => {
 
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
                 
-                <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the destination to complete this delivery.</AlertDescription>
                 </Alert>
@@ -809,7 +897,7 @@ onUnmounted(() => {
 
                 <Button 
                   @click="arriveAndComplete" 
-                  :disabled="!isWithinRange || !arrivalProofFile || (activeDelivery.paymentTerms === 'COD' && !activeDelivery.isReplacement && !paymentProofFile) || isProcessing" 
+                  :disabled="(!isWithinRange && !bypassLocation) || !arrivalProofFile || (activeDelivery.paymentTerms === 'COD' && !activeDelivery.isReplacement && !paymentProofFile) || isProcessing" 
                   class="w-full bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >
@@ -820,7 +908,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="activeDelivery.status === 'remitting'" class="space-y-5 pt-2">
-                <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the HQ to remit funds.</AlertDescription>
                 </Alert>
@@ -844,7 +932,7 @@ onUnmounted(() => {
 
                 <Button 
                   @click="remitAndComplete" 
-                  :disabled="!isWithinRange || !remittanceProofFile || isProcessing" 
+                  :disabled="(!isWithinRange && !bypassLocation) || !remittanceProofFile || isProcessing" 
                   class="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >

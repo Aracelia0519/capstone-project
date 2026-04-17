@@ -197,8 +197,11 @@ class ECommerceDeliveryController extends Controller
 
         $request->validate($rules);
 
-        // Distance validation (Must be within 500 meters / 0.5km)
-        if ($targetLat && $targetLng) {
+        // Fetch bypass flag (default to false if not provided)
+        $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
+
+        // Distance validation (Must be within 500 meters / 0.5km unless bypassed)
+        if (!$bypassLocation && $targetLat && $targetLng) {
             $distance = $this->calculateDistance($request->latitude, $request->longitude, $targetLat, $targetLng);
             if ($distance > 0.5) { 
                 return response()->json(['message' => 'You are too far from the delivery address to complete this order. Distance: ' . round($distance * 1000) . ' meters'], 400);
@@ -258,6 +261,8 @@ class ECommerceDeliveryController extends Controller
             return response()->json(['message' => 'Delivery is not in remitting status.'], 400);
         }
 
+        $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
+
         // Validate proximity to Distributor HQ
         $user = $request->user();
         $employee = Employee::where('user_id', $user->id)->first();
@@ -266,7 +271,8 @@ class ECommerceDeliveryController extends Controller
         if ($distReq) {
             $distAddr = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
             
-            if ($distAddr && $distAddr->latitude && $distAddr->longitude) {
+            // Distance validation (Must be within 500 meters unless bypassed)
+            if (!$bypassLocation && $distAddr && $distAddr->latitude && $distAddr->longitude) {
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $distAddr->latitude, $distAddr->longitude);
                 if ($distance > 0.5) {
                     return response()->json(['message' => 'You are too far from the Distributor HQ to remit funds. Distance: ' . round($distance * 1000) . ' meters'], 400);

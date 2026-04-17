@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\OperationDistributor\PaymentManagementController;
 use App\Http\Controllers\Api\OperationDistributor\ReviewManagementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceOfferingController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceJobController;
+
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
@@ -350,10 +351,18 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SPReportController::class, 'getPerformanceData']);
             Route::post('/export', [\App\Http\Controllers\Api\ServiceProvider\SPReportController::class, 'exportReport']);
         });
+        
+        Route::get('/dashboard', [\App\Http\Controllers\Api\ServiceProvider\SPDashboardController::class, 'index']);
     });
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
+
+        Route::get('/paint-inventory', [\App\Http\Controllers\Api\Distributor\PaintInventoryController::class, 'index']);
+        Route::get('/orders-requests', [\App\Http\Controllers\Api\Distributor\OrderRequestController::class, 'index']);
+
+        Route::post('/dashboard/deposit', [\App\Http\Controllers\Api\Distributor\DistributorDashboardController::class, 'depositFunds']);
+        Route::post('/dashboard/deposit/verify', [\App\Http\Controllers\Api\Distributor\DistributorDashboardController::class, 'verifyDeposit']);
         
 
         Route::prefix('procurement-approvals')->group(function () {
@@ -475,6 +484,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\ProductDeploymentController::class, 'reject']);
         });
 
+        Route::get('/combined-reports', [\App\Http\Controllers\Api\Distributor\DistributorReportController::class, 'getCombinedReports']);
+        Route::get('/combined-dashboard', [\App\Http\Controllers\Api\Distributor\DistributorDashboardController::class, 'getDashboardData']);
+
         
     });
 
@@ -549,6 +561,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports', [\App\Http\Controllers\Api\HR\HRReportController::class, 'getReportData']);
     });
 
+    Route::get('/hr/dashboard', [\App\Http\Controllers\Api\HR\HRDashboardController::class, 'index']);
+
+
     // Procurement Requests Routes
     Route::prefix('procurement')->group(function () {
         Route::get('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'index']);
@@ -605,6 +620,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Finance Reports
         Route::get('/reports', [\App\Http\Controllers\Api\Finance\FinanceReportController::class, 'getDashboardData']);
+        Route::get('/dashboard', [\App\Http\Controllers\Api\Finance\FinanceDashboardController::class, 'getDashboardData']);
     });
 
     // Employee Individual Routes

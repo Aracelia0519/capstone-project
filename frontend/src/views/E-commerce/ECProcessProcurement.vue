@@ -1,37 +1,6 @@
 <template>
   <div class="procurement-fulfillment min-h-screen p-4 md:p-6 text-gray-100">
-    <Teleport to="body">
-      <Toaster
-        position="top-right"
-        :expand="false"
-        :rich-colors="false"
-        :close-button="true"
-        :theme="'light'"
-        :visible-toasts="1"
-        :container-style="{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 9999999,
-          pointerEvents: 'none',
-        }"
-        :toast-options="{
-          style: {
-            background: 'white',
-            color: 'black',
-            border: 'none',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',          
-            fontSize: '15px',              
-            minWidth: '280px',             
-            maxWidth: '400px',
-            borderRadius: '10px',          
-            pointerEvents: 'auto',
-          },
-        }"
-      />
-    </Teleport>
+    
     
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">

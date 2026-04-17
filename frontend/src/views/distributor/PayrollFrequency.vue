@@ -318,66 +318,7 @@ onMounted(() => {
       </CardContent>
     </Card>
 
-    <Card>
-        <CardHeader>
-            <div class="flex items-center gap-2">
-                <div class="p-2 bg-destructive/10 rounded-full">
-                    <Clock class="w-5 h-5 text-destructive" />
-                </div>
-                <div>
-                    <CardTitle>Late Deduction Policy</CardTitle>
-                    <CardDescription>
-                        Set how deductions apply when an employee clocks in late.
-                    </CardDescription>
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent class="space-y-6">
-            <template v-if="!isLoading">
-                <RadioGroup v-model="latePolicy" class="space-y-4">
-                    
-                    <div class="flex items-start space-x-2">
-                        <RadioGroupItem id="none" value="none" class="mt-1" />
-                        <div class="grid gap-1.5">
-                            <Label for="none" class="font-semibold cursor-pointer">No Deduction</Label>
-                            <p class="text-sm text-muted-foreground">Employees are not penalized for being late.</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-2">
-                        <RadioGroupItem id="prorated" value="prorated" class="mt-1" />
-                        <div class="grid gap-1.5 w-full">
-                            <Label for="prorated" class="font-semibold cursor-pointer">Prorated per Minute</Label>
-                            <p class="text-sm text-muted-foreground">Deduct a specific amount for every minute late.</p>
-                            
-                            <div v-if="latePolicy === 'prorated'" class="mt-2 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                                <span class="text-sm font-medium">₱</span>
-                                <Input type="number" v-model="lateAmount" placeholder="Amount (e.g. 2.00)" class="w-32" min="0" step="0.01" />
-                                <span class="text-sm text-muted-foreground">per minute</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-2">
-                        <RadioGroupItem id="fixed" value="fixed_block" class="mt-1" />
-                        <div class="grid gap-1.5 w-full">
-                            <Label for="fixed" class="font-semibold cursor-pointer">Fixed Amount per Time Block</Label>
-                            <p class="text-sm text-muted-foreground">Deduct a fixed amount for every X minutes (e.g., ₱50 per 15 mins).</p>
-                            
-                            <div v-if="latePolicy === 'fixed_block'" class="mt-2 flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                                <span class="text-sm font-medium">Deduct ₱</span>
-                                <Input type="number" v-model="lateAmount" placeholder="50.00" class="w-24" min="0" step="0.01" />
-                                <span class="text-sm font-medium">for every</span>
-                                <Input type="number" v-model="lateMinutes" placeholder="15" class="w-20" min="1" />
-                                <span class="text-sm text-muted-foreground">minutes late</span>
-                            </div>
-                        </div>
-                    </div>
-
-                </RadioGroup>
-            </template>
-        </CardContent>
-    </Card>
+    
 
     <div class="flex flex-col gap-4">
         <Alert class="bg-muted/50 border-primary/20">

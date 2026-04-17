@@ -240,20 +240,10 @@ class ProductController extends Controller
                 ], 404);
             }
 
+            // Stripped down validation to only check price and image as requested
             $validator = Validator::make($request->all(), [
-                'category' => 'sometimes|required|string|max:255',
-                'type' => 'sometimes|required|string|max:255',
-                'name' => 'sometimes|required|string|max:255',
-                'sku_code' => 'nullable|string|max:100|unique:distributor_products,sku_code,' . $id,
-                'size' => 'sometimes|required|string|max:100',
-                'color_code' => 'nullable|string|max:50',
                 'price' => 'sometimes|required|numeric|min:0',
-                'cost' => 'nullable|numeric|min:0',
-                'min_stock_level' => 'nullable|integer|min:0',
-                'max_stock_level' => 'nullable|integer|min:0',
-                'description' => 'nullable|string',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-                'is_active' => 'sometimes|boolean'
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
             ], [
                 'image.image' => 'The file must be an image.',
                 'image.mimes' => 'Only JPG, PNG, GIF, and WebP images are allowed.',
@@ -296,9 +286,10 @@ class ProductController extends Controller
                 $product->image_url = $path;
             }
 
-            // Update other fields
-            $updateData = $request->except('image');
-            if (isset($updateData['image_url']) && $updateData['image_url'] === null) {
+            // Update only permitted fields (price)
+            $updateData = $request->only(['price']);
+            
+            if (isset($request->image_url) && $request->image_url === null) {
                 // Handle image removal if image_url is explicitly set to null
                 if ($product->image_url) {
                     $oldPath = ltrim($product->image_url, '/');
@@ -307,7 +298,6 @@ class ProductController extends Controller
                     }
                 }
                 $product->image_url = null;
-                unset($updateData['image_url']);
             }
             
             $product->update($updateData);

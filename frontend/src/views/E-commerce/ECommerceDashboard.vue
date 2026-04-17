@@ -29,8 +29,8 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-300">Total Revenue</p>
-              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">₱{{ stats.totalRevenue }}</h3>
+              <p class="text-sm text-gray-300">Total Sales</p>
+              <h3 class="text-2xl md:text-3xl font-bold text-white mt-1">₱{{ stats.totalSales }}</h3>
             </div>
             <div class="p-3 rounded-xl bg-emerald-500/30">
               <svg class="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +39,7 @@
             </div>
           </div>
           <div class="mt-4 pt-4 border-t border-white/10">
-            <p class="text-xs text-gray-400">From completed deliveries</p>
+            <p class="text-xs text-gray-400">From all valid orders</p>
           </div>
         </CardContent>
       </Card>
@@ -254,7 +254,7 @@ import {
 // Reactive state to hold data from the backend
 const stats = ref({
   totalOrders: 0,
-  totalRevenue: '0.00',
+  totalSales: '0.00',
   pendingOrders: 0,
   completedOrders: 0
 })
@@ -265,10 +265,8 @@ const recentTransactions = ref([])
 const bestSellingProducts = ref([])
 
 // Fetch the Dashboard Data
-// Fetch the Dashboard Data
 const fetchDashboardData = async () => {
   try {
-    // ADDED the /operation-distributor/ prefix back here!
     const response = await api.get('/operation-distributor/ecommerce-dashboard')
     
     // Bind backend data directly to refs

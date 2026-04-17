@@ -35,7 +35,9 @@ import {
   UploadCloud,
   Menu,
   Info,
-  Ban
+  Ban,
+  Unlock, // Added for bypass toggle
+  Lock    // Added for bypass toggle
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -74,6 +76,9 @@ const currentPosition = ref<{ lat: number; lng: number } | null>(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
 const isDrawerOpen = ref(true)
+
+// Presentation Bypass State
+const bypassLocation = ref(false)
 
 // Reject State
 const showRejectForm = ref(false)
@@ -406,6 +411,7 @@ const arriveAndComplete = async () => {
   formData.append('latitude', currentPosition.value.lat.toString())
   formData.append('longitude', currentPosition.value.lng.toString())
   formData.append('proof_file', proofFile.value)
+  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') // Added Bypass flag
   
   if (activeDelivery.value.payment_method.toLowerCase() === 'cod' && paymentFile.value) {
     formData.append('payment_file', paymentFile.value)
@@ -450,6 +456,7 @@ const remitAndComplete = async () => {
   formData.append('latitude', currentPosition.value.lat.toString())
   formData.append('longitude', currentPosition.value.lng.toString())
   formData.append('remittance_file', remittanceFile.value)
+  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') // Added Bypass flag
 
   try {
     await api.post(`/distributor-delivery/${activeDelivery.value.id}/remit`, formData, {
@@ -653,6 +660,18 @@ onUnmounted(() => {
         
         <div class="pointer-events-auto flex flex-col gap-2 items-end">
           <Button 
+            @click="bypassLocation = !bypassLocation" 
+            size="sm" 
+            :variant="bypassLocation ? 'destructive' : 'outline'" 
+            class="bg-gray-900/90 backdrop-blur-md shadow-xl rounded-full px-3 mb-2 transition-all"
+            :class="bypassLocation ? 'border-red-500 text-white hover:bg-red-600' : 'border-gray-700 text-gray-400 hover:bg-gray-800'"
+          >
+            <Unlock class="w-4 h-4 mr-1.5" v-if="bypassLocation" />
+            <Lock class="w-4 h-4 mr-1.5" v-else />
+            {{ bypassLocation ? 'Bypass ON' : 'Bypass OFF' }}
+          </Button>
+
+          <Button 
             @click="toggleDrawer" 
             size="icon" 
             variant="outline" 
@@ -727,8 +746,9 @@ onUnmounted(() => {
                     <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.order_number }}</p>
                   </div>
                </div>
-               <Badge v-if="distanceToActive !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
-                  {{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away
+               <Badge v-if="distanceToActive !== null" :class="isWithinRange || bypassLocation ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 mt-1">
+                  <span v-if="bypassLocation">Bypassed Validation</span>
+                  <span v-else>{{ distanceToActive < 1000 ? Math.round(distanceToActive) + 'm' : (distanceToActive/1000).toFixed(1) + 'km' }} away</span>
                </Badge>
             </div>
 
@@ -793,7 +813,7 @@ onUnmounted(() => {
 
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
                 
-                <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the destination to complete this delivery.</AlertDescription>
                 </Alert>
@@ -834,7 +854,7 @@ onUnmounted(() => {
 
                 <Button 
                   @click="arriveAndComplete" 
-                  :disabled="!isWithinRange || !proofFile || (activeDelivery.payment_method.toLowerCase() === 'cod' && !paymentFile) || isProcessing" 
+                  :disabled="(!isWithinRange && !bypassLocation) || !proofFile || (activeDelivery.payment_method.toLowerCase() === 'cod' && !paymentFile) || isProcessing" 
                   class="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >
@@ -845,7 +865,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="activeDelivery.status === 'remitting'" class="space-y-5 pt-2">
-                <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the HQ to remit funds.</AlertDescription>
                 </Alert>
@@ -869,7 +889,7 @@ onUnmounted(() => {
 
                 <Button 
                   @click="remitAndComplete" 
-                  :disabled="!isWithinRange || !remittanceFile || isProcessing" 
+                  :disabled="(!isWithinRange && !bypassLocation) || !remittanceFile || isProcessing" 
                   class="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >

@@ -76,7 +76,7 @@
 
     <div class="mb-8">
       <h2 class="text-lg font-bold text-gray-900 mb-4">Core Financial Overview</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         
         <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-5 shadow-sm text-white">
           <div class="flex items-center justify-between mb-4">
@@ -98,17 +98,6 @@
           </div>
           <div class="text-2xl md:text-3xl font-bold truncate" :title="'₱' + formatNumber(reportData.totalSales)">₱{{ formatNumber(reportData.totalSales) }}</div>
           <div class="text-xs opacity-80 mt-2">Client & SP Orders during selected period</div>
-        </div>
-
-        <div class="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-5 shadow-sm text-white">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-medium opacity-90 text-sm">Period Net Cash Flow</h3>
-            <svg class="w-6 h-6 opacity-75 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div class="text-2xl md:text-3xl font-bold truncate" :title="'₱' + formatNumber(reportData.netPeriodCashFlow)">₱{{ formatNumber(reportData.netPeriodCashFlow) }}</div>
-          <div class="text-xs opacity-80 mt-2">Sales minus VAT, Procurement, Refunds, & Payroll</div>
         </div>
 
       </div>
@@ -435,7 +424,6 @@ const reportData = ref({
   procurementBudgetReleased: 0,
   refundsProcessed: 0,
   totalPayrollDisbursed: 0,
-  netPeriodCashFlow: 0,
   
   // Data Tables Arrays
   salesTransactions: [],
@@ -512,8 +500,7 @@ const exportCSV = () => {
     csvContent += `Period VAT Deductions,${reportData.value.totalVat}\n`
     csvContent += `Procurement Expenditures (From Requests),${reportData.value.procurementBudgetReleased}\n`
     csvContent += `Payroll Disbursed,${reportData.value.totalPayrollDisbursed}\n`
-    csvContent += `Refunds Processed,${reportData.value.refundsProcessed}\n`
-    csvContent += `Period Net Cash Flow,${reportData.value.netPeriodCashFlow}\n\n`
+    csvContent += `Refunds Processed,${reportData.value.refundsProcessed}\n\n`
   }
 
   // 2. Sales Transactions

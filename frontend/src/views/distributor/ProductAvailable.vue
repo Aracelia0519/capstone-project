@@ -128,32 +128,6 @@
             </Button>
           </CardContent>
         </Card>
-        
-        <Card class="bg-blue-600 text-white border-none shadow-md overflow-hidden relative">
-          <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-          <CardHeader class="pb-2">
-            <CardTitle class="flex items-center gap-2 text-white">
-              <Settings class="w-4 h-4" />
-              Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-3">
-            <Button 
-              variant="secondary" 
-              class="w-full bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-sm border-none"
-              @click="openAddModal"
-            >
-              Add New Product
-            </Button>
-            <Button 
-              variant="ghost" 
-              class="w-full text-blue-100 hover:text-white hover:bg-blue-500"
-              @click="exportCatalog"
-            >
-              Export Catalog
-            </Button>
-          </CardContent>
-        </Card>
       </aside>
 
       <div class="col-span-1 lg:col-span-9 space-y-6">
@@ -177,7 +151,16 @@
             Available Products 
             <Badge variant="secondary" class="ml-1">{{ filteredProducts.length }}</Badge>
           </h2>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              class="hidden sm:flex items-center gap-2 text-slate-600 hover:bg-slate-50 border-slate-200"
+              @click="exportCatalog"
+            >
+              Export Catalog
+            </Button>
+            <Separator orientation="vertical" class="h-6 hidden sm:block bg-slate-200" />
             <span class="text-sm text-slate-500 whitespace-nowrap">Sort by:</span>
             <Select v-model="sortOption">
               <SelectTrigger class="w-[180px]">
@@ -269,21 +252,11 @@
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600"
+                  class="flex-1 w-full border-slate-200 hover:bg-slate-50 hover:text-blue-600"
                   @click="editProduct(product)"
                 >
                   <Pencil class="w-3.5 h-3.5 mr-2" />
                   Edit
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  class="flex-1 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                  @click="deleteProduct(product.id)"
-                >
-                  <Trash2 class="w-3.5 h-3.5 mr-2" />
-                  Delete
                 </Button>
               </div>
             </div>
@@ -306,10 +279,9 @@
         <DialogHeader class="p-6 pb-2">
           <DialogTitle class="flex items-center gap-2 text-xl">
             <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
-              <PackagePlus v-if="!isEditing" class="w-5 h-5" />
-              <Pencil v-else class="w-5 h-5" />
+              <Pencil class="w-5 h-5" />
             </div>
-            {{ isEditing ? 'Edit Product' : 'Add New Product' }}
+            Edit Product
           </DialogTitle>
         </DialogHeader>
         
@@ -356,8 +328,8 @@
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="category" class="text-slate-700">Category <span class="text-red-500">*</span></Label>
-                  <Select v-model="newProduct.category" @update:modelValue="onCategoryChange">
-                    <SelectTrigger id="category" :class="{'border-red-300': !newProduct.category && showValidation}">
+                  <Select v-model="newProduct.category" :disabled="true">
+                    <SelectTrigger id="category" class="bg-slate-50 text-slate-500">
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
                     <SelectContent class="max-h-[300px]">
@@ -373,8 +345,8 @@
 
                 <div class="space-y-2">
                   <Label for="type" class="text-slate-700">Type <span class="text-red-500">*</span></Label>
-                  <Select v-model="newProduct.type" :disabled="!newProduct.category">
-                    <SelectTrigger id="type" :class="{'border-red-300': !newProduct.type && showValidation}">
+                  <Select v-model="newProduct.type" :disabled="true">
+                    <SelectTrigger id="type" class="bg-slate-50 text-slate-500">
                       <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
                     <SelectContent class="max-h-[300px]">
@@ -391,21 +363,21 @@
                 <Input 
                   id="name" 
                   v-model="newProduct.name" 
-                  placeholder="e.g. Premium Interior Latex" 
-                  :class="{'border-red-300': !newProduct.name && showValidation}"
+                  disabled
+                  class="bg-slate-50 text-slate-500"
                 />
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="sku" class="text-slate-700">SKU Code</Label>
-                  <Input id="sku" v-model="newProduct.sku_code" placeholder="Optional" />
+                  <Input id="sku" v-model="newProduct.sku_code" disabled class="bg-slate-50 text-slate-500" />
                 </div>
 
                 <div class="space-y-2">
                   <Label for="size" class="text-slate-700">Size <span class="text-red-500">*</span></Label>
-                  <Select v-model="newProduct.size">
-                    <SelectTrigger id="size" :class="{'border-red-300': !newProduct.size && showValidation}">
+                  <Select v-model="newProduct.size" :disabled="true">
+                    <SelectTrigger id="size" class="bg-slate-50 text-slate-500">
                       <SelectValue placeholder="Select Size" />
                     </SelectTrigger>
                     <SelectContent class="max-h-[300px]">
@@ -424,8 +396,8 @@
                   <Input 
                     id="color_code" 
                     v-model="newProduct.color_code" 
-                    placeholder="#FFFFFF" 
-                    class="font-mono"
+                    disabled
+                    class="font-mono bg-slate-50 text-slate-500"
                   />
                   <div 
                     class="w-10 h-10 rounded border border-slate-200 shadow-sm shrink-0"
@@ -438,7 +410,7 @@
             <div v-else-if="currentStep === 2" class="space-y-4">
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                  <Label for="price" class="text-slate-700">Selling Price (₱) <span class="text-red-500">*</span></Label>
+                  <Label for="price" class="text-slate-700 font-bold text-blue-600">Selling Price (₱) <span class="text-red-500">*</span></Label>
                   <Input 
                     id="price" 
                     type="number" 
@@ -448,6 +420,7 @@
                     step="0.01"
                     :class="{'border-red-300': !newProduct.price && showValidation}"
                   />
+                  <p class="text-xs text-slate-500 mt-1">This value is editable.</p>
                 </div>
                 <div class="space-y-2">
                   <Label for="cost" class="text-slate-700">Cost Price (₱)</Label>
@@ -455,9 +428,8 @@
                     id="cost" 
                     type="number" 
                     v-model="newProduct.cost" 
-                    placeholder="0.00" 
-                    min="0" 
-                    step="0.01"
+                    disabled
+                    class="bg-slate-50 text-slate-500"
                   />
                 </div>
               </div>
@@ -465,11 +437,11 @@
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="min_stock" class="text-slate-700">Min Stock Level</Label>
-                  <Input id="min_stock" type="number" v-model="newProduct.min_stock_level" />
+                  <Input id="min_stock" type="number" v-model="newProduct.min_stock_level" disabled class="bg-slate-50 text-slate-500" />
                 </div>
                 <div class="space-y-2">
                   <Label for="max_stock" class="text-slate-700">Max Stock Level</Label>
-                  <Input id="max_stock" type="number" v-model="newProduct.max_stock_level" />
+                  <Input id="max_stock" type="number" v-model="newProduct.max_stock_level" disabled class="bg-slate-50 text-slate-500" />
                 </div>
               </div>
 
@@ -478,15 +450,15 @@
                 <Textarea 
                   id="description" 
                   v-model="newProduct.description" 
-                  placeholder="Describe the product details..." 
-                  class="resize-none h-32" 
+                  disabled
+                  class="resize-none h-32 bg-slate-50 text-slate-500" 
                 />
               </div>
             </div>
 
             <div v-else-if="currentStep === 3" class="space-y-6">
               <div class="space-y-2">
-                <Label class="text-slate-700">Product Image</Label>
+                <Label class="text-slate-700 font-bold text-blue-600">Product Image</Label>
                 <div 
                   @click="triggerFileInput"
                   @dragover.prevent 
@@ -526,7 +498,7 @@
               <div class="bg-blue-50 p-4 rounded-lg flex items-start gap-3">
                 <Info class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <p class="text-sm text-blue-700 leading-relaxed">
-                  Images help your dealers identify products quickly. If you don't upload one, we'll generate a placeholder based on the product's color or category.
+                  Images help your dealers identify products quickly. This field is editable.
                 </p>
               </div>
             </div>
@@ -561,7 +533,7 @@
               <div class="p-4 rounded-lg bg-blue-50 border border-blue-100">
                 <p class="text-sm text-blue-800 text-center">
                   Almost done! Please verify the information above before clicking 
-                  <strong>{{ isEditing ? 'Update Product' : 'Add Product' }}</strong>.
+                  <strong>Update Product</strong>.
                 </p>
               </div>
             </div>
@@ -596,7 +568,7 @@
             class="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
           >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
-            {{ isEditing ? 'Update Product' : 'Add Product' }}
+            Update Product
           </Button>
         </div>
       </DialogContent>
@@ -657,7 +629,7 @@ import {
   SearchX, PackagePlus, Check, ChevronLeft, ChevronRight, 
   Loader2, UploadCloud, X, Info, ClipboardCheck 
 } from 'lucide-vue-next';
-import api from '@/utils/axios'; // Make sure this path exists in your project
+import api from '@/utils/axios';
 
 // Shadcn Components
 import { Button } from '@/components/ui/button';
@@ -843,7 +815,6 @@ const sortedProducts = computed(() => {
   if (sortOption.value === 'name') return res.sort((a,b) => a.name.localeCompare(b.name));
   if (sortOption.value === 'price_low') return res.sort((a,b) => (a.price || 0) - (b.price || 0));
   if (sortOption.value === 'price_high') return res.sort((a,b) => (b.price || 0) - (a.price || 0));
-  // newest (by ID desc)
   return res.sort((a,b) => (b.id || 0) - (a.id || 0));
 });
 
@@ -860,7 +831,7 @@ const sizeOptions = computed(() => {
   if (c.includes('Tools') || c.includes('Safety') || c.includes('Preparation')) return sizesByCat.tool; 
   if (c.includes('Packaging')) return sizesByCat.packaging;
   if (c.includes('Surface')) return sizesByCat.sandpaper;
-  return sizesByCat.paint; // Fallback
+  return sizesByCat.paint;
 });
 
 const showColorField = computed(() => {
@@ -884,7 +855,6 @@ const loadProducts = async () => {
     }
     updateCategoryCounts();
   } catch (error) {
-    // Fallback to sample data for demo purposes or error state
     loadSampleData();
   }
 };
@@ -929,13 +899,6 @@ const clearFilters = () => {
   searchQuery.value = '';
 };
 
-// Wizard / Modal Logic
-const openAddModal = () => {
-  resetForm();
-  isEditing.value = false;
-  showAddModal.value = true;
-};
-
 const closeModal = (val) => {
   if (val === false) {
     showAddModal.value = false;
@@ -969,7 +932,6 @@ const validateStep = () => {
   if (currentStep.value === 2) {
     if (!newProduct.price || parseFloat(newProduct.price) <= 0) return false;
   }
-  // Step 3 (Image) is optional
   showValidation.value = false;
   return true;
 };
@@ -1017,6 +979,8 @@ const removeImage = () => {
 };
 
 // CRUD Operations
+// ProductAvailable.vue (inside the <script setup>)
+
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
@@ -1034,9 +998,14 @@ const handleSubmit = async () => {
     }
     
     if (isEditing.value) {
-      const response = await api.put(`/distributor/products/${editingId.value}`, formData, {
+      // FIX: Append _method = PUT and send as a POST request
+      // Laravel cannot read multipart/form-data via standard PUT requests
+      formData.append('_method', 'PUT');
+
+      const response = await api.post(`/distributor/products/${editingId.value}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      
       if (response.data && response.data.success) {
         const index = products.value.findIndex(p => p.id === editingId.value);
         if (index !== -1) {
@@ -1075,23 +1044,6 @@ const editProduct = (product) => {
   imagePreview.value = product.image_url || '';
   currentStep.value = 1;
   showAddModal.value = true;
-};
-
-const deleteProduct = async (id) => {
-  if (!confirm('Are you sure you want to delete this product?')) return;
-  
-  try {
-    const response = await api.delete(`/distributor/products/${id}`);
-    if (response.data && response.data.success) {
-      products.value = products.value.filter(p => p.id !== id);
-      updateCategoryCounts();
-      toast.success('Product deleted');
-    } else {
-      toast.error('Failed to delete product');
-    }
-  } catch (e) {
-    toast.error('Error deleting product');
-  }
 };
 
 // Helpers

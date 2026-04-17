@@ -136,7 +136,7 @@
             You are about to <strong>{{ actionType.toLowerCase() }}</strong> the deployment request 
             <span class="font-semibold text-foreground">REQ-{{ selectedRequest?.id }}</span> 
             for {{ selectedRequest?.productName }}.
-            <span v-if="actionType === 'Deploy'">This will make the product live on the e-commerce store.</span>
+            <span v-if="actionType === 'Deploy'">This will apply a <strong>{{ markupPercentage }}% markup</strong> and make the product live on the e-commerce store.</span>
             <span v-if="actionType === 'Reject'">This will remove it from deployment consideration.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -189,14 +189,33 @@
                 <span class="text-muted-foreground block text-xs">Size</span>
                 <span class="font-medium">{{ viewedRequest.raw?.product?.size || 'N/A' }}</span>
               </div>
-              <div>
+              <div class="col-span-2">
                 <span class="text-muted-foreground block text-xs">Inventory Quantity</span>
                 <span class="font-medium">{{ viewedRequest.quantity }} units</span>
               </div>
+              
               <div>
-                <span class="text-muted-foreground block text-xs">Selling Price</span>
-                <span class="font-medium text-green-600">₱{{ viewedRequest.raw?.product?.price || '0.00' }}</span>
+                <span class="text-muted-foreground block text-xs">Supplier Cost</span>
+                <span class="font-medium text-gray-600">₱{{ Number(viewedRequest.raw?.product?.original_cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
               </div>
+              
+              <div v-if="viewedRequest.status === 'Pending'">
+                <span class="text-muted-foreground block text-xs">Interest / Markup (%)</span>
+                <div class="flex items-center gap-2 mt-1">
+                  <Input type="number" v-model="markupPercentage" min="0" class="h-8 w-24" />
+                  <span class="text-xs text-muted-foreground">%</span>
+                </div>
+              </div>
+
+              <div :class="viewedRequest.status === 'Pending' ? 'col-span-2' : ''">
+                <span class="text-muted-foreground block text-xs">
+                   {{ viewedRequest.status === 'Pending' ? `Projected Price (Incl. ${markupPercentage}%)` : 'Final Selling Price' }}
+                </span>
+                <span class="font-medium text-green-600 text-lg">
+                  ₱{{ viewedRequest.status === 'Pending' ? calculateProjectedPrice(viewedRequest.raw?.product?.original_cost, markupPercentage) : Number(viewedRequest.raw?.product?.projected_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+                </span>
+              </div>
+              
               <div class="col-span-2 border-t pt-2 mt-2">
                 <span class="text-muted-foreground block text-xs">Requested By (Distributor)</span>
                 <span class="font-medium">{{ viewedRequest.distributor }}</span>
@@ -273,6 +292,17 @@ const isLoading = ref(true)
 const isProcessing = ref(false)
 const requests = ref([])
 
+// Dynamic Markup State
+const markupPercentage = ref(30)
+
+// Helper to calculate the projected price dynamically on the frontend
+const calculateProjectedPrice = (cost, markup) => {
+  const numCost = Number(cost) || 0
+  const numMarkup = Number(markup) || 0
+  const projected = numCost * (1 + (numMarkup / 100))
+  return projected.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+}
+
 // Fetch data from backend
 const fetchRequests = async () => {
   isLoading.value = true
@@ -338,6 +368,8 @@ const viewedRequest = ref(null)
 
 const openViewDialog = (request) => {
   viewedRequest.value = request
+  // Reset markup to 30 when opening a new dialog
+  markupPercentage.value = 30 
   isViewDialogOpen.value = true
 }
 
@@ -372,9 +404,12 @@ const executeAction = async () => {
 
   const targetId = selectedRequest.value.id
   const actionEndpoint = actionType.value === 'Deploy' ? 'deploy' : 'reject'
+  
+  // Attach the selected markup percentage to the payload
+  const payload = actionType.value === 'Deploy' ? { markup_percentage: markupPercentage.value } : {}
 
   try {
-    const response = await api.post(`/distributor/deployments/${targetId}/${actionEndpoint}`)
+    const response = await api.post(`/distributor/deployments/${targetId}/${actionEndpoint}`, payload)
     
     if (response.data.success) {
       if (actionType.value === 'Deploy') {
