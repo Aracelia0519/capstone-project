@@ -389,9 +389,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue' // <--- ADDED onUnmounted IMPORT
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
+import echo from '@/utils/websocket.js' // <--- IMPORTED YOUR WEBSOCKET FILE (Adjust path if needed)
+
 const searchQuery = ref('')
 const selectedStatus = ref('')
 const selectedPriority = ref('')
@@ -431,6 +433,9 @@ const requestForm = ref({
   instructions: '',
   required_by_date: ''
 })
+
+// WebSockets State
+const activeChannel = ref(null) // <--- ADDED FOR WEBSOCKET TRACKING
 
 // Supplier Settings Computed
 const selectedSupplierSettings = computed(() => {
@@ -496,9 +501,28 @@ const prevStep = () => {
   if (currentStep.value > 1) currentStep.value--
 }
 
-const fetchRequests = async () => {
+// ------------------------------------------------------------------
+// WEBSOCKET INITIALIZATION FUNCTION
+// ------------------------------------------------------------------
+const setupWebsocket = (distributorId) => {
+  if (activeChannel.value) return; // Prevent duplicate subscriptions
+
+  let channelName = distributorId === null ? 'admin.procurement' : `distributor.${distributorId}.procurement`;
+  activeChannel.value = channelName;
+
+  echo.private(channelName)
+    .listen('.procurement.created', (e) => {
+        showToast('A new procurement request has been detected!', 'info');
+        // Refresh the table and statistics silently behind the scenes
+        fetchRequests(true); // pass true if you want to skip the main loading spinner
+        fetchStatistics();
+    });
+}
+// ------------------------------------------------------------------
+
+const fetchRequests = async (silent = false) => {
   try {
-    loading.value = true
+    if (!silent) loading.value = true
     error.value = ''
     
     const params = { 
@@ -518,6 +542,11 @@ const fetchRequests = async () => {
       
       if (response.data.permissions) {
           permissions.value = response.data.permissions
+      }
+
+      // Automatically setup WebSockets using the returned distributor scope
+      if (!activeChannel.value) {
+          setupWebsocket(response.data.distributor_id);
       }
     }
   } catch (err) {
@@ -712,6 +741,13 @@ onMounted(() => {
   fetchRequests()
   fetchStatistics()
   debouncedFetchRequests = debounce(fetchRequests, 500)
+})
+
+// Unsubscribe from WebSocket when the component unmounts
+onUnmounted(() => {
+  if (activeChannel.value) {
+    echo.leave(activeChannel.value);
+  }
 })
 </script>
 

@@ -330,9 +330,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js'
 import { 
   RefreshCw, MapPin, AlertCircle, Building2,
   FileText, Clock, CheckCircle2, Wallet, Coins, ShoppingCart, CreditCard,
@@ -362,6 +363,7 @@ const route = useRoute()
 
 // State
 const loading = ref(false)
+const activeChannel = ref(null)
 const isProcessing = ref(false)
 const requests = ref([])
 const availableBudget = ref(0)
@@ -427,9 +429,26 @@ const sortedRequests = computed(() => {
   });
 });
 
+// WebSocket Initialization
+const setupWebsocket = (distributorId) => {
+  if (activeChannel.value) return; 
+
+  let channelName = distributorId === null ? 'admin.procurement' : `distributor.${distributorId}.procurement`;
+  activeChannel.value = channelName;
+
+  echo.private(channelName)
+    .listen('.procurement.created', (e) => {
+        fetchRequests(true); 
+    })
+    .listen('.procurement.updated', (e) => {
+        toast.info('Procurement status updated!', { description: 'Syncing latest records.' });
+        fetchRequests(true); 
+    });
+};
+
 // Fetch API
-const fetchRequests = async () => {
-  loading.value = true
+const fetchRequests = async (silent = false) => {
+  if (!silent) loading.value = true
   try {
     const response = await api.get('/finance/budget-release')
     
@@ -444,6 +463,10 @@ const fetchRequests = async () => {
       // Load available budget returned from the new backend query
       if (response.data.available_budget !== undefined) {
         availableBudget.value = response.data.available_budget
+      }
+
+      if (response.data.distributor_id !== undefined && !activeChannel.value) {
+        setupWebsocket(response.data.distributor_id)
       }
     } else {
       requests.value = response.data // Fallback in case of old endpoint signature
@@ -469,6 +492,7 @@ const verifyGcashPayment = async (requestCode) => {
   await new Promise(resolve => setTimeout(resolve, 2500));
   
   try {
+    // <--- EXACT FIX: Corrected API endpoint to match api.php --->
     const response = await api.post('/finance/budget-release/verify-gcash', { request_code: requestCode })
     if (response.data.success) {
       toast.success('Payment Confirmed!', { description: 'Budget released successfully.' })
@@ -487,6 +511,12 @@ onMounted(() => {
     verifyGcashPayment(route.query.request_code)
   } else {
     fetchRequests()
+  }
+})
+
+onUnmounted(() => {
+  if (activeChannel.value) {
+    echo.leave(activeChannel.value);
   }
 })
 
@@ -585,7 +615,7 @@ const markAsApproved = async () => {
         }, 1500)
     } else {
         selectedRequest.value.status = 'ready'
-        fetchRequests() // Refresh list in background
+        fetchRequests(true) // Refresh list in background
         toast.success(`Funds released! Request ${selectedRequest.value.id} is now Ready.`)
         setTimeout(closeModal, 1500) 
         alertOpen.value = false
@@ -621,7 +651,7 @@ const confirmReject = async () => {
     toast.promise(requestPromise, {
       loading: 'Rejecting request and sending emails... Please wait.',
       success: () => {
-        fetchRequests()
+        fetchRequests(true)
         closeModal() // This sets selectedRequest.value to null
         return `Request ${reqId} has been rejected.` // Safely using the captured ID!
       },
@@ -643,3 +673,19 @@ const confirmReject = async () => {
   }
 }
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; 
+}
+</style>

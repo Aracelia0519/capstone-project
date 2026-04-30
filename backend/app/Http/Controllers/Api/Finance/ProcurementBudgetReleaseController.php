@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use App\Events\ProcurementRequestUpdated;
+use App\Events\SupplierOrderUpdated; // <--- ADDED SUPPLIER EVENT
 use Illuminate\Support\Str;
 
 class ProcurementBudgetReleaseController extends Controller
@@ -149,7 +151,8 @@ class ProcurementBudgetReleaseController extends Controller
             'success' => true,
             'data' => $formatted,
             'available_budget' => $availableBudget,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'distributor_id' => $distributorId
         ]);
     }
 
@@ -288,9 +291,6 @@ class ProcurementBudgetReleaseController extends Controller
             // -----------------------------------------------------------------
             // GATEWAY 2: STRIPE (For Bank Transfer / Direct Debit Sandbox)
             // -----------------------------------------------------------------
-            // -----------------------------------------------------------------
-            // GATEWAY 2: STRIPE (For Bank Transfer / Direct Debit Sandbox)
-            // -----------------------------------------------------------------
             else if ($paymentTerm === 'bank') {
                 try {
                     $provider = 'stripe';
@@ -395,6 +395,10 @@ class ProcurementBudgetReleaseController extends Controller
             
             DB::commit();
 
+            // <--- EXACT FIX: Ping both the Distributor and the Supplier --->
+            event(new ProcurementRequestUpdated($procurement->distributor_id));
+            event(new SupplierOrderUpdated($procurement->supplier_id));
+
             return response()->json([
                 'message' => 'Budget successfully released. Status is now Ready.',
                 'data' => $procurement
@@ -480,8 +484,6 @@ class ProcurementBudgetReleaseController extends Controller
                 if ($response->getStatusCode() === 200) {
                     $stripeData = json_decode($response->getBody(), true);
                     
-                    // NEW FIX: Bank Transfers are asynchronous. We check if the user completed the checkout 
-                    // OR if it's instantly paid (like a credit card).
                     $isStatusComplete = isset($stripeData['status']) && $stripeData['status'] === 'complete';
                     $isPaymentPaid = isset($stripeData['payment_status']) && $stripeData['payment_status'] === 'paid';
 
@@ -534,6 +536,10 @@ class ProcurementBudgetReleaseController extends Controller
             DB::commit();
             Storage::disk('local')->delete($filePath);
 
+            // <--- EXACT FIX: Ping both the Distributor and the Supplier --->
+            event(new ProcurementRequestUpdated($procurement->distributor_id));
+            event(new SupplierOrderUpdated($procurement->supplier_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment verified and budget released successfully.'
@@ -568,6 +574,10 @@ class ProcurementBudgetReleaseController extends Controller
         $procurement = ProcurementRequest::with(['requester', 'distributor'])->findOrFail($id);
 
         $procurement->updateStatus('rejected', $request->reason);
+
+        // <--- EXACT FIX: Ping both the Distributor and the Supplier --->
+        event(new ProcurementRequestUpdated($procurement->distributor_id));
+        event(new SupplierOrderUpdated($procurement->supplier_id));
 
         // =========================================================================
         // EMAIL NOTIFICATION DISPATCH LOGIC

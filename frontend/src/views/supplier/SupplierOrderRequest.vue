@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
   Check, 
@@ -82,6 +83,7 @@ interface Order {
 // --- State ---
 const router = useRouter()
 const orders = ref<Order[]>([])
+const activeChannel = ref<string | null>(null)
 const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
@@ -120,17 +122,40 @@ const statusIcon = (status: string) => {
 }
 
 // --- Actions ---
-const fetchOrders = async () => {
-  isLoading.value = true
+
+// WebSocket Initialization
+const setupWebsocket = (supplierId: number) => {
+  if (activeChannel.value) return; 
+
+  activeChannel.value = `supplier.${supplierId}.orders`;
+
+  echo.private(activeChannel.value)
+    .listen('.order.updated', (e: any) => {
+        toast.info('New Order Update!', { description: 'Syncing your incoming orders queue.' });
+        fetchOrders(true); 
+    });
+};
+
+const fetchOrders = async (silent = false) => {
+  if (!silent) isLoading.value = true
   error.value = ''
   
-  const toastId = toast.loading('Loading orders...', {
-    description: 'Please wait while we fetch your incoming orders.'
-  })
+  let toastId;
+  if (!silent) {
+    toastId = toast.loading('Loading orders...', {
+      description: 'Please wait while we fetch your incoming orders.'
+    })
+  }
   
   try {
     const response = await api.get('/supplier/orders')
-    orders.value = response.data
+    
+    // Handle both data formats (with or without pagination wrapper)
+    orders.value = response.data.data || response.data
+    
+    if (response.data.supplier_id !== undefined && !activeChannel.value) {
+      setupWebsocket(response.data.supplier_id)
+    }
     
     // Select first incoming order by default if exists
     if (incomingOrders.value.length > 0 && !selectedOrderId.value) {
@@ -140,18 +165,22 @@ const fetchOrders = async () => {
       selectedOrderId.value = null
     }
     
-    toast.success('Orders loaded successfully', {
-      id: toastId,
-      description: `Found ${incomingOrders.value.length} incoming order(s)`
-    })
+    if (!silent && toastId) {
+      toast.success('Orders loaded successfully', {
+        id: toastId,
+        description: `Found ${incomingOrders.value.length} incoming order(s)`
+      })
+    }
   } catch (err: any) {
     console.error('Failed to fetch orders', err)
     error.value = 'Could not load orders. Please try again.'
     
-    toast.error('Failed to load orders', {
-      id: toastId,
-      description: err.response?.data?.message || 'An error occurred while fetching orders'
-    })
+    if (!silent && toastId) {
+      toast.error('Failed to load orders', {
+        id: toastId,
+        description: err.response?.data?.message || 'An error occurred while fetching orders'
+      })
+    }
   } finally {
     isLoading.value = false
   }
@@ -204,6 +233,9 @@ const confirmOrder = async () => {
       description: `Order ${orderToConfirm.value.request_code} is now being processed`,
       duration: 5000
     })
+
+    // Fetch silently to ensure exact sync
+    fetchOrders(true);
 
     // Redirect to Process Orders page
     router.push('/supplier/SupplierProcessOrders')
@@ -260,6 +292,12 @@ const formatDate = (dateString: string) => {
 onMounted(() => {
   fetchOrders()
 })
+
+onUnmounted(() => {
+  if (activeChannel.value) {
+    echo.leave(activeChannel.value);
+  }
+})
 </script>
 
 <template>
@@ -314,7 +352,7 @@ onMounted(() => {
               {{ incomingOrders.length }}
             </Badge>
           </h2>
-          <Button variant="ghost" size="icon" @click="fetchOrders" :disabled="isLoading">
+          <Button variant="ghost" size="icon" @click="fetchOrders(false)" :disabled="isLoading">
             <RefreshCw :class="['h-4 w-4', isLoading ? 'animate-spin' : '']" />
           </Button>
         </div>
@@ -559,7 +597,7 @@ onMounted(() => {
                       {{ incomingOrders.length }}
                     </Badge>
                   </h2>
-                  <Button variant="ghost" size="icon" @click="fetchOrders" :disabled="isLoading">
+                  <Button variant="ghost" size="icon" @click="fetchOrders(false)" :disabled="isLoading">
                     <RefreshCw :class="['h-4 w-4', isLoading ? 'animate-spin' : '']" />
                   </Button>
                 </div>
@@ -616,7 +654,7 @@ onMounted(() => {
         </div>
         
         <div class="flex items-center gap-2">
-          <Button variant="ghost" size="icon" @click="fetchOrders" :disabled="isLoading" class="h-9 w-9">
+          <Button variant="ghost" size="icon" @click="fetchOrders(false)" :disabled="isLoading" class="h-9 w-9">
             <RefreshCw :class="['h-4 w-4', isLoading ? 'animate-spin' : '']" />
           </Button>
         </div>

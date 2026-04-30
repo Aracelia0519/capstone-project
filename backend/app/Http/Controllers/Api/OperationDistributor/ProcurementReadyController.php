@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
+use App\Events\ProcurementRequestUpdated;
+use App\Models\Supplier\ProcurementFulfillment;
 
 class ProcurementReadyController extends Controller
 {
@@ -38,19 +40,19 @@ class ProcurementReadyController extends Controller
         // HR Manager
         if ($user->role === 'hr_manager') {
             $hrManager = HRManager::where('user_id', $user->id)->first();
-            if ($hrManager && $hrManager->parent_distributor_id) {
+            if ($hrManager) {
                 return [
                     'has_access' => true,
                     'distributor_id' => $hrManager->parent_distributor_id,
                     'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
                 ];
             }
-        } 
-        
+        }
+
         // Operational Distributor
-        elseif ($user->role === 'operational_distributor') {
-            $opDist = $user->operationalDistributor; 
-            if ($opDist && $opDist->parent_distributor_id) {
+        if ($user->role === 'operational_distributor') {
+            $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+            if ($opDist) {
                 return [
                     'has_access' => true,
                     'distributor_id' => $opDist->parent_distributor_id,
@@ -58,9 +60,9 @@ class ProcurementReadyController extends Controller
                 ];
             }
         }
-        
-        // Employee with specific RBAC
-        elseif ($user->role === 'employee') {
+
+        // Employee Level-Based Verification
+        if ($user->role === 'employee') {
             $employee = Employee::where('user_id', $user->id)->first();
             if ($employee) {
                 $position = DB::table('positions')
@@ -71,7 +73,7 @@ class ProcurementReadyController extends Controller
                 if ($position) {
                     $access = DB::table('position_accessibilities')
                         ->where('position_id', $position->id)
-                        ->where('permission_key', 'ec_process_procurement') // Permission key for this module
+                        ->where('permission_key', 'procurement_ready') // Module-specific permission key
                         ->first();
                         
                     if ($access) {
@@ -104,80 +106,86 @@ class ProcurementReadyController extends Controller
     }
 
     /**
-     * Fetch requests that are Approved by Finance, or further along in the pipeline.
+     * Get all procurements ready for processing
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $accessData = $this->checkAccess($user, 'can_view');
-        
+
         if (!$accessData['has_access']) {
-            return response()->json(['message' => 'Unauthorized. You do not have permission to view procurement fulfillments.'], 403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $query = ProcurementRequest::with(['requester', 'product'])
-            ->whereIn('status', [
-                'approved', 
-                'op-approved', 
-                'd-approved', 
-                'ready', 
-                'processing', 
-                'shipped', 
-                'delivered', 
-                'rejected'
-            ])
-            ->orderBy('updated_at', 'desc');
+        // Removed the invalid 'fulfillment' from the eloquent builder relationship array.
+        $query = ProcurementRequest::with(['requester', 'distributor', 'selectedSupplier']);
 
         if ($user->role !== 'admin') {
             $query->where('distributor_id', $accessData['distributor_id']);
         }
 
-        $requests = $query->get();
+        $status = $request->get('status', 'all');
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        } else {
+            $query->whereIn('status', ['approved', 'op-approved', 'shipped', 'delivered', 'completed']);
+        }
 
-        $formatted = $requests->map(function ($req) {
-            $department = 'General';
-            if ($req->requester && method_exists($req->requester, 'employee') && $req->requester->employee) {
-                $department = $req->requester->employee->department;
-            }
+        $procurements = $query->orderBy('updated_at', 'desc')->paginate($request->get('per_page', 15));
 
-            return [
-                'id' => $req->request_code ?? 'REQ-' . $req->id,
-                'db_id' => $req->id,
-                'department' => $department, 
-                'requester' => $req->requester ? $req->requester->full_name : 'Unknown',
-                'date' => $req->request_date->format('Y-m-d'),
-                'location' => $req->delivery_address ?? 'Main Office',
-                'status' => $req->status, // Will output exactly what is in DB
-                'priority' => ucfirst($req->priority),
-                'totalAmount' => (float) $req->total_cost,
-                'courier' => $req->shipping_method,
-                'items' => [
-                    [
-                        'name' => $req->product_name,
-                        'quantity' => $req->quantity,
-                        'unitPrice' => (float) $req->unit_price
-                    ]
-                ]
-            ];
+        // Fetch and append the fulfillment data safely
+        $fulfillments = ProcurementFulfillment::whereIn('procurement_request_id', $procurements->pluck('id'))->get()->keyBy('procurement_request_id');
+        
+        $procurements->getCollection()->transform(function ($req) use ($fulfillments) {
+            $req->fulfillment = $fulfillments->get($req->id);
+            return $req;
         });
 
         return response()->json([
-            'data' => $formatted,
-            'permissions' => $accessData['permissions']
+            'data' => $procurements,
+            'permissions' => $accessData['permissions'],
+            'distributor_id' => $accessData['distributor_id'] 
         ]);
     }
 
     /**
-     * Mark a request as Operationally Approved (Stored as 'op-approved' in DB)
+     * Get specific procurement details
      */
-    public function markAsOpApproved(Request $request, $id)
+    public function show($id)
     {
         $user = Auth::user();
-        // Changed to explicit approve level
+        $accessData = $this->checkAccess($user, 'can_view');
+
+        if (!$accessData['has_access']) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $procurement = ProcurementRequest::with([
+            'requester', 
+            'distributor', 
+            'selectedSupplier'
+        ])->findOrFail($id);
+
+        if ($user->role !== 'admin' && $procurement->distributor_id !== $accessData['distributor_id']) {
+            return response()->json(['message' => 'Unauthorized to view this request'], 403);
+        }
+
+        // Manually append the fulfillment with attachments
+        $procurement->fulfillment = ProcurementFulfillment::with('attachments')->where('procurement_request_id', $procurement->id)->first();
+
+        return response()->json(['data' => $procurement]);
+    }
+
+    /**
+     * Mark request as operationally approved (Accepted for logistics)
+     */
+    public function markAsOpApproved(Request $request, $id) 
+    {
+        $user = Auth::user();
         $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
-            return response()->json(['message' => 'Unauthorized. You do not have permission to operationally approve procurement requests.'], 403);
+            return response()->json(['message' => 'Unauthorized. You do not have permission to approve procurement requests.'], 403);
         }
 
         $procurement = ProcurementRequest::findOrFail($id);
@@ -190,9 +198,10 @@ class ProcurementReadyController extends Controller
             return response()->json(['message' => 'Only finance approved requests can be operationally approved.'], 400);
         }
 
-        // Updating directly to 'op-approved'
         $procurement->updateStatus('op-approved');
         
+        event(new ProcurementRequestUpdated($procurement->distributor_id));
+
         return response()->json([
             'message' => 'Order marked as Op. Approved',
             'data' => $procurement
@@ -205,7 +214,6 @@ class ProcurementReadyController extends Controller
     public function reject(Request $request, $id)
     {
         $user = Auth::user();
-        // Changed to explicit approve level
         $accessData = $this->checkAccess($user, 'can_approve');
         
         if (!$accessData['has_access']) {
@@ -223,6 +231,8 @@ class ProcurementReadyController extends Controller
         }
 
         $procurement->updateStatus('rejected', $request->reason);
+
+        event(new ProcurementRequestUpdated($procurement->distributor_id));
 
         return response()->json([
             'message' => 'Request rejected successfully',

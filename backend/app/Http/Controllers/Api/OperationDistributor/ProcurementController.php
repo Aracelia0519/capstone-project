@@ -18,6 +18,7 @@ use App\Models\Supplier\SupplierRawMaterial;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
 use App\Models\Supplier\ProcurementFulfillment;
+use App\Events\ProcurementRequestCreated; // <--- ADDED WEBSOCKET EVENT IMPORT
 
 class ProcurementController extends Controller
 {
@@ -152,6 +153,7 @@ class ProcurementController extends Controller
                 'success' => true,
                 'data' => $requests,
                 'permissions' => $accessData['permissions'],
+                'distributor_id' => $accessData['distributor_id'], // <--- ADDED FOR WEBSOCKET CHANNEL SCOPING
                 'message' => 'Procurement requests retrieved successfully'
             ]);
             
@@ -377,6 +379,11 @@ class ProcurementController extends Controller
             }
             
             DB::commit();
+
+            // ==========================================
+            // TRIGGER WEBSOCKET EVENT
+            // ==========================================
+            event(new ProcurementRequestCreated($distributorId));
 
             return response()->json([
                 'success' => true,

@@ -622,8 +622,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket' 
 import { Search, FileDown, Eye, PackageX, Loader2, CheckCircle2, Package, ImageOff, Camera, AlertTriangle, Upload, X, FileText, FileCheck } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 
@@ -659,6 +660,10 @@ const isLoading = ref(true)
 const isReturnsLoading = ref(true)
 const searchQuery = ref('')
 
+// WebSocket State
+const activeDistributorId = ref<number | null>(null);
+const isAdminUser = ref(false);
+
 const showViewModal = ref(false)
 const selectedItem = ref<any>(null)
 const isMoving = ref(false)
@@ -669,7 +674,7 @@ const showReturnModal = ref(false)
 const returnQuantity = ref<number | ''>('')
 const returnReason = ref('')
 const returnProofFile = ref<File | null>(null)
-const returnProofPreview = ref<string | null>(null)
+const returnProofPreview = ref<string | undefined>(undefined)
 const isReturning = ref(false)
 
 // Updated to the new Level-Based framework
@@ -708,8 +713,8 @@ const buildStorageUrl = (path: string) => {
   return `${baseUrl}/storage/${cleanPath}`;
 };
 
-const getImageUrl = (item: any) => {
-  if (!item) return null;
+const getImageUrl = (item: any): string | undefined => {
+  if (!item) return undefined;
   
   if (typeof item === 'string') {
     return buildStorageUrl(item);
@@ -722,19 +727,19 @@ const getImageUrl = (item: any) => {
     path = item.raw_material_details.image_url;
   }
   
-  if (!path) return null;
+  if (!path) return undefined;
   return buildStorageUrl(path);
 }
 
-const getProofUrl = (path: string) => {
-  if (!path) return null;
+const getProofUrl = (path: string): string | undefined => {
+  if (!path) return undefined;
   return buildStorageUrl(path);
 }
 
 // Fetch Arrived Items
-const fetchArrivedItems = async () => {
+const fetchArrivedItems = async (isBackground = false) => {
   try {
-    isLoading.value = true
+    if (!isBackground) isLoading.value = true
     const response = await api.get('/operation-distributor/arrived-items')
     let responseData = response.data;
     if (typeof responseData === 'string') {
@@ -745,31 +750,60 @@ const fetchArrivedItems = async () => {
       if (responseData.permissions) {
           permissions.value = responseData.permissions;
       }
+      activeDistributorId.value = responseData.distributor_id;
+      isAdminUser.value = responseData.is_admin;
+      
+      // Initialize WebSocket listener only once we have the ID
+      setupWebSocket();
+
     } else if (Array.isArray(responseData)) {
       arrivedItems.value = responseData;
     } else {
       arrivedItems.value = [];
     }
   } catch (error) {
-    toast.error('Failed to load arrived items')
+    if (!isBackground) toast.error('Failed to load arrived items')
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
 }
 
 // Fetch Return Items
-const fetchReturnItems = async () => {
+const fetchReturnItems = async (isBackground = false) => {
   try {
-    isReturnsLoading.value = true
+    if (!isBackground) isReturnsLoading.value = true
     const response = await api.get('/operation-distributor/arrived-items/returns')
     if (response.data.success) {
       returnItems.value = response.data.data
     }
   } catch (error) {
-    toast.error('Failed to load return items')
+    if (!isBackground) toast.error('Failed to load return items')
   } finally {
-    isReturnsLoading.value = false
+    if (!isBackground) isReturnsLoading.value = false
   }
+}
+
+// -----------------------------------------------------
+// WEBSOCKET LOGIC
+// -----------------------------------------------------
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.procurement`)
+            .listen('.procurement.updated', (e: any) => {
+                handleDeliveryUpdate();
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.procurement`)
+            .listen('.procurement.updated', (e: any) => {
+                handleDeliveryUpdate();
+            });
+    }
+}
+
+const handleDeliveryUpdate = () => {
+    // Re-fetch data silently in the background
+    fetchArrivedItems(true);
+    fetchReturnItems(true);
 }
 
 const handleExport = () => {
@@ -782,6 +816,14 @@ const handleExport = () => {
 onMounted(() => {
   fetchArrivedItems()
   fetchReturnItems()
+})
+
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.procurement`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.procurement`);
+    }
 })
 
 // Computeds
@@ -903,7 +945,7 @@ const openReturnModal = () => {
   returnQuantity.value = ''
   returnReason.value = ''
   returnProofFile.value = null
-  returnProofPreview.value = null
+  returnProofPreview.value = undefined
   showReturnModal.value = true
 }
 
@@ -926,7 +968,7 @@ const handleReturnFileChange = (e: Event) => {
 
 const removeReturnFile = () => {
   returnProofFile.value = null
-  returnProofPreview.value = null
+  returnProofPreview.value = undefined
 }
 
 const submitReturn = async () => {

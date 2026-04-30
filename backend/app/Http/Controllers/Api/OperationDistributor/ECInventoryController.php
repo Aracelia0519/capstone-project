@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
+use App\Events\InventoryUpdated;
 
 class ECInventoryController extends Controller
 {
@@ -163,7 +164,9 @@ class ECInventoryController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $formatted,
-                'permissions' => $accessData['permissions']
+                'permissions' => $accessData['permissions'],
+                'distributor_id' => $distributorId,
+                'is_admin' => $user->role === 'admin'
             ]);
 
         } catch (\Exception $e) {
@@ -280,6 +283,9 @@ class ECInventoryController extends Controller
                 'ecommerce_status' => 'pending'
             ]);
 
+            // Broadcast the change
+            event(new InventoryUpdated($inventory->distributor_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Deployment requested successfully. Waiting for Business Owner approval.',
@@ -370,6 +376,9 @@ class ECInventoryController extends Controller
 
             DB::commit();
 
+            // Broadcast the change
+            event(new InventoryUpdated($inventory->distributor_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Product quantity moved to inactive successfully.'
@@ -448,6 +457,9 @@ class ECInventoryController extends Controller
             }
 
             DB::commit();
+
+            // Broadcast the change
+            event(new InventoryUpdated($inactiveItem->distributor_id));
 
             return response()->json([
                 'success' => true,

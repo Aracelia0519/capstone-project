@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Events\ProcurementRequestCreated;
+use App\Events\ProcurementRequestUpdated;
 
 class FinanceProcurementController extends Controller
 {
@@ -46,39 +48,44 @@ class FinanceProcurementController extends Controller
             return $defaultPermissions;
         }
 
-        $noAccess = [
-            'can_view' => false,
-            'can_manage' => false,
-            'can_approve' => false
-        ];
+        // Only for employees: strict position-based checks
+        $distributorId = $this->getDistributorId($user);
+        if (!$distributorId) {
+            return ['can_view' => false, 'can_manage' => false, 'can_approve' => false];
+        }
 
         $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
-        if (!$employee) return $noAccess;
+        if (!$employee) {
+            return ['can_view' => false, 'can_manage' => false, 'can_approve' => false];
+        }
 
         $position = DB::table('positions')
+            ->where('distributor_id', $distributorId)
             ->where('title', $employee->position)
-            ->where('distributor_id', $employee->parent_distributor_id)
             ->first();
 
-        if (!$position) return $noAccess;
+        if (!$position) {
+            return ['can_view' => false, 'can_manage' => false, 'can_approve' => false];
+        }
 
         $access = DB::table('position_accessibilities')
             ->where('position_id', $position->id)
-            ->where('permission_key', 'finance_procurement')
+            ->where('permission_key', 'finance_procurement') 
             ->first();
 
-        // Check if access row exists and is generally granted
-        if (!$access || !$access->is_granted) return $noAccess;
+        if ($access) {
+            return [
+                'can_view' => (bool)$access->can_view,
+                'can_manage' => (bool)$access->can_manage,
+                'can_approve' => (bool)$access->can_approve,
+            ];
+        }
 
-        return [
-            'can_view' => (bool)$access->can_view,
-            'can_manage' => (bool)$access->can_manage,
-            'can_approve' => (bool)$access->can_approve,
-        ];
+        return ['can_view' => false, 'can_manage' => false, 'can_approve' => false];
     }
 
     /**
-     * Get all procurement requests for finance manager's distributor
+     * Get paginated procurement requests with finance statistics
      */
     public function index(Request $request)
     {
@@ -160,7 +167,8 @@ class FinanceProcurementController extends Controller
                         'pending_amount' => floatval($statistics->pending_amount ?? 0),
                     ]
                 ],
-                'permissions' => $permissions
+                'permissions' => $permissions,
+                'distributor_id' => $distributorId
             ]);
 
         } catch (\Exception $e) {
@@ -181,7 +189,6 @@ class FinanceProcurementController extends Controller
             $user = Auth::user();
             $permissions = $this->getPermissions($user);
 
-            // Check if user has permission to view
             if (!$permissions['can_view']) {
                 return response()->json([
                     'success' => false,
@@ -190,41 +197,20 @@ class FinanceProcurementController extends Controller
             }
 
             $distributorId = $this->getDistributorId($user);
-            if (!$distributorId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Distributor record not found.'
-                ], 404);
-            }
 
-            // Find the request
-            $request = ProcurementRequest::with(['requester', 'product'])
+            $request = ProcurementRequest::with(['requester', 'product', 'selectedSupplier'])
                 ->where('distributor_id', $distributorId)
-                ->where('id', $id)
-                ->first();
-
-            if (!$request) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Procurement request not found.'
-                ], 404);
-            }
-
-            // Get budget information dynamically
-            $budgetInfo = $this->getDepartmentBudgetInfo($request);
+                ->findOrFail($id);
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'request' => $request,
-                    'budget_info' => $budgetInfo
-                ]
+                'data' => $request
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch procurement request details.',
+                'message' => 'Failed to retrieve the procurement request details.',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -239,7 +225,6 @@ class FinanceProcurementController extends Controller
             $user = Auth::user();
             $permissions = $this->getPermissions($user);
 
-            // Explicitly requires Approve level
             if (!$permissions['can_approve']) {
                 return response()->json([
                     'success' => false,
@@ -247,79 +232,43 @@ class FinanceProcurementController extends Controller
                 ], 403);
             }
 
-            // Validate input
-            $validator = Validator::make($request->all(), [
-                'comments' => 'nullable|string|max:1000'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             $distributorId = $this->getDistributorId($user);
-            if (!$distributorId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Distributor record not found.'
-                ], 404);
-            }
 
-            // Find the request
             $procurementRequest = ProcurementRequest::where('distributor_id', $distributorId)
-                ->where('id', $id)
-                ->where('status', 'pending')
-                ->first();
+                ->findOrFail($id);
 
-            if (!$procurementRequest) {
+            if ($procurementRequest->status !== 'pending') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Procurement request not found or already processed.'
-                ], 404);
-            }
-
-            // Verify Budget strictly before approving
-            $budgetInfo = $this->getDepartmentBudgetInfo($procurementRequest);
-            if (!$budgetInfo['can_afford']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Action Denied: The request total cost exceeds the available budget.'
+                    'message' => 'Only pending requests can be approved.'
                 ], 400);
             }
 
-            // Start transaction
             DB::beginTransaction();
 
-            // Update request status (NO DEDUCTION FROM SALES TABLE HAPPENS HERE)
-            $procurementRequest->status = 'approved';
-            $procurementRequest->finance_approved_by = $user->id;
+            // <--- EXACT FIX: Corrected to match the actual DB column names --->
             $procurementRequest->finance_approved_at = now();
-            $procurementRequest->approved_at = now();
+            $procurementRequest->finance_approved_by = $user->id; 
             
-            // Save comments if provided
-            if ($request->has('comments') && $request->comments) {
-                $procurementRequest->instructions = ($procurementRequest->instructions ? $procurementRequest->instructions . "\n\n" : '') . 
-                                                    "Finance Comments: " . $request->comments;
-            }
-            
-            $procurementRequest->save();
+            // Advance status internally
+            $procurementRequest->updateStatus('approved', null);
 
             DB::commit();
+
+            // Notify Logistics/Operations immediately
+            event(new ProcurementRequestUpdated($distributorId));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Procurement request has been approved successfully.',
-                'data' => $procurementRequest
+                'data' => $procurementRequest->fresh()
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to approve procurement request.',
+                'message' => 'An error occurred while approving the request.',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -330,184 +279,74 @@ class FinanceProcurementController extends Controller
      */
     public function reject(Request $request, $id)
     {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
         try {
             $user = Auth::user();
             $permissions = $this->getPermissions($user);
 
-            // Explicitly requires Approve level
-            if (!$permissions['can_approve']) {
+            if (!$permissions['can_approve']) { 
                 return response()->json([
                     'success' => false,
                     'message' => 'Access Denied: You do not have permission to reject finance requests.'
                 ], 403);
             }
 
-            // Validate input
-            $validator = Validator::make($request->all(), [
-                'comments' => 'required|string|max:1000'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             $distributorId = $this->getDistributorId($user);
-            if (!$distributorId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Distributor record not found.'
-                ], 404);
-            }
 
-            // Find the request
             $procurementRequest = ProcurementRequest::where('distributor_id', $distributorId)
-                ->where('id', $id)
-                ->where('status', 'pending')
-                ->first();
+                ->findOrFail($id);
 
-            if (!$procurementRequest) {
+            if ($procurementRequest->status !== 'pending') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Procurement request not found or already processed.'
-                ], 404);
+                    'message' => 'Only pending requests can be rejected.'
+                ], 400);
             }
 
-            // Start transaction
             DB::beginTransaction();
 
-            // Update request status
-            $procurementRequest->status = 'rejected';
-            $procurementRequest->finance_rejected_by = $user->id;
+            // <--- EXACT FIX: Corrected to match the actual DB column names --->
             $procurementRequest->finance_rejected_at = now();
-            $procurementRequest->rejection_reason = $request->comments;
-            $procurementRequest->save();
+            $procurementRequest->finance_rejected_by = $user->id;
+            
+            $procurementRequest->updateStatus('rejected', $request->reason);
 
             DB::commit();
 
+            // Notify Logistics/Operations immediately
+            event(new ProcurementRequestUpdated($distributorId));
+
             return response()->json([
                 'success' => true,
-                'message' => 'Procurement request has been rejected successfully.',
-                'data' => $procurementRequest
+                'message' => 'Procurement request has been rejected.',
+                'data' => $procurementRequest->fresh()
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reject procurement request.',
+                'message' => 'An error occurred while rejecting the request.',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Get statistics for finance dashboard
+     * Get summary counts for the dashboard
      */
-    public function statistics()
-    {
-        try {
-            $user = Auth::user();
-            $permissions = $this->getPermissions($user);
-
-            if (!$permissions['can_view']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Access Denied.'
-                ], 403);
-            }
-
-            $distributorId = $this->getDistributorId($user);
-            if (!$distributorId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Distributor record not found.'
-                ], 404);
-            }
-
-            // Get monthly statistics based on timestamps
-            $monthlyStats = ProcurementRequest::select(
-                DB::raw('DATE_FORMAT(request_date, "%Y-%m") as month'),
-                DB::raw('COUNT(*) as total_requests'),
-                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved_count'),
-                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN 1 ELSE 0 END) as rejected_count'),
-                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN 1 ELSE 0 END) as pending_count'),
-                DB::raw('SUM(total_cost) as total_amount'),
-                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN total_cost ELSE 0 END) as approved_amount'),
-                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN total_cost ELSE 0 END) as rejected_amount')
-            )
-            ->where('distributor_id', $distributorId)
-            ->whereYear('request_date', now()->year)
-            ->groupBy(DB::raw('DATE_FORMAT(request_date, "%Y-%m")'))
-            ->orderBy('month')
-            ->get();
-
-            // Get category-wise statistics
-            $categoryStats = ProcurementRequest::select(
-                'category',
-                DB::raw('COUNT(*) as total_requests'),
-                DB::raw('SUM(total_cost) as total_amount'),
-                DB::raw('AVG(total_cost) as average_amount')
-            )
-            ->where('distributor_id', $distributorId)
-            ->groupBy('category')
-            ->get();
-
-            // Get today's stats based on timestamps
-            $todayStats = ProcurementRequest::select(
-                DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN finance_approved_at IS NOT NULL THEN 1 ELSE 0 END) as approved'),
-                DB::raw('SUM(CASE WHEN finance_rejected_at IS NOT NULL THEN 1 ELSE 0 END) as rejected'),
-                DB::raw('SUM(CASE WHEN finance_approved_at IS NULL AND finance_rejected_at IS NULL THEN 1 ELSE 0 END) as pending')
-            )
-            ->where('distributor_id', $distributorId)
-            ->whereDate('request_date', today())
-            ->first();
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'monthly_stats' => $monthlyStats,
-                    'category_stats' => $categoryStats,
-                    'today_stats' => $todayStats
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch statistics.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Helper function to get budget information dynamically from distributor_overall_sales
-     */
-    private function getDepartmentBudgetInfo($procurementRequest)
-    {
-        // Query the distributor_overall_sales table for this specific distributor
-        $salesRecord = DB::table('distributor_overall_sales')
-            ->where('distributor_id', $procurementRequest->distributor_id)
-            ->first();
-
-        // Used 'total_revenue' based on the provided capstone001.sql dump
-        $budget = $salesRecord ? ($salesRecord->total_revenue ?? 0) : 0;
-
-        return [
-            'budget' => (float) $budget,
-            'can_afford' => $procurementRequest->total_cost <= $budget
-        ];
-    }
-
-    /**
-     * Get request counts by status for quick overview
-     */
-    public function requestCounts()
+    public function dashboardCounts()
     {
         try {
             $user = Auth::user();

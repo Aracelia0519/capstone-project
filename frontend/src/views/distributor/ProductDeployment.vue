@@ -255,9 +255,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios' 
+import echo from '@/utils/websocket' // Added Echo import
 import { 
   Search, Check, X, Package, Clock, CheckCircle, XCircle 
 } from 'lucide-vue-next'
@@ -292,6 +293,10 @@ const isLoading = ref(true)
 const isProcessing = ref(false)
 const requests = ref([])
 
+// WebSocket States
+const activeDistributorId = ref(null)
+const isAdminUser = ref(false)
+
 // Dynamic Markup State
 const markupPercentage = ref(30)
 
@@ -304,11 +309,15 @@ const calculateProjectedPrice = (cost, markup) => {
 }
 
 // Fetch data from backend
-const fetchRequests = async () => {
-  isLoading.value = true
+const fetchRequests = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
   try {
     const response = await api.get('/distributor/deployments')
     if (response.data.success) {
+      // Setup WebSockets logic context
+      activeDistributorId.value = response.data.distributor_id
+      isAdminUser.value = response.data.is_admin
+
       // Map database fields to the frontend expected format
       requests.value = response.data.data.map(inv => ({
         id: inv.id,
@@ -321,17 +330,58 @@ const fetchRequests = async () => {
         status: mapStatus(inv.ecommerce_status),
         raw: inv // Keep the raw data for the view modal
       }))
+
+      // Update the viewedRequest live if the modal is currently open
+      if (viewedRequest.value) {
+        const updatedReq = requests.value.find(r => r.id === viewedRequest.value.id)
+        if (updatedReq) viewedRequest.value = updatedReq
+      }
+
+      // Initiate websockets once data is pulled
+      if (!isBackground) {
+        setupWebSocket()
+      }
     }
   } catch (error) {
     console.error("Failed to fetch deployments:", error)
-    toast.error("Failed to load requests", { description: "Please try refreshing the page." })
+    if (!isBackground) toast.error("Failed to load requests", { description: "Please try refreshing the page." })
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
+}
+
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.inventory`)
+            .listen('.inventory.updated', (e) => {
+                handleDeploymentUpdate();
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.inventory`)
+            .listen('.inventory.updated', (e) => {
+                handleDeploymentUpdate();
+            });
+    }
+}
+
+const handleDeploymentUpdate = () => {
+    // Re-fetch data silently in the background when the backend fires the event
+    fetchRequests(true);
 }
 
 onMounted(() => {
   fetchRequests()
+})
+
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.inventory`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.inventory`);
+    }
 })
 
 // Convert db enum to readable status

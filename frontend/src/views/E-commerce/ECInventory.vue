@@ -24,7 +24,7 @@
           <Button 
             variant="outline" 
             class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent"
-            @click="refreshData"
+            @click="() => refreshData(false)"
             :disabled="isLoading"
           >
             <Loader2 v-if="isLoading" class="w-4 h-4 mr-2 animate-spin" />
@@ -536,9 +536,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios' 
+import echo from '@/utils/websocket' // Import echo for real-time updates
 import { toast, Toaster } from 'vue-sonner'
 import { 
   Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle, Lightbulb, Activity, TrendingDown, ArrowRight
@@ -581,6 +582,10 @@ const isDeployConfirmOpen = ref(false)
 const isDeactivateConfirmOpen = ref(false)
 const isReactivateConfirmOpen = ref(false)
 
+// WebSocket State Variables
+const activeDistributorId = ref<number | null>(null);
+const isAdminUser = ref(false);
+
 // User Permissions setup via Level-Based RBAC
 const permissions = ref({
   can_view: false,
@@ -598,38 +603,90 @@ const requirePermission = (action: string, callback: Function) => {
 }
 
 // Fetch API Data
-const refreshData = async () => {
-  isLoading.value = true
-  await Promise.all([fetchInventory(), fetchInactiveInventory()])
-  isLoading.value = false
+const refreshData = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
+  await Promise.all([fetchInventory(isBackground), fetchInactiveInventory(isBackground)])
+  if (!isBackground) isLoading.value = false
 }
 
-const fetchInventory = async () => {
+const fetchInventory = async (isBackground = false) => {
   try {
     const response = await api.get('/operation-distributor/ec-inventory')
     if (response.data.success) {
       inventoryItems.value = response.data.data
       if (response.data.permissions) permissions.value = response.data.permissions
+      
+      // Update variables for WebSockets safely
+      activeDistributorId.value = response.data.distributor_id;
+      isAdminUser.value = response.data.is_admin;
+      
+      // Update the viewedRequest live if the modal is currently open
+      if (selectedItem.value) {
+        const updatedItem = inventoryItems.value.find(i => i.id === selectedItem.value.id);
+        if (updatedItem) selectedItem.value = updatedItem;
+      }
+
+      if (!isBackground) {
+        setupWebSocket();
+      }
     }
   } catch (error: any) {
-    if (error.response?.status === 403) toast.error('Unauthorized access to inventory.')
+    if (error.response?.status === 403) {
+      if (!isBackground) toast.error('Unauthorized access to inventory.')
+    }
   }
 }
 
-const fetchInactiveInventory = async () => {
+const fetchInactiveInventory = async (isBackground = false) => {
   try {
     const response = await api.get('/operation-distributor/ec-inventory/inactive')
     if (response.data.success) {
       inactiveItems.value = response.data.data
+      
+      // Update the viewedRequest live if the modal is currently open
+      if (selectedItem.value) {
+        const updatedItem = inactiveItems.value.find(i => i.id === selectedItem.value.id);
+        if (updatedItem) selectedItem.value = updatedItem;
+      }
     }
   } catch (error) {
     console.error('Failed to load inactive inventory', error)
   }
 }
 
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.inventory`)
+            .listen('.inventory.updated', (e: any) => {
+                handleInventoryUpdate();
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.inventory`)
+            .listen('.inventory.updated', (e: any) => {
+                handleInventoryUpdate();
+            });
+    }
+}
+
+const handleInventoryUpdate = () => {
+    // Re-fetch data silently in the background when the backend fires the event
+    refreshData(true);
+}
+
 // Lifecycle
 onMounted(() => {
   refreshData()
+})
+
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.inventory`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.inventory`);
+    }
 })
 
 // Computeds for Summary Cards

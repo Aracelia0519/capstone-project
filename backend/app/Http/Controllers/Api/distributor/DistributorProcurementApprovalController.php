@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OperationDistributor\ProcurementRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Events\ProcurementRequestUpdated;
 
 class DistributorProcurementApprovalController extends Controller
 {
@@ -55,7 +56,10 @@ class DistributorProcurementApprovalController extends Controller
             ];
         });
 
-        return response()->json($formatted);
+        return response()->json([
+            'data' => $formatted,
+            'distributor_id' => $user->id
+        ]);
     }
 
     /**
@@ -74,6 +78,8 @@ class DistributorProcurementApprovalController extends Controller
         }
 
         $procurement->updateStatus('d-approved');
+        
+        event(new ProcurementRequestUpdated($procurement->distributor_id));
         
         return response()->json([
             'message' => 'Request successfully approved by Distributor',
@@ -97,6 +103,8 @@ class DistributorProcurementApprovalController extends Controller
         }
 
         $procurement->updateStatus('rejected', $request->reason);
+
+        event(new ProcurementRequestUpdated($procurement->distributor_id));
 
         return response()->json([
             'message' => 'Request rejected successfully',

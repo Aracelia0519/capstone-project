@@ -7,6 +7,7 @@ use App\Models\OperationDistributor\DistributorInventory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Events\InventoryUpdated;
 
 class ProductDeploymentController extends Controller
 {
@@ -16,8 +17,9 @@ class ProductDeploymentController extends Controller
     public function index()
     {
         try {
+            $user = Auth::user();
             // Assuming the logged-in user is the distributor
-            $distributorId = Auth::id();
+            $distributorId = $user->id;
 
             // Fetch inventories that have an e-commerce interaction
             $inventories = DistributorInventory::with(['product', 'distributor'])
@@ -52,7 +54,9 @@ class ProductDeploymentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $inventories
+                'data' => $inventories,
+                'distributor_id' => $distributorId,
+                'is_admin' => $user->role === 'admin'
             ]);
 
         } catch (\Exception $e) {
@@ -97,6 +101,9 @@ class ProductDeploymentController extends Controller
                 }
             }
 
+            // Broadcast the deployment approval back to the Inventory module
+            event(new InventoryUpdated($inventory->distributor_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Product deployed to e-commerce successfully.',
@@ -120,6 +127,9 @@ class ProductDeploymentController extends Controller
             $inventory = DistributorInventory::where('distributor_id', Auth::id())->findOrFail($id);
             $inventory->ecommerce_status = 'not_deployed';
             $inventory->save();
+
+            // Broadcast the deployment rejection back to the Inventory module
+            event(new InventoryUpdated($inventory->distributor_id));
 
             return response()->json([
                 'success' => true,

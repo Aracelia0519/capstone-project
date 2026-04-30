@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
+use App\Events\InventoryUpdated;
 
 class ArrivedItemController extends Controller
 {
@@ -157,7 +158,9 @@ class ArrivedItemController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $arrivedItems,
-                'permissions' => $accessData['permissions']
+                'permissions' => $accessData['permissions'],
+                'distributor_id' => $distributorId,
+                'is_admin' => $user->role === 'admin'
             ]);
 
         } catch (\Exception $e) {
@@ -221,7 +224,9 @@ class ArrivedItemController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $formattedReturns,
-                'permissions' => $accessData['permissions']
+                'permissions' => $accessData['permissions'],
+                'distributor_id' => $distributorId,
+                'is_admin' => $user->role === 'admin'
             ]);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to fetch returns.', 'error' => $e->getMessage()], 500);
@@ -329,6 +334,10 @@ class ArrivedItemController extends Controller
             }
 
             DB::commit();
+
+            // Broadcast changes to the Inventory module
+            event(new InventoryUpdated($distributorId));
+
             return response()->json(['message' => 'Successfully moved to inventory.']);
 
         } catch (\Exception $e) {
@@ -430,6 +439,10 @@ class ArrivedItemController extends Controller
             $returnReq->save();
 
             DB::commit();
+
+            // Broadcast changes to the Inventory module
+            event(new InventoryUpdated($distributorId));
+
             return response()->json(['message' => 'Successfully moved replacement to inventory.']);
 
         } catch (\Exception $e) {

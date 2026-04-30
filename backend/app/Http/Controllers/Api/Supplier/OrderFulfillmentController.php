@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\OperationDistributor\ProcurementRequest;
 use Illuminate\Support\Facades\DB;
+use App\Events\SupplierOrderUpdated;
+use App\Events\ProcurementRequestUpdated;
 
 class OrderFulfillmentController extends Controller
 {
@@ -65,7 +67,10 @@ class OrderFulfillmentController extends Controller
                 ];
             });
 
-        return response()->json($orders);
+        return response()->json([
+            'data' => $orders,
+            'supplier_id' => $supplierId
+        ]);
     }
 
     /**
@@ -73,9 +78,8 @@ class OrderFulfillmentController extends Controller
      */
     public function confirmOrder(Request $request, $id)
     {
-        $order = ProcurementRequest::findOrFail($id);
-
         $user = $request->user();
+        $order = ProcurementRequest::findOrFail($id);
 
         // Determine the relevant supplier ID based on the logged-in user's role
         $supplierId = $user->id; // Default assumption for 'supplier' role
@@ -106,10 +110,14 @@ class OrderFulfillmentController extends Controller
             $order->status = 'processing';
             $order->save();
             DB::commit();
+            
+            event(new SupplierOrderUpdated($supplierId));
+            event(new ProcurementRequestUpdated($order->distributor_id));
+            
             return response()->json(['message' => 'Order confirmed successfully', 'status' => 'processing']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Failed to confirm order'], 500);
+            return response()->json(['message' => 'Error confirming order: ' . $e->getMessage()], 500);
         }
     }
 }

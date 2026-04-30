@@ -8,6 +8,8 @@ use App\Models\Supplier\SupplierDelivery;
 use App\Models\OperationDistributor\ProcurementRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Events\ProcurementRequestUpdated;
+use App\Events\SupplierOrderUpdated;
 
 class SupplierDeliveryController extends Controller
 {
@@ -140,6 +142,13 @@ class SupplierDeliveryController extends Controller
                     $req->save();
                 }
             }
+
+            // Fire events for real-time updates
+            $req = ProcurementRequest::find($delivery->procurement_request_id);
+            if ($req) {
+                event(new ProcurementRequestUpdated($req->distributor_id));
+                event(new SupplierOrderUpdated($req->supplier_id));
+            }
         }
 
         return response()->json(['message' => 'Delivery started successfully']);
@@ -238,6 +247,12 @@ class SupplierDeliveryController extends Controller
 
             DB::commit();
 
+            // Fire events for real-time updates
+            if ($req) {
+                event(new ProcurementRequestUpdated($req->distributor_id));
+                event(new SupplierOrderUpdated($req->supplier_id));
+            }
+
             return response()->json(['message' => 'Delivery marked as arrived successfully!']);
             
         } catch (\Exception $e) {
@@ -298,6 +313,13 @@ class SupplierDeliveryController extends Controller
 
             DB::commit();
 
+            // Fire events for real-time updates
+            $req = ProcurementRequest::find($delivery->procurement_request_id);
+            if ($req) {
+                event(new ProcurementRequestUpdated($req->distributor_id));
+                event(new SupplierOrderUpdated($req->supplier_id));
+            }
+
             return response()->json(['message' => 'Funds remitted and delivery cycle completed!']);
             
         } catch (\Exception $e) {
@@ -338,6 +360,12 @@ class SupplierDeliveryController extends Controller
             $delivery->delete();
 
             DB::commit();
+
+            // Fire events for real-time updates
+            if ($req) {
+                event(new ProcurementRequestUpdated($req->distributor_id));
+                event(new SupplierOrderUpdated($req->supplier_id));
+            }
 
             return response()->json(['message' => 'Delivery rejected successfully.']);
             
