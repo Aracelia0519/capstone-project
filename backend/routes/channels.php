@@ -100,3 +100,18 @@ Broadcast::channel('admin.inventory', function ($user) {
     return $user->role === 'admin';
 });
 
+
+// ------------- NEW SERVICE PROVIDER CHANNELS -------------
+
+Broadcast::channel('provider.{providerId}.requests', function ($user, $providerId) {
+    // Ensures only the actual service provider or their employees can listen
+    if ($user->role === 'service_provider' && (int)$user->id === (int)$providerId) return true;
+    
+    return false;
+});
+
+    //Client Channel Authorization
+Broadcast::channel('client.{clientId}.requests', function ($user, $clientId) {
+    if ($user->role === 'client' && (int)$user->id === (int)$clientId) return true;
+    return false;
+});

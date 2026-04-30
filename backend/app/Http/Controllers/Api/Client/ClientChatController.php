@@ -9,6 +9,7 @@ use App\Models\ServiceProvider\SPMessage;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm; 
 use App\Events\MessageSent;
+use App\Events\Chat\MessageUpdated; // <--- NEW EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 
 class ClientChatController extends Controller
@@ -162,6 +163,8 @@ class ClientChatController extends Controller
 
         if ($message->type === 'text') {
             $message->update(['message' => $request->message]);
+            // Broadcast the edit update
+            broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
         }
 
         return response()->json(['success' => true, 'message' => clone $message]);
@@ -178,6 +181,9 @@ class ClientChatController extends Controller
             'message' => 'This message was deleted',
             'payload' => $payload
         ]);
+
+        // Broadcast the delete update
+        broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
 
         return response()->json(['success' => true]);
     }
@@ -204,6 +210,9 @@ class ClientChatController extends Controller
         $payload = $chatMessage->payload;
         $payload['deal_status'] = $deal->status;
         $chatMessage->update(['payload' => $payload]);
+
+        // Broadcast the payload update of the original deal message back to the provider!
+        broadcast(new MessageUpdated($chatMessage, $chatMessage->sender_id))->toOthers();
 
         $replyText = $request->action === 'accept' 
             ? 'I have accepted the official deal! We can proceed with the next steps.' 
@@ -239,6 +248,9 @@ class ClientChatController extends Controller
         $payload = $chatMessage->payload;
         $payload['term_status'] = $status;
         $chatMessage->update(['payload' => $payload]);
+
+        // Broadcast the payload update of the original term message back to the provider!
+        broadcast(new MessageUpdated($chatMessage, $chatMessage->sender_id))->toOthers();
 
         $replyText = $request->action === 'agree' 
             ? 'I have agreed to the payment terms.' 

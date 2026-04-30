@@ -262,9 +262,9 @@
                     <Button size="sm" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10" @click="handlePaymentTermAction('decline', message)">Decline</Button>
                  </div>
                  <div v-else class="mt-3 text-center text-xs font-bold" :class="{ 'text-yellow-300 animate-pulse': message.payload?.term_status === 'pending', 'text-emerald-400': message.payload?.term_status === 'agreed', 'text-red-400': message.payload?.term_status === 'declined' }">
-                    <span v-if="message.payload?.term_status === 'pending'">Waiting for client's approval...</span>
-                    <span v-else-if="message.payload?.term_status === 'agreed'">✅ Client Agreed to Terms!</span>
-                    <span v-else-if="message.payload?.term_status === 'declined'">❌ Client Declined the Terms.</span>
+                    <span v-if="message.payload?.term_status === 'pending'">Waiting for your response...</span>
+                    <span v-else-if="message.payload?.term_status === 'agreed'">✅ You Agreed to these Terms!</span>
+                    <span v-else-if="message.payload?.term_status === 'declined'">❌ You Declined these Terms.</span>
                  </div>
               </div>
               
@@ -698,6 +698,20 @@ const initWebSockets = (userId) => {
            contacts.value[cIdx].lastMessage = incomingMsg.type === 'text' ? incomingMsg.text : `New ${incomingMsg.type.replace('_', ' ')}`
         }
       }
+    })
+    // NEW: Listen for payload edits/updates on the existing messages
+    .listen('.MessageUpdated', (e) => {
+        const updatedMsg = e.message;
+        const index = messages.value.findIndex(m => m.id === updatedMsg.id);
+        if (index !== -1) {
+            messages.value[index].text = updatedMsg.message;
+            messages.value[index].payload = updatedMsg.payload;
+            messages.value[index].is_deleted = updatedMsg.payload?.is_deleted || false;
+            
+            if (updatedMsg.type === 'image' && messages.value[index].text && !messages.value[index].text.startsWith('http')) {
+                messages.value[index].text = baseStorageUrl + messages.value[index].text.replace(/^\/+/, '').replace(/^storage\//, '');
+            }
+        }
     })
 }
 

@@ -153,7 +153,7 @@
             <TableCell>
                <div class="flex items-center">
                   <div class="w-10 h-10 rounded-lg bg-blue-900/20 border border-blue-800/50 flex items-center justify-center mr-3 text-blue-400">
-                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                   </div>
                   <div>
                      <p class="text-white font-medium">#{{ job.id }}</p>
@@ -629,10 +629,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue' 
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue' 
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
+import echo from '@/utils/websocket' // Implemented echo
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
@@ -655,6 +656,9 @@ import {
 const router = useRouter()
 const showDetailsModal = ref(false)
 const selectedJob = ref(null)
+
+// Provider State for WebSockets
+const activeProviderId = ref(null)
 
 // Confirm Dialog States
 const showConfirmDialog = ref(false)
@@ -800,11 +804,13 @@ const getCustomStatusText = (job) => {
     return getStatusText(job.status);
 }
 
-const fetchJobRequests = async () => {
+const fetchJobRequests = async (isBackground = false) => {
   try {
     const response = await api.get('/service-provider/job-requests')
     
     if (response.data.success) {
+      activeProviderId.value = response.data.provider_id
+
       jobs.value = response.data.data.map(req => {
         const deal = req.official_deal;
         const term = req.payment_term;
@@ -832,19 +838,52 @@ const fetchJobRequests = async () => {
           originalData: req
         };
       })
+
+      // Silently update the modal view if it is open
       if (selectedJob.value) {
           const updated = jobs.value.find(j => j.id === selectedJob.value.id);
           if(updated) selectedJob.value = updated;
       }
+
+      // Initialize WebSocket connection only if not a background update
+      if (!isBackground) {
+        setupWebSocket()
+      }
     }
   } catch (error) {
     console.error('Error fetching service requests:', error)
-    toast.error('Failed to load service requests.')
+    if (!isBackground) toast.error('Failed to load service requests.')
   }
+}
+
+// --- WEBSOCKET LOGIC ---
+const setupWebSocket = () => {
+    if (activeProviderId.value) {
+        echo.private(`provider.${activeProviderId.value}.requests`)
+            .listen('.request.created', (e) => {
+                fetchJobRequests(true)
+                toast.success('New Service Request Received!', {
+                    description: 'A client has just booked one of your services.'
+                })
+            })
+            // Added listener for the updated events
+            .listen('.request.updated', (e) => {
+                fetchJobRequests(true)
+                toast.info('Job Status Updated', {
+                    description: 'A client has updated a request, uploaded a proof, or signed an agreement.'
+                })
+            })
+    }
 }
 
 onMounted(() => {
   fetchJobRequests()
+})
+
+onUnmounted(() => {
+   if (activeProviderId.value) {
+       echo.leave(`provider.${activeProviderId.value}.requests`)
+   }
 })
 
 const viewJobDetails = (job) => {
@@ -870,7 +909,7 @@ const generateSurveyAgreement = async () => {
         if(response.data.success) {
             toast.success(response.data.message);
             showGenerateAgreementModal.value = false;
-            fetchJobRequests();
+            fetchJobRequests(true);
         }
     } catch(err) {
         toast.error('Failed to generate agreement.');
@@ -930,7 +969,7 @@ const handleSurveyAction = async (action) => {
         const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
         if(response.data.success) {
             toast.success(response.data.message);
-            fetchJobRequests();
+            fetchJobRequests(true);
         }
     } catch(err) {
         toast.error(`Failed to ${action} survey.`);
@@ -964,7 +1003,7 @@ const submitCompletion = async () => {
          toast.success(res.data.message)
          showCompleteModal.value = false
          showDetailsModal.value = false
-         fetchJobRequests() 
+         fetchJobRequests(true) 
       }
    } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to submit proof.')
@@ -1042,7 +1081,7 @@ const approveProof = async (termId) => {
       const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
       if (res.data.success) {
          toast.success('Payment verified successfully!')
-         await fetchJobRequests()
+         await fetchJobRequests(true)
       }
    } catch(error) {
       toast.error('Failed to verify payment proof.')
@@ -1058,7 +1097,7 @@ const sendReminder = async (termId) => {
       const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/remind`)
       if (res.data.success) {
          toast.success('Payment reminder email sent successfully to the client.')
-         await fetchJobRequests()
+         await fetchJobRequests(true)
       }
    } catch (error) {
       toast.error('Failed to send payment reminder.')
@@ -1074,7 +1113,7 @@ const generateReport = async (termId) => {
       const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/legal-report`)
       if (res.data.success) {
          toast.success('Legal report generated successfully. Client has been notified.')
-         await fetchJobRequests()
+         await fetchJobRequests(true)
       }
    } catch (error) {
       toast.error('Failed to generate legal report.')

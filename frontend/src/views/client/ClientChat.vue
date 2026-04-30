@@ -482,6 +482,20 @@ const initWebSockets = (userId) => {
         }
       }
     })
+    // NEW: Listen for payload edits/updates on the existing messages
+    .listen('.MessageUpdated', (e) => {
+        const updatedMsg = e.message;
+        const index = messages.value.findIndex(m => m.id === updatedMsg.id);
+        if (index !== -1) {
+            messages.value[index].text = updatedMsg.message;
+            messages.value[index].payload = updatedMsg.payload;
+            messages.value[index].is_deleted = updatedMsg.payload?.is_deleted || false;
+            
+            if (updatedMsg.type === 'image' && messages.value[index].text && !messages.value[index].text.startsWith('http')) {
+                messages.value[index].text = baseStorageUrl + messages.value[index].text.replace(/^\/+/, '').replace(/^storage\//, '');
+            }
+        }
+    })
 }
 
 const getInitials = (name) => {

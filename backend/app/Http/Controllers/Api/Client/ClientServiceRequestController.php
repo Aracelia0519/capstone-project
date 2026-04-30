@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Events\ServiceProvider\ServiceRequestUpdated;
 
 class ClientServiceRequestController extends Controller
 {
@@ -100,7 +101,8 @@ class ClientServiceRequestController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $formattedRequests
+            'data' => $formattedRequests,
+            'client_id' => $clientId
         ]);
     }
 
@@ -134,6 +136,12 @@ class ClientServiceRequestController extends Controller
                 ]);
 
             DB::commit();
+
+            // Broadcast Event
+            $job = DB::table('client_service_requests')->where('id', $id)->first();
+            if ($job) {
+                event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+            }
 
             return response()->json([
                 'success' => true,
@@ -192,6 +200,9 @@ class ClientServiceRequestController extends Controller
             $transaction->payment_method = 'on_hand';
             $transaction->status = 'pending';
             $transaction->save();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
 
             return response()->json(['success' => true, 'message' => 'Proof of payment uploaded successfully. Wait for SP approval.']);
         }
@@ -392,6 +403,9 @@ class ClientServiceRequestController extends Controller
             Storage::disk('local')->delete($filePath);
             DB::commit();
 
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
+
             return response()->json(['success' => true, 'message' => 'Service payment verified successfully!']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -421,6 +435,10 @@ class ClientServiceRequestController extends Controller
             }
 
             DB::commit();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
             return response()->json(['success' => true, 'message' => 'Service job has been marked as officially completed.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -447,6 +465,10 @@ class ClientServiceRequestController extends Controller
             $job->save();
 
             DB::commit();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
             return response()->json(['success' => true, 'message' => 'Completion rejected and reason sent to Provider.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -480,6 +502,9 @@ class ClientServiceRequestController extends Controller
             'comment' => $request->comment
         ]);
 
+        // Broadcast Event
+        event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
         return response()->json(['success' => true, 'message' => 'Thank you! Your review has been submitted successfully.']);
     }
     
@@ -501,6 +526,9 @@ class ClientServiceRequestController extends Controller
 
         $review->client_reply = $request->client_reply;
         $review->save();
+
+        // Broadcast Event
+        event(new ServiceRequestUpdated($review->client_id, $review->provider_id));
 
         return response()->json(['success' => true, 'message' => 'Your reply has been posted successfully.']);
     }

@@ -9,6 +9,7 @@ use App\Models\ServiceProvider\SPMessage;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm; 
 use App\Events\MessageSent;
+use App\Events\Chat\MessageUpdated; // <--- NEW EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -203,6 +204,8 @@ class SPChatController extends Controller
 
         if ($message->type === 'text') {
             $message->update(['message' => $request->message]);
+            // Broadcast the edit
+            broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
         }
 
         return response()->json(['success' => true, 'message' => clone $message]);
@@ -219,6 +222,9 @@ class SPChatController extends Controller
             'message' => 'This message was deleted',
             'payload' => $payload
         ]);
+
+        // Broadcast the delete
+        broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
 
         return response()->json(['success' => true]);
     }

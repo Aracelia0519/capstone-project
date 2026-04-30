@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceOffering;
 use App\Models\EcommerceClient\ClientServiceRequest;
+use App\Events\ServiceProvider\ServiceRequestCreated;
 
 class ClientServiceController extends Controller
 {
@@ -171,6 +172,9 @@ class ClientServiceController extends Controller
             'address' => $validated['address'],
             'status' => 'pending'
         ]);
+
+        // Broadcast the real-time event to the specific provider
+        event(new ServiceRequestCreated($validated['provider_id']));
 
         return response()->json([
             'success' => true,

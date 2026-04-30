@@ -609,10 +609,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket' // Implemented echo
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -632,6 +633,9 @@ const route = useRoute()
 const activeFilter = ref('all')
 const serviceRequests = ref([])
 const isLoading = ref(true)
+
+// Client State for WebSockets
+const activeClientId = ref(null)
 
 const isModalOpen = ref(false)
 const selectedRequest = ref(null)
@@ -724,11 +728,13 @@ const clearSignature = () => {
    ctx.clearRect(0, 0, signaturePad.value.width, signaturePad.value.height)
 }
 
-const fetchRequests = async () => {
-  isLoading.value = true
+const fetchRequests = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
   try {
     const response = await api.get('/client/services/my-requests')
     if (response.data.success) {
+      activeClientId.value = response.data.client_id
+
       serviceRequests.value = response.data.data.map(req => {
         let progress = 10;
         
@@ -769,17 +775,53 @@ const fetchRequests = async () => {
         }
       })
 
+      // Silently update the modal view if it is open
       if (selectedRequest.value) {
          const updatedReq = serviceRequests.value.find(r => r.id === selectedRequest.value.id)
          if(updatedReq) selectedRequest.value = updatedReq
+      }
+
+      if (!isBackground) {
+        setupWebSocket()
       }
     }
   } catch (error) {
     console.error('Failed to load requests:', error)
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
 }
+
+// --- WEBSOCKET LOGIC ---
+const setupWebSocket = () => {
+    if (activeClientId.value) {
+        echo.private(`client.${activeClientId.value}.requests`)
+            .listen('.request.updated', (e) => {
+                handleClientUpdate()
+            })
+    }
+}
+
+const handleClientUpdate = () => {
+    fetchRequests(true) // Fetch in background
+    toast.info('Service Request Updated', {
+        description: 'Your service provider has just updated your request details.'
+    })
+}
+
+onMounted(async () => {
+  await fetchRequests()
+  
+  if (route.query.service_payment_term_id) {
+     verifyServicePayment(route.query.service_payment_term_id)
+  }
+})
+
+onUnmounted(() => {
+    if (activeClientId.value) {
+        echo.leave(`client.${activeClientId.value}.requests`)
+    }
+})
 
 const openSignAgreementModal = () => {
     showSignAgreementModal.value = true
@@ -802,7 +844,7 @@ const signAgreement = async () => {
         if(response.data.success) {
             toast.success(response.data.message);
             showSignAgreementModal.value = false;
-            fetchRequests();
+            fetchRequests(true);
         }
     } catch (error) {
         toast.error(error.response?.data?.message || 'Failed to sign the agreement.');
@@ -872,7 +914,7 @@ const uploadProofOfPayment = async (termId) => {
     })
     if(res.data.success) {
       toast.success(res.data.message)
-      await fetchRequests() 
+      await fetchRequests(true) 
     }
   } catch(error) {
     toast.error(error.response?.data?.message || "Failed to upload proof.")
@@ -900,7 +942,7 @@ const verifyServicePayment = async (termId) => {
     const res = await api.post('/client/services/payment-terms/verify-gcash', { term_id: termId })
     if (res.data.success) {
       toast.success(res.data.message || "Payment completed successfully!")
-      fetchRequests() 
+      fetchRequests(true) 
       router.replace({ query: {} }) 
     }
   } catch(error) {
@@ -916,7 +958,7 @@ const approveCompletion = async () => {
       if (res.data.success) {
          toast.success(res.data.message)
          isModalOpen.value = false
-         fetchRequests()
+         fetchRequests(true)
       }
    } catch (error) {
       toast.error(error.response?.data?.message || "Failed to approve completion.")
@@ -941,7 +983,7 @@ const rejectCompletion = async () => {
          toast.success(res.data.message)
          showRejectModal.value = false
          isModalOpen.value = false
-         fetchRequests()
+         fetchRequests(true)
       }
    } catch (error) {
       toast.error(error.response?.data?.message || "Failed to reject completion.")
@@ -964,7 +1006,7 @@ const submitReview = async () => {
     if (res.data.success) {
       toast.success(res.data.message)
       showReviewModal.value = false
-      fetchRequests()
+      fetchRequests(true)
     }
   } catch (error) {
     toast.error(error.response?.data?.message || "Failed to submit review.")
@@ -986,7 +1028,7 @@ const submitClientReply = async (reviewId) => {
         toast.success('Reply submitted successfully!');
         selectedRequest.value.raw.service_review.client_reply = clientReplyText.value;
         clientReplyText.value = '';
-        fetchRequests(); 
+        fetchRequests(true); 
      }
   } catch (error) {
      toast.error(error.response?.data?.message || 'Failed to submit reply');
@@ -994,15 +1036,6 @@ const submitClientReply = async (reviewId) => {
      isSubmittingReply.value = false;
   }
 }
-
-
-onMounted(async () => {
-  await fetchRequests()
-  
-  if (route.query.service_payment_term_id) {
-     verifyServicePayment(route.query.service_payment_term_id)
-  }
-})
 
 const statusCounts = computed(() => {
   return serviceRequests.value.reduce((acc, request) => {

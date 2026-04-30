@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Events\ServiceProvider\ServiceRequestUpdated;
 
 class ServiceJobController extends Controller
 {
@@ -84,7 +85,8 @@ class ServiceJobController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $formattedRequests
+                'data' => $formattedRequests,
+                'provider_id' => $providerId
             ], 200);
 
         } catch (\Exception $e) {
@@ -136,6 +138,9 @@ class ServiceJobController extends Controller
 
             DB::commit();
 
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Survey agreement successfully generated, signed, and sent to the client.'
@@ -160,6 +165,9 @@ class ServiceJobController extends Controller
                     'survey_started_at' => now()
                 ]);
 
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Survey officially started. Please ensure you record your measurements.'
@@ -182,6 +190,9 @@ class ServiceJobController extends Controller
                     'status' => 'completed',
                     'survey_completed_at' => now()
                 ]);
+            
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
             return response()->json([
                 'success' => true,
@@ -201,6 +212,9 @@ class ServiceJobController extends Controller
             $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
             $job->status = 'verifying';
             $job->save();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
             return response()->json([
                 'success' => true,
@@ -225,6 +239,9 @@ class ServiceJobController extends Controller
             $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
             $job->status = 'rejected';
             $job->save();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
             return response()->json([
                 'success' => true,
@@ -256,6 +273,9 @@ class ServiceJobController extends Controller
                 $transaction->status = 'completed';
                 $transaction->save();
             }
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
 
             return response()->json([
                 'success' => true,
@@ -328,6 +348,10 @@ class ServiceJobController extends Controller
             $job->save();
 
             DB::commit();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
             return response()->json(['success' => true, 'message' => 'Job marked as complete. Awaiting client approval.']);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -362,6 +386,9 @@ class ServiceJobController extends Controller
                 $message->to($client->email)
                         ->subject("Payment Reminder: Remaining Balance for {$serviceName}");
             });
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
 
             return response()->json(['success' => true, 'message' => 'Payment reminder email sent successfully.', 'reminder_count' => $term->reminder_count]);
         } catch (\Exception $e) {
@@ -445,8 +472,6 @@ class ServiceJobController extends Controller
                     </p>
                 </div>
 
-                
-
                 <div class='footer'>
                     This is a system-generated document.<br>
                     Generated electronically by the System Management on " . now()->format('Y-m-d H:i:s') . ".<br>
@@ -479,6 +504,9 @@ class ServiceJobController extends Controller
                 $message->to($client->email)
                         ->subject("FINAL NOTICE: Legal Report Issued for Unpaid Service - {$serviceName}");
             });
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
 
             return response()->json([
                 'success' => true,
