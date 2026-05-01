@@ -246,7 +246,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
-import echo from '@/utils/websocket' // Import Real-Time WebSocket 
+import echo from '@/utils/websocket' 
 import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -273,6 +273,7 @@ const itemsPerPage = 10
 // WebSockets State
 const activeDistributorId = ref(null)
 const isAdminUser = ref(false)
+let isSubscribed = false // <--- SAFETY LOCK ADDED HERE
 
 const filters = ref({
   status: 'all',
@@ -280,7 +281,6 @@ const filters = ref({
   search: ''
 })
 
-// Updated to the new Level-based permissions
 const permissions = ref({
   can_view: false,
   can_manage: false,
@@ -296,7 +296,6 @@ const alertConfig = ref({
   confirmClass: ''
 })
 
-// RBAC Interceptor
 const requirePermission = (action, callback) => {
   if (!permissions.value['can_' + action]) {
     toast.error(`Access Denied`, { description: `You do not have permission to ${action} transactions.` });
@@ -306,25 +305,31 @@ const requirePermission = (action, callback) => {
 }
 
 // =========================================================================
-// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES (FIXED & STABILIZED)
 // =========================================================================
 const setupWebSocket = () => {
+    if (isSubscribed) return; // Prevent multiple bindings safely!
+
     if (isAdminUser.value) {
         echo.private(`admin.finance`)
             .listen('.transaction.updated', (e) => {
-                fetchTransactions(true) // Silent Fetch
-                toast.info('Transaction List Updated', { 
-                    description: 'A new refund or payment update has been recorded.' 
-                })
+                fetchTransactions(true) 
+                toast.info('Transaction Added/Updated', { description: 'The transaction queue has been updated.' })
+            })
+            .listen('.sp.return.updated', (e) => {
+                fetchTransactions(true) 
             });
+        isSubscribed = true;
     } else if (activeDistributorId.value) {
         echo.private(`distributor.${activeDistributorId.value}.finance`)
             .listen('.transaction.updated', (e) => {
-                fetchTransactions(true) // Silent Fetch
-                toast.info('Transaction List Updated', { 
-                    description: 'A new refund or payment update has been recorded.' 
-                })
+                fetchTransactions(true) 
+                toast.info('Transaction Added/Updated', { description: 'The transaction queue has been updated.' })
+            })
+            .listen('.sp.return.updated', (e) => {
+                fetchTransactions(true) 
             });
+        isSubscribed = true;
     }
 }
 
@@ -334,14 +339,13 @@ const fetchTransactions = async (isBackground = false) => {
   try {
     const response = await api.get('/finance/transactions')
     if (response.data.success !== undefined) {
-      transactions.value = response.data.data
+      transactions.value = [...response.data.data]
       
       if (response.data.permissions) permissions.value = response.data.permissions
       
       activeDistributorId.value = response.data.distributor_id;
       isAdminUser.value = response.data.is_admin;
 
-      // Silently update modal if it's currently open
       if (selectedTransaction.value) {
          const updated = transactions.value.find(t => t.id === selectedTransaction.value.id)
          if (updated) {
@@ -380,8 +384,8 @@ const verifyGcashPayment = async (transactionCode) => {
     toast.error('Verification Failed', { description: error.response?.data?.message || 'The transaction session could not be verified.' })
     router.replace({ query: {} })
   } finally {
-    loading.value = false // FIX: Ensure loader explicitly turns off
-    fetchTransactions(true) // Silent fetch after verification
+    loading.value = false 
+    fetchTransactions(true) 
   }
 }
 

@@ -225,3 +225,10 @@ Broadcast::channel('distributor.{distributorId}.reviews', function ($user, $dist
 Broadcast::channel('admin.reviews', function ($user) {
     return $user->role === 'admin';
 });
+
+
+// SP Inventory Channel
+Broadcast::channel('provider.{providerId}.inventory', function ($user, $providerId) {
+    if ($user->role === 'service_provider' && (int)$user->id === (int)$providerId) return true;
+    return false;
+});

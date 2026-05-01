@@ -180,7 +180,7 @@ const initMap = () => {
     keepBuffer: 4,         
     updateWhenIdle: true,  
     updateWhenZooming: false
-  }).addTo(leafletMap!) // Added !
+  }).addTo(leafletMap!)
 
   const userIcon = L.divIcon({
     html: `
@@ -200,7 +200,7 @@ const initMap = () => {
     iconAnchor: [20, 48]
   })
 
-  userMarker = L.marker([currentPosition.value.lat, currentPosition.value.lng], { icon: userIcon }).addTo(leafletMap!) // Added !
+  userMarker = L.marker([currentPosition.value.lat, currentPosition.value.lng], { icon: userIcon }).addTo(leafletMap!)
   updateMapMarkers()
 }
 
@@ -210,7 +210,7 @@ const drawRoute = async (force = false) => {
   
   if (!activeDeliveryId.value || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) {
     if (routeLine) {
-      leafletMap!.removeLayer(routeLine) // Added !
+      leafletMap!.removeLayer(routeLine)
       routeLine = null
     }
     return
@@ -240,7 +240,7 @@ const drawRoute = async (force = false) => {
 
     if (data.code === 'Ok' && data.routes.length > 0) {
       if (routeLine) {
-        leafletMap!.removeLayer(routeLine) // Added !
+        leafletMap!.removeLayer(routeLine)
       }
       
       const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]])
@@ -251,7 +251,7 @@ const drawRoute = async (force = false) => {
         opacity: 0.8,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(leafletMap!) // Added !
+      }).addTo(leafletMap!)
     } else {
       drawFallbackRoute(color)
     }
@@ -263,7 +263,7 @@ const drawRoute = async (force = false) => {
 
 // Fallback to straight line if OSRM is unreachable
 const drawFallbackRoute = (color: string) => {
-  if (routeLine && leafletMap) leafletMap!.removeLayer(routeLine) // Added !
+  if (routeLine && leafletMap) leafletMap!.removeLayer(routeLine)
   if (!leafletMap || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) return
   
   routeLine = L.polyline(
@@ -279,7 +279,7 @@ const drawFallbackRoute = (color: string) => {
       lineCap: 'round',
       lineJoin: 'round'
     }
-  ).addTo(leafletMap!) // Added !
+  ).addTo(leafletMap!)
 }
 
 const updateMapMarkers = () => {
@@ -310,7 +310,7 @@ const updateMapMarkers = () => {
 
       const marker = L.marker([tLat, tLng], {
         icon: L.divIcon({ html: iconHtml, className: '', iconSize: isTarget ? [24,24] : [16,16], iconAnchor: isTarget ? [12,12] : [8,8] })
-      }).addTo(leafletMap!) // Added !
+      }).addTo(leafletMap!)
       
       marker.bindPopup(`<b class="text-gray-900">${delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
       targetMarkers.push(marker)
@@ -334,7 +334,7 @@ const startTracking = () => {
         drawRoute(false) 
         
         if (isFirstLoad && !activeDeliveryId.value) {
-          leafletMap!.setView([newPos.lat, newPos.lng], 15) // Added !
+          leafletMap!.setView([newPos.lat, newPos.lng], 15)
           isFirstLoad = false
         }
       }
@@ -405,8 +405,8 @@ const setupWebSocket = () => {
         echo.private(`personnel.${activePersonnelId.value}.deliveries`)
             .listen('.delivery.updated', (e: any) => {
                 fetchDeliveries(true) // Silent fetch
-                toast.info('New Delivery Assigned', {
-                    description: 'A new delivery has been assigned to you by the Operational Distributor.'
+                toast.info('Delivery Update', {
+                    description: 'Your delivery assignments have been updated by the Distributor.'
                 })
             });
     }
@@ -443,7 +443,7 @@ const arriveAndComplete = async () => {
   formData.append('latitude', currentPosition.value.lat.toString())
   formData.append('longitude', currentPosition.value.lng.toString())
   formData.append('proof_file', proofFile.value)
-  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') // Added Bypass flag
+  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') 
   
   if (activeDelivery.value.payment_method.toLowerCase() === 'cod' && paymentFile.value) {
     formData.append('payment_file', paymentFile.value)
@@ -488,7 +488,7 @@ const remitAndComplete = async () => {
   formData.append('latitude', currentPosition.value.lat.toString())
   formData.append('longitude', currentPosition.value.lng.toString())
   formData.append('remittance_file', remittanceFile.value)
-  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') // Added Bypass flag
+  formData.append('bypass_location', bypassLocation.value ? 'true' : 'false') 
 
   try {
     await api.post(`/distributor-delivery/${activeDelivery.value.id}/remit`, formData, {
@@ -551,9 +551,9 @@ const focusDelivery = (id: number) => {
           [currentPosition.value.lat, currentPosition.value.lng],
           [tLat, tLng]
         )
-        leafletMap!.fitBounds(bounds, { padding: [50, 50] }) // Added !
+        leafletMap!.fitBounds(bounds, { padding: [50, 50] })
       } else {
-        leafletMap!.setView([tLat, tLng], 15) // Added !
+        leafletMap!.setView([tLat, tLng], 15)
       }
     }
   })
@@ -570,7 +570,7 @@ const clearActiveDelivery = () => {
   drawRoute(true) 
   
   if (leafletMap && currentPosition.value) {
-     leafletMap!.setView([currentPosition.value.lat, currentPosition.value.lng], 15) // Added !
+     leafletMap!.setView([currentPosition.value.lat, currentPosition.value.lng], 15) 
   }
 }
 

@@ -152,18 +152,55 @@ const initWebSockets = (userId) => {
         toast.info('New message in return chat')
       }
     })
+
+  // NEW: Listen to private channel for Real-Time Order Status Updates
+  window.Echo.private(`provider.${userId}.orders`)
+    .listen('.order.updated', (e) => {
+       fetchOrders(true) // Silent fetch so it doesn't interrupt user UI
+       
+       // Silently refresh the return request info if the chat drawer happens to be open
+       if (isReturnChatOpen.value && activeReturnItem.value) {
+         refreshReturnChat(activeReturnItem.value.id)
+       }
+
+       toast.info('Order Status Updated', {
+           description: 'One of your orders has been updated by the Distributor or Rider.',
+           style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+       })
+    })
+}
+
+// Helper to silently fetch the return chat status without jarring the user
+const refreshReturnChat = async (itemId) => {
+    try {
+        const res = await api.get(`/service-provider/orders/items/${itemId}/return-chat`)
+        if (res.data.success && res.data.request) {
+            returnRequest.value = res.data.request
+        }
+    } catch (error) {
+        console.error("Failed to silently refresh return request")
+    }
 }
 
 // --- Fetch Data ---
-const fetchOrders = async () => {
-  isLoading.value = true
+const fetchOrders = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
   try {
     const response = await api.get('/service-provider/orders')
     orders.value = response.data.map(order => ({ ...order, expanded: false }))
+
+    // Silently update modal if it is currently open
+    if (selectedOrder.value) {
+       const updated = orders.value.find(o => o.id === selectedOrder.value.id)
+       if (updated) {
+           updated.expanded = selectedOrder.value.expanded
+           selectedOrder.value = updated
+       }
+    }
   } catch (error) {
-    toast.error('Failed to load orders. Please try again.')
+    if (!isBackground) toast.error('Failed to load orders. Please try again.')
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
     isRefreshing.value = false
   }
 }
@@ -176,7 +213,10 @@ onMounted(() => {
 onUnmounted(() => {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId)
   if (leafletMap) leafletMap.remove()
-  if (window.Echo && props.user) window.Echo.leave(`return.chat.${props.user.id}`)
+  if (window.Echo && props.user) {
+      window.Echo.leave(`return.chat.${props.user.id}`)
+      window.Echo.leave(`provider.${props.user.id}.orders`)
+  }
 })
 
 // --- Computed Stats & Filters ---
@@ -356,7 +396,7 @@ const submitPickUp = async () => {
     if (response.data.success) {
       toast.success('Pick-up confirmed successfully!')
       closePickUpTracking()
-      fetchOrders()
+      fetchOrders(true)
     }
   } catch (error) {
     toast.error('Failed to submit pick-up. Please try again.')
@@ -447,7 +487,7 @@ const submitReview = async () => {
           itemToUpdate.is_reviewed = true; itemToUpdate.review_rating = reviewForm.value.rating; itemToUpdate.review_comment = reviewForm.value.comment
         }
       }
-      fetchOrders()
+      fetchOrders(true)
     }
   } catch (error) { toast.error('Failed to submit review.') } finally { isSubmittingReview.value = false }
 }
@@ -525,6 +565,7 @@ const submitInitialReturn = async () => {
       returnRequest.value = res.data.request
       const chatRes = await api.get(`/service-provider/orders/items/${activeReturnItem.value.id}/return-chat`)
       if (chatRes.data.success) { returnMessages.value = chatRes.data.messages || []; scrollToBottom() }
+      fetchOrders(true)
     }
   } catch (error) { toast.error('Failed to submit return request') } finally { isSubmittingReturn.value = false }
 }
@@ -558,6 +599,7 @@ const submitTrackingInfo = async () => {
       returnRequest.value = res.data.request
       returnMessages.value.push(res.data.message)
       trackingNumber.value = ''; trackingProofFile.value = null; scrollToBottom()
+      fetchOrders(true)
     }
   } catch (error) { toast.error('Failed to submit tracking') } finally { isSubmittingTracking.value = false }
 }
@@ -956,7 +998,7 @@ const submitTrackingInfo = async () => {
                         <div v-else class="relative w-full flex justify-center">
                           <img :src="paymentProofPreview" class="max-h-56 rounded-xl border border-green-800/50 object-cover shadow-lg" />
                           <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePaymentProof">
-                            <X class="w-4 h-4" />
+                            <X class="h-4 w-4" />
                           </Button>
                         </div>
                       </div>

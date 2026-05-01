@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache; 
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Events\Ecommerce\OrderPlaced; // <--- EVENT IMPORTED
 
 class SpShopController extends Controller
 {
@@ -45,7 +46,6 @@ class SpShopController extends Controller
         
         $promotions = $promoQuery->get();
 
-        // FIXED: Manually pull Service Providers to accurately identify SP Reviews
         $allPublishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
             ->get();
@@ -116,7 +116,6 @@ class SpShopController extends Controller
             $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
             $reviewCount = $productReviews->count();
             
-            // FIXED: Identify if the reviewer is a Client or Service Provider
             $formattedReviews = $productReviews->map(function($rev) use ($spUsersAll) {
                 $clientName = 'Customer';
                 $reviewerType = 'Customer';
@@ -135,7 +134,7 @@ class SpShopController extends Controller
                     'id' => $rev->id,
                     'client' => $clientName,
                     'clientInitials' => strtoupper(substr($clientName, 0, 1)),
-                    'reviewerType' => $reviewerType, // Added reviewerType
+                    'reviewerType' => $reviewerType, 
                     'rating' => (int)$rev->rating,
                     'comment' => $rev->comment,
                     'response' => $rev->response,
@@ -237,7 +236,6 @@ class SpShopController extends Controller
             }
         }
 
-        // FIXED: Identifies whether Review is from a Client or Service Provider
         $productReviews = ProductReview::with('client')
             ->where('product_id', $productId)
             ->where('status', 'published')
@@ -267,7 +265,7 @@ class SpShopController extends Controller
                 'id' => $rev->id,
                 'client' => $clientName,
                 'clientInitials' => strtoupper(substr($clientName, 0, 1)),
-                'reviewerType' => $reviewerType, // Added reviewerType
+                'reviewerType' => $reviewerType, 
                 'rating' => (int)$rev->rating,
                 'comment' => $rev->comment,
                 'response' => $rev->response,
@@ -512,7 +510,7 @@ class SpShopController extends Controller
                 $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
                 $sessionId = $paymongoData['data']['id'] ?? null;
 
-                if (!$checkoutUrl || !$sessionId) {
+                if (!$checkoutUrl || (!$sessionId)) {
                     return response()->json(['success' => false, 'message' => 'Failed to generate payment link.']);
                 }
 
@@ -575,7 +573,6 @@ class SpShopController extends Controller
                 'price' => $discountedPrice,
             ]);
 
-            // Use the new sp_order_id column instead of order_id to bypass the Foreign Key constraint
             DB::table('order_vat_deductions')->insert([
                 'sp_order_id' => $order->id,
                 'vatable_sales' => $vatableSales,
@@ -615,6 +612,9 @@ class SpShopController extends Controller
             }
 
             DB::commit();
+
+            // BROADCAST: Notify Operational Distributor that an order was placed via COD/Pick-up
+            event(new OrderPlaced($request->distributor_id));
 
             return response()->json([
                 'success' => true,
@@ -775,7 +775,6 @@ class SpShopController extends Controller
                 }
             }
 
-            // Use the new sp_order_id column to bypass the Client Order Foreign Key constraint
             DB::table('order_vat_deductions')->insert([
                 'sp_order_id' => $order->id,
                 'vatable_sales' => $cacheData['vatable_sales'],
@@ -785,7 +784,6 @@ class SpShopController extends Controller
             ]);
 
             if ($distributorIdToCredit) {
-                // Use the new sp_order_id column to bypass the Client Order Foreign Key constraint
                 DB::table('ec_delivery_remittances')->insert([
                     'distributor_id' => $distributorIdToCredit,
                     'delivery_personnel_id' => null, 
@@ -796,7 +794,6 @@ class SpShopController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // Use the new sp_order_id column to bypass the Client Order Foreign Key constraint
                 DB::table('ec_order_financials')->insert([
                     'sp_order_id' => $order->id,
                     'distributor_id' => $distributorIdToCredit,
@@ -823,6 +820,9 @@ class SpShopController extends Controller
                         'updated_at' => now(),
                     ]);
                 }
+                
+                // BROADCAST: Notify Operational Distributor that an order was successfully verified via GCash
+                event(new OrderPlaced($distributorIdToCredit));
             }
 
             foreach ($cacheData['applied_promotions'] as $promoId) {

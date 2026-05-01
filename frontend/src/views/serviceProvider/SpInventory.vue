@@ -1,12 +1,17 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket' // <--- IMPORT WEBSOCKET
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Package, Image as ImageIcon, Loader2 } from 'lucide-vue-next'
+
+const props = defineProps({
+  user: { type: Object, default: null }
+})
 
 const inventoryItems = ref([])
 const isLoading = ref(true)
@@ -16,23 +21,58 @@ const selectedItem = ref(null)
 const useQuantity = ref(1)
 const isSubmittingUse = ref(false)
 
-const fetchInventory = async () => {
-  isLoading.value = true
+// WebSockets Tracker
+let isSubscribed = false
+
+const fetchInventory = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
   try {
     const res = await api.get('/service-provider/inventory')
     if (res.data.success) {
       inventoryItems.value = res.data.data
+      
+      // Update selectedItem implicitly if modal is open during a fetch
+      if (selectedItem.value) {
+         const updated = inventoryItems.value.find(i => i.id === selectedItem.value.id)
+         if (updated) selectedItem.value = updated
+      }
     }
   } catch (error) {
-    toast.error('Failed to load inventory')
+    if (!isBackground) toast.error('Failed to load inventory')
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
+}
+
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES 
+// =========================================================================
+const setupWebSocket = () => {
+    if (!props.user || isSubscribed) return;
+
+    echo.leave(`provider.${props.user.id}.inventory`);
+    echo.private(`provider.${props.user.id}.inventory`)
+        .listen('.sp.inventory.updated', (e) => {
+            fetchInventory(true) // Silent Fetch
+            toast.info('Inventory Updated', {
+               description: 'Changes to your inventory have been synced.',
+               style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+            })
+        });
+
+    isSubscribed = true;
 }
 
 onMounted(() => {
   fetchInventory()
+  if (props.user) setupWebSocket()
 })
+
+onUnmounted(() => {
+    if (props.user) {
+        echo.leave(`provider.${props.user.id}.inventory`);
+    }
+});
 
 const openUseModal = (item) => {
   selectedItem.value = item
@@ -51,9 +91,9 @@ const submitUse = async () => {
       quantity: useQuantity.value
     })
     if (res.data.success) {
-      toast.success('Quantity updated successfully')
+      toast.success('Quantity updated successfully', { style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' } })
       isUseModalOpen.value = false
-      fetchInventory()
+      fetchInventory(true) // Silent fetch after doing manual use
     }
   } catch (error) {
     toast.error(error.response?.data?.message || 'Failed to use product')
@@ -127,7 +167,7 @@ const submitUse = async () => {
         </div>
         <DialogFooter>
           <Button variant="outline" @click="isUseModalOpen = false" class="border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800">Cancel</Button>
-          <Button @click="submitUse" :disabled="isSubmittingUse" class="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+          <Button @click="submitUse" :disabled="isSubmittingUse || useQuantity < 1 || useQuantity > selectedItem?.quantity" class="bg-indigo-600 hover:bg-indigo-700 text-white border-0">
             <Loader2 v-if="isSubmittingUse" class="w-4 h-4 mr-2 animate-spin" />
             Confirm Use
           </Button>

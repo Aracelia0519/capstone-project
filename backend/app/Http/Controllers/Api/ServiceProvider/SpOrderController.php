@@ -9,6 +9,9 @@ use App\Models\ServiceProvider\SpOrderItem;
 use App\Models\ServiceProvider\SpReturnRequest;
 use App\Models\ServiceProvider\SpReturnMessage;
 use App\Events\SpReturnMessageSent; 
+use App\Events\Ecommerce\OrderPlaced; 
+use App\Events\Ecommerce\ReviewUpdated; 
+use App\Events\ServiceProvider\SpReturnUpdated; // <--- NEW EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +32,6 @@ class SpOrderController extends Controller
 
         $orderIds = $orders->pluck('id');
         
-        // FIXED: Querying the existing 'product_reviews' table using 'sp_order_id'
         $reviews = DB::table('product_reviews')
             ->where('service_provider_id', $user->id)
             ->whereIn('sp_order_id', $orderIds)
@@ -37,13 +39,11 @@ class SpOrderController extends Controller
 
         $orders->each(function ($order) use ($reviews) {
             $order->items->each(function ($item) use ($reviews, $order) {
-                // FIXED: Matching against sp_order_id
                 $review = $reviews->where('sp_order_id', $order->id)->where('product_id', $item->product_id)->first();
                 $item->is_reviewed = $review ? true : false;
                 $item->review_rating = $review ? $review->rating : null;
                 $item->review_comment = $review ? $review->comment : null;
 
-                // Added active return check so frontend can disable inventory add
                 $item->has_active_return = SpReturnRequest::where('order_item_id', $item->id)
                     ->whereNotIn('status', ['rejected', 'cancelled'])->exists();
 
@@ -117,6 +117,12 @@ class SpOrderController extends Controller
                 ]);
 
             $order->update(['status' => 'delivered']);
+
+            $distributorIds = DB::table('sp_order_items')->where('sp_order_id', $id)->pluck('distributor_id')->unique();
+            foreach ($distributorIds as $dId) {
+                event(new OrderPlaced($dId));
+            }
+
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Pick-up confirmed successfully!']);
             
@@ -137,22 +143,26 @@ class SpOrderController extends Controller
 
         $user = $request->user();
 
-        // FIXED: Using 'sp_order_id' instead of 'order_id'
         DB::table('product_reviews')->updateOrInsert(
             [
                 'service_provider_id' => $user->id,
-                'sp_order_id' => $request->order_id, // Map the payload to sp_order_id
+                'sp_order_id' => $request->order_id, 
                 'product_id' => $request->product_id,
             ],
             [
                 'rating' => $request->rating,
                 'comment' => $request->comment,
                 'client_id' => null, 
-                'order_id' => null, // Explicitly null the client's order_id column
+                'order_id' => null, 
                 'created_at' => now(),
                 'updated_at' => now()
             ]
         );
+
+        $distributorId = DB::table('distributor_products')->where('id', $request->product_id)->value('distributor_id');
+        if ($distributorId) {
+            event(new ReviewUpdated($distributorId));
+        }
 
         return response()->json(['success' => true, 'message' => 'Review submitted successfully!']);
     }
@@ -197,6 +207,10 @@ class SpOrderController extends Controller
 
         broadcast(new SpReturnMessageSent($message))->toOthers();
         broadcast(new SpReturnMessageSent($imageMsg))->toOthers();
+
+        // BROADCAST: Notify Operational Distributor and Finance
+        event(new OrderPlaced($orderItem->distributor_id));
+        event(new SpReturnUpdated($orderItem->distributor_id));
 
         return response()->json(['success' => true, 'request' => $returnReq]);
     }
@@ -288,6 +302,10 @@ class SpOrderController extends Controller
         ]);
 
         broadcast(new SpReturnMessageSent($msg))->toOthers();
+
+        // BROADCAST: Notify Operational Distributor and Finance
+        event(new OrderPlaced($returnReq->distributor_id));
+        event(new SpReturnUpdated($returnReq->distributor_id));
 
         return response()->json(['success' => true, 'request' => $returnReq, 'message' => $msg]);
     }

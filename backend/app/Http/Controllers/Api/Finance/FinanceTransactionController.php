@@ -14,9 +14,6 @@ use App\Events\Ecommerce\ReturnRequestUpdated;
 
 class FinanceTransactionController extends Controller
 {
-    /**
-     * Resolve the distributor ID based on the logged-in user's role.
-     */
     private function getDistributorId($user)
     {
         if ($user->role === 'employee') {
@@ -33,9 +30,6 @@ class FinanceTransactionController extends Controller
         return null;
     }
 
-    /**
-     * Fetch RBAC permissions for the logged-in user (Level-Based).
-     */
     private function getPermissions($user)
     {
         $defaultPermissions = [
@@ -44,7 +38,6 @@ class FinanceTransactionController extends Controller
             'can_approve' => true
         ];
 
-        // Non-employees bypass this specific RBAC check and get full access
         if ($user->role !== 'employee') {
             return $defaultPermissions;
         }
@@ -79,9 +72,6 @@ class FinanceTransactionController extends Controller
         ];
     }
 
-    /**
-     * Fetch all transactions (Refunds for both Clients & Service Providers)
-     */
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -96,7 +86,6 @@ class FinanceTransactionController extends Controller
 
         $distributorId = $this->getDistributorId($user);
 
-        // 1. Fetch Client Refund Requests
         $clientRefunds = DB::table('ec_refund_requests')
             ->join('client_return_requests', 'ec_refund_requests.return_request_id', '=', 'client_return_requests.id')
             ->join('users as clients', 'client_return_requests.client_id', '=', 'clients.id')
@@ -116,7 +105,6 @@ class FinanceTransactionController extends Controller
                 return $ref;
             });
 
-        // 2. Fetch Service Provider Refund Requests
         $spRefunds = DB::table('ec_refund_requests')
             ->join('sp_return_requests', 'ec_refund_requests.sp_return_request_id', '=', 'sp_return_requests.id')
             ->join('users as sps', 'sp_return_requests.sp_id', '=', 'sps.id')
@@ -136,7 +124,6 @@ class FinanceTransactionController extends Controller
                 return $ref;
             });
 
-        // Merge both tables and sort by date
         $allRefunds = $clientRefunds->concat($spRefunds)->sortByDesc('created_at')->values();
 
         $formatted = $allRefunds->map(function ($ref) {
@@ -162,9 +149,6 @@ class FinanceTransactionController extends Controller
         ]);
     }
 
-    /**
-     * Process Refund via PayMongo GCash
-     */
     public function processRefund(Request $request, $id)
     {
         $user = Auth::user();
@@ -283,9 +267,6 @@ class FinanceTransactionController extends Controller
         }
     }
 
-    /**
-     * VERIFY GCASH PAYMENT AFTER REDIRECT & SEND SUCCESS EMAIL
-     */
     public function verifyGcashPayment(Request $request)
     {
         $request->validate(['transaction_code' => 'required|string']);
@@ -376,9 +357,6 @@ class FinanceTransactionController extends Controller
             // BROADCAST: Notify Operational Distributor Returns Module
             event(new ReturnRequestUpdated($cacheData['distributor_id']));
 
-            // ============================================
-            // EMAIL NOTIFICATION FOR COMPLETED REFUND
-            // ============================================
             $refundRecord = DB::table('ec_refund_requests')->where('id', $cacheData['refund_id'])->first();
             $userEmail = null;
             $userName = null;
@@ -442,9 +420,6 @@ class FinanceTransactionController extends Controller
         }
     }
 
-    /**
-     * Reject a refund request & SEND REJECTION EMAIL
-     */
     public function rejectRefund(Request $request, $id)
     {
         $user = Auth::user();
@@ -465,14 +440,10 @@ class FinanceTransactionController extends Controller
         $refundRecord = DB::table('ec_refund_requests')->where('id', $id)->first();
         
         if ($refundRecord) {
-            // BROADCAST: Notify Finance and OD that refund was rejected
             event(new TransactionUpdated($refundRecord->distributor_id));
             event(new ReturnRequestUpdated($refundRecord->distributor_id));
         }
 
-        // ============================================
-        // EMAIL NOTIFICATION FOR REJECTED REFUND
-        // ============================================
         $userEmail = null;
         $userName = null;
         $transactionCode = 'REF-' . str_pad($id, 5, '0', STR_PAD_LEFT);

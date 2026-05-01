@@ -12,7 +12,7 @@ use App\Events\ReturnMessageSent;
 use App\Events\SpReturnMessageSent;
 use App\Events\Ecommerce\OrderUpdated; 
 use App\Events\Ecommerce\ReturnRequestUpdated; 
-use App\Events\Finance\TransactionUpdated; // <--- EVENT IMPORTED
+use App\Events\Finance\TransactionUpdated; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -183,7 +183,7 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new SpReturnMessageSent($msg))->toOthers();
-            event(new OrderUpdated(null, $returnReq->sp_id)); // Notify SP Screen
+            event(new OrderUpdated(null, $returnReq->sp_id)); 
         } else {
             $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
             $returnReq->update(['status' => 'approved']);
@@ -197,7 +197,6 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new ReturnMessageSent($msg))->toOthers();
-            
             event(new OrderUpdated($returnReq->client_id, null)); 
         }
 
@@ -243,7 +242,6 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new ReturnMessageSent($msg))->toOthers();
-
             event(new OrderUpdated($returnReq->client_id, null)); 
         }
 

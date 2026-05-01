@@ -342,6 +342,7 @@ const responseForm = ref({ text: '' })
 // WebSockets State
 const activeDistributorId = ref(null)
 const isAdminUser = ref(false)
+let isSubscribed = false; // <--- SAFETY LOCK ADDED HERE
 
 // User Permissions setup via RBAC
 const permissions = ref({
@@ -408,10 +409,13 @@ const fetchReviews = async (isBackground = false) => {
 }
 
 // =========================================================================
-// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES (WITH SAFETY LOCK)
 // =========================================================================
 const setupWebSocket = () => {
+    if (isSubscribed) return; // Prevent multiple bindings safely!
+
     if (isAdminUser.value) {
+        echo.leave(`admin.reviews`);
         echo.private(`admin.reviews`)
             .listen('.review.updated', (e) => {
                 fetchReviews(true) // Silent Fetch
@@ -420,7 +424,9 @@ const setupWebSocket = () => {
                     style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
                 })
             });
+        isSubscribed = true;
     } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.reviews`);
         echo.private(`distributor.${activeDistributorId.value}.reviews`)
             .listen('.review.updated', (e) => {
                 fetchReviews(true) // Silent Fetch
@@ -429,6 +435,7 @@ const setupWebSocket = () => {
                     style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
                 })
             });
+        isSubscribed = true;
     }
 }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ServiceProvider\SpInventory;
 use App\Models\ServiceProvider\SpOrderItem;
+use App\Events\ServiceProvider\InventoryUpdated; // <--- EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 
 class SpInventoryController extends Controller
@@ -64,6 +65,9 @@ class SpInventoryController extends Controller
         $orderItem->added_to_inventory = true;
         $orderItem->save();
 
+        // BROADCAST: Notify SP screen that inventory updated
+        event(new InventoryUpdated($user->id));
+
         return response()->json(['success' => true, 'message' => 'Added to inventory successfully']);
     }
 
@@ -82,6 +86,9 @@ class SpInventoryController extends Controller
 
         $inventory->quantity -= $request->quantity;
         $inventory->save();
+
+        // BROADCAST: Notify SP screen that inventory updated
+        event(new InventoryUpdated($user->id));
 
         return response()->json(['success' => true, 'message' => 'Product quantity updated successfully']);
     }

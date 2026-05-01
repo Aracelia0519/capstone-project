@@ -12,7 +12,7 @@ use App\Models\HR\Employee;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Events\Ecommerce\DeliveryUpdated; 
-use App\Events\Ecommerce\OrderUpdated; // <--- NEW EVENT IMPORTED
+use App\Events\Ecommerce\OrderUpdated; // <--- EVENT IMPORTED
 
 class ECommerceDeliveryController extends Controller
 {

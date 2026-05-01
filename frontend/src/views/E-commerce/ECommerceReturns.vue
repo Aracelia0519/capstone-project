@@ -93,12 +93,19 @@ const initWebSockets = (distId) => {
       }
     })
 
-  // NEW: Listen to private channel for Return Request Status Updates
+  // Listen to private channel for Return Request Status Updates
   window.Echo.private(`distributor.${distId}.returns`)
     .listen('.return.updated', (e) => {
       fetchReturns(true)
       toast.info('Return Request Updated', {
         description: 'A return request has been submitted or updated by a client.'
+      })
+    })
+    // NEW: Listen for SP specific return updates
+    .listen('.sp.return.updated', (e) => {
+      fetchReturns(true)
+      toast.info('SP Return Request Updated', {
+        description: 'A return request has been submitted or updated by a Service Provider.'
       })
     })
 }
