@@ -10,14 +10,14 @@ use App\Models\EcommerceClient\ProductReview;
 use App\Models\EcommerceClient\ClientReturnRequest;
 use App\Models\EcommerceClient\ClientReturnMessage;
 use App\Events\ReturnMessageSent;
+use App\Events\Ecommerce\OrderPlaced; 
+use App\Events\Ecommerce\ReturnRequestUpdated;
+use App\Events\Ecommerce\ReviewUpdated; // <--- EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ECommerceOrderController extends Controller
 {
-    /**
-     * Fetch all orders for the authenticated client.
-     */
     public function index(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
@@ -55,9 +55,6 @@ class ECommerceOrderController extends Controller
         return response()->json($orders);
     }
 
-    /**
-     * Fetch details for order pick-up tracking
-     */
     public function getPickUpDetails(Request $request, $id)
     {
         $user = $request->user();
@@ -89,9 +86,6 @@ class ECommerceOrderController extends Controller
         ]);
     }
 
-    /**
-     * Handle the submission of pick-up and payment proofs
-     */
     public function submitPickUp(Request $request, $id)
     {
         $request->validate([
@@ -178,6 +172,8 @@ class ECommerceOrderController extends Controller
                         'updated_at' => now(),
                     ]);
                 }
+
+                event(new OrderPlaced($distributorId));
             }
 
             DB::commit();
@@ -189,9 +185,6 @@ class ECommerceOrderController extends Controller
         }
     }
 
-    /**
-     * Submit or update a product review
-     */
     public function submitReview(Request $request)
     {
         $request->validate([
@@ -224,18 +217,18 @@ class ECommerceOrderController extends Controller
             ]
         );
 
+        // BROADCAST: Notify Operational Distributor that a review was added
+        $distributorId = DB::table('distributor_products')->where('id', $request->product_id)->value('distributor_id');
+        if ($distributorId) {
+            event(new ReviewUpdated($distributorId));
+        }
+
         return response()->json([
             'success' => true, 
             'message' => 'Review submitted successfully!', 
             'data' => $review
         ]);
     }
-
-    /**
-     * -----------------------------------------------------
-     * RETURN SYSTEM AND QUICK CHAT METHODS
-     * -----------------------------------------------------
-     */
 
     public function submitReturnRequest(Request $request) 
     {
@@ -277,6 +270,9 @@ class ECommerceOrderController extends Controller
 
         broadcast(new ReturnMessageSent($message))->toOthers();
         broadcast(new ReturnMessageSent($imageMsg))->toOthers();
+
+        event(new OrderPlaced($orderItem->distributor_id));
+        event(new ReturnRequestUpdated($orderItem->distributor_id));
 
         return response()->json(['success' => true, 'request' => $returnReq]);
     }
@@ -369,6 +365,9 @@ class ECommerceOrderController extends Controller
         ]);
 
         broadcast(new ReturnMessageSent($msg))->toOthers();
+
+        event(new OrderPlaced($returnReq->distributor_id));
+        event(new ReturnRequestUpdated($returnReq->distributor_id));
 
         return response()->json(['success' => true, 'request' => $returnReq, 'message' => $msg]);
     }

@@ -1,7 +1,6 @@
 <?php
-//ServiceRequest to bruh
-
-namespace App\Events\ServiceProvider;
+// Reviews
+namespace App\Events\Ecommerce;
 
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -9,22 +8,20 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ServiceRequestUpdated implements ShouldBroadcastNow
+class ReviewUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $clientId;
-    public $providerId;
+    public $distributorId;
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($clientId, $providerId)
+    public function __construct($distributorId)
     {
-        $this->clientId = $clientId;
-        $this->providerId = $providerId;
+        $this->distributorId = $distributorId;
     }
 
     /**
@@ -34,15 +31,14 @@ class ServiceRequestUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        // Broadcasts to BOTH the specific Client AND the Service Provider
         return [
-            new PrivateChannel('client.' . $this->clientId . '.requests'),
-            new PrivateChannel('provider.' . $this->providerId . '.requests')
+            new PrivateChannel('distributor.' . $this->distributorId . '.reviews'),
+            new PrivateChannel('admin.reviews')
         ];
     }
 
     public function broadcastAs()
     {
-        return 'request.updated';
+        return 'review.updated';
     }
 }

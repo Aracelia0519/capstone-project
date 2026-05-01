@@ -1,6 +1,6 @@
 <template>
   <div class="ecommerce-reviews p-4 md:p-6 min-h-screen relative">
-    <Toaster richColors position="top-right" expand />
+    
 
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
@@ -284,8 +284,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket' // <--- IMPORT WEBSOCKET
 import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -338,6 +339,10 @@ const selectedStatus = ref('all')
 const respondingToReview = ref(null)
 const responseForm = ref({ text: '' })
 
+// WebSockets State
+const activeDistributorId = ref(null)
+const isAdminUser = ref(false)
+
 // User Permissions setup via RBAC
 const permissions = ref({
   can_view: false,
@@ -367,36 +372,77 @@ const statusClasses = {
 }
 
 // Fetch Reviews
-const fetchReviews = async () => {
+const fetchReviews = async (isBackground = false) => {
   try {
-    isLoading.value = true
+    if (!isBackground) isLoading.value = true
     const response = await api.get('/operation-distributor/reviews')
     if (response.data.success) {
       reviews.value = response.data.data
       
       // Inject permissions for RBAC
-      if (response.data.permissions) {
-        permissions.value = response.data.permissions
+      if (response.data.permissions) permissions.value = response.data.permissions
+      
+      activeDistributorId.value = response.data.distributor_id;
+      isAdminUser.value = response.data.is_admin;
+
+      // Initialize WebSockets if it's not a silent background fetch
+      if (!isBackground) {
+        setupWebSocket();
       }
     }
   } catch (error) {
     console.error('Error fetching reviews:', error)
     if (error.response?.status === 403) {
-      toast.error('Access Denied', {
-         description: error.response.data.message || 'You lack permissions to view these reviews.',
-         style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
-      })
+      if (!isBackground) {
+          toast.error('Access Denied', {
+             description: error.response.data.message || 'You lack permissions to view these reviews.',
+             style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+          })
+      }
     } else {
-      toast.error('Failed to load reviews')
+      if (!isBackground) toast.error('Failed to load reviews')
     }
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
+}
+
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.reviews`)
+            .listen('.review.updated', (e) => {
+                fetchReviews(true) // Silent Fetch
+                toast.info('New Review Activity', { 
+                    description: 'A customer has submitted or updated a product review.',
+                    style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+                })
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.reviews`)
+            .listen('.review.updated', (e) => {
+                fetchReviews(true) // Silent Fetch
+                toast.info('New Review Activity', { 
+                    description: 'A customer has submitted or updated a product review.',
+                    style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' }
+                })
+            });
+    }
 }
 
 onMounted(() => {
   fetchReviews()
 })
+
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.reviews`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.reviews`);
+    }
+});
 
 // Computations
 const averageRating = computed(() => {
@@ -456,7 +502,7 @@ const updateStatus = async (id, newStatus) => {
     if (response.data.success) {
       const review = reviews.value.find(r => r.id === id)
       if (review) review.status = newStatus
-      toast.success(`Review successfully ${newStatus}`)
+      toast.success(`Review successfully ${newStatus}`, { style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' } })
     }
   } catch (error) {
     if (error.response?.status === 403) {
@@ -484,8 +530,8 @@ const submitResponse = async () => {
     if (response.data.success) {
       respondingToReview.value.response = responseForm.value.text
       respondingToReview.value.responseDate = new Date().toISOString().split('T')[0]
-      respondingToReview.value.status = 'published' // Auto publish on reply
-      toast.success('Response added successfully')
+      respondingToReview.value.status = 'published' 
+      toast.success('Response added successfully', { style: { background: '#0f172a', color: '#ffffff', border: '1px solid #1e293b' } })
       respondingToReview.value = null
       responseForm.value.text = ''
     }

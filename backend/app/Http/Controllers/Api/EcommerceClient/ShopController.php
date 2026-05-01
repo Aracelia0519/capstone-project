@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache; 
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Events\Ecommerce\OrderPlaced; // <--- NEW EVENT IMPORTED
 
 class ShopController extends Controller
 {
@@ -36,7 +37,7 @@ class ShopController extends Controller
             ->whereRaw('used_count < usage_limit')
             ->get();
 
-        // FIXED: Pull all published reviews and fetch Service Provider User Info
+        // Pull all published reviews and fetch Service Provider User Info
         $allPublishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
             ->get();
@@ -106,7 +107,7 @@ class ShopController extends Controller
             $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
             $reviewCount = $productReviews->count();
             
-            // FIXED: Identify if the reviewer is a Client or Service Provider
+            // Identify if the reviewer is a Client or Service Provider
             $formattedReviews = $productReviews->map(function($rev) use ($spUsersAll) {
                 $clientName = 'Customer';
                 $reviewerType = 'Customer';
@@ -125,7 +126,7 @@ class ShopController extends Controller
                     'id' => $rev->id,
                     'client' => $clientName,
                     'clientInitials' => strtoupper(substr($clientName, 0, 1)),
-                    'reviewerType' => $reviewerType, // Added reviewerType
+                    'reviewerType' => $reviewerType, 
                     'rating' => (int)$rev->rating,
                     'comment' => $rev->comment,
                     'response' => $rev->response,
@@ -372,7 +373,7 @@ class ShopController extends Controller
                 $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
                 $sessionId = $paymongoData['data']['id'] ?? null;
                 
-                if (!$checkoutUrl || !$sessionId) {
+                if (!$checkoutUrl || (!$sessionId)) {
                     return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
                 }
 
@@ -475,6 +476,9 @@ class ShopController extends Controller
             }
 
             DB::commit();
+
+            // BROADCAST: Notify the Operational Distributor
+            event(new OrderPlaced($request->distributor_id));
 
             return response()->json([
                 'success' => true,
@@ -689,6 +693,12 @@ class ShopController extends Controller
 
             DB::commit();
             Storage::disk('local')->delete($filePath);
+
+            // BROADCAST: Notify all corresponding distributors involved in this multi-item GCash checkout
+            $distributorIds = collect($cacheData['items'])->pluck('distributor_id')->unique();
+            foreach ($distributorIds as $dId) {
+                event(new OrderPlaced($dId));
+            }
 
             return response()->json([
                 'success' => true,

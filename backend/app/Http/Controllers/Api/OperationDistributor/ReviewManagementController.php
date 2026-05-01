@@ -8,12 +8,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\EcommerceClient\ProductReview;
 use Carbon\Carbon;
+use App\Events\Ecommerce\ReviewUpdated; // <--- EVENT IMPORTED
+use App\Events\Ecommerce\OrderUpdated; // <--- EVENT IMPORTED
 
 class ReviewManagementController extends Controller
 {
-    /**
-     * Retrieves the specific permissions for a user on a given module.
-     */
     private function getPermissions($user, $permissionKey)
     {
         $defaults = [
@@ -22,7 +21,6 @@ class ReviewManagementController extends Controller
             'can_approve' => false
         ];
 
-        // Main distributors and head operational distributors automatically have full access
         if ($user->role === 'distributor' || $user->role === 'operational_distributor') {
             return [
                 'can_view' => true,
@@ -31,7 +29,6 @@ class ReviewManagementController extends Controller
             ];
         }
 
-        // Check RBAC for standard employees
         if ($user->role === 'employee') {
             $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
             if (!$employee) return $defaults;
@@ -87,7 +84,6 @@ class ReviewManagementController extends Controller
     {
         $user = Auth::user();
 
-        // Get permissions and check RBAC Read Access using 'ec_reviews'
         $permissions = $this->getPermissions($user, 'ec_reviews');
         
         if (!$permissions['can_view']) {
@@ -96,7 +92,6 @@ class ReviewManagementController extends Controller
 
         $distributorId = $this->getDistributorId();
 
-        // Fetch reviews where the product belongs to this distributor
         $reviews = ProductReview::whereHas('product', function($query) use ($distributorId) {
                 $query->where('distributor_id', $distributorId);
             })
@@ -104,7 +99,6 @@ class ReviewManagementController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Manually fetch SPs and SP Orders to prevent relationship missing errors
         $spIds = $reviews->pluck('service_provider_id')->filter()->unique();
         $spUsers = \App\Models\User::whereIn('id', $spIds)->get()->keyBy('id');
 
@@ -116,7 +110,6 @@ class ReviewManagementController extends Controller
             $reviewerType = 'Customer';
             $orderNumber = 'Unknown';
 
-            // Check if it belongs to a Service Provider
             if ($review->service_provider_id && isset($spUsers[$review->service_provider_id])) {
                 $sp = $spUsers[$review->service_provider_id];
                 $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
@@ -128,7 +121,6 @@ class ReviewManagementController extends Controller
                     $orderNumber = $spOrders[$review->sp_order_id]->order_number;
                 }
             } 
-            // Otherwise, it belongs to a normal Client
             elseif ($review->client) {
                 $clientName = trim(($review->client->first_name ?? '') . ' ' . ($review->client->last_name ?? ''));
                 if (empty($clientName)) $clientName = $review->client->name ?? 'Customer';
@@ -139,7 +131,7 @@ class ReviewManagementController extends Controller
                 'id' => $review->id,
                 'client' => $clientName,
                 'clientInitials' => strtoupper(substr($clientName, 0, 1)),
-                'reviewerType' => $reviewerType, // Added Reviewer Type
+                'reviewerType' => $reviewerType, 
                 'product' => $review->product->name ?? 'Unknown Product',
                 'rating' => (int) $review->rating,
                 'date' => Carbon::parse($review->created_at)->format('Y-m-d'),
@@ -154,13 +146,14 @@ class ReviewManagementController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formattedReviews,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'distributor_id' => $distributorId,
+            'is_admin' => $user->role === 'admin'
         ]);
     }
 
     public function updateStatus(Request $request, $id)
     {
-        // Hard backend RBAC check for managing (publishing/hiding)
         if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to update review statuses.'], 403);
         }
@@ -180,12 +173,14 @@ class ReviewManagementController extends Controller
         $review->status = $request->status;
         $review->save();
 
+        // Broadcast to other ODs
+        event(new ReviewUpdated($distributorId));
+
         return response()->json(['success' => true, 'message' => 'Status updated successfully']);
     }
 
     public function respond(Request $request, $id)
     {
-        // Hard backend RBAC check for managing (responding)
         if (!$this->checkRbacAccess($request->user(), 'ec_reviews', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to respond to reviews.'], 403);
         }
@@ -204,8 +199,18 @@ class ReviewManagementController extends Controller
 
         $review->response = $request->response;
         $review->response_date = now()->toDateString();
-        $review->status = 'published'; // Auto publish if responded
+        $review->status = 'published'; 
         $review->save();
+
+        // Broadcast to other ODs
+        event(new ReviewUpdated($distributorId));
+
+        // Broadcast to the specific Client/SP so their order page updates with the response
+        if ($review->client_id) {
+            event(new OrderUpdated($review->client_id, null));
+        } elseif ($review->service_provider_id) {
+            event(new OrderUpdated(null, $review->service_provider_id));
+        }
 
         return response()->json(['success' => true, 'message' => 'Response saved successfully']);
     }

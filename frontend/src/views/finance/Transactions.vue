@@ -1,37 +1,6 @@
 <template>
   <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <Teleport to="body">
-      <Toaster
-        position="top-right"
-        :expand="false"
-        :rich-colors="false"
-        :close-button="true"
-        :theme="'light'"
-        :visible-toasts="1"
-        :container-style="{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 9999999,
-          pointerEvents: 'none',
-        }"
-        :toast-options="{
-          style: {
-            background: 'white',
-            color: 'black',
-            border: 'none',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',
-            fontSize: '15px',
-            minWidth: '280px',
-            maxWidth: '400px',
-            borderRadius: '10px',
-            pointerEvents: 'auto',
-          },
-        }"
-      />
-    </Teleport>
+    
 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
       <div class="mb-4 sm:mb-0">
@@ -274,9 +243,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket' // Import Real-Time WebSocket 
 import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -299,6 +269,10 @@ const selectedTransaction = ref(null)
 
 const currentPage = ref(1)
 const itemsPerPage = 10
+
+// WebSockets State
+const activeDistributorId = ref(null)
+const isAdminUser = ref(false)
 
 const filters = ref({
   status: 'all',
@@ -331,25 +305,62 @@ const requirePermission = (action, callback) => {
   if (callback) callback();
 }
 
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.finance`)
+            .listen('.transaction.updated', (e) => {
+                fetchTransactions(true) // Silent Fetch
+                toast.info('Transaction List Updated', { 
+                    description: 'A new refund or payment update has been recorded.' 
+                })
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.finance`)
+            .listen('.transaction.updated', (e) => {
+                fetchTransactions(true) // Silent Fetch
+                toast.info('Transaction List Updated', { 
+                    description: 'A new refund or payment update has been recorded.' 
+                })
+            });
+    }
+}
+
 // Fetch Logic
-const fetchTransactions = async () => {
-  loading.value = true
+const fetchTransactions = async (isBackground = false) => {
+  if (!isBackground) loading.value = true
   try {
     const response = await api.get('/finance/transactions')
     if (response.data.success !== undefined) {
       transactions.value = response.data.data
-      if (response.data.permissions) {
-        permissions.value = response.data.permissions
+      
+      if (response.data.permissions) permissions.value = response.data.permissions
+      
+      activeDistributorId.value = response.data.distributor_id;
+      isAdminUser.value = response.data.is_admin;
+
+      // Silently update modal if it's currently open
+      if (selectedTransaction.value) {
+         const updated = transactions.value.find(t => t.id === selectedTransaction.value.id)
+         if (updated) {
+             selectedTransaction.value = updated
+         }
+      }
+
+      if (!isBackground) {
+        setupWebSocket();
       }
     }
   } catch (error) {
     if (error.response?.status === 403) {
-      toast.error("Unauthorized", { description: "You do not have permission to view transactions." })
+      if (!isBackground) toast.error("Unauthorized", { description: "You do not have permission to view transactions." })
     } else {
-      toast.error("Failed to load transactions from server")
+      if (!isBackground) toast.error("Failed to load transactions from server")
     }
   } finally {
-    loading.value = false
+    if (!isBackground) loading.value = false
   }
 }
 
@@ -369,7 +380,8 @@ const verifyGcashPayment = async (transactionCode) => {
     toast.error('Verification Failed', { description: error.response?.data?.message || 'The transaction session could not be verified.' })
     router.replace({ query: {} })
   } finally {
-    fetchTransactions()
+    loading.value = false // FIX: Ensure loader explicitly turns off
+    fetchTransactions(true) // Silent fetch after verification
   }
 }
 
@@ -380,6 +392,14 @@ onMounted(() => {
     fetchTransactions()
   }
 })
+
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.finance`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.finance`);
+    }
+});
 
 // Computed properties
 const filteredTransactions = computed(() => {
@@ -496,7 +516,7 @@ const rejectTransaction = async () => {
     toast.promise(promise, {
       loading: 'Rejecting request...',
       success: () => {
-        fetchTransactions()
+        fetchTransactions(true)
         closeModal()
         return `Transaction has been rejected.`
       },

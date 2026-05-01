@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use App\Events\Finance\TransactionUpdated; 
+use App\Events\Ecommerce\ReturnRequestUpdated; 
 
 class FinanceTransactionController extends Controller
 {
@@ -154,7 +156,9 @@ class FinanceTransactionController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formatted,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'distributor_id' => $distributorId,
+            'is_admin' => $user->role === 'admin'
         ]);
     }
 
@@ -254,11 +258,10 @@ class FinanceTransactionController extends Controller
             $checkoutUrl = $paymongoData['data']['attributes']['checkout_url'] ?? null;
             $sessionId = $paymongoData['data']['id'] ?? null;
             
-            if (!$checkoutUrl || !$sessionId) {
+            if (!$checkoutUrl || (!$sessionId)) {
                 return response()->json(['success' => false, 'message' => 'Failed to generate PayMongo GCash link.'], 500);
             }
 
-            // ADDED: We now cache the ID of the user initiating the approval
             $cacheData = [
                 'session_id' => $sessionId,
                 'refund_id' => $refund->id,
@@ -327,7 +330,7 @@ class FinanceTransactionController extends Controller
                 if ($paymentIntent && isset($paymentIntent['attributes']['status']) && $paymentIntent['attributes']['status'] === 'succeeded') {
                     $isPaid = true;
                 }
-
+                
                 if (!$isPaid && isset($attributes['status']) && $attributes['status'] === 'active') {
                     $isPaid = true; 
                 }
@@ -344,7 +347,6 @@ class FinanceTransactionController extends Controller
 
         DB::beginTransaction();
         try {
-            // ADDED: Saving the `approved_by` logic dynamically from the cache
             DB::table('ec_refund_requests')
                 ->where('id', $cacheData['refund_id'])
                 ->update([
@@ -368,8 +370,14 @@ class FinanceTransactionController extends Controller
             DB::commit();
             Storage::disk('local')->delete($filePath);
 
+            // BROADCAST: Notify other Finance screens
+            event(new TransactionUpdated($cacheData['distributor_id']));
+
+            // BROADCAST: Notify Operational Distributor Returns Module
+            event(new ReturnRequestUpdated($cacheData['distributor_id']));
+
             // ============================================
-            // EMAIL NOTIFICATION FOR COMPLETED REFUND (INLINE)
+            // EMAIL NOTIFICATION FOR COMPLETED REFUND
             // ============================================
             $refundRecord = DB::table('ec_refund_requests')->where('id', $cacheData['refund_id'])->first();
             $userEmail = null;
@@ -422,7 +430,6 @@ class FinanceTransactionController extends Controller
                     Log::error('Failed to send refund completion email: ' . $emailEx->getMessage());
                 }
             }
-            // ============================================
 
             return response()->json([
                 'success' => true,
@@ -447,7 +454,6 @@ class FinanceTransactionController extends Controller
             return response()->json(['message' => 'Access Denied: You do not have permission to reject refunds.'], 403);
         }
 
-        // ADDED: Set the `approved_by` identifier here.
         DB::table('ec_refund_requests')
             ->where('id', $id)
             ->update([
@@ -456,10 +462,17 @@ class FinanceTransactionController extends Controller
                 'updated_at' => now()
             ]);
 
-        // ============================================
-        // EMAIL NOTIFICATION FOR REJECTED REFUND (INLINE)
-        // ============================================
         $refundRecord = DB::table('ec_refund_requests')->where('id', $id)->first();
+        
+        if ($refundRecord) {
+            // BROADCAST: Notify Finance and OD that refund was rejected
+            event(new TransactionUpdated($refundRecord->distributor_id));
+            event(new ReturnRequestUpdated($refundRecord->distributor_id));
+        }
+
+        // ============================================
+        // EMAIL NOTIFICATION FOR REJECTED REFUND
+        // ============================================
         $userEmail = null;
         $userName = null;
         $transactionCode = 'REF-' . str_pad($id, 5, '0', STR_PAD_LEFT);
@@ -511,7 +524,6 @@ class FinanceTransactionController extends Controller
                 Log::error('Failed to send refund rejection email: ' . $emailEx->getMessage());
             }
         }
-        // ============================================
 
         return response()->json([
             'success' => true,

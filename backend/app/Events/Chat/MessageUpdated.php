@@ -1,5 +1,5 @@
 <?php
-
+// SP and Client chat to putang ina mo baka makalimutan mo pa tanga
 namespace App\Events\Chat;
 
 use Illuminate\Broadcasting\InteractsWithSockets;

@@ -80,7 +80,7 @@ const initWebSockets = (distId) => {
         scrollToBottom()
       } else {
         toast.info('New message in return chat')
-        fetchReturns()
+        fetchReturns(true)
       }
     })
     .listen('.SpReturnMessageSent', (e) => {
@@ -89,8 +89,17 @@ const initWebSockets = (distId) => {
         scrollToBottom()
       } else {
         toast.info('New message in return chat')
-        fetchReturns()
+        fetchReturns(true)
       }
+    })
+
+  // NEW: Listen to private channel for Return Request Status Updates
+  window.Echo.private(`distributor.${distId}.returns`)
+    .listen('.return.updated', (e) => {
+      fetchReturns(true)
+      toast.info('Return Request Updated', {
+        description: 'A return request has been submitted or updated by a client.'
+      })
     })
 }
 
@@ -110,8 +119,8 @@ const openImageInNewTab = (url) => {
     if (url) window.open(url, '_blank')
 }
 
-const fetchReturns = async () => {
-    isLoading.value = true
+const fetchReturns = async (isBackground = false) => {
+    if (!isBackground) isLoading.value = true
     try {
         const res = await api.get('/operation-distributor/returns')
         if (res.data.success) {
@@ -121,15 +130,23 @@ const fetchReturns = async () => {
             distributorId.value = res.data.distributor_id
             permissions.value = res.data.permissions
             
-            if (distributorId.value) {
+            // Silently update modal if open
+            if (selectedReturn.value) {
+                const updated = returnRequests.value.find(r => r.id === selectedReturn.value.id && r.request_type === selectedReturn.value.request_type)
+                if (updated) {
+                    selectedReturn.value = updated
+                }
+            }
+
+            if (!isBackground && distributorId.value) {
                 initWebSockets(distributorId.value)
             }
         }
     } catch (error) {
-        toast.error('Failed to load return requests')
+        if (!isBackground) toast.error('Failed to load return requests')
         console.error(error)
     } finally {
-        isLoading.value = false
+        if (!isBackground) isLoading.value = false
     }
 }
 
@@ -138,6 +155,7 @@ onMounted(() => fetchReturns())
 onUnmounted(() => {
     if (window.Echo && distributorId.value) {
         window.Echo.leave(`return.chat.${distributorId.value}`)
+        window.Echo.leave(`distributor.${distributorId.value}.returns`)
     }
 })
 
@@ -175,7 +193,7 @@ const updateStatus = async (id, action) => {
         if (res.data.success) {
             toast.success(`Request ${action}d successfully`)
             isDetailsModalOpen.value = false
-            fetchReturns()
+            fetchReturns(true)
         }
     } catch (error) {
         toast.error(`Failed to ${action} request`)
@@ -235,7 +253,7 @@ const submitRefundRequest = async () => {
         if (res.data.success) {
             toast.success('Item received and Refund Request sent to Finance!')
             isRefundModalOpen.value = false
-            fetchReturns()
+            fetchReturns(true)
         }
     } catch (error) {
         toast.error('Failed to submit refund request')

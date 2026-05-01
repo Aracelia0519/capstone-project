@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Toaster, toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
+import echo from '@/utils/websocket' // Import real-time WebSocket connection
 import { 
   Check, 
   Clock, 
@@ -89,6 +90,10 @@ const selectedOrderId = ref<number | null>(null)
 const isLoading = ref(false)
 const showMobileSheet = ref(false)
 
+// WebSocket State Variables
+const activeDistributorId = ref<number | null>(null)
+const isAdminUser = ref(false)
+
 // Updated to the new Level-Based Permissions
 const permissions = ref({
   can_view: false,
@@ -122,6 +127,14 @@ onMounted(() => {
   fetchDeliveryPersonnel()
 })
 
+onUnmounted(() => {
+    if (isAdminUser.value) {
+        echo.leave(`admin.orders`);
+    } else if (activeDistributorId.value) {
+        echo.leave(`distributor.${activeDistributorId.value}.orders`);
+    }
+})
+
 // --- Computed ---
 // Show only 'confirmed' orders to be prepared
 const confirmedOrders = computed(() => 
@@ -146,16 +159,22 @@ const canSubmit = computed(() => {
 
 // --- Actions ---
 
-const fetchOrders = async () => {
-  isLoading.value = true
+const fetchOrders = async (isBackground = false) => {
+  if (!isBackground) isLoading.value = true
   try {
     const response = await api.get('/operation-distributor/prepare-orders')
     
     // Handle the standardized response payload to extract both data and permissions
     if (response.data.success) {
         mockOrders.value = response.data.data
-        if (response.data.permissions) {
-            permissions.value = response.data.permissions
+        if (response.data.permissions) permissions.value = response.data.permissions
+        
+        activeDistributorId.value = response.data.distributor_id;
+        isAdminUser.value = response.data.is_admin;
+
+        // Initialize WebSockets if not a background update
+        if (!isBackground) {
+            setupWebSocket()
         }
     } else {
         mockOrders.value = response.data
@@ -169,13 +188,50 @@ const fetchOrders = async () => {
   } catch (error: any) {
     console.error(error)
     if (error.response?.status === 403) {
-        toast.error('Access Denied', { description: error.response.data.message || 'You lack permissions to view these orders.' })
+        if (!isBackground) toast.error('Access Denied', { description: error.response.data.message || 'You lack permissions to view these orders.' })
     } else {
-        toast.error('Failed to fetch orders')
+        if (!isBackground) toast.error('Failed to fetch orders')
     }
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
+}
+
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (isAdminUser.value) {
+        echo.private(`admin.orders`)
+            .listen('.order.placed', (e: any) => {
+                fetchOrders(true) // Silent Fetch
+                toast.success('New Order Received!', {
+                    description: 'A client has just placed a new confirmed order.'
+                })
+            })
+            // NEW: Listen for delivery updates (rejections, completions)
+            .listen('.delivery.updated', (e: any) => {
+                fetchOrders(true) // Silent Fetch
+                toast.info('Delivery Assignment Updated', {
+                    description: 'A delivery personnel has updated or rejected an assignment.'
+                })
+            });
+    } else if (activeDistributorId.value) {
+        echo.private(`distributor.${activeDistributorId.value}.orders`)
+            .listen('.order.placed', (e: any) => {
+                fetchOrders(true) // Silent Fetch
+                toast.success('New Order Received!', {
+                    description: 'A client has just placed a new confirmed order.'
+                })
+            })
+            // NEW: Listen for delivery updates (rejections, completions)
+            .listen('.delivery.updated', (e: any) => {
+                fetchOrders(true) // Silent Fetch
+                toast.info('Delivery Assignment Updated', {
+                    description: 'A delivery personnel has updated or rejected an assignment.'
+                })
+            });
+    }
 }
 
 const fetchDeliveryPersonnel = async () => {
@@ -757,7 +813,7 @@ const formatDate = (dateString: string) => {
 
         </div>
 
-        <div v-else class="flex h-full flex-col items-center justify-center text-gray-500 py-20 px-4">
+        <div v-else class="flex h-full flex-col items-center justify-center text-gray-500 pb-20 px-4">
           <Package class="h-16 w-16 mb-4 opacity-20 text-gray-400" />
           <p class="font-medium text-center text-gray-300">No order selected</p>
           <p class="text-sm text-center">Tap the menu icon to select an order</p>

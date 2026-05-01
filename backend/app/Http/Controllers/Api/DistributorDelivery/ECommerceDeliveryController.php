@@ -11,22 +11,21 @@ use App\Models\DistributorDelivery\ECDeliveryRemittance;
 use App\Models\HR\Employee;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Events\Ecommerce\DeliveryUpdated; 
+use App\Events\Ecommerce\OrderUpdated; // <--- NEW EVENT IMPORTED
 
 class ECommerceDeliveryController extends Controller
 {
-    // Fetch all deliveries assigned to the logged-in personnel
     public function index(Request $request)
     {
         $user = $request->user();
         
-        // Find the employee record linked to this user account
         $employee = Employee::where('user_id', $user->id)->first();
 
         if (!$employee) {
             return response()->json(['message' => 'Employee record not found for this user.'], 404);
         }
 
-        // Fetch Distributor's Location for the Remittance Step
         $distLat = null;
         $distLng = null;
         $distReq = DB::table('distributor_requirements')->where('user_id', $employee->parent_distributor_id)->first();
@@ -54,7 +53,6 @@ class ECommerceDeliveryController extends Controller
                 $items = collect();
                 $orderType = 'client';
 
-                // 1. Process Client Order
                 if ($delivery->order_id) {
                     $order = ClientOrder::with(['client.clientRequirement.address', 'items.product'])->find($delivery->order_id);
                     if ($order) {
@@ -79,7 +77,6 @@ class ECommerceDeliveryController extends Controller
                         }
                     }
                 } 
-                // 2. Process Service Provider Order
                 elseif ($delivery->sp_order_id) {
                     $order = SpOrder::with(['items.product'])->find($delivery->sp_order_id);
                     if ($order) {
@@ -131,10 +128,14 @@ class ECommerceDeliveryController extends Controller
                 ];
             });
 
-        return response()->json($deliveries);
+        return response()->json([
+            'success' => true,
+            'data' => $deliveries,
+            'personnel_id' => $employee->id,
+            'distributor_id' => $employee->parent_distributor_id
+        ]);
     }
 
-    // Start the delivery trip
     public function startDelivery(Request $request, $id)
     {
         $delivery = ECOrderDelivery::findOrFail($id);
@@ -143,14 +144,24 @@ class ECommerceDeliveryController extends Controller
         
         if ($delivery->order_id) {
             DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'shipped']);
+            $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
+            if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
         } elseif ($delivery->sp_order_id) {
             DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'shipped']);
+            $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
+            if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
+        }
+
+        $user = $request->user();
+        $employee = Employee::where('user_id', $user->id)->first();
+        
+        if ($employee) {
+            event(new DeliveryUpdated($employee->parent_distributor_id));
         }
 
         return response()->json(['message' => 'Delivery started. Status updated to in transit.']);
     }
 
-    // Process arrival and complete the delivery
     public function arrive(Request $request, $id)
     {
         $delivery = ECOrderDelivery::findOrFail($id);
@@ -197,10 +208,8 @@ class ECommerceDeliveryController extends Controller
 
         $request->validate($rules);
 
-        // Fetch bypass flag (default to false if not provided)
         $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
 
-        // Distance validation (Must be within 500 meters / 0.5km unless bypassed)
         if (!$bypassLocation && $targetLat && $targetLng) {
             $distance = $this->calculateDistance($request->latitude, $request->longitude, $targetLat, $targetLng);
             if ($distance > 0.5) { 
@@ -211,7 +220,6 @@ class ECommerceDeliveryController extends Controller
         DB::beginTransaction();
 
         try {
-            // Handle Package Proof Upload
             if ($request->hasFile('proof_file')) {
                 $file = $request->file('proof_file');
                 $filename = 'delivery_proof_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -219,7 +227,6 @@ class ECommerceDeliveryController extends Controller
                 $delivery->delivery_proof_path = 'storage/' . $path;
             }
 
-            // Handle Payment Proof Upload if COD
             if ($isCOD && $request->hasFile('payment_file')) {
                 $file = $request->file('payment_file');
                 $filename = 'payment_rcvd_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -227,17 +234,27 @@ class ECommerceDeliveryController extends Controller
                 $delivery->payment_received_proof_path = 'storage/' . $path;
             }
 
-            // Update statuses
             $delivery->status = $isCOD ? 'remitting' : 'delivered';
             $delivery->save();
 
             if ($delivery->order_id) {
                 DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'delivered']);
+                $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
+                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
             } elseif ($delivery->sp_order_id) {
                 DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'delivered']);
+                $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
+                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
             }
 
             DB::commit();
+
+            $user = $request->user();
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                event(new DeliveryUpdated($employee->parent_distributor_id));
+            }
+
             return response()->json(['message' => 'Order delivered successfully!']);
 
         } catch (\Exception $e) {
@@ -246,7 +263,6 @@ class ECommerceDeliveryController extends Controller
         }
     }
 
-    // Remit Funds to Distributor HQ (for COD orders)
     public function remit(Request $request, $id)
     {
         $request->validate([
@@ -263,7 +279,6 @@ class ECommerceDeliveryController extends Controller
 
         $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
 
-        // Validate proximity to Distributor HQ
         $user = $request->user();
         $employee = Employee::where('user_id', $user->id)->first();
         
@@ -271,7 +286,6 @@ class ECommerceDeliveryController extends Controller
         if ($distReq) {
             $distAddr = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
             
-            // Distance validation (Must be within 500 meters unless bypassed)
             if (!$bypassLocation && $distAddr && $distAddr->latitude && $distAddr->longitude) {
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $distAddr->latitude, $distAddr->longitude);
                 if ($distance > 0.5) {
@@ -290,7 +304,7 @@ class ECommerceDeliveryController extends Controller
                 $delivery->remittance_proof_path = 'storage/' . $path;
             }
 
-            $delivery->status = 'delivered'; // Final state for EC Delivery tracking
+            $delivery->status = 'delivered'; 
             $delivery->save();
 
             $distGrandTotal = 0;
@@ -306,7 +320,6 @@ class ECommerceDeliveryController extends Controller
             $distVatableSales = round($distGrandTotal / 1.12, 2);
             $distVatAmount = round($distGrandTotal - $distVatableSales, 2);
 
-            // Insert using raw queries to easily handle conditional SP/Client insertion
             DB::table('ec_delivery_remittances')->insert([
                 'distributor_id' => $distributorId,
                 'delivery_personnel_id' => $employee->id,
@@ -329,7 +342,6 @@ class ECommerceDeliveryController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Keep running tally of distributor's cumulative sales
             $overallSales = DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->first();
             if ($overallSales) {
                 DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->update([
@@ -348,6 +360,9 @@ class ECommerceDeliveryController extends Controller
             }
 
             DB::commit();
+
+            event(new DeliveryUpdated($distributorId));
+
             return response()->json(['message' => 'Funds remitted and delivery cycle completed!']);
             
         } catch (\Exception $e) {
@@ -356,9 +371,6 @@ class ECommerceDeliveryController extends Controller
         }
     }
 
-    /**
-     * Delivery Personnel cancels/rejects the assigned delivery
-     */
     public function rejectDelivery(Request $request, $id)
     {
         $request->validate([
@@ -385,16 +397,24 @@ class ECommerceDeliveryController extends Controller
                     'status' => 'confirmed',
                     'rejection_reason' => $reasonString
                 ]);
+                $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
+                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
             } elseif ($delivery->sp_order_id) {
                 DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update([
                     'status' => 'confirmed',
                     'rejection_reason' => $reasonString
                 ]);
+                $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
+                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
             }
 
             $delivery->delete();
 
             DB::commit();
+
+            if ($employee) {
+                event(new DeliveryUpdated($employee->parent_distributor_id));
+            }
 
             return response()->json(['message' => 'Delivery rejected successfully.']);
             
@@ -404,7 +424,6 @@ class ECommerceDeliveryController extends Controller
         }
     }
 
-    // Haversine formula for backend distance validation (returns kilometers)
     private function calculateDistance($lat1, $lon1, $lat2, $lon2) {
         $earthRadius = 6371; 
         $dLat = deg2rad($lat2 - $lat1);

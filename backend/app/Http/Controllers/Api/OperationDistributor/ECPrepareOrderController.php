@@ -5,16 +5,15 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
-use App\Models\ServiceProvider\SpOrder; // Added for Service Provider Orders
+use App\Models\ServiceProvider\SpOrder; 
 use App\Models\HR\Employee;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Events\Ecommerce\DeliveryUpdated;
+use App\Events\Ecommerce\OrderUpdated; // <--- NEW EVENT IMPORTED
 
 class ECPrepareOrderController extends Controller
 {
-    /**
-     * Retrieves the specific permissions for a user on a given module (Level-Based).
-     */
     private function getPermissions($user, $permissionKey)
     {
         $defaults = [
@@ -23,7 +22,6 @@ class ECPrepareOrderController extends Controller
             'can_approve' => false
         ];
 
-        // Main distributors and head operational distributors automatically have full access
         if ($user->role === 'admin' || $user->role === 'distributor' || $user->role === 'operational_distributor') {
             return [
                 'can_view' => true,
@@ -32,7 +30,6 @@ class ECPrepareOrderController extends Controller
             ];
         }
 
-        // Check RBAC for standard employees
         if ($user->role === 'employee') {
             $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
             if (!$employee) return $defaults;
@@ -66,19 +63,16 @@ class ECPrepareOrderController extends Controller
         return $permissions[$action] ?? false;
     }
 
-    // Fetch all confirmed (and prepared to stay in processed history) orders
     public function index(Request $request)
     {
         $user = $request->user();
 
-        // Get permissions and check RBAC Read Access using the key 'ec_prepare_order'
         $permissions = $this->getPermissions($user, 'ec_prepare_order');
         
         if (!$permissions['can_view']) {
             return response()->json(['message' => 'Access Denied: You do not have permission to view prepare orders.'], 403);
         }
 
-        // Find distributor context based on user role
         $distributorId = null;
         if ($user->role === 'employee') {
             $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
@@ -92,9 +86,6 @@ class ECPrepareOrderController extends Controller
             $distributorId = $user->id;
         }
 
-        // ==========================================
-        // 1. FETCH CLIENT ORDERS
-        // ==========================================
         $clientOrdersQuery = ClientOrder::with(['client', 'items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
 
         if ($distributorId) {
@@ -145,9 +136,6 @@ class ECPrepareOrderController extends Controller
             ];
         });
 
-        // ==========================================
-        // 2. FETCH SERVICE PROVIDER ORDERS
-        // ==========================================
         $spOrdersQuery = SpOrder::with(['items.product'])->whereIn('status', ['confirmed', 'prepared', 'ready_for_pickup']);
 
         if ($distributorId) {
@@ -169,7 +157,6 @@ class ECPrepareOrderController extends Controller
                 $isDeliveryRejected = true;
             }
 
-            // Fetch SP User via DB to avoid explicit relationship requirements
             $spUser = DB::table('users')->where('id', $order->service_provider_id)->first();
 
             return [
@@ -201,30 +188,27 @@ class ECPrepareOrderController extends Controller
             ];
         });
 
-        // Merge both order lists and sort by date descending
         $orders = $clientOrders->concat($spOrders)->sortByDesc('order_date')->values();
 
-        // Return standardized wrapper matching RBAC structure
         return response()->json([
             'success' => true,
             'data' => $orders,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'distributor_id' => $distributorId,
+            'is_admin' => $user->role === 'admin'
         ]);
     }
 
-    // Fetch Delivery Personnels dynamically from hr_employees
     public function deliveryPersonnel(Request $request)
     {
         $user = $request->user();
 
-        // Quick check to ensure user has any sort of access to this module
         if (!$this->checkRbacAccess($user, 'ec_prepare_order', 'can_view') && !$this->checkRbacAccess($user, 'ec_prepare_order', 'can_manage')) {
             return response()->json(['message' => 'Access Denied'], 403);
         }
 
         $distributorId = null;
 
-        // Ensure we only fetch employees belonging to the current distributor's company
         if ($user->role === 'employee') {
             $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
             $distributorId = $employee ? $employee->parent_distributor_id : null;
@@ -254,17 +238,15 @@ class ECPrepareOrderController extends Controller
         return response()->json($personnel);
     }
 
-    // Assign the Delivery Personnel and update Status
     public function dispatchOrder(Request $request, $id)
     {
-        // Hard backend RBAC check for performing the update (Requires Manage level)
         if (!$this->checkRbacAccess($request->user(), 'ec_prepare_order', 'can_manage')) {
             return response()->json(['message' => 'Access Denied: You do not have permission to dispatch orders.'], 403);
         }
 
         $rules = [
             'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'order_type' => 'required|in:client,sp' // Distinguish order source
+            'order_type' => 'required|in:client,sp' 
         ];
 
         $orderType = $request->input('order_type', 'client');
@@ -275,10 +257,8 @@ class ECPrepareOrderController extends Controller
             $order = ClientOrder::findOrFail($id);
         }
         
-        // Determine if it's a Pick-Up Order
         $isPickUp = in_array(strtolower($order->payment_method), ['pick-up', 'pickup']);
 
-        // Conditionally require delivery personnel if it is NOT a pick-up
         if (!$isPickUp) {
             $rules['delivery_personnel_id'] = 'required|exists:hr_employees,id';
         }
@@ -290,7 +270,6 @@ class ECPrepareOrderController extends Controller
             $filename = 'ec_preparation_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('ec_preparations', $filename, 'public');
 
-            // Insert using DB facade to prevent MassAssignment or Model mapping conflicts safely
             DB::table('ec_order_deliveries')->insert([
                 'order_id' => $orderType === 'client' ? $order->id : null,
                 'sp_order_id' => $orderType === 'sp' ? $order->id : null,
@@ -301,9 +280,25 @@ class ECPrepareOrderController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Mark the order as prepared or ready for pickup
             $newStatus = $isPickUp ? 'ready_for_pickup' : 'prepared';
-            $order->update(['status' => $newStatus, 'rejection_reason' => null]); // Clear any past rejection reasons
+            $order->update(['status' => $newStatus, 'rejection_reason' => null]); 
+
+            $orderItem = DB::table($orderType === 'sp' ? 'sp_order_items' : 'client_order_items')
+                ->where($orderType === 'sp' ? 'sp_order_id' : 'order_id', $order->id)
+                ->first();
+                
+            $distributorId = $orderItem ? $orderItem->distributor_id : null;
+
+            if ($distributorId) {
+                event(new DeliveryUpdated($distributorId, $request->delivery_personnel_id));
+            }
+
+            // BROADCAST: Let the exact Client know their order status changed
+            if ($orderType === 'client') {
+                event(new OrderUpdated($order->client_id, null));
+            } else {
+                event(new OrderUpdated(null, $order->service_provider_id));
+            }
 
             return response()->json(['message' => 'Order processed successfully.']);
         }

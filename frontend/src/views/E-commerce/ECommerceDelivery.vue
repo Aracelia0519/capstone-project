@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { toast } from 'vue-sonner'
-import api from '@/utils/axios'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { Toaster, toast } from 'vue-sonner' 
+import api from '@/utils/axios' 
+import echo from '@/utils/websocket' 
 import L from 'leaflet'
+
+// @ts-ignore
 import 'leaflet/dist/leaflet.css'
 
 // Fix for default Leaflet icon paths in Vue (TypeScript bypass)
@@ -36,8 +39,8 @@ import {
   Menu,
   Info,
   Ban,
-  Unlock, // Added for bypass toggle
-  Lock    // Added for bypass toggle
+  Unlock, 
+  Lock    
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,7 +55,7 @@ interface DeliveryItem {
 
 interface Delivery {
   id: number
-  order_type: string // Added to support client vs SP badging
+  order_type: string 
   order_number: string
   status: string
   client_name: string
@@ -76,6 +79,10 @@ const currentPosition = ref<{ lat: number; lng: number } | null>(null)
 const isLoading = ref(false)
 const isProcessing = ref(false)
 const isDrawerOpen = ref(true)
+
+// WebSocket State Variables
+const activePersonnelId = ref<number | null>(null)
+const activeDistributorId = ref<number | null>(null)
 
 // Presentation Bypass State
 const bypassLocation = ref(false)
@@ -173,7 +180,7 @@ const initMap = () => {
     keepBuffer: 4,         
     updateWhenIdle: true,  
     updateWhenZooming: false
-  }).addTo(leafletMap)
+  }).addTo(leafletMap!) // Added !
 
   const userIcon = L.divIcon({
     html: `
@@ -193,7 +200,7 @@ const initMap = () => {
     iconAnchor: [20, 48]
   })
 
-  userMarker = L.marker([currentPosition.value.lat, currentPosition.value.lng], { icon: userIcon }).addTo(leafletMap)
+  userMarker = L.marker([currentPosition.value.lat, currentPosition.value.lng], { icon: userIcon }).addTo(leafletMap!) // Added !
   updateMapMarkers()
 }
 
@@ -203,7 +210,7 @@ const drawRoute = async (force = false) => {
   
   if (!activeDeliveryId.value || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) {
     if (routeLine) {
-      leafletMap.removeLayer(routeLine)
+      leafletMap!.removeLayer(routeLine) // Added !
       routeLine = null
     }
     return
@@ -233,7 +240,7 @@ const drawRoute = async (force = false) => {
 
     if (data.code === 'Ok' && data.routes.length > 0) {
       if (routeLine) {
-        leafletMap.removeLayer(routeLine)
+        leafletMap!.removeLayer(routeLine) // Added !
       }
       
       const coords = data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]])
@@ -244,7 +251,7 @@ const drawRoute = async (force = false) => {
         opacity: 0.8,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(leafletMap)
+      }).addTo(leafletMap!) // Added !
     } else {
       drawFallbackRoute(color)
     }
@@ -256,7 +263,7 @@ const drawRoute = async (force = false) => {
 
 // Fallback to straight line if OSRM is unreachable
 const drawFallbackRoute = (color: string) => {
-  if (routeLine && leafletMap) leafletMap.removeLayer(routeLine)
+  if (routeLine && leafletMap) leafletMap!.removeLayer(routeLine) // Added !
   if (!leafletMap || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) return
   
   routeLine = L.polyline(
@@ -272,7 +279,7 @@ const drawFallbackRoute = (color: string) => {
       lineCap: 'round',
       lineJoin: 'round'
     }
-  ).addTo(leafletMap)
+  ).addTo(leafletMap!) // Added !
 }
 
 const updateMapMarkers = () => {
@@ -303,7 +310,7 @@ const updateMapMarkers = () => {
 
       const marker = L.marker([tLat, tLng], {
         icon: L.divIcon({ html: iconHtml, className: '', iconSize: isTarget ? [24,24] : [16,16], iconAnchor: isTarget ? [12,12] : [8,8] })
-      }).addTo(leafletMap)
+      }).addTo(leafletMap!) // Added !
       
       marker.bindPopup(`<b class="text-gray-900">${delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
       targetMarkers.push(marker)
@@ -327,7 +334,7 @@ const startTracking = () => {
         drawRoute(false) 
         
         if (isFirstLoad && !activeDeliveryId.value) {
-          leafletMap.setView([newPos.lat, newPos.lng], 15)
+          leafletMap!.setView([newPos.lat, newPos.lng], 15) // Added !
           isFirstLoad = false
         }
       }
@@ -367,17 +374,42 @@ const requestLocation = () => {
 }
 
 // --- API Calls ---
-const fetchDeliveries = async () => {
+const fetchDeliveries = async (isBackground = false) => {
   try {
     const res = await api.get('/distributor-delivery')
-    deliveries.value = res.data
+    if (res.data.success) {
+      deliveries.value = res.data.data
+      activePersonnelId.value = res.data.personnel_id
+      activeDistributorId.value = res.data.distributor_id
+
+      if (!isBackground) {
+        setupWebSocket()
+      }
+    } else {
+      deliveries.value = res.data
+    }
     updateMapMarkers()
   } catch (error) {
     console.error(error)
-    toast.error('Failed to load deliveries')
+    if (!isBackground) toast.error('Failed to load deliveries')
   } finally {
-    isLoading.value = false
+    if (!isBackground) isLoading.value = false
   }
+}
+
+// =========================================================================
+// WEBSOCKET LOGIC FOR REAL-TIME UPDATES
+// =========================================================================
+const setupWebSocket = () => {
+    if (activePersonnelId.value) {
+        echo.private(`personnel.${activePersonnelId.value}.deliveries`)
+            .listen('.delivery.updated', (e: any) => {
+                fetchDeliveries(true) // Silent fetch
+                toast.info('New Delivery Assigned', {
+                    description: 'A new delivery has been assigned to you by the Operational Distributor.'
+                })
+            });
+    }
 }
 
 const startDelivery = async (id: number) => {
@@ -385,7 +417,7 @@ const startDelivery = async (id: number) => {
   try {
     await api.post(`/distributor-delivery/${id}/start`)
     toast.success('Trip started!')
-    await fetchDeliveries()
+    await fetchDeliveries(true)
     focusDelivery(id)
   } catch (error) {
     toast.error('Failed to start delivery')
@@ -431,7 +463,7 @@ const arriveAndComplete = async () => {
 
     removeProof()
     removePayment()
-    await fetchDeliveries()
+    await fetchDeliveries(true)
     if (activeDeliveryId.value) focusDelivery(activeDeliveryId.value)
   } catch (error: any) {
     if(error.response && error.response.status === 400) {
@@ -466,7 +498,7 @@ const remitAndComplete = async () => {
     toast.success('Funds successfully remitted. Delivery cycle complete!')
     removeRemittance()
     clearActiveDelivery()
-    await fetchDeliveries()
+    await fetchDeliveries(true)
   } catch (error: any) {
     if(error.response && error.response.status === 400) {
        toast.error(error.response.data.message || 'Distance validation failed.')
@@ -490,7 +522,7 @@ const submitReject = async () => {
     showRejectForm.value = false
     rejectReason.value = ''
     clearActiveDelivery()
-    await fetchDeliveries()
+    await fetchDeliveries(true)
   } catch (error: any) {
     toast.error(error.response?.data?.message || 'Failed to reject delivery')
   } finally {
@@ -519,9 +551,9 @@ const focusDelivery = (id: number) => {
           [currentPosition.value.lat, currentPosition.value.lng],
           [tLat, tLng]
         )
-        leafletMap.fitBounds(bounds, { padding: [50, 50] })
+        leafletMap!.fitBounds(bounds, { padding: [50, 50] }) // Added !
       } else {
-        leafletMap.setView([tLat, tLng], 15)
+        leafletMap!.setView([tLat, tLng], 15) // Added !
       }
     }
   })
@@ -538,7 +570,7 @@ const clearActiveDelivery = () => {
   drawRoute(true) 
   
   if (leafletMap && currentPosition.value) {
-     leafletMap.setView([currentPosition.value.lat, currentPosition.value.lng], 15)
+     leafletMap!.setView([currentPosition.value.lat, currentPosition.value.lng], 15) // Added !
   }
 }
 
@@ -590,6 +622,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId)
   if (leafletMap) leafletMap.remove()
+  if (activePersonnelId.value) {
+      echo.leave(`personnel.${activePersonnelId.value}.deliveries`);
+  }
 })
 </script>
 

@@ -10,6 +10,9 @@ use App\Models\ServiceProvider\SpReturnRequest;
 use App\Models\ServiceProvider\SpReturnMessage;
 use App\Events\ReturnMessageSent;
 use App\Events\SpReturnMessageSent;
+use App\Events\Ecommerce\OrderUpdated; 
+use App\Events\Ecommerce\ReturnRequestUpdated; 
+use App\Events\Finance\TransactionUpdated; // <--- EVENT IMPORTED
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -92,7 +95,6 @@ class ECReturnController extends Controller
         $distId = $this->getDistributorId($user);
         $permissions = $this->getPermissions($user, 'ec_returns');
 
-        // 1. Fetch Client Returns
         $clientReturns = ClientReturnRequest::with(['orderItem.product', 'client'])
             ->where('distributor_id', $distId)
             ->get()
@@ -104,7 +106,6 @@ class ECReturnController extends Controller
                 $item['client_has_gcash'] = false;
                 $item['client_gcash_number'] = null;
 
-                // FORCE NAME MAPPING FOR THE FRONTEND
                 if (isset($item['client'])) {
                     $item['client']['name'] = $ret->client->full_name ?? trim(($ret->client->first_name ?? '') . ' ' . ($ret->client->last_name ?? ''));
                     if (empty(trim($item['client']['name']))) {
@@ -129,7 +130,6 @@ class ECReturnController extends Controller
                 return $item;
             });
 
-        // 2. Fetch Service Provider Returns
         $spReturns = SpReturnRequest::with(['orderItem.product'])
             ->where('distributor_id', $distId)
             ->get()
@@ -137,7 +137,6 @@ class ECReturnController extends Controller
                 $item = $ret->toArray(); 
                 $item['request_type'] = 'sp';
                 
-                // Construct a mock 'client' structure for frontend compatibility
                 $spUser = DB::table('users')->where('id', $ret->sp_id)->first();
                 $item['client'] = [
                     'id' => $spUser->id ?? null,
@@ -151,7 +150,6 @@ class ECReturnController extends Controller
                 return $item;
             });
 
-        // Merge and sort
         $returnData = $clientReturns->concat($spReturns)->sortByDesc('created_at')->values()->toArray();
 
         return response()->json([
@@ -185,6 +183,7 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new SpReturnMessageSent($msg))->toOthers();
+            event(new OrderUpdated(null, $returnReq->sp_id)); // Notify SP Screen
         } else {
             $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
             $returnReq->update(['status' => 'approved']);
@@ -198,7 +197,11 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new ReturnMessageSent($msg))->toOthers();
+            
+            event(new OrderUpdated($returnReq->client_id, null)); 
         }
+
+        event(new ReturnRequestUpdated($distId)); 
 
         return response()->json(['success' => true, 'message' => 'Approved']);
     }
@@ -226,6 +229,7 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new SpReturnMessageSent($msg))->toOthers();
+            event(new OrderUpdated(null, $returnReq->sp_id)); 
         } else {
             $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
             $returnReq->update(['status' => 'rejected']);
@@ -239,7 +243,11 @@ class ECReturnController extends Controller
             ]);
 
             broadcast(new ReturnMessageSent($msg))->toOthers();
+
+            event(new OrderUpdated($returnReq->client_id, null)); 
         }
+
+        event(new ReturnRequestUpdated($distId)); 
 
         return response()->json(['success' => true, 'message' => 'Rejected']);
     }
@@ -276,6 +284,7 @@ class ECReturnController extends Controller
                 ]);
 
                 broadcast(new SpReturnMessageSent($msg))->toOthers();
+                event(new OrderUpdated(null, $returnReq->sp_id)); 
             } else {
                 $returnReq = ClientReturnRequest::where('id', $id)->where('distributor_id', $distId)->firstOrFail();
                 $returnReq->update(['status' => 'completed']);
@@ -289,9 +298,9 @@ class ECReturnController extends Controller
                 ]);
 
                 broadcast(new ReturnMessageSent($msg))->toOthers();
+                event(new OrderUpdated($returnReq->client_id, null));
             }
 
-            // Secure raw DB insert because ECRefundRequest might not have sp_return_request_id in fillables
             DB::table('ec_refund_requests')->insert([
                 'return_request_id' => $type === 'client' ? $returnReq->id : null,
                 'sp_return_request_id' => $type === 'sp' ? $returnReq->id : null,
@@ -306,6 +315,12 @@ class ECReturnController extends Controller
             ]);
 
             DB::commit();
+
+            event(new ReturnRequestUpdated($distId)); 
+
+            // BROADCAST: Notify Finance that a new Transaction has appeared
+            event(new TransactionUpdated($distId));
+
             return response()->json(['success' => true, 'message' => 'Refund processed']);
         } catch (\Exception $e) {
             DB::rollBack();

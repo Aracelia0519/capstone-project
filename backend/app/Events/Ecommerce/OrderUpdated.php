@@ -1,7 +1,6 @@
 <?php
-//ServiceRequest to bruh
 
-namespace App\Events\ServiceProvider;
+namespace App\Events\Ecommerce;
 
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -9,22 +8,22 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ServiceRequestUpdated implements ShouldBroadcastNow
+class OrderUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $clientId;
-    public $providerId;
+    public $spId;
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($clientId, $providerId)
+    public function __construct($clientId = null, $spId = null)
     {
         $this->clientId = $clientId;
-        $this->providerId = $providerId;
+        $this->spId = $spId;
     }
 
     /**
@@ -34,15 +33,21 @@ class ServiceRequestUpdated implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        // Broadcasts to BOTH the specific Client AND the Service Provider
-        return [
-            new PrivateChannel('client.' . $this->clientId . '.requests'),
-            new PrivateChannel('provider.' . $this->providerId . '.requests')
-        ];
+        $channels = [];
+        
+        // Route securely to either a regular client or a service provider acting as a client
+        if ($this->clientId) {
+            $channels[] = new PrivateChannel('client.' . $this->clientId . '.orders');
+        }
+        if ($this->spId) {
+            $channels[] = new PrivateChannel('provider.' . $this->spId . '.orders');
+        }
+
+        return $channels;
     }
 
     public function broadcastAs()
     {
-        return 'request.updated';
+        return 'order.updated';
     }
 }
