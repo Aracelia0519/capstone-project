@@ -1,8 +1,6 @@
 <template>
   <div class="min-h-screen font-sans bg-[#0f172a] text-slate-200">
-    <Teleport to="body">
-      <Toaster richColors position="top-right" :expand="false" :close-button="true" :visible-toasts="1" />
-    </Teleport>
+    
 
     <header class="sticky top-0 z-40 backdrop-blur-xl border-b border-slate-800/60 shadow-lg bg-slate-900/75">
       <div class="px-4 sm:px-6 lg:px-8 py-4">
@@ -557,6 +555,7 @@
 <script>
 import api from '@/utils/axios';
 import { Toaster, toast } from 'vue-sonner';
+import echo from '@/utils/websocket.js' 
 
 export default {
   name: 'DistributorList',
@@ -567,6 +566,8 @@ export default {
       loading: true,
       activeTab: 'All',
       searchQuery: '',
+      currentUserId: null,
+      echoInitialized: false,
 
       // Partnership Request Modal State
       showModal: false,
@@ -659,11 +660,52 @@ export default {
              distributor_termination_signed_at: dist.distributor_termination_signed_at,
              sp_termination_signed_at: dist.sp_termination_signed_at
           }));
+          this.currentUserId = response.data.current_user_id;
+
+          // Initialize WebSockets securely after fetching user data
+          this.initializeEchoListener();
         }
       } catch (error) {
         toast.error('Failed to load network data', { description: 'Please check your connection and try again.' });
       } finally {
         this.loading = false;
+      }
+    },
+
+    initializeEchoListener() {
+        // USE IMPORTED 'echo' HERE instead of window.Echo
+        if (!this.echoInitialized && this.currentUserId && echo) {
+            echo.private(`partnership.user.${this.currentUserId}`)
+                .listen('.PartnershipStatusUpdated', (e) => {
+                    // Update data seamlessly
+                    this.fetchDistributorsSilently();
+                    toast.info('Network Update', {
+                        description: 'A distributor has updated your partnership status.'
+                    });
+                });
+            this.echoInitialized = true;
+        }
+    },
+
+    async fetchDistributorsSilently() {
+      try {
+        const response = await api.get('/service-provider/distributors');
+        if (response.data.success) {
+          this.distributors = response.data.data.map(dist => ({
+             id: dist.id,
+             partnership_id: dist.partnership_id,
+             name: dist.name,
+             location: dist.location,
+             specialties: dist.specialties,
+             status: dist.status,
+             agreement_url: dist.agreement_url,
+             termination_url: dist.termination_url,
+             distributor_termination_signed_at: dist.distributor_termination_signed_at,
+             sp_termination_signed_at: dist.sp_termination_signed_at
+          }));
+        }
+      } catch (error) {
+         console.error('Silent refresh failed');
       }
     },
 
@@ -1080,9 +1122,14 @@ export default {
       }
     },
   },
-  beforeUnmount() { document.body.style.overflow = ''; }
+  beforeUnmount() { 
+      document.body.style.overflow = ''; 
+      // USE IMPORTED 'echo' HERE
+      if (this.currentUserId && echo) {
+          echo.leave(`partnership.user.${this.currentUserId}`);
+      }
+  }
 }
-
 </script>
 
 <style scoped>

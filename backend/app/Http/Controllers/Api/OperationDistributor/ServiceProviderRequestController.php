@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServiceProvider\ServiceProviderDistributor;
+use App\Events\Partnership\PartnershipStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -141,7 +142,9 @@ class ServiceProviderRequestController extends Controller
             return response()->json([
                 'success' => true, 
                 'data' => $requests,
-                'permissions' => $permissions
+                'permissions' => $permissions,
+                // FIX: Giving Vue the Distributor ID so it listens to the correct channel
+                'current_user_id' => $distributorId 
             ], 200);
 
         } catch (\Exception $e) {
@@ -301,6 +304,9 @@ class ServiceProviderRequestController extends Controller
                 'sp_termination_signature_path' => null,
             ]);
 
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($distributorId, $req->service_provider_id, 'partnership_approved'));
+
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
                 $distEmail = $distributor ? $distributor->email : $user->email;
@@ -401,6 +407,9 @@ class ServiceProviderRequestController extends Controller
                 'sp_termination_signed_at' => null,
                 'sp_termination_signature_path' => null,
             ]);
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($distributorId, $req->service_provider_id, 'partnership_rejected'));
 
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
@@ -646,6 +655,9 @@ class ServiceProviderRequestController extends Controller
                 'sp_termination_signature_path' => null,
             ]);
 
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($distributorId, $req->service_provider_id, 'termination_initiated'));
+
             // Background Emails
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
@@ -830,6 +842,9 @@ class ServiceProviderRequestController extends Controller
                 'distributor_termination_signature_path' => $signaturePath
             ]);
 
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($distributorId, $req->service_provider_id, 'termination_approved'));
+
             // Dispatch Emails
             try {
                 $spEmail = $req->serviceProvider ? $req->serviceProvider->email : null;
@@ -917,6 +932,9 @@ class ServiceProviderRequestController extends Controller
                 'sp_termination_signed_at' => null,
                 'sp_termination_signature_path' => null,
             ]);
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($distributorId, $req->service_provider_id, 'termination_declined'));
 
             // Dispatch Emails
             try {

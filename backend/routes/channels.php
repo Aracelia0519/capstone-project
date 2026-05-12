@@ -232,3 +232,43 @@ Broadcast::channel('provider.{providerId}.inventory', function ($user, $provider
     if ($user->role === 'service_provider' && (int)$user->id === (int)$providerId) return true;
     return false;
 });
+
+
+// Partnership Requests Channel for Distributor
+Broadcast::channel('distributor.{distributorId}.requests', function ($user, $distributorId) {
+    if ($user->role === 'admin') return true;
+    if ($user->role === 'distributor' && (int)$user->id === (int)$distributorId) return true;
+
+    if ($user->role === 'operational_distributor') {
+        $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+        if ($opDist && (int)$opDist->parent_distributor_id === (int)$distributorId) return true;
+    }
+
+    if ($user->role === 'employee') {
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if ($employee && (int)$employee->parent_distributor_id === (int)$distributorId) return true;
+    }
+
+    return false;
+});
+
+
+// ------------- THE NEW PARTNERSHIP USER CHANNEL -------------
+Broadcast::channel('partnership.user.{id}', function ($user, $id) {
+    // 1. Direct match (Service Provider or Main Distributor)
+    if ((int) $user->id === (int) $id) return true;
+
+    // 2. Operational distributor check
+    if ($user->role === 'operational_distributor') {
+        $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+        if ($opDist && (int)$opDist->parent_distributor_id === (int)$id) return true;
+    }
+
+    // 3. Employee check
+    if ($user->role === 'employee') {
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if ($employee && (int)$employee->parent_distributor_id === (int)$id) return true;
+    }
+
+    return false;
+});

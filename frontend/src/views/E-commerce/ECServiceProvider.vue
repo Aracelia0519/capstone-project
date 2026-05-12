@@ -714,9 +714,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Toaster, toast } from 'vue-sonner'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js' 
+
 import { 
   Loader2, RefreshCw, Search, Eye, Check, X,
   Inbox, Users, CalendarRange, CheckCircle2,
@@ -741,6 +743,8 @@ const searchQuery = ref('')
 const isProcessing = ref(false)
 const agreedToTerms = ref(false)
 const currentTab = ref('pending') 
+const currentUserId = ref(null)
+let echoInitialized = false
 
 // Dialog Visibility
 const showViewDialog = ref(false)
@@ -840,9 +844,11 @@ const fetchData = async () => {
     const response = await api.get('/operation-distributor/service-provider-requests')
     if (response.data.success) {
       requests.value = response.data.data
+      currentUserId.value = response.data.current_user_id
       if (response.data.permissions) {
         permissions.value = response.data.permissions
       }
+      initializeEcho()
     }
   } catch (error) {
     console.error(error)
@@ -859,8 +865,40 @@ const fetchData = async () => {
   }
 }
 
+const fetchDataSilently = async () => {
+    try {
+        const response = await api.get('/operation-distributor/service-provider-requests')
+        if (response.data.success) {
+            requests.value = response.data.data
+        }
+    } catch (error) {
+        console.error('Failed to silently fetch updates')
+    }
+}
+
+const initializeEcho = () => {
+    // USE IMPORTED 'echo' HERE instead of window.Echo
+    if (!echoInitialized && currentUserId.value && echo) {
+        echo.private(`partnership.user.${currentUserId.value}`)
+            .listen('.PartnershipStatusUpdated', (e) => {
+                fetchDataSilently()
+                toast.info('Partnership Update', {
+                    description: 'A service provider updated their partnership status.'
+                });
+            });
+        echoInitialized = true;
+    }
+}
+
 onMounted(() => {
   fetchData()
+})
+
+onBeforeUnmount(() => {
+    // USE IMPORTED 'echo' HERE
+    if (currentUserId.value && echo) {
+        echo.leave(`partnership.user.${currentUserId.value}`)
+    }
 })
 
 const openViewDialog = (req) => {
@@ -1037,7 +1075,6 @@ const submitDeclineTermination = async () => {
     isProcessing.value = false
   }
 }
-
 
 // --- Main Signature Pad ---
 const initSignaturePad = () => {

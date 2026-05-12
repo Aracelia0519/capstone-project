@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\ServiceProvider;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ServiceProvider\ServiceProviderDistributor;
+use App\Events\Partnership\PartnershipStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -64,7 +65,8 @@ class ServiceProviderDistributorController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $distributors
+                'data' => $distributors,
+                'current_user_id' => $user->id // <-- ADD THIS LINE
             ], 200);
 
         } catch (\Exception $e) {
@@ -201,6 +203,9 @@ class ServiceProviderDistributorController extends Controller
                     'sp_signed_at' => now(),
                 ]
             );
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($request->distributor_id, $user->id, 'partnership_requested'));
 
             return response()->json(['success' => true, 'message' => 'Partnership request sent successfully!'], 201);
 
@@ -341,6 +346,9 @@ class ServiceProviderDistributorController extends Controller
                 'sp_termination_signature_path' => null,
                 'updated_at' => Carbon::now()
             ]);
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'reactivation_requested'));
 
             // Dispatch Emails
             try {
@@ -500,6 +508,9 @@ class ServiceProviderDistributorController extends Controller
                 'sp_termination_signed_at' => Carbon::now(),
                 'sp_termination_signature_path' => $signaturePath
             ]);
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'termination_requested'));
 
             // Dispatch Emails
             try {
@@ -670,6 +681,9 @@ class ServiceProviderDistributorController extends Controller
                 'sp_termination_signature_path' => $signaturePath
             ]);
 
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'termination_approved'));
+
             // Dispatch Emails
             try {
                 $spEmail = $user->email;
@@ -747,6 +761,9 @@ class ServiceProviderDistributorController extends Controller
                 'sp_termination_signed_at' => null,
                 'sp_termination_signature_path' => null,
             ]);
+
+            // Trigger Real-Time Event
+            event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'termination_declined'));
 
             // Dispatch Emails
             try {
