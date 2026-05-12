@@ -9,6 +9,7 @@ use App\Models\ServiceProvider\SpOrderItem;
 use App\Models\EcommerceClient\ShippingRule;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\EcommerceClient\OrderVatDeduction;
+use App\Events\Ecommerce\EcommerceOrderPlaced;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -460,6 +461,19 @@ class SpCartController extends Controller
 
             DB::commit();
 
+            // =========================================================================
+            // BROADCAST REAL-TIME NOTIFICATIONS TO INVOLVED DISTRIBUTORS
+            // =========================================================================
+            if ($orderStatus === 'confirmed') {
+                $distributorIds = array_unique($cartItems->pluck('distributor_id')->toArray());
+                foreach ($distributorIds as $distId) {
+                    event(new EcommerceOrderPlaced($distId, [
+                        'order_number' => $orderNumber,
+                        'status' => $orderStatus
+                    ]));
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Cart Checkout successful.',
@@ -683,6 +697,19 @@ class SpCartController extends Controller
 
             DB::commit();
             Storage::disk('local')->delete($filePath);
+
+            // =========================================================================
+            // BROADCAST REAL-TIME NOTIFICATIONS (GCASH)
+            // =========================================================================
+            if ($cacheData['order_status'] === 'confirmed') {
+                $distributorIds = array_keys($distributorTotals);
+                foreach ($distributorIds as $distId) {
+                    event(new EcommerceOrderPlaced($distId, [
+                        'order_number' => $cacheData['order_number'],
+                        'status' => $cacheData['order_status']
+                    ]));
+                }
+            }
 
             return response()->json([
                 'success' => true,

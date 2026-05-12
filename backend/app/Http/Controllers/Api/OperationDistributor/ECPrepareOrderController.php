@@ -10,7 +10,7 @@ use App\Models\HR\Employee;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Events\Ecommerce\DeliveryUpdated;
-use App\Events\Ecommerce\OrderUpdated; // <--- NEW EVENT IMPORTED
+use App\Events\Ecommerce\OrderUpdated; 
 
 class ECPrepareOrderController extends Controller
 {
@@ -293,7 +293,6 @@ class ECPrepareOrderController extends Controller
                 event(new DeliveryUpdated($distributorId, $request->delivery_personnel_id));
             }
 
-            // BROADCAST: Let the exact Client know their order status changed
             if ($orderType === 'client') {
                 event(new OrderUpdated($order->client_id, null));
             } else {

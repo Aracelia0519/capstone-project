@@ -9,12 +9,13 @@ use App\Models\EcommerceClient\ClientOrderItem;
 use App\Models\EcommerceClient\ShippingRule;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\EcommerceClient\OrderVatDeduction;
+use App\Events\Ecommerce\EcommerceOrderPlaced; // <--- NEW RENAMED EVENT IMPORTED
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage; // ADDED STORAGE FACADE
+use Illuminate\Support\Facades\Storage; 
 use Illuminate\Support\Str;
 
 class CartController extends Controller
@@ -147,7 +148,6 @@ class CartController extends Controller
 
         $user = Auth::user();
         
-        // ONLY fetch and process cart items that were selected by the user
         $cartItems = ClientCart::with('product')
             ->where('client_id', $user->id)
             ->whereIn('id', $request->selected_items)
@@ -267,7 +267,6 @@ class CartController extends Controller
             foreach($distributorShippingFees as $k => $v) { $distributorShippingFees[$k] = 0; }
         }
 
-        // FORCE SHIPPING FEE TO 0 IF PICKUP
         if ($request->payment_method === 'pick-up') {
             $totalShippingFee = 0;
             $fullAddress = "Store Pick-Up";
@@ -289,13 +288,11 @@ class CartController extends Controller
                 $client = new \GuzzleHttp\Client();
                 $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
-                // PREPARE BILLING DETAILS FOR PAYMONGO PREFILL
                 $billingDetails = [
                     'name' => trim($user->first_name . ' ' . $user->last_name),
                     'email' => $user->email,
                 ];
                 
-                // --- STRICT GCASH NUMBER VALIDATION ---
                 $gcashNumberToUse = null;
                 if (Schema::hasTable('client_payment_settings')) {
                     $clientPayment = DB::table('client_payment_settings')
@@ -315,7 +312,6 @@ class CartController extends Controller
                 }
 
                 $billingDetails['phone'] = (string) $gcashNumberToUse;
-                // --------------------------------------
 
                 $response = $client->request('POST', 'https://api.paymongo.com/v1/checkout_sessions', [
                     'headers' => [
@@ -333,7 +329,7 @@ class CartController extends Controller
                                 'payment_method_types' => ['gcash'],
                                 'description' => 'Payment for Cart Order ' . $orderNumber,
                                 'reference_number' => $orderNumber, 
-                                'billing' => $billingDetails, // INJECTING BILLING HERE FOR PRE-FILL
+                                'billing' => $billingDetails, 
                                 'line_items' => [
                                     [
                                         'currency' => 'PHP',
@@ -405,7 +401,7 @@ class CartController extends Controller
                 'total_amount' => $totalOrderAmount,
                 'shipping_fee' => $totalShippingFee,
                 'grand_total' => $grandTotal,
-                'payment_method' => $request->payment_method, // Handles cod and pick-up
+                'payment_method' => $request->payment_method, 
                 'status' => $orderStatus,
                 'delivery_address' => $fullAddress,
             ]);
@@ -471,12 +467,24 @@ class CartController extends Controller
                 DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
             }
             
-            // DELETE ONLY THE SELECTED ITEMS FROM THE CART
             ClientCart::where('client_id', $user->id)
                 ->whereIn('id', $request->selected_items)
                 ->delete();
 
             DB::commit();
+
+            // =========================================================================
+            // 3. BROADCAST REAL-TIME NOTIFICATIONS TO INVOLVED DISTRIBUTORS
+            // =========================================================================
+            if ($orderStatus === 'confirmed') {
+                $distributorIds = array_unique($cartItems->pluck('distributor_id')->toArray());
+                foreach ($distributorIds as $distId) {
+                    event(new EcommerceOrderPlaced($distId, [
+                        'order_number' => $orderNumber,
+                        'status' => $orderStatus
+                    ]));
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -590,7 +598,7 @@ class CartController extends Controller
             }
 
             $receiptItems = [];
-            $distributorTotals = []; // Tracks per-distributor values for Remittances and Financial tables
+            $distributorTotals = [];
             $totalQuantity = 0;
 
             foreach ($cacheData['items'] as $item) {
@@ -646,19 +654,15 @@ class CartController extends Controller
                 }
             }
 
-            // ========================================================================
-            // INSERT REMITTANCE AND FINANCIAL RECORDS PER INVOLVED DISTRIBUTOR
-            // ========================================================================
             foreach ($distributorTotals as $distributorId => $itemsTotal) {
                 $distShipping = $cacheData['distributor_shipping_fees'][$distributorId] ?? 0;
                 $distGrandTotal = $itemsTotal + $distShipping;
                 $distVatableSales = round($distGrandTotal / 1.12, 2);
                 $distVatAmount = round($distGrandTotal - $distVatableSales, 2);
 
-                // 1. Insert System Auto-Remittance 
                 DB::table('ec_delivery_remittances')->insert([
                     'distributor_id' => $distributorId,
-                    'delivery_personnel_id' => null, // Processed by System API
+                    'delivery_personnel_id' => null, 
                     'order_id' => $order->id,
                     'amount' => $distGrandTotal,
                     'remittance_proof_path' => 'System Auto-GCash Cart (PayMongo)',
@@ -666,7 +670,6 @@ class CartController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // 2. Insert Order Financials tracking specific to this distributor's chunk
                 DB::table('ec_order_financials')->insert([
                     'order_id' => $order->id,
                     'distributor_id' => $distributorId,
@@ -677,7 +680,6 @@ class CartController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // 3. Update or Insert Distributor's Overall Sales
                 $overallSales = DB::table('distributor_overall_sales')
                     ->where('distributor_id', $distributorId)
                     ->first();
@@ -700,13 +702,11 @@ class CartController extends Controller
                     ]);
                 }
             }
-            // ========================================================================
 
             foreach ($cacheData['applied_promotions'] as $promoId) {
                 DB::table('crm_promotions')->where('id', $promoId)->increment('used_count');
             }
 
-            // Purge the checked out items from the client's actual cart table
             if (isset($cacheData['selected_items'])) {
                 ClientCart::where('client_id', $cacheData['user_id'])
                     ->whereIn('id', $cacheData['selected_items'])
@@ -715,6 +715,19 @@ class CartController extends Controller
 
             DB::commit();
             Storage::disk('local')->delete($filePath);
+
+            // =========================================================================
+            // BROADCAST REAL-TIME NOTIFICATIONS (GCASH)
+            // =========================================================================
+            if ($cacheData['order_status'] === 'confirmed') {
+                $distributorIds = array_keys($distributorTotals);
+                foreach ($distributorIds as $distId) {
+                    event(new EcommerceOrderPlaced($distId, [
+                        'order_number' => $cacheData['order_number'],
+                        'status' => $cacheData['order_status']
+                    ]));
+                }
+            }
 
             return response()->json([
                 'success' => true,

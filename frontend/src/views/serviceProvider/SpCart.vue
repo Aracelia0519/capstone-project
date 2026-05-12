@@ -26,17 +26,17 @@
               </svg>
             </div>
             <h3 class="text-2xl font-bold text-white mb-2">Your cart is empty</h3>
-            <p class="text-slate-400 mb-8 font-medium">Visit a partnered distributor to procure materials.</p>
+            <p class="text-slate-400 mb-8 font-medium">Looks like you haven't added any products to your cart yet.</p>
             <router-link to="/serviceProvider/Distributors">
-              <Button class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-indigo-900/20 transition-all border-0">
-                Browse Distributors
+              <Button class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-indigo-900/50 transition-all border-0">
+                Browse Products
               </Button>
             </router-link>
           </Card>
 
           <div v-else class="space-y-6">
-            <Card v-if="productItems.length > 0" class="border border-slate-700/60 shadow-xl rounded-3xl overflow-hidden bg-slate-900 ring-1 ring-white/5">
-              <CardHeader class="p-5 md:p-6 border-b border-slate-800 bg-slate-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <Card v-if="productItems.length > 0" class="border-slate-800 shadow-xl rounded-3xl overflow-hidden bg-slate-900 ring-1 ring-white/5">
+              <CardHeader class="p-5 md:p-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="flex items-center">
                   <label class="flex items-center cursor-pointer mr-4 group">
                     <input 
@@ -48,13 +48,13 @@
                     <span class="ml-2 text-sm font-bold text-slate-300 group-hover:text-indigo-400 transition-colors">Select All</span>
                   </label>
                   <CardTitle class="text-lg font-black text-white flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="w-5 h-5 mr-2 text-indigo-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
                     </svg>
-                    Procurement Items
+                    Products
                   </CardTitle>
                 </div>
-                <span class="bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/30">{{ selectedItems.length }} of {{ productItems.length }} selected</span>
+                <span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold px-3 py-1 rounded-full">{{ selectedItems.length }} of {{ productItems.length }} selected</span>
               </CardHeader>
               
               <CardContent class="p-0">
@@ -62,7 +62,7 @@
                   <div
                     v-for="item in productItems"
                     :key="item.id"
-                    class="p-5 md:p-6 hover:bg-slate-800/50 transition-colors bg-transparent group flex items-center"
+                    class="p-5 md:p-6 hover:bg-slate-800/50 transition-colors bg-slate-900 group flex items-center"
                   >
                     <div class="mr-4 sm:mr-6 shrink-0">
                       <input 
@@ -76,7 +76,7 @@
 
                     <div class="flex flex-col sm:flex-row items-start gap-5 w-full">
                       <div class="w-full sm:w-28 h-48 sm:h-28 rounded-2xl bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700 shadow-sm overflow-hidden" :style="item.image_url ? {} : { backgroundColor: item.color }">
-                        <img v-if="item.image_url" :src="item.image_url" alt="Product" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" />
+                        <img v-if="item.image_url" :src="item.image_url" alt="Product" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
                       
                       <div class="flex-1 w-full flex flex-col justify-between h-full">
@@ -89,16 +89,16 @@
                           
                           <div class="flex flex-row sm:flex-col justify-between items-center sm:items-end sm:text-right mt-4 sm:mt-0">
                             <div class="text-xl font-black text-white">₱{{ (item.price * item.quantity).toLocaleString() }}</div>
-                            <div class="text-xs font-medium text-slate-500 mt-1">₱{{ item.price.toLocaleString() }} / {{ item.unit }}</div>
+                            <div class="text-xs font-medium text-slate-400 mt-1">₱{{ item.price.toLocaleString() }} / {{ item.unit }}</div>
                           </div>
                         </div>
                         
                         <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
                           
-                          <div class="flex items-center p-1 bg-slate-900 border border-slate-700 rounded-xl shadow-inner w-max">
+                          <div class="flex items-center p-1 bg-slate-800 border border-slate-700 rounded-xl shadow-inner w-max">
                             <button
                               @click="updateQuantity(item.id, item.quantity - 1, item.stock)"
-                              class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg shadow-sm text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-50 transition-colors font-bold"
+                              class="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-lg shadow-sm text-slate-300 hover:text-white hover:bg-slate-600 disabled:opacity-50 transition-colors font-bold"
                               :disabled="item.quantity <= 1 || isUpdating"
                             >
                               -
@@ -106,7 +106,7 @@
                             <span class="w-10 text-center font-bold text-white">{{ item.quantity }}</span>
                             <button
                               @click="updateQuantity(item.id, item.quantity + 1, item.stock)"
-                              class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg shadow-sm text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-50 transition-colors font-bold"
+                              class="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-lg shadow-sm text-slate-300 hover:text-white hover:bg-slate-600 disabled:opacity-50 transition-colors font-bold"
                               :disabled="item.quantity >= item.stock || isUpdating"
                             >
                               +
@@ -115,10 +115,10 @@
 
                           <div class="flex items-center gap-4">
                             <div class="flex items-center">
-                              <svg :class="['w-4 h-4 mr-1.5', item.stock > 10 ? 'text-green-500' : 'text-amber-500']" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <svg :class="['w-4 h-4 mr-1.5', item.stock > 10 ? 'text-emerald-400' : 'text-amber-400']" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                               </svg>
-                              <span :class="['text-xs font-bold', item.stock > 10 ? 'text-green-400' : 'text-amber-400']">
+                              <span :class="['text-xs font-bold', item.stock > 10 ? 'text-emerald-400' : 'text-amber-400']">
                                 {{ item.stock > 10 ? `${item.stock} available` : `Only ${item.stock} left` }}
                               </span>
                             </div>
@@ -126,7 +126,7 @@
                             <button
                               @click="removeItem(item.id)"
                               :disabled="isUpdating"
-                              class="text-slate-500 hover:text-red-400 bg-slate-800/50 hover:bg-slate-800 w-8 h-8 flex items-center justify-center rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                              class="text-slate-500 hover:text-red-400 bg-slate-800 hover:bg-red-900/30 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
                             >
                               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -148,7 +148,7 @@
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                   </svg>
-                  Back to Partners
+                  Continue Browsing
                 </Button>
               </router-link>
               
@@ -169,50 +169,50 @@
 
         <div class="lg:col-span-1">
           <div class="sticky top-24">
-            <Card class="border border-slate-700/60 shadow-2xl rounded-3xl overflow-hidden bg-[#0f172a] text-slate-200 relative">
+            <Card class="border border-slate-700 shadow-2xl rounded-3xl overflow-hidden bg-slate-800 text-white relative">
               <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
 
-              <CardHeader class="p-6 border-b border-slate-800/80 relative z-10">
-                <CardTitle class="text-lg font-bold text-white uppercase tracking-widest">Order Summary</CardTitle>
+              <CardHeader class="p-6 border-b border-slate-700 relative z-10">
+                <CardTitle class="text-lg font-bold text-white uppercase tracking-widest">Procurement Summary</CardTitle>
               </CardHeader>
               
               <CardContent class="p-6 relative z-10">
                 <div class="space-y-4 font-medium">
-                  <div class="flex justify-between items-center text-slate-400 text-sm">
+                  <div class="flex justify-between items-center text-slate-300 text-sm">
                     <span>Subtotal ({{ totalItems }} items)</span>
                     <span class="text-white">₱{{ subtotal.toLocaleString() }}</span>
                   </div>
                   
-                  <div class="flex justify-between items-center text-slate-400 text-sm">
+                  <div class="flex justify-between items-center text-slate-300 text-sm">
                     <span>Est. Delivery Fee</span>
                     <span>
-                      <span v-if="paymentMethod === 'pick-up'" class="text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded ml-2">WAIVED</span>
-                      <span v-else-if="isCalculatingShipping" class="text-slate-500 italic text-xs animate-pulse">Calculating...</span>
-                      <span v-else-if="shippingFeeEst === 0" class="text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded ml-2">FREE</span>
+                      <span v-if="paymentMethod === 'pick-up'" class="text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded">WAIVED</span>
+                      <span v-else-if="isCalculatingShipping" class="text-slate-400 italic text-xs animate-pulse">Calculating...</span>
+                      <span v-else-if="shippingFeeEst === 0" class="text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded">FREE</span>
                       <span v-else class="text-white">₱{{ shippingFeeEst.toLocaleString() }}</span>
                     </span>
                   </div>
                   
-                  <div class="py-3 border-t border-slate-800/80">
-                     <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Projected Status</span>
-                     <span v-if="totalItems <= 30" class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30 block w-max">Confirmed Automatically</span>
-                     <span v-else class="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/30 block w-max">Requires Manual Confirmation (Bulk)</span>
+                  <div class="py-3 border-t border-slate-700">
+                     <span class="text-[10px] uppercase font-bold text-slate-400 tracking-widest block mb-1">Projected Status</span>
+                     <span v-if="totalItems <= 30" class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 block w-max">Confirmed Automatically</span>
+                     <span v-else class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 block w-max">Requires Manual Confirmation (Bulk)</span>
                   </div>
 
-                  <div class="pt-2 border-t border-slate-800/80 space-y-1">
-                    <div class="flex justify-between text-xs text-slate-500">
+                  <div class="pt-2 border-t border-slate-700 space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400">
                       <span>VATable Sales</span>
                       <span v-if="!isCalculatingShipping">₱{{ (totalAmount / 1.12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
                       <span v-else>--</span>
                     </div>
-                    <div class="flex justify-between text-xs text-slate-500">
+                    <div class="flex justify-between text-xs text-slate-400">
                       <span>VAT Amount (12%)</span>
                       <span v-if="!isCalculatingShipping">₱{{ (totalAmount - (totalAmount / 1.12)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</span>
                       <span v-else>--</span>
                     </div>
                   </div>
                   
-                  <div class="my-6 border-t border-slate-800/80 pt-6">
+                  <div class="my-6 border-t border-slate-700 pt-6">
                     <div class="flex justify-between items-end">
                       <span class="text-sm text-slate-400 font-medium">Grand Total</span>
                       <span class="text-3xl font-black text-white">₱{{ totalAmount.toLocaleString() }}</span>
@@ -223,7 +223,7 @@
                 <Button
                   @click="openCheckoutModal"
                   :disabled="selectedItems.length === 0 || isUpdating || isCalculatingShipping"
-                  class="w-full h-14 mt-6 rounded-xl font-bold text-base bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-900/30 border-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="w-full h-14 mt-6 rounded-xl font-bold text-base bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20 border-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Proceed to Checkout
                   <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -231,17 +231,17 @@
                   </svg>
                 </Button>
                 
-                <div class="mt-8 pt-6 border-t border-slate-800/80">
-                  <h3 class="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
+                <div class="mt-8 pt-6 border-t border-slate-700">
+                  <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
                   <div class="grid grid-cols-3 gap-2">
-                    <div class="h-10 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-700 transition-colors">
-                      <span class="text-[10px] sm:text-xs font-bold text-slate-300">COD</span>
+                    <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
+                      <span class="text-[10px] sm:text-xs font-bold text-white">COD</span>
                     </div>
-                    <div class="h-10 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-700 transition-colors">
-                      <span class="text-[10px] sm:text-xs font-bold text-slate-300">GCash</span>
+                    <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
+                      <span class="text-[10px] sm:text-xs font-bold text-white">GCash</span>
                     </div>
-                    <div class="h-10 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-700 transition-colors">
-                      <span class="text-[10px] sm:text-xs font-bold text-slate-300">Pick-Up</span>
+                    <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
+                      <span class="text-[10px] sm:text-xs font-bold text-white">Pick-Up</span>
                     </div>
                   </div>
                 </div>
@@ -256,7 +256,7 @@
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCheckoutModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
-            <div v-if="isCheckoutModalOpen" class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-white/10">
+            <div v-if="isCheckoutModalOpen" class="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
               <div class="px-6 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10">
                 <h2 class="text-2xl font-black text-white tracking-tight">Checkout</h2>
                 <button @click="closeModals" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-colors">
@@ -266,37 +266,37 @@
               
               <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar">
                 
-                <div class="flex items-center gap-4 mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700 shadow-sm">
-                  <div class="w-16 h-16 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/30">
+                <div class="flex items-center gap-4 mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 shadow-sm">
+                  <div class="w-16 h-16 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/30 shadow-sm">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                   </div>
                   <div class="flex-1">
-                    <h3 class="font-bold text-white text-lg">Your Selected Cart ({{ totalItems }} items)</h3>
+                    <h3 class="font-bold text-white text-lg">Selected Procurement ({{ totalItems }} items)</h3>
                     <p class="text-indigo-400 font-black">₱{{ subtotal.toLocaleString() }}</p>
                   </div>
                 </div>
 
                 <div class="mb-8">
-                  <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Payment Method</Label>
+                  <Label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Payment Method</Label>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200" :class="paymentMethod === 'cod' ? 'border-green-500 bg-green-900/20 shadow-sm' : 'border-slate-700 bg-slate-800 hover:border-slate-600'">
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 bg-slate-800" :class="paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm' : 'border-slate-700 hover:border-slate-600'">
                       <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white flex items-center gap-2">
                           <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                           COD
                         </span>
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-green-500' : 'border-slate-600'">
-                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-emerald-500' : 'border-slate-600'">
+                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
                         </div>
                       </div>
                     </label>
 
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-slate-800 bg-slate-900 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-900/20 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 hover:border-slate-600 cursor-pointer')
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden bg-slate-800" :class="[
+                        !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 cursor-pointer')
                       ]">
                       <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!isGcashAvailable" />
                       <div class="flex items-center justify-between w-full">
@@ -308,39 +308,39 @@
                           <div v-if="paymentMethod === 'gcash'" class="w-2.5 h-2.5 bg-indigo-500 rounded-full"></div>
                         </div>
                       </div>
-                      <div v-if="!isGcashAvailable" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                      <div v-if="!isGcashAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
                         Unavailable
                       </div>
                     </label>
 
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !isPickupAvailable ? 'opacity-50 cursor-not-allowed border-slate-800 bg-slate-900 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-900/20 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 hover:border-slate-600 cursor-pointer')
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden bg-slate-800" :class="[
+                        !isPickupAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 cursor-pointer')
                       ]">
                       <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!isPickupAvailable" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white flex items-center gap-2">
-                          <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                           Pick-Up
                         </span>
                         <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'pick-up' ? 'border-amber-500' : 'border-slate-600'">
                           <div v-if="paymentMethod === 'pick-up'" class="w-2.5 h-2.5 bg-amber-500 rounded-full"></div>
                         </div>
                       </div>
-                      <div v-if="!isPickupAvailable" class="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                      <div v-if="!isPickupAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
                         Unavailable
                       </div>
                     </label>
 
                   </div>
-                  <p v-if="!isGcashAvailable || !isPickupAvailable" class="text-xs text-amber-500 mt-2 italic font-medium">
-                    * Some payment/delivery methods are disabled because one or more selected partners do not support them.
+                  <p v-if="!isGcashAvailable || !isPickupAvailable" class="text-xs text-amber-500/80 mt-2 italic font-medium">
+                    * Some payment/delivery methods are disabled because one or more selected distributors do not support them.
                   </p>
                 </div>
 
                 <div class="mb-8" v-if="paymentMethod !== 'pick-up'">
-                  <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Delivery Address</Label>
+                  <Label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Delivery Address</Label>
                   <div class="space-y-3">
-                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'default' ? 'border-indigo-500 bg-indigo-900/20 shadow-sm' : 'border-slate-700 bg-slate-800 hover:border-slate-600'">
+                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200 bg-slate-800" :class="addressMode === 'default' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm' : 'border-slate-700 hover:border-slate-600'">
                       <input type="radio" v-model="addressMode" value="default" class="hidden" />
                       
                       <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex shrink-0 items-center justify-center" :class="addressMode === 'default' ? 'border-indigo-500' : 'border-slate-600'">
@@ -348,11 +348,11 @@
                       </div>
                       <div>
                         <span class="block font-bold text-white mb-0.5">Profile Default Address</span>
-                        <span class="text-sm text-slate-400 font-medium">Use the saved address from your account settings.</span>
+                        <span class="text-sm text-slate-400 font-medium">Use the saved address from your provider settings.</span>
                       </div>
                     </label>
 
-                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200" :class="addressMode === 'custom' ? 'border-indigo-500 bg-indigo-900/20 shadow-sm' : 'border-slate-700 bg-slate-800 hover:border-slate-600'">
+                    <label class="flex items-start gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all duration-200 bg-slate-800" :class="addressMode === 'custom' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm' : 'border-slate-700 hover:border-slate-600'">
                       <input type="radio" v-model="addressMode" value="custom" class="hidden" />
                       
                       <div class="mt-0.5 w-5 h-5 rounded-full border-2 flex shrink-0 items-center justify-center" :class="addressMode === 'custom' ? 'border-indigo-500' : 'border-slate-600'">
@@ -366,7 +366,7 @@
                             v-model="customAddress" 
                             @click.stop
                             placeholder="Enter complete block, street, barangay, city, province..." 
-                            class="mt-2 w-full p-3 border border-slate-600 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-900 text-white shadow-inner resize-none placeholder-slate-500"
+                            class="mt-2 w-full p-3 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-900 text-white placeholder-slate-500 shadow-inner resize-none"
                             rows="2"
                           ></textarea>
                         </transition>
@@ -378,9 +378,9 @@
               </div>
 
               <div class="p-6 bg-slate-900 border-t border-slate-800 flex gap-3 z-10">
-                <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-14 border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white font-bold text-base">Cancel</Button>
-                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up')" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-base shadow-lg shadow-indigo-900/30 border-0 transition-all">
-                  Confirm Purchase
+                <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-14 border-slate-700 bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 hover:text-white text-base transition-colors">Cancel</Button>
+                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up')" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-base shadow-lg shadow-indigo-900/50 border-0 transition-all">
+                  Confirm Procurement
                 </Button>
               </div>
             </div>
@@ -395,33 +395,33 @@
       </transition>
 
       <AlertDialog :open="isCheckoutAlertOpen" @update:open="isCheckoutAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000] bg-slate-900 text-white">
+        <AlertDialogContent class="rounded-2xl border-slate-800 bg-slate-900 text-slate-200 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2 text-white">
-              <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <svg v-else-if="paymentMethod === 'gcash'" class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-              <svg v-else class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+              <svg v-else class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
               Confirm {{ paymentMethod === 'cod' ? 'COD' : (paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up') }} Order
             </AlertDialogTitle>
             <AlertDialogDescription class="text-slate-400 font-medium text-base mt-3 leading-relaxed">
-              You are placing a procurement order for <strong class="text-white">{{ totalItems }} items</strong>.
+              You are placing a bulk procurement order for <strong class="text-white">{{ totalItems }} items</strong>.
               <br/><br/>
               The total amount is <strong class="text-white text-lg">₱{{ totalAmount.toLocaleString() }}</strong>.
               <br/>
               <span v-if="paymentMethod === 'gcash'" class="text-indigo-400 text-sm font-semibold mt-2 block">
                 You will be redirected to complete your GCash payment securely.
               </span>
-              <span v-else-if="paymentMethod === 'pick-up'" class="text-amber-500 text-sm mt-2 block font-semibold">
-                You will pay for and pick up your items at the physical store.
+              <span v-else-if="paymentMethod === 'pick-up'" class="text-amber-400 text-sm mt-2 block font-semibold">
+                You will pay for and pick up your items at the physical distributor.
               </span>
-              <span v-else class="text-sm mt-2 block">
+              <span v-else class="text-sm mt-2 block text-slate-300">
                 This will be collected upon delivery.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
-            <AlertDialogCancel @click="isCheckoutAlertOpen = false" class="rounded-xl font-bold border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white h-11">Go Back</AlertDialogCancel>
-            <AlertDialogAction @click="confirmCheckout" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md border-0" :class="paymentMethod === 'cod' ? 'bg-green-600 hover:bg-green-500 shadow-green-900/20' : (paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-900/20')">
+            <AlertDialogCancel @click="isCheckoutAlertOpen = false" class="rounded-xl font-bold border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white h-11 transition-colors">Go Back</AlertDialogCancel>
+            <AlertDialogAction @click="confirmCheckout" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md border-0 transition-colors" :class="paymentMethod === 'cod' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/50' : (paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-900/50' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-900/50')">
               {{ isProcessing ? 'Processing...' : (paymentMethod === 'gcash' ? 'Proceed to GCash' : 'Place Order') }}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -433,7 +433,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, defineProps } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
@@ -453,6 +453,13 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+
+const props = defineProps({
+  user: {
+    type: Object,
+    default: null
+  }
+})
 
 // State
 const cartItems = ref([])
@@ -475,9 +482,9 @@ let shippingCalcTimeout = null
 
 // Computed Values
 const productItems = computed(() => cartItems.value.filter(item => item.type === 'product' || !item.type))
+
 const selectedItems = computed(() => productItems.value.filter(item => selectedItemIds.value.includes(item.id)))
 
-// Select all Toggle
 const isAllSelected = computed({
   get() {
     return productItems.value.length > 0 && selectedItemIds.value.length === productItems.value.length
@@ -517,7 +524,6 @@ watch(isPickupAvailable, (avail) => {
   }
 })
 
-// Dynamic Live Shipping Calculator
 const calculateLiveShipping = () => {
   if (selectedItems.value.length === 0) {
     shippingFeeEst.value = 0
@@ -538,8 +544,7 @@ const calculateLiveShipping = () => {
         distributor_lng: item.distributor_lng
       }))
 
-      // Same calculation logic endpoint mapped to SP
-      const response = await api.post('/service-provider/shop/cart-items/calculate-shipping', {
+      const response = await api.post('/service-provider/shop/shipping-fee', {
         cart_items: payloadItems
       })
 
@@ -566,6 +571,7 @@ const fetchCartItems = async () => {
     const response = await api.get('/service-provider/shop/cart-items')
     if (response.data.success) {
       cartItems.value = response.data.data
+      
       selectedItemIds.value = cartItems.value.map(item => item.id)
     }
   } catch (error) {
@@ -607,6 +613,7 @@ const removeItem = async (itemId) => {
     if (response.data.success) {
       cartItems.value = cartItems.value.filter(item => item.id !== itemId)
       selectedItemIds.value = selectedItemIds.value.filter(id => id !== itemId)
+      
       toast.success('Item removed from cart')
     }
   } catch (error) {
@@ -662,7 +669,7 @@ const formatCurrency = (val) => {
 const downloadReceipt = (receiptData) => {
   const itemsHtml = receiptData.items.map(item => `
     <tr>
-      <td>${item.name} <br/><small style="color:gray;">Supplier: ${item.distributor_name}</small></td>
+      <td>${item.name} <br/><small style="color:gray;">Seller: ${item.distributor_name}</small></td>
       <td style="text-align: right;">${item.quantity}</td>
       <td style="text-align: right;">${formatCurrency(item.price)}</td>
       <td style="text-align: right;">${formatCurrency(item.total)}</td>
@@ -688,7 +695,7 @@ const downloadReceipt = (receiptData) => {
     </head>
     <body>
       <div class="header">
-        <div class="company-name">SERVICE PROVIDER PROCUREMENT RECEIPT</div>
+        <div class="company-name">SERVICE PROVIDER PROCUREMENT</div>
         <br/>
         <div style="font-size: 14pt; font-weight: bold; letter-spacing: 2px;">OFFICIAL RECEIPT</div>
       </div>
@@ -731,7 +738,7 @@ const downloadReceipt = (receiptData) => {
       <table style="width: 100%; margin-top: 20px;">
         <tr>
           <td width="50%">
-            <p style="font-size: 9pt; color: #555;">Notes/Remarks: Thank you for your procurement. This document serves as your official e-receipt.</p>
+            <p style="font-size: 9pt; color: #555;">Notes/Remarks: Thank you for your procurement purchase. This document serves as your official e-receipt.</p>
           </td>
           <td width="50%">
             <table style="width: 100%; border-top: 2px solid #000; padding-top: 5px;">
@@ -793,7 +800,7 @@ const confirmCheckout = async () => {
           window.location.href = response.data.checkout_url
         }, 1500)
       } else {
-        toast.success('Cart checked out successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'Cash on Delivery') + ')')
+        toast.success('Procurement checked out successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'Cash on Delivery') + ')')
         if (response.data.receipt_data) { downloadReceipt(response.data.receipt_data); }
         
         isCheckoutAlertOpen.value = false
@@ -810,9 +817,6 @@ const confirmCheckout = async () => {
   }
 }
 
-// ==========================================
-// GCASH CART SESSION VERIFIER HOOK
-// ==========================================
 const verifyGcashPayment = async (orderNumber) => {
   isLoading.value = true
   toast.info('Verifying GCash Payment... Please wait.')
