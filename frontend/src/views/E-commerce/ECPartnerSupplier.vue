@@ -432,8 +432,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/utils/axios' 
+import echo from '@/utils/websocket.js' 
 import { Toaster, toast } from 'vue-sonner' 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -461,6 +462,7 @@ const loading = ref(false)
 const requestMessage = ref('')
 const suppliers = ref([])
 const agreedToTerms = ref(false) 
+const currentDistributorId = ref(null)
 
 // Wizard States
 const showCreateWizard = ref(false)
@@ -503,6 +505,34 @@ const requirePermission = (action, callback) => {
   if (callback) callback();
 }
 
+// Websocket Initialization
+const setupWebsocket = (distributorId) => {
+    if (!distributorId) return;
+
+    // Remove old listeners to avoid duplicates
+    echo.leave(`distributor.${distributorId}.requests`);
+
+    echo.private(`distributor.${distributorId}.requests`)
+        .listen('.PartnershipRequest.Created', (e) => {
+            const req = e.request;
+            const index = suppliers.value.findIndex(s => s.id === req.supplier_id);
+            if (index !== -1) {
+                suppliers.value[index].status = 'pending';
+                suppliers.value[index].partnership_details = req;
+            }
+        })
+        .listen('.PartnershipRequest.Updated', (e) => {
+            const req = e.request;
+            const index = suppliers.value.findIndex(s => s.id === req.supplier_id);
+            if (index !== -1) {
+                if (req.status === 'active') suppliers.value[index].status = 'connected';
+                else if (['pending_internal', 'pending_supplier'].includes(req.status)) suppliers.value[index].status = 'pending';
+                else if (req.status === 'rejected') suppliers.value[index].status = 'rejected';
+                suppliers.value[index].partnership_details = req;
+            }
+        });
+}
+
 // Methods
 const getInitials = (name) => {
   if (!name) return '??';
@@ -532,6 +562,10 @@ const fetchSuppliers = async () => {
       suppliers.value = response.data.data;
       if (response.data.permissions) {
         permissions.value = response.data.permissions;
+      }
+      if (response.data.distributor_id) {
+          currentDistributorId.value = response.data.distributor_id;
+          setupWebsocket(response.data.distributor_id);
       }
     }
   } catch (error) {
@@ -733,6 +767,12 @@ const filteredSuppliers = computed(() => {
 onMounted(() => {
   fetchSuppliers();
 })
+
+onUnmounted(() => {
+    if (currentDistributorId.value) {
+        echo.leave(`distributor.${currentDistributorId.value}.requests`);
+    }
+});
 </script>
 
 <style scoped>

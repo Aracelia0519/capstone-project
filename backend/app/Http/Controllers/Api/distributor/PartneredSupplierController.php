@@ -9,11 +9,47 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\User; 
+use App\Models\OperationDistributor\DistributorSupplier; // ADDED
+use App\Events\Partnership\PartnershipRequestUpdated; // ADDED
 
 class PartneredSupplierController extends Controller
 {
+    /**
+     * Helper to format the payload properly so it bridges to WebSockets perfectly.
+     * Bypasses Eloquent Queue Model stripping to ensure URLs reach the Vue frontend.
+     */
+    private function formatRequestForBroadcast($distributorId, $supplierId)
+    {
+        $req = DistributorSupplier::with([
+            'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
+            'supplier.supplierRequirements',
+            'distributor' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone', 'role'); },
+            'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
+        ])->where('distributor_id', $distributorId)->where('supplier_id', $supplierId)->first();
+        
+        if (!$req) return null;
+        
+        $payload = $req->toArray();
+        $payload['agreement_url'] = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
+        $payload['distributor_signature_url'] = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
+        $payload['supplier_signature_url'] = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
+        $payload['termination_url'] = $req->termination_path ? url('storage/' . $req->termination_path) : null;
+        $payload['distributor_termination_signature_url'] = $req->distributor_termination_signature_path ? url('storage/' . $req->distributor_termination_signature_path) : null;
+        
+        $supplierTermSig = $req->supplier_termination_signature_path ?? null;
+        $payload['supplier_termination_signature_url'] = $supplierTermSig ? url('storage/' . $supplierTermSig) : null;
+
+        if ($req->distributor) {
+            $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
+            if ($distReq) $payload['distributor']['company_name'] = $distReq->company_name;
+        }
+
+        return json_decode(json_encode($payload));
+    }
+
     /**
      * Get all active/partnered suppliers for the current distributor.
      */
@@ -130,6 +166,7 @@ class PartneredSupplierController extends Controller
 
             return response()->json([
                 'success' => true,
+                'distributor_id' => $user->id,
                 'data' => $data
             ]);
 
@@ -350,6 +387,10 @@ class PartneredSupplierController extends Controller
             $partner->status = 'pending_termination';
             $partner->save();
 
+            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
+            $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
+            if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
+
             // ==========================================
             // EMAIL NOTIFICATION LOGIC TO SUPPLIER
             // ==========================================
@@ -455,6 +496,10 @@ class PartneredSupplierController extends Controller
             $partner->status = 'pending_supplier';
             $partner->save();
 
+            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
+            $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
+            if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Agreement successfully signed.',
@@ -541,6 +586,10 @@ class PartneredSupplierController extends Controller
             $partner->status = 'pending_reactivation';
             $partner->save();
 
+            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
+            $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
+            if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
+
             // ==========================================
             // EMAIL NOTIFICATION LOGIC TO SUPPLIER
             // ==========================================
@@ -557,7 +606,8 @@ class PartneredSupplierController extends Controller
             ]);
 
             $supplierEmail = $partner->supplier->email ?? null;
-            $distributorName = $user->full_name ?? 'Distributor';
+            $distributorReqs = DB::table('distributor_requirements')->where('user_id', $user->id)->first();
+            $distributorName = $distributorReqs ? $distributorReqs->company_name : $user->full_name;
 
             if ($supplierEmail) {
                 $emailHtml = "

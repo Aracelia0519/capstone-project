@@ -8,7 +8,9 @@ use App\Models\OperationDistributor\DistributorSupplier;
 use App\Models\Supplier\SupplierPartner;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use App\Models\User; 
+use App\Events\Partnership\PartnershipRequestUpdated;
 
 class PartnerRequestController extends Controller
 {
@@ -21,12 +23,10 @@ class PartnerRequestController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            // validation check
             if (!$user || !$user->isDistributor()) {
                 return response()->json(['message' => 'Unauthorized. Only Distributors can manage internal requests.'], 403);
             }
 
-            // Fetch requests where status is 'pending_internal' for this distributor
             $requests = DistributorSupplier::where('distributor_id', $user->id)
                 ->where('status', 'pending_internal')
                 ->with([
@@ -41,13 +41,13 @@ class PartnerRequestController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($req) {
-                    // Send the agreement document URL to the frontend so it can be viewed before signing
                     $req->agreement_url = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
                     return $req;
                 });
 
             return response()->json([
                 'success' => true,
+                'distributor_id' => $user->id, 
                 'data' => $requests
             ]);
 
@@ -78,7 +78,6 @@ class PartnerRequestController extends Controller
                 return response()->json(['message' => 'Request not found or already processed.'], 404);
             }
 
-            // Process Base64 Signature Image
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
             
@@ -90,11 +89,9 @@ class PartnerRequestController extends Controller
             $imageType = $imageTypeAux[1] ?? 'png';
             $imageBase64 = base64_decode($imageParts[1]);
 
-            // Save the image to storage
             $fileName = 'agreements/signatures/distributor_' . $user->id . '_supplier_' . $partnershipRequest->supplier_id . '_' . time() . '.' . $imageType;
             Storage::disk('public')->put($fileName, $imageBase64);
 
-            // Update status and attach the signature to the document
             $partnershipRequest->update([
                 'status' => 'pending_supplier',
                 'distributor_approved_at' => now(),
@@ -102,7 +99,6 @@ class PartnerRequestController extends Controller
                 'distributor_signature_path' => $fileName,
             ]);
 
-            // Ensure the SupplierPartner record exists so it reflects in the system as 'Waiting on Supplier'
             $supplierPartner = SupplierPartner::firstOrCreate(
                 [
                     'distributor_id' => $user->id,
@@ -116,10 +112,32 @@ class PartnerRequestController extends Controller
                 ]
             );
 
-            // If it already existed but had a different status, update it to sync
             if (!$supplierPartner->wasRecentlyCreated && $supplierPartner->status !== 'pending_supplier') {
                 $supplierPartner->update(['status' => 'pending_supplier']);
             }
+
+            $broadcastRequest = DistributorSupplier::with([
+                'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
+                'supplier.supplierRequirements',
+                'distributor' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone', 'role'); },
+                'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
+            ])->find($partnershipRequest->id);
+
+            // FIX: Convert to array to bypass Eloquent queue stripping custom variables
+            $payload = $broadcastRequest->toArray();
+            $payload['agreement_url'] = $broadcastRequest->agreement_path ? url('storage/' . $broadcastRequest->agreement_path) : null;
+            $payload['distributor_signature_url'] = $broadcastRequest->distributor_signature_path ? url('storage/' . $broadcastRequest->distributor_signature_path) : null;
+
+            if ($broadcastRequest->distributor) {
+                $distReq = DB::table('distributor_requirements')->where('user_id', $broadcastRequest->distributor_id)->first();
+                if ($distReq) {
+                    $payload['distributor']['company_name'] = $distReq->company_name;
+                }
+            }
+
+            // Convert back to standard object for the Event
+            $eventPayload = json_decode(json_encode($payload));
+            broadcast(new PartnershipRequestUpdated($eventPayload))->toOthers();
 
             return response()->json([
                 'success' => true,
@@ -154,6 +172,26 @@ class PartnerRequestController extends Controller
                 'status' => 'rejected',
                 'rejection_reason' => $request->input('reason', 'Rejected by Distributor Owner'),
             ]);
+
+            $broadcastRequest = DistributorSupplier::with([
+                'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
+                'supplier.supplierRequirements',
+                'distributor' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone', 'role'); },
+                'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
+            ])->find($partnershipRequest->id);
+
+            // FIX: Convert to array to bypass Eloquent queue stripping custom variables
+            $payload = $broadcastRequest->toArray();
+            
+            if ($broadcastRequest->distributor) {
+                $distReq = DB::table('distributor_requirements')->where('user_id', $broadcastRequest->distributor_id)->first();
+                if ($distReq) {
+                    $payload['distributor']['company_name'] = $distReq->company_name;
+                }
+            }
+
+            $eventPayload = json_decode(json_encode($payload));
+            broadcast(new PartnershipRequestUpdated($eventPayload))->toOthers();
 
             return response()->json([
                 'success' => true,

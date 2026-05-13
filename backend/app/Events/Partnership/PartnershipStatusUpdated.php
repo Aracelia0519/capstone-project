@@ -1,5 +1,5 @@
 <?php
-
+//SP AND OPERATIONAL
 namespace App\Events\Partnership;
 
 use Illuminate\Broadcasting\Channel;

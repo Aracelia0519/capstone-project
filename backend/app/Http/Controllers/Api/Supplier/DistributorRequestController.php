@@ -12,47 +12,67 @@ use Illuminate\Support\Facades\Schema;
 use App\Models\OperationDistributor\DistributorSupplier;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\User; 
+use App\Events\Partnership\SupplierRequestUpdated;
 
 class DistributorRequestController extends Controller
 {
-    /**
-     * Resolve the supplier ID for the current logged-in user.
-     * This allows both direct Suppliers and their Personnel Officers to access data.
-     */
     private function resolveSupplierId($user)
     {
         $supplierId = $user->id;
-        
-        // Check if the user is a personnel officer and get their parent supplier ID
         $personnelOfficer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
         if ($personnelOfficer) {
             $supplierId = $personnelOfficer->supplier_id;
         }
-
         return $supplierId;
     }
 
     /**
-     * Fetch all pending, active, termination, and reactivation requests for the logged-in Supplier.
+     * Helper to format the request exactly as the frontend expects it via WebSockets.
+     * FIX: Array conversion bypasses Model Queue Serialization drops.
      */
+    private function formatRequestForBroadcast($id)
+    {
+        $req = DistributorSupplier::with([
+            'distributor' => function ($q) {
+                $q->select('id', 'first_name', 'last_name', 'email', 'phone');
+            }
+        ])->find($id);
+
+        if (!$req) return null;
+
+        $payload = $req->toArray();
+
+        // Safely map all URLs into the raw array payload
+        $payload['agreement_url'] = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
+        $payload['distributor_signature_url'] = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
+        $payload['supplier_signature_url'] = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
+        $payload['termination_url'] = $req->termination_path ? url('storage/' . $req->termination_path) : null;
+        $payload['distributor_termination_signature_url'] = $req->distributor_termination_signature_path ? url('storage/' . $req->distributor_termination_signature_path) : null;
+        
+        $supplierTermSig = $req->supplier_termination_signature_path ?? null;
+        $payload['supplier_termination_signature_url'] = $supplierTermSig ? url('storage/' . $supplierTermSig) : null;
+
+        $distributorReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
+        if ($distributorReq && isset($payload['distributor'])) {
+            $payload['distributor']['company_name'] = $distributorReq->company_name;
+        }
+
+        // Return as generic object
+        return json_decode(json_encode($payload));
+    }
+
     public function index()
     {
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['message' => 'Unauthorized access.'], 403);
-            }
+            if (!$user) return response()->json(['message' => 'Unauthorized access.'], 403);
 
             $supplierId = $this->resolveSupplierId($user);
 
             $requests = DistributorSupplier::where('supplier_id', $supplierId)
                 ->whereIn('status', ['pending_supplier', 'active', 'pending_termination', 'terminated', 'disconnected', 'pending_reactivation'])
                 ->with([
-                    'distributor' => function ($q) {
-                        $q->select('id', 'first_name', 'last_name', 'email', 'phone');
-                    }
+                    'distributor' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); }
                 ])
                 ->orderBy('updated_at', 'desc')
                 ->get()
@@ -61,15 +81,12 @@ class DistributorRequestController extends Controller
                     $req->distributor_signature_url = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
                     $req->supplier_signature_url = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
                     
-                    // Termination mappings
                     $req->termination_url = $req->termination_path ? url('storage/' . $req->termination_path) : null;
                     $req->distributor_termination_signature_url = $req->distributor_termination_signature_path ? url('storage/' . $req->distributor_termination_signature_path) : null;
                     
-                    // Add column dynamically if it doesn't exist yet in the mapping
                     $supplierTermSig = $req->supplier_termination_signature_path ?? null;
                     $req->supplier_termination_signature_url = $supplierTermSig ? url('storage/' . $supplierTermSig) : null;
 
-                    // Dynamically fetch and append the distributor's company name
                     $distributorReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
                     if ($distributorReq && $req->distributor) {
                         $req->distributor->company_name = $distributorReq->company_name;
@@ -80,6 +97,7 @@ class DistributorRequestController extends Controller
 
             return response()->json([
                 'success' => true,
+                'supplier_id' => $supplierId, 
                 'data' => $requests
             ]);
 
@@ -88,22 +106,13 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Approve the initial partnership request, apply supplier signature, activate, and email distributor.
-     */
     public function approve(Request $request, $id)
     {
-        $request->validate([
-            'signature_image' => 'required|string'
-        ]);
+        $request->validate(['signature_image' => 'required|string']);
 
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['message' => 'Unauthorized access.'], 403);
-            }
+            if (!$user) return response()->json(['message' => 'Unauthorized access.'], 403);
 
             $supplierId = $this->resolveSupplierId($user);
 
@@ -113,23 +122,14 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_supplier')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Request not found or already processed.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Request not found or already processed.'], 404);
 
-            // Process Base64 Signature Image
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
-            
-            if (count($imageParts) !== 2) {
-                return response()->json(['success' => false, 'message' => 'Invalid signature format.'], 400);
-            }
-
             $imageTypeAux = explode("image/", $imageParts[0]);
             $imageType = $imageTypeAux[1] ?? 'png';
             $imageBase64 = base64_decode($imageParts[1]);
 
-            // Save the supplier's signature to storage
             $fileName = 'agreements/signatures/supplier_' . $supplierId . '_distributor_' . $distRequest->distributor_id . '_' . time() . '.' . $imageType;
             Storage::disk('public')->put($fileName, $imageBase64);
 
@@ -157,8 +157,9 @@ class DistributorRequestController extends Controller
                 ]);
             }
 
-            $this->setupSMTPConfig();
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
+            $this->setupSMTPConfig();
             $distributorEmail = $distRequest->distributor->email ?? null;
             $creatorEmail = $distRequest->creator->email ?? null;
             $supplierName = $this->getSupplierName($user, $supplierId);
@@ -177,9 +178,7 @@ class DistributorRequestController extends Controller
             if ($distributorEmail) {
                 Mail::html($htmlMessage, function ($message) use ($distributorEmail, $creatorEmail, $supplierName) {
                     $message->to($distributorEmail);
-                    if ($creatorEmail && $creatorEmail !== $distributorEmail) {
-                        $message->cc($creatorEmail);
-                    }
+                    if ($creatorEmail && $creatorEmail !== $distributorEmail) $message->cc($creatorEmail);
                     $message->subject("Partnership Request Approved - {$supplierName}");
                 });
             }
@@ -194,9 +193,6 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Reject an initial partnership request and send an email notification.
-     */
     public function reject(Request $request, $id)
     {
         try {
@@ -209,9 +205,7 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_supplier')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Request not found.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Request not found.'], 404);
 
             $reason = $request->input('reason', 'No specific reason provided by the supplier.');
 
@@ -224,12 +218,11 @@ class DistributorRequestController extends Controller
                 ->where('supplier_id', $supplierId)
                 ->first();
                 
-            if ($supplierPartner) {
-                $supplierPartner->update(['status' => 'rejected']);
-            }
+            if ($supplierPartner) $supplierPartner->update(['status' => 'rejected']);
+
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
             $this->setupSMTPConfig();
-
             $distributorEmail = $distRequest->distributor->email ?? null;
             $creatorEmail = $distRequest->creator->email ?? null;
             $supplierName = $this->getSupplierName($user, $supplierId);
@@ -251,9 +244,7 @@ class DistributorRequestController extends Controller
             if ($distributorEmail) {
                 Mail::html($htmlMessage, function ($message) use ($distributorEmail, $creatorEmail, $supplierName) {
                     $message->to($distributorEmail);
-                    if ($creatorEmail && $creatorEmail !== $distributorEmail) {
-                        $message->cc($creatorEmail);
-                    }
+                    if ($creatorEmail && $creatorEmail !== $distributorEmail) $message->cc($creatorEmail);
                     $message->subject("Partnership Request Declined - {$supplierName}");
                 });
             }
@@ -268,9 +259,6 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Fetch the raw HTML content of the termination agreement for downloading.
-     */
     public function getTerminationRaw($id)
     {
         try {
@@ -281,9 +269,7 @@ class DistributorRequestController extends Controller
                 ->where('supplier_id', $supplierId)
                 ->firstOrFail();
 
-            if (!$distSupplier || !$distSupplier->termination_path) {
-                return response()->json(['success' => false, 'message' => 'Termination document not found.'], 404);
-            }
+            if (!$distSupplier || !$distSupplier->termination_path) return response()->json(['success' => false, 'message' => 'Termination document not found.'], 404);
 
             $htmlContent = Storage::disk('public')->get($distSupplier->termination_path);
 
@@ -297,14 +283,9 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Approve termination, save supplier signature, end partnership, send email.
-     */
     public function approveTermination(Request $request, $id)
     {
-        $request->validate([
-            'signature_image' => 'required|string'
-        ]);
+        $request->validate(['signature_image' => 'required|string']);
 
         try {
             $user = Auth::user();
@@ -316,9 +297,7 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_termination')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Termination request not found.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Termination request not found.'], 404);
 
             if (!Schema::hasColumn('distributor_suppliers', 'supplier_termination_signature_path')) {
                 Schema::table('distributor_suppliers', function ($table) {
@@ -327,9 +306,7 @@ class DistributorRequestController extends Controller
                 });
             }
 
-            try {
-                DB::statement("ALTER TABLE distributor_suppliers MODIFY COLUMN status ENUM('pending_internal','pending_supplier','active','rejected','disconnected','pending_termination','terminated','pending_reactivation') DEFAULT 'pending_internal'");
-            } catch (\Exception $e) {}
+            try { DB::statement("ALTER TABLE distributor_suppliers MODIFY COLUMN status ENUM('pending_internal','pending_supplier','active','rejected','disconnected','pending_termination','terminated','pending_reactivation') DEFAULT 'pending_internal'"); } catch (\Exception $e) {}
 
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
@@ -350,12 +327,11 @@ class DistributorRequestController extends Controller
                 ->first();
 
             if ($supplierPartner) {
-                try {
-                    DB::statement("ALTER TABLE supplier_partners MODIFY COLUMN status ENUM('active','suspended','terminated','rejected','pending_termination','pending_supplier','pending_reactivation') DEFAULT 'active'");
-                } catch (\Exception $e) {}
-                
+                try { DB::statement("ALTER TABLE supplier_partners MODIFY COLUMN status ENUM('active','suspended','terminated','rejected','pending_termination','pending_supplier','pending_reactivation') DEFAULT 'active'"); } catch (\Exception $e) {}
                 $supplierPartner->update(['status' => 'terminated']);
             }
+
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
             $this->setupSMTPConfig();
             $distributorEmail = $distRequest->distributor->email ?? null;
@@ -391,9 +367,6 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Decline termination request, restore active status, email distributor.
-     */
     public function rejectTermination(Request $request, $id)
     {
         try {
@@ -406,9 +379,7 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_termination')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Termination request not found.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Termination request not found.'], 404);
 
             $distRequest->update(['status' => 'active']);
 
@@ -416,9 +387,9 @@ class DistributorRequestController extends Controller
                 ->where('supplier_id', $supplierId)
                 ->first();
 
-            if ($supplierPartner) {
-                $supplierPartner->update(['status' => 'active']);
-            }
+            if ($supplierPartner) $supplierPartner->update(['status' => 'active']);
+
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
             $this->setupSMTPConfig();
             $distributorEmail = $distRequest->distributor->email ?? null;
@@ -456,14 +427,9 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Approve Reactivation: Process supplier's signature, set status to active, notify distributor.
-     */
     public function approveReactivation(Request $request, $id)
     {
-        $request->validate([
-            'signature_image' => 'required|string'
-        ]);
+        $request->validate(['signature_image' => 'required|string']);
 
         try {
             $user = Auth::user();
@@ -475,9 +441,7 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_reactivation')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Reactivation request not found.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Reactivation request not found.'], 404);
 
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
@@ -497,9 +461,9 @@ class DistributorRequestController extends Controller
                 ->where('supplier_id', $supplierId)
                 ->first();
 
-            if ($supplierPartner) {
-                $supplierPartner->update(['status' => 'active']);
-            }
+            if ($supplierPartner) $supplierPartner->update(['status' => 'active']);
+
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
             $this->setupSMTPConfig();
             $distributorEmail = $distRequest->distributor->email ?? null;
@@ -533,9 +497,6 @@ class DistributorRequestController extends Controller
         }
     }
 
-    /**
-     * Decline Reactivation: Revert to terminated, notify distributor.
-     */
     public function rejectReactivation(Request $request, $id)
     {
         try {
@@ -548,20 +509,17 @@ class DistributorRequestController extends Controller
                 ->where('status', 'pending_reactivation')
                 ->first();
 
-            if (!$distRequest) {
-                return response()->json(['message' => 'Reactivation request not found.'], 404);
-            }
+            if (!$distRequest) return response()->json(['message' => 'Reactivation request not found.'], 404);
 
-            // Keep status as terminated
             $distRequest->update(['status' => 'terminated']);
 
             $supplierPartner = SupplierPartner::where('distributor_id', $distRequest->distributor_id)
                 ->where('supplier_id', $supplierId)
                 ->first();
 
-            if ($supplierPartner) {
-                $supplierPartner->update(['status' => 'terminated']);
-            }
+            if ($supplierPartner) $supplierPartner->update(['status' => 'terminated']);
+
+            broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
             $this->setupSMTPConfig();
             $distributorEmail = $distRequest->distributor->email ?? null;
@@ -598,9 +556,6 @@ class DistributorRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'Declining reactivation failed: ' . $e->getMessage()], 500);
         }
     }
-
-
-    // --- Shared Helper Methods --- //
 
     private function getSupplierName($user, $supplierId)
     {

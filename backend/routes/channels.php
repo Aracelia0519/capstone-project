@@ -272,3 +272,27 @@ Broadcast::channel('partnership.user.{id}', function ($user, $id) {
 
     return false;
 });
+
+
+// Authorization for Supplier to listen to their own incoming requests
+Broadcast::channel('supplier.{supplierId}.requests', function ($user, $supplierId) {
+    // 1. Admin bypass
+    if ($user->role === 'admin') return true;
+    
+    // 2. Direct supplier owner
+    if ($user->role === 'supplier' && (int)$user->id === (int)$supplierId) return true;
+
+    // 3. Supplier Employee check
+    if ($user->role === 'supplier_employee') {
+        $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
+        if ($personnel && (int) $personnel->supplier_id === (int) $supplierId) return true;
+    }
+
+    // 4. Supplier Personnel Officer check
+    if ($user->role === 'personnel_officer') {
+        $officer = DB::table('supplier_personnel_officers')->where('user_id', $user->id)->first();
+        if ($officer && (int) $officer->supplier_id === (int) $supplierId) return true;
+    }
+
+    return false;
+});

@@ -295,8 +295,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js' // Implemented Websocket
 import { toast } from 'vue-sonner'
 import { 
   Building2,
@@ -352,6 +353,7 @@ import {
 const requests = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
+const currentDistributorId = ref(null)
 
 const selectedRequest = ref(null)
 const showViewDialog = ref(false)
@@ -371,6 +373,29 @@ const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
 let ctx = null
 let isDrawing = false
+
+// --- Websocket Setup ---
+const setupWebsocket = (distributorId) => {
+    if (!distributorId) return;
+
+    echo.leave(`distributor.${distributorId}.requests`);
+
+    echo.private(`distributor.${distributorId}.requests`)
+        .listen('.PartnershipRequest.Created', (e) => {
+            const req = e.request;
+            const index = requests.value.findIndex(r => r.id === req.id);
+            if (index !== -1) {
+                // FIX: Splice guarantees Vue reactivity updates
+                requests.value.splice(index, 1, req);
+            } else if (req.status === 'pending_internal') {
+                requests.value.unshift(req);
+            }
+        })
+        .listen('.PartnershipRequest.Updated', (e) => {
+            const req = e.request;
+            requests.value = requests.value.filter(r => r.id !== req.id);
+        });
+}
 
 // --- Canvas Logic ---
 const initCanvas = () => {
@@ -444,6 +469,11 @@ const fetchRequests = async () => {
     const response = await api.get('/distributor/partner-requests')
     if (response.data.success) {
       requests.value = response.data.data
+      
+      if (response.data.distributor_id) {
+          currentDistributorId.value = response.data.distributor_id;
+          setupWebsocket(response.data.distributor_id);
+      }
     }
   } catch (error) {
     console.error('Failed to fetch', error)
@@ -559,5 +589,11 @@ const submitReject = async () => {
 
 onMounted(() => {
   fetchRequests()
+})
+
+onUnmounted(() => {
+    if (currentDistributorId.value) {
+        echo.leave(`distributor.${currentDistributorId.value}.requests`);
+    }
 })
 </script>

@@ -675,8 +675,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue' // ADDED onUnmounted
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js' // ADDED Websocket Setup
 import { toast } from 'vue-sonner'
 import { 
   Search, 
@@ -728,6 +729,7 @@ const statusFilter = ref('all')
 const categoryFilter = ref('all')
 const isSheetOpen = ref(false)
 const selectedSupplier = ref(null)
+const currentDistributorId = ref(null) // ADDED variable for WebSockets
 
 // Agreement Signature State
 const showAgreementDialog = ref(false)
@@ -765,6 +767,69 @@ let termCtx = null
 let isDrawingTerm = false
 
 const printIframe = ref(null)
+
+// --- WEBSOCKET SETUP ---
+const setupWebsocket = (distributorId) => {
+    if (!distributorId) return;
+
+    echo.leave(`distributor.${distributorId}.requests`);
+
+    echo.private(`distributor.${distributorId}.requests`)
+        .listen('.SupplierRequest.Updated', (e) => {
+            const req = e.request || e;
+            // The payload has `supplier_id` (User ID), we must match the correct object key based on what our backend index() array provides.
+            // Our backend index() returns `supplier_user_id` as the reference to the supplier's actual user ID.
+            const index = suppliers.value.findIndex(s => s.supplier_user_id === req.supplier_id);
+            
+            if (index !== -1) {
+                const supplier = suppliers.value[index];
+                
+                // Deep update properties sent from the WebSocket payload
+                supplier.status = req.status;
+                supplier.is_signed = !!req.distributor_signature_url;
+                supplier.is_supplier_signed = !!req.supplier_signature_url;
+                supplier.distributor_signature_url = req.distributor_signature_url;
+                supplier.supplier_signature_url = req.supplier_signature_url;
+                supplier.agreement_url = req.agreement_url;
+                supplier.termination_url = req.termination_url;
+                supplier.distributor_termination_signature_url = req.distributor_termination_signature_url;
+                supplier.supplier_termination_signature_url = req.supplier_termination_signature_url;
+                
+                // Force Vue to react and update the UI
+                suppliers.value.splice(index, 1, supplier);
+                
+                toast.info('Supplier Status Updated', { 
+                    description: `Partnership status changed to: ${req.status.replace('_', ' ')}` 
+                });
+                
+                // If the user currently has the dialog open for this exact supplier, refresh the dialog state too.
+                if (selectedSupplier.value && selectedSupplier.value.supplier_user_id === req.supplier_id) {
+                    selectedSupplier.value = { ...supplier };
+                }
+            } else {
+                // If the supplier wasn't in our active list at all (e.g., they just got accepted), fetch them fresh.
+                fetchSuppliers();
+            }
+        })
+        .listen('.PartnershipRequest.Updated', (e) => {
+            // Also listen to actions triggered by other distributor tabs/employees
+            const req = e.request || e;
+            const index = suppliers.value.findIndex(s => s.supplier_user_id === req.supplier_id);
+            if (index !== -1) {
+                const supplier = suppliers.value[index];
+                supplier.status = req.status;
+                supplier.is_signed = !!req.distributor_signature_url;
+                supplier.distributor_signature_url = req.distributor_signature_url;
+                supplier.distributor_termination_signature_url = req.distributor_termination_signature_url;
+                
+                suppliers.value.splice(index, 1, supplier);
+                if (selectedSupplier.value && selectedSupplier.value.supplier_user_id === req.supplier_id) {
+                    selectedSupplier.value = { ...supplier };
+                }
+            }
+        });
+}
+
 
 // --- Helpers ---
 
@@ -807,6 +872,12 @@ const fetchSuppliers = async () => {
     const response = await api.get('/distributor/partnered-suppliers')
     if (response.data.success) {
       suppliers.value = response.data.data
+      
+      // Initialize WebSocket once we have the distributor ID
+      if (response.data.distributor_id) {
+          currentDistributorId.value = response.data.distributor_id;
+          setupWebsocket(response.data.distributor_id);
+      }
       
       if (selectedSupplier.value) {
          const updated = suppliers.value.find(s => s.id === selectedSupplier.value.id)
@@ -1359,5 +1430,12 @@ const submitSignature = async () => {
 
 onMounted(() => {
   fetchSuppliers()
+})
+
+// ADDED cleanup for websocket channel
+onUnmounted(() => {
+    if (currentDistributorId.value) {
+        echo.leave(`distributor.${currentDistributorId.value}.requests`);
+    }
 })
 </script>

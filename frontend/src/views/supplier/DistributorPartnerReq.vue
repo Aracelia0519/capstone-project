@@ -552,7 +552,7 @@
                     <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
                     <p class="text-xs sm:text-sm font-bold text-slate-800">{{ selectedRequest?.distributor?.company_name || selectedRequest?.distributor?.first_name }}</p>
                     <p class="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        <CheckCircle class="h-3 w-3 text-emerald-500" /> Signed
+                        <CheckCircle2 class="h-3 w-3 text-emerald-500" /> Signed
                     </p>
                 </div>
 
@@ -565,7 +565,7 @@
                     <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
                     <p class="text-xs sm:text-sm font-bold text-slate-800">Your Business</p>
                     <p class="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        <CheckCircle class="h-3 w-3 text-emerald-500" /> Signed
+                        <CheckCircle2 class="h-3 w-3 text-emerald-500" /> Signed
                     </p>
                 </div>
             </div>
@@ -580,8 +580,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import api from '@/utils/axios'
+import echo from '@/utils/websocket.js' // Websockets
 import { toast } from 'vue-sonner'
 import { 
   Store, Briefcase, CheckCircle2, XCircle, AlertCircle, MapPin, Phone, Mail, 
@@ -604,6 +605,7 @@ const loading = ref(true)
 const searchQuery = ref('')
 const isProcessing = ref(false)
 const activeTab = ref('pending') 
+const currentSupplierId = ref(null) // Added for Websockets
 
 const selectedRequest = ref(null)
 const showViewDialog = ref(false)
@@ -648,6 +650,36 @@ const reactivateSignatureCanvas = ref(null)
 const reactivateCanvasContainer = ref(null)
 let reactivateCtx = null
 let isReactivateDrawing = false
+
+// --- WebSocket Logic ---
+const setupWebsocket = (supplierId) => {
+    if (!supplierId) return;
+
+    echo.leave(`supplier.${supplierId}.requests`);
+
+    echo.private(`supplier.${supplierId}.requests`)
+        .listen('.PartnershipRequest.Updated', (e) => {
+            const req = e.request;
+            const index = requests.value.findIndex(r => r.id === req.id);
+            if (index !== -1) {
+                // FIX: Splice ensures deep reactivity, preventing stale iframe urls!
+                requests.value.splice(index, 1, req);
+            } else {
+                requests.value.unshift(req);
+                toast.info('Partnership Update', { description: 'A distributor updated a partnership request.' });
+            }
+        })
+        .listen('.SupplierRequest.Updated', (e) => {
+            const req = e.request;
+            const index = requests.value.findIndex(r => r.id === req.id);
+            if (index !== -1) {
+                // FIX: Splice ensures deep reactivity!
+                requests.value.splice(index, 1, req);
+            } else {
+                requests.value.unshift(req);
+            }
+        });
+}
 
 // --- Canvas Initializers ---
 const initCanvas = () => {
@@ -719,6 +751,11 @@ const fetchRequests = async () => {
     const response = await api.get('/supplier/distributor-requests')
     if (response.data.success) {
       requests.value = response.data.data
+      
+      if (response.data.supplier_id) {
+          currentSupplierId.value = response.data.supplier_id;
+          setupWebsocket(response.data.supplier_id);
+      }
     }
   } catch (error) {
     toast.error('Failed to load records')
@@ -777,7 +814,6 @@ const submitApprove = async () => {
     const b64 = signatureCanvas.value.toDataURL('image/png')
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/approve`, { signature_image: b64 })
     if (res.data.success) {
-      await fetchRequests()
       showSignatureDialog.value = false
       activeTab.value = 'active'
       toast.success('Partnership Activated')
@@ -793,7 +829,6 @@ const submitReject = async () => {
   try {
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reject`, { reason: rejectReason.value })
     if (res.data.success) {
-      await fetchRequests()
       showRejectDialog.value = false
       toast.info('Proposal Declined')
     }
@@ -815,7 +850,6 @@ const submitTermReject = async () => {
   try {
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/terminate-reject`, { reason: termRejectReason.value })
     if (res.data.success) {
-      await fetchRequests()
       showTermRejectDialog.value = false
       activeTab.value = 'active'
       toast.success('Termination Declined, Partnership Restored')
@@ -831,7 +865,6 @@ const submitTermApprove = async () => {
     const b64 = termSignatureCanvas.value.toDataURL('image/png')
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/terminate-approve`, { signature_image: b64 })
     if (res.data.success) {
-      await fetchRequests()
       showTermSignatureDialog.value = false
       toast.success('Partnership Terminated')
     }
@@ -852,7 +885,6 @@ const submitReactivateReject = async () => {
   try {
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reactivate-reject`, { reason: reactivateRejectReason.value })
     if (res.data.success) {
-      await fetchRequests()
       showReactivateRejectDialog.value = false
       activeTab.value = 'terminations'
       toast.success('Reactivation Declined, Kept as Terminated')
@@ -868,7 +900,6 @@ const submitReactivateApprove = async () => {
     const b64 = reactivateSignatureCanvas.value.toDataURL('image/png')
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reactivate-approve`, { signature_image: b64 })
     if (res.data.success) {
-      await fetchRequests()
       showReactivateSignatureDialog.value = false
       activeTab.value = 'active'
       toast.success('Partnership Reactivated Successfully')
@@ -933,4 +964,10 @@ const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('
 const formatTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : ''
 
 onMounted(() => fetchRequests())
+
+onUnmounted(() => {
+    if (currentSupplierId.value) {
+        echo.leave(`supplier.${currentSupplierId.value}.requests`);
+    }
+})
 </script>

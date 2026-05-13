@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use App\Events\Partnership\PartnershipRequestCreated;
 
 class PartnerSupplierController extends Controller
 {
@@ -161,6 +162,7 @@ class PartnerSupplierController extends Controller
 
             return response()->json([
                 'success' => true,
+                'distributor_id' => $distributorId, // Added to guide WebSockets
                 'data' => $suppliers,
                 'permissions' => $permissions // Send permissions back to frontend
             ]);
@@ -305,6 +307,20 @@ class PartnerSupplierController extends Controller
                     $partnership->agreement_path = $fileName;
                     $partnership->save();
                 }
+
+                // Broadcast Event to sync Real-time
+                $broadcastRequest = DistributorSupplier::with([
+                    'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
+                    'supplier.supplierRequirements',
+                    'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
+                ])->find($partnership->id);
+
+                // FIX: Array conversion bypasses Model Queue Serialization drops
+                $payload = $broadcastRequest->toArray();
+                $payload['agreement_url'] = $broadcastRequest->agreement_path ? url('storage/' . $broadcastRequest->agreement_path) : null;
+                $eventPayload = json_decode(json_encode($payload));
+
+                broadcast(new PartnershipRequestCreated($eventPayload))->toOthers();
             }
 
             // 4. Fire Emails to Supplier and Distributor
@@ -505,6 +521,20 @@ class PartnerSupplierController extends Controller
                 $partnership->agreement_path = $fileName;
                 $partnership->save();
             }
+
+            // Broadcast Event to sync Real-time
+            $broadcastRequest = DistributorSupplier::with([
+                'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
+                'supplier.supplierRequirements',
+                'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
+            ])->find($partnership->id);
+
+            // FIX: Array conversion bypasses Model Queue Serialization drops
+            $payload = $broadcastRequest->toArray();
+            $payload['agreement_url'] = $broadcastRequest->agreement_path ? url('storage/' . $broadcastRequest->agreement_path) : null;
+            $eventPayload = json_decode(json_encode($payload));
+
+            broadcast(new PartnershipRequestCreated($eventPayload))->toOthers();
 
             return response()->json([
                 'success' => true,
