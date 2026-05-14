@@ -808,6 +808,7 @@
 
 <script>
 import api from '@/utils/axios'; 
+import echo from '@/utils/websocket';
 import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
@@ -979,6 +980,17 @@ export default {
   mounted() {
     this.fetchUsers();
     this.fetchStatistics();
+
+    // Listen for new requirement submissions globally for admins
+    echo.private('admin.requirements')
+        .listen('.RequirementSubmitted', (e) => {
+            toast.info(`New requirements submitted by ${e.userName} (${e.role})`);
+            this.fetchUsers();
+            this.fetchStatistics();
+        });
+  },
+  beforeUnmount() {
+      echo.leave('admin.requirements');
   },
   watch: {
     activeTab() {

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use App\Events\Requirements\RequirementStatusUpdated; // <-- Added Import
 
 class AdminUserController extends Controller
 {
@@ -693,6 +694,9 @@ class AdminUserController extends Controller
                     break;
             }
 
+            // <-- Broadcast the Event Here
+            event(new RequirementStatusUpdated($user->id, 'approved', null));
+
             // Send Email Notification
             try {
                 Mail::raw("Hello {$user->first_name},\n\nYour account and requirements have been successfully approved! You can now fully access the CaviteGoPaint system.\n\nThank you,\nCaviteGoPaint Team", function ($message) use ($user) {
@@ -796,6 +800,9 @@ class AdminUserController extends Controller
                     }
                     break;
             }
+
+            // <-- Broadcast the Event Here
+            event(new RequirementStatusUpdated($user->id, 'rejected', $request->reason));
 
             // Send Rejection Email Notification
             try {

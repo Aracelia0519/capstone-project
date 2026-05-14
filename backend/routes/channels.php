@@ -296,3 +296,12 @@ Broadcast::channel('supplier.{supplierId}.requests', function ($user, $supplierI
 
     return false;
 });
+
+// ------------- REQUIRMENTS LIVE UDPATE CHANNELS -------------
+Broadcast::channel('admin.requirements', function ($user) {
+    return $user->role === 'admin';
+});
+
+Broadcast::channel('user.{id}.requirements', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});

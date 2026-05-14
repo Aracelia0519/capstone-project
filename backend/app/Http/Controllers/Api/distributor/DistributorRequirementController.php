@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB; // Import DB for transactions
+use App\Events\Requirements\RequirementSubmitted; // <-- Added Import
 
 class DistributorRequirementController extends Controller
 {
@@ -205,6 +206,9 @@ class DistributorRequirementController extends Controller
 
                 $photoUrls = $requirements->getAllPhotoUrls();
                 $requirements->load('address'); // Load the new address
+
+                // 🔔 Fire the real-time event to notify admins
+                event(new RequirementSubmitted($user));
                 
                 return response()->json([
                     'status' => 'success',

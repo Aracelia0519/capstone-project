@@ -153,7 +153,7 @@ const router = useRouter()
 const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Welcome Back!')
-const isVerified = computed(() => props.verificationStatus === 'approved')
+const isVerified = computed(() => props.verificationStatus === 'approved' || props.verificationStatus === 'verified')
 
 // Added requiresVerify: true to all navigation items so they are locked until approved.
 const navigation = [

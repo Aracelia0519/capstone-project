@@ -614,6 +614,7 @@
 <script>
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket'
 
 // Leaflet
 import 'leaflet/dist/leaflet.css'
@@ -839,6 +840,11 @@ export default {
   created() {
     this.fetchUserProfile()
   },
+  beforeUnmount() {
+      if (this.user.id) {
+          echo.leave(`user.${this.user.id}.requirements`);
+      }
+  },
   methods: {
     evaluateStep(stepIndex) {
       if (this.canProceedToNextStep && this.currentStep === stepIndex) {
@@ -958,6 +964,10 @@ export default {
           this.user = response.data.user
           this.originalUser = JSON.parse(JSON.stringify(this.user))
           this.hasChanges = false
+          
+          // Set up WebSocket Listener
+          this.setupRequirementsListener();
+
           await this.loadIdVerificationData()
           await this.fetchGcashNumber() 
           this.showNotification('Profile loaded successfully!', 'success')
@@ -979,6 +989,19 @@ export default {
           }
         });
       }
+    },
+
+    setupRequirementsListener() {
+        if (!this.user.id) return;
+        
+        echo.private(`user.${this.user.id}.requirements`)
+            .listen('.RequirementStatusUpdated', (e) => {
+                this.showNotification(`Your requirement status was updated to: ${e.status}`, e.status === 'approved' ? 'success' : 'warning');
+                if (e.reason) {
+                    this.showNotification(`Reason: ${e.reason}`, 'error');
+                }
+                this.loadIdVerificationData();
+            });
     },
 
     async fetchGcashNumber() {

@@ -83,12 +83,13 @@
 <script setup>
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster, toast } from 'vue-sonner' // Added toast
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import SideBarClient from './sideBarClient.vue'
-import VerificationModal from './VerificationModal.vue' // Make sure you have this component created for Client
+import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket' // Added Echo import
 import { getCurrentUser } from '@/utils/auth'
 import { LogOut } from 'lucide-vue-next'
 
@@ -108,7 +109,6 @@ const handleLogoutStart = () => {
   isLoggingOut.value = true
   logoutProgress.value = 0
   
-  // Simulate progress animation
   progressInterval = setInterval(() => {
     if (logoutProgress.value < 90) {
       logoutProgress.value += 10
@@ -117,7 +117,6 @@ const handleLogoutStart = () => {
 }
 
 const handleLogoutFinish = () => {
-  // Complete the progress
   logoutProgress.value = 100
   setTimeout(() => {
     if (progressInterval) clearInterval(progressInterval)
@@ -177,6 +176,24 @@ const fetchDashboardData = async () => {
   }
 }
 
+// Set up WebSocket listener specifically for requirement status changes
+const setupWebsocketListener = () => {
+  if (!userData.value || !userData.value.id) return
+  
+  echo.private(`user.${userData.value.id}.requirements`)
+    .listen('.RequirementStatusUpdated', (e) => {
+      // Instantly react to update
+      verificationStatus.value = e.status
+      
+      if (e.status === 'approved' || e.status === 'verified') {
+        showVerificationModal.value = false
+        toast.success('Your identity verification has been approved! You now have full access.')
+      } else if (e.status === 'rejected') {
+        toast.error('Your identity verification was rejected. Reason: ' + (e.reason || 'Please check your profile for details.'))
+      }
+    })
+}
+
 onMounted(async () => {
   initializeUserData()
   if (!userData.value) {
@@ -185,12 +202,15 @@ onMounted(async () => {
       localStorage.setItem('user_data', JSON.stringify(userData.value))
     } catch {
       router.push('/Landing/logIn')
-      return // Exit early if redirecting
+      return 
     }
   }
   
-  await fetchVerificationStatus() // Fetch requirements/status
+  await fetchVerificationStatus() 
   fetchDashboardData()
+  
+  // Attach Websocket listener after user is validated
+  setupWebsocketListener()
 })
 
 watch(() => router.currentRoute.value.path, (path, oldPath) => {
@@ -201,6 +221,11 @@ watch(() => router.currentRoute.value.path, (path, oldPath) => {
 
 onUnmounted(() => {
   if (progressInterval) clearInterval(progressInterval)
+  
+  // Cleanup websocket listener to prevent memory leaks
+  if (userData.value && userData.value.id) {
+    echo.leave(`user.${userData.value.id}.requirements`)
+  }
 })
 </script>
 

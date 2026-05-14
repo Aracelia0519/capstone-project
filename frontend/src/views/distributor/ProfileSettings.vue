@@ -938,10 +938,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios' 
 import { toast, Toaster } from 'vue-sonner'
+import echo from '@/utils/websocket' // Import our new Echo Websocket file
 import { 
   Loader2, Save, User, Mail, Phone, Camera, 
   CheckCircle2, Clock, XCircle, AlertCircle, 
@@ -1456,7 +1457,6 @@ watch(currentStep, async (newStep) => {
   }
 })
 
-
 // API Calls
 const fetchUserData = async () => {
   loading.value = true
@@ -1824,6 +1824,28 @@ onMounted(async () => {
     await fetchVerificationData()
   }
   setOriginalData()
+
+  // 🔔 [FIXED] Ensure the channel perfectly matches channels.php AND Event file string interpolation
+  if (userInfo.id) {
+    echo.private(`user.${userInfo.id}.requirements`)
+      .listen('.RequirementStatusUpdated', async (e) => {
+        toast.info(`Your verification status has been updated to: ${e.status.toUpperCase()}`);
+        
+        // Background refresh to reflect the changes
+        await fetchUserData();
+        await fetchDistributorData();
+        if (userInfo.role === 'distributor') {
+          await fetchVerificationData();
+        }
+      });
+  }
+})
+
+// 🔔 Clean up socket memory to avoid multiple instances when user switches components
+onBeforeUnmount(() => {
+  if (userInfo.id) {
+    echo.leave(`user.${userInfo.id}.requirements`);
+  }
 })
 </script>
 

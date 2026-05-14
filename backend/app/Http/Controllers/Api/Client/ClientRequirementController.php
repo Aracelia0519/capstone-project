@@ -12,6 +12,7 @@ use App\Models\Client\ClientAddress;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Events\Requirements\RequirementSubmitted;
 
 class ClientRequirementController extends Controller
 {
@@ -156,6 +157,9 @@ class ClientRequirementController extends Controller
             );
 
             DB::commit();
+
+            // Broadcast Event
+            event(new RequirementSubmitted($user));
             
             return response()->json([
                 'status' => 'success',

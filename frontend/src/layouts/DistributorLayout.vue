@@ -1,7 +1,7 @@
 <template>
   <SidebarProvider>
     <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-blue-500/30 overflow-hidden">
-      <Toaster position="top-right" />
+      <Toaster position="top-right" richColors />
       
       <VerificationModal 
         v-if="showVerificationModal" 
@@ -71,12 +71,13 @@
 <script setup>
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster, toast } from 'vue-sonner' // Added toast for notifications
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import SideBarDistributor from './sideBarDistributor.vue'
 import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket' // Imported WebSocket Echo instance
 import { LogOut } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -118,11 +119,54 @@ watch(() => route.query, (newQuery) => {
   }
 }, { immediate: true })
 
+// Real-time WebSocket Setup for Requirements Status
+const setupRequirementsListener = (userId) => {
+  if (!userId) return;
+  
+  // Make sure the channel exactly matches your channels.php
+  const channelName = `user.${userId}.requirements`;
+  
+  echo.private(channelName)
+    .listen('.RequirementStatusUpdated', async (e) => {
+      // 1. Show notification to user
+      if (e.status === 'approved') {
+        toast.success('Congratulations!', {
+          description: 'Your business verification has been approved. All features are now unlocked.'
+        });
+        showVerificationModal.value = false; // Auto-hide modal if open
+      } else if (e.status === 'rejected') {
+        toast.error('Verification Rejected', {
+          description: e.reason ? `Reason: ${e.reason}` : 'Please update and resubmit your documents.'
+        });
+        showVerificationModal.value = true; // Show modal so they can fix it
+      } else {
+        toast.info(`Verification Status Update: ${e.status.toUpperCase()}`);
+      }
+      
+      // 2. Instantly update local state so sidebar reactivity triggers
+      verificationStatus.value = e.status;
+      
+      // 3. Silently refetch backend data to keep everything perfectly in sync
+      try {
+        const roleEndpoints = { distributor: '/dashboard/distributor' }
+        if (roleEndpoints[userData.value.role]) {
+          const res = await axios.get(roleEndpoints[userData.value.role])
+          dashboardData.value = res.data.data
+        }
+      } catch (error) {
+        console.error('Failed background data refresh:', error)
+      }
+    });
+}
+
 const fetchData = async () => {
   isLoading.value = true
   try {
     const userResponse = await axios.get('/auth/me')
     userData.value = userResponse.data.user
+    
+    // Connect to WebSocket after getting user ID
+    setupRequirementsListener(userData.value.id)
     
     if (userData.value.role === 'distributor') {
       const verificationResponse = await axios.get('/distributor/requirements')
@@ -149,6 +193,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (progressInterval) clearInterval(progressInterval)
+  
+  // Clean up WebSocket connection when leaving layout
+  if (userData.value?.id) {
+    echo.leave(`user.${userData.value.id}.requirements`)
+  }
 })
 </script>
 
