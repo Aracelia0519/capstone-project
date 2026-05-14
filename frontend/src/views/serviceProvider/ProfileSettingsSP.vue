@@ -676,12 +676,13 @@
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
 import { Toaster, toast } from 'vue-sonner'
+// ❌ WEBSOCKET IMPORT REMOVED - The Layout handles this now!
 
 // Leaflet
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
-// Import Marker Images with TypeScript ignoring to bypass missing definition file error
+// Import Marker Images
 // @ts-ignore
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
 // @ts-ignore
@@ -694,13 +695,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -717,17 +712,13 @@ import {
 
 export default {
   name: 'ProfileSettingsPage',
+  // 🔔 ADDED PROP: This listens to the Layout's WebSocket changes!
+  props: ['verificationStatus'],
   components: {
-    Toaster,
-    Button, Input, Label, Textarea,
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-    Card, CardContent, CardHeader, CardTitle, CardDescription,
-    Avatar, AvatarFallback, AvatarImage,
-    Badge, Progress, Separator,
-    // Icons
-    UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle,
-    Camera, Shield, CheckCircle2, AlertTriangle, Key, User,
-    FileBadge, Check, X, CreditCard, Image, UploadCloud,
+    Toaster, Button, Input, Label, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    Card, CardContent, CardHeader, CardTitle, CardDescription, Avatar, AvatarFallback, AvatarImage,
+    Badge, Progress, Separator, UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle,
+    Camera, Shield, CheckCircle2, AlertTriangle, Key, User, FileBadge, Check, X, CreditCard, Image, UploadCloud,
     ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation
   },
   data() {
@@ -745,54 +736,15 @@ export default {
       passwordError: null,
       hasChanges: false,
       user: {
-        id: null,
-        first_name: '',
-        last_name: '',
-        full_name: '',
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        role: '',
-        status: '',
-        email_verified_at: null,
-        created_at: '',
-        updated_at: '',
-        bio: ''
+        id: null, first_name: '', last_name: '', full_name: '', name: '', email: '', phone: '', address: '', role: '', status: '', email_verified_at: null, created_at: '', updated_at: '', bio: ''
       },
       originalUser: null,
-      password: {
-        current: '',
-        new: '',
-        confirm: ''
-      },
-      securityStatus: {
-        passwordLastChanged: 'Unknown'
-      },
-      stats: {
-        completedJobs: 0,
-        satisfaction: 0,
-        activeProjects: 0
-      },
+      password: { current: '', new: '', confirm: '' },
+      securityStatus: { passwordLastChanged: 'Unknown' },
+      stats: { completedJobs: 0, satisfaction: 0, activeProjects: 0 },
       // ID Verification
       idVerification: {
-        city: '',
-        barangay: '',
-        block_address: '',
-        latitude: '',
-        longitude: '',
-        idType: '',
-        idNumber: '',
-        idPhoto: null,
-        idPhotoPreview: null,
-        idPhotoUrl: null,
-        selfiePhoto: null,
-        selfiePhotoPreview: null,
-        selfiePhotoUrl: null,
-        status: 'not_submitted',
-        submittedAt: null,
-        reviewedAt: null,
-        rejectionReason: null
+        city: '', barangay: '', block_address: '', latitude: '', longitude: '', idType: '', idNumber: '', idPhoto: null, idPhotoPreview: null, idPhotoUrl: null, selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: null, status: 'not_submitted', submittedAt: null, reviewedAt: null, rejectionReason: null
       },
       idVerificationErrors: {},
       isDraggingId: false,
@@ -803,70 +755,45 @@ export default {
       // Geolocation and Map
       gettingLocation: false,
       locationError: '',
-      map: null,
-      marker: null,
-      caviteLayer: null,
+      map: null, marker: null, caviteLayer: null,
       caviteCities: [
-        'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 
-        'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 
-        'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 
-        'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 
-        'Silang', 'Tagaytay', 'Tanza', 'Ternate', 'Trece Martires'
+        'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 'Silang', 'Tagaytay', 'Tanza', 'Ternate', 'Trece Martires'
       ]
     }
   },
   computed: {
     userInitials() {
-      if (this.user.first_name && this.user.last_name) {
-        return (this.user.first_name.charAt(0) + this.user.last_name.charAt(0)).toUpperCase()
-      }
+      if (this.user.first_name && this.user.last_name) return (this.user.first_name.charAt(0) + this.user.last_name.charAt(0)).toUpperCase()
       if (this.user.name) {
         const names = this.user.name.split(' ')
-        return names.length >= 2 
-          ? (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase()
-          : names[0].charAt(0).toUpperCase()
+        return names.length >= 2 ? (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase() : names[0].charAt(0).toUpperCase()
       }
       return '?'
     },
-    passwordMismatch() {
-      return this.password.new && this.password.confirm && this.password.new !== this.password.confirm
-    },
+    passwordMismatch() { return this.password.new && this.password.confirm && this.password.new !== this.password.confirm },
     canChangePassword() {
-      return this.password.current && 
-             this.password.new && 
-             this.password.confirm && 
-             !this.passwordMismatch &&
-             this.password.new.length >= 8 &&
-             /[A-Z]/.test(this.password.new) &&
-             /[0-9]/.test(this.password.new) &&
-             /[^A-Za-z0-9]/.test(this.password.new)
+      return this.password.current && this.password.new && this.password.confirm && !this.passwordMismatch &&
+             this.password.new.length >= 8 && /[A-Z]/.test(this.password.new) && /[0-9]/.test(this.password.new) && /[^A-Za-z0-9]/.test(this.password.new)
     },
     statusClasses() {
       const status = this.user.status || 'active'
-      switch (status) {
-        case 'active':
-          return 'bg-green-900/30 text-green-400 border-green-800'
-        case 'pending':
-          return 'bg-yellow-900/30 text-yellow-400 border-yellow-800'
-        case 'inactive':
-          return 'bg-red-900/30 text-red-400 border-red-800'
-        default:
-          return 'bg-gray-800/30 text-gray-400 border-gray-700'
-      }
+      if(status === 'active') return 'bg-green-900/30 text-green-400 border-green-800'
+      if(status === 'pending') return 'bg-yellow-900/30 text-yellow-400 border-yellow-800'
+      if(status === 'inactive') return 'bg-red-900/30 text-red-400 border-red-800'
+      return 'bg-gray-800/30 text-gray-400 border-gray-700'
     },
     statusDotClasses() {
       const status = this.user.status || 'active'
-      switch (status) {
-        case 'active': return 'bg-green-400'
-        case 'pending': return 'bg-yellow-400'
-        case 'inactive': return 'bg-red-400'
-        default: return 'bg-gray-400'
-      }
+      if(status === 'active') return 'bg-green-400'
+      if(status === 'pending') return 'bg-yellow-400'
+      if(status === 'inactive') return 'bg-red-400'
+      return 'bg-gray-400'
     },
     idVerificationStatus() {
       switch (this.idVerification.status) {
         case 'pending': return 'Pending Verification'
         case 'verified': return 'Verified'
+        case 'approved': return 'Verified'
         case 'rejected': return 'Rejected - Please resubmit'
         default: return 'Not Submitted'
       }
@@ -875,76 +802,46 @@ export default {
       switch (this.idVerification.status) {
         case 'pending': return 'text-yellow-400 font-medium'
         case 'verified': return 'text-green-400 font-medium'
+        case 'approved': return 'text-green-400 font-medium'
         case 'rejected': return 'text-red-400 font-medium'
         default: return 'text-gray-500'
       }
     },
-    idUploadClasses() {
-      const base = 'border-gray-700'
-      if (this.isDraggingId) {
-        return `${base} border-purple-500 bg-purple-900/20`
-      }
-      return base
-    },
-    selfieUploadClasses() {
-      const base = 'border-gray-700'
-      if (this.isDraggingSelfie) {
-        return `${base} border-pink-500 bg-pink-900/20`
-      }
-      return base
-    },
+    idUploadClasses() { return this.isDraggingId ? 'border-gray-700 border-purple-500 bg-purple-900/20' : 'border-gray-700' },
+    selfieUploadClasses() { return this.isDraggingSelfie ? 'border-gray-700 border-pink-500 bg-pink-900/20' : 'border-gray-700' },
     canSubmitIdVerification() {
-      return this.idVerification.idType && 
-             this.idVerification.idNumber && 
-             (this.idVerification.idPhoto || this.idVerification.idPhotoUrl) && 
-             (this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl) &&
-             this.idVerification.city &&
-             this.idVerification.barangay &&
-             this.idVerification.block_address &&
-             this.idVerification.latitude &&
-             this.idVerification.longitude &&
-             this.idVerification.status !== 'pending' &&
-             this.idVerification.status !== 'verified'
+      return this.idVerification.idType && this.idVerification.idNumber && (this.idVerification.idPhoto || this.idVerification.idPhotoUrl) && 
+             (this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl) && this.idVerification.city && this.idVerification.barangay &&
+             this.idVerification.block_address && this.idVerification.latitude && this.idVerification.longitude &&
+             this.idVerification.status !== 'pending' && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved'
     },
     canProceedToNextStep() {
       switch (this.currentStep) {
-        case 1: 
-            return this.idVerification.city && 
-                   this.idVerification.barangay.trim() && 
-                   this.idVerification.block_address.trim() && 
-                   this.idVerification.latitude && 
-                   this.idVerification.longitude &&
-                   !this.locationError;
-        case 2: 
-            return this.idVerification.idType && this.idVerification.idNumber.trim();
-        case 3: 
-            return this.idVerification.idPhoto || this.idVerification.idPhotoUrl;
-        case 4: 
-            return this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl;
+        case 1: return this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude && !this.locationError;
+        case 2: return this.idVerification.idType && this.idVerification.idNumber.trim();
+        case 3: return this.idVerification.idPhoto || this.idVerification.idPhotoUrl;
+        case 4: return this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl;
         default: return false
       }
     }
   },
   watch: {
+    // 🔔 Auto-updates local profile view when the Layout gets the WebSocket event!
+    verificationStatus(newStatus) {
+      if (newStatus && newStatus !== this.idVerification.status) {
+        this.loadIdVerificationStatus();
+      }
+    },
     currentStep(newStep) {
-      if (newStep === 1 && this.idVerification.status !== 'verified') {
-        this.$nextTick(() => {
-          if (!this.loading && !this.error) this.initMap();
-        });
+      if (newStep === 1 && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved') {
+        this.$nextTick(() => { if (!this.loading && !this.error) this.initMap(); });
       } else {
-        if (this.map) {
-          this.map.remove();
-          this.map = null;
-          this.marker = null;
-          this.caviteLayer = null;
-        }
+        if (this.map) { this.map.remove(); this.map = null; this.marker = null; this.caviteLayer = null; }
       }
     },
     loading(isLoading) {
-      if (!isLoading && !this.error && this.currentStep === 1 && this.idVerification.status !== 'verified') {
-        this.$nextTick(() => {
-          this.initMap();
-        });
+      if (!isLoading && !this.error && this.currentStep === 1 && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved') {
+        this.$nextTick(() => { this.initMap(); });
       }
     }
   },
@@ -973,7 +870,7 @@ export default {
       else if (type === 'warning') toast.warning(message)
       else toast.info(message)
     },
-    
+
     async fetchUserProfile() {
       this.loading = true
       this.error = null
@@ -991,6 +888,8 @@ export default {
           this.hasChanges = false
           await this.fetchServiceProviderStats()
           this.showNotification('Profile loaded successfully!', 'success')
+          
+          // ❌ setupWebsocket() REMOVED FROM HERE
         } else {
           throw new Error('Failed to load profile data')
         }
@@ -1031,84 +930,42 @@ export default {
         const date = new Date(dateString)
         if (isNaN(date.getTime())) return 'Unknown'
         return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-      } catch (e) {
-        return 'Unknown'
-      }
+      } catch (e) { return 'Unknown' }
     },
     
     formatRole(role) {
-      const roles = {
-        'client': 'Client Account',
-        'distributor': 'Distributor Account',
-        'service_provider': 'Service Provider Account',
-        'admin': 'Administrator'
-      }
+      const roles = { 'client': 'Client Account', 'distributor': 'Distributor Account', 'service_provider': 'Service Provider Account', 'admin': 'Administrator' }
       return roles[role] || (role ? role.replace('_', ' ') : 'Service Provider')
     },
     
     markChanged() {
       if (!this.originalUser) return
-      
-      const current = JSON.stringify({
-        first_name: this.user.first_name,
-        last_name: this.user.last_name,
-        email: this.user.email,
-        phone: this.user.phone,
-        address: this.user.address,
-        bio: this.user.bio
-      })
-      
-      const original = JSON.stringify({
-        first_name: this.originalUser.first_name,
-        last_name: this.originalUser.last_name,
-        email: this.originalUser.email,
-        phone: this.originalUser.phone,
-        address: this.originalUser.address,
-        bio: this.originalUser.bio
-      })
-      
+      const current = JSON.stringify({ first_name: this.user.first_name, last_name: this.user.last_name, email: this.user.email, phone: this.user.phone, address: this.user.address, bio: this.user.bio })
+      const original = JSON.stringify({ first_name: this.originalUser.first_name, last_name: this.originalUser.last_name, email: this.originalUser.email, phone: this.originalUser.phone, address: this.originalUser.address, bio: this.originalUser.bio })
       this.hasChanges = current !== original
     },
     
     async saveProfile() {
       if (!this.hasChanges || this.isLoading) return
-      
       this.isLoading = true
       this.validationErrors = {}
       
       try {
-        const updateData = {
-          first_name: this.user.first_name,
-          last_name: this.user.last_name,
-          email: this.user.email,
-          phone: this.user.phone,
-          address: this.user.address
-        }
-        
+        const updateData = { first_name: this.user.first_name, last_name: this.user.last_name, email: this.user.email, phone: this.user.phone, address: this.user.address }
         const response = await axios.put('/profile', updateData)
-        
         if (response.data.status === 'success') {
-          if (this.user.bio && this.user.id) {
-            localStorage.setItem(`user_bio_${this.user.id}`, this.user.bio)
-          }
+          if (this.user.bio && this.user.id) localStorage.setItem(`user_bio_${this.user.id}`, this.user.bio)
           Object.assign(this.user, updateData)
           this.originalUser = JSON.parse(JSON.stringify(this.user))
           this.hasChanges = false
           this.showNotification('Profile updated successfully!', 'success')
-        } else {
-          throw new Error('Update failed')
-        }
+        } else throw new Error('Update failed')
       } catch (error) {
-        console.error('Error updating profile:', error)
         if (error.response?.status === 422) {
           this.validationErrors = error.response.data.errors || {}
           this.showNotification('Please fix the validation errors', 'error')
-        } else {
-          this.showNotification(error.response?.data?.message || 'Failed to update profile', 'error')
-        }
-      } finally {
-        this.isLoading = false
-      }
+        } else this.showNotification(error.response?.data?.message || 'Failed to update profile', 'error')
+      } finally { this.isLoading = false }
     },
     
     resetChanges() {
@@ -1121,30 +978,19 @@ export default {
     
     async changePassword() {
       if (!this.canChangePassword || this.passwordLoading) return
-      
       this.passwordLoading = true
       this.passwordError = null
       this.validationErrors = {}
       
       try {
-        const passwordData = {
-          current_password: this.password.current,
-          password: this.password.new,
-          password_confirmation: this.password.confirm
-        }
-        
-        const response = await axios.put('/profile/password', passwordData)
-        
+        const response = await axios.put('/profile/password', { current_password: this.password.current, password: this.password.new, password_confirmation: this.password.confirm })
         if (response.data.status === 'success') {
           this.password = { current: '', new: '', confirm: '' }
           this.showChangePassword = false
           this.securityStatus.passwordLastChanged = 'Just now'
           this.showNotification('Password changed successfully!', 'success')
-        } else {
-          throw new Error('Password change failed')
-        }
+        } else throw new Error('Password change failed')
       } catch (error) {
-        console.error('Error changing password:', error)
         if (error.response?.status === 422) {
           this.validationErrors = error.response.data.errors || {}
           this.passwordError = error.response.data.message || 'Password change failed'
@@ -1153,66 +999,35 @@ export default {
           this.passwordError = error.response?.data?.message || error.message || 'Failed to change password'
           this.showNotification(this.passwordError, 'error')
         }
-      } finally {
-        this.passwordLoading = false
-      }
+      } finally { this.passwordLoading = false }
     },
     
-    editAvatar() {
-      this.showNotification('Avatar upload feature will be available soon', 'info')
-    },
-
-    nextStep() {
-      if (this.currentStep < 4 && this.canProceedToNextStep) this.currentStep++
-    },
-    prevStep() {
-      if (this.currentStep > 1) this.currentStep--
-    },
+    editAvatar() { this.showNotification('Avatar upload feature will be available soon', 'info') },
+    nextStep() { if (this.currentStep < 4 && this.canProceedToNextStep) this.currentStep++ },
+    prevStep() { if (this.currentStep > 1) this.currentStep-- },
     
     fixLeafletIcons() {
       delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl,
-        iconUrl,
-        shadowUrl,
-      });
+      L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
     },
 
     getAddressComponent(address, keys) {
       if (!address) return '';
-      for (const key of keys) {
-        if (address[key]) return address[key];
-      }
+      for (const key of keys) { if (address[key]) return address[key]; }
       return '';
     },
 
-    // Strict Cavite boundary feature
     async drawCaviteBoundary() {
       try {
         const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
         const data = await response.json();
-        
         if (data && data.length > 0) {
           const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
-          const geojson = caviteData.geojson;
-          
-          this.caviteLayer = L.geoJSON(geojson, {
-            style: {
-              color: '#4f46e5',
-              weight: 4,
-              fillColor: '#4f46e5',
-              fillOpacity: 0.1,
-              dashArray: '5, 5'
-            }
-          }).addTo(this.map);
-          
+          this.caviteLayer = L.geoJSON(caviteData.geojson, { style: { color: '#4f46e5', weight: 4, fillColor: '#4f46e5', fillOpacity: 0.1, dashArray: '5, 5' } }).addTo(this.map);
           const exactBounds = this.caviteLayer.getBounds();
           this.map.setMaxBounds(exactBounds.pad(0.02)); 
           this.map.setMinZoom(10);
-          
-          if (!this.idVerification.latitude) {
-            this.map.fitBounds(exactBounds);
-          }
+          if (!this.idVerification.latitude) this.map.fitBounds(exactBounds);
         }
       } catch (err) {
         console.error('Failed to load strictly exact boundary for Cavite:', err);
@@ -1223,36 +1038,27 @@ export default {
 
     initMap() {
       const mapContainer = document.getElementById('sp-map');
-      if (!mapContainer) return; 
-
-      if (this.map) return;
+      if (!mapContainer || this.map) return; 
       
-      const defaultLat = 14.24;
-      const defaultLng = 120.88;
-      
-      const startLat = this.idVerification.latitude ? parseFloat(this.idVerification.latitude) : defaultLat;
-      const startLng = this.idVerification.longitude ? parseFloat(this.idVerification.longitude) : defaultLng;
+      const startLat = this.idVerification.latitude ? parseFloat(this.idVerification.latitude) : 14.24;
+      const startLng = this.idVerification.longitude ? parseFloat(this.idVerification.longitude) : 120.88;
 
       this.fixLeafletIcons();
-
       this.map = L.map('sp-map', { minZoom: 10 }).setView([startLat, startLng], 12);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution: '&copy; OpenStreetMap contributors'
       }).addTo(this.map);
 
       this.marker = L.marker([startLat, startLng], { draggable: true }).addTo(this.map);
-
       this.marker.on('dragend', async (e) => {
         const latlng = e.target.getLatLng();
         await this.updateLocationFromCoords(latlng.lat, latlng.lng);
       });
-
       this.map.on('click', async (e) => {
         this.marker.setLatLng(e.latlng);
         await this.updateLocationFromCoords(e.latlng.lat, e.latlng.lng);
       });
-
       this.drawCaviteBoundary();
     },
 
@@ -1262,38 +1068,21 @@ export default {
       this.idVerification.longitude = lon.toString();
       
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
-        );
-        
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
         if (!response.ok) throw new Error('Failed to fetch address');
-        
         const data = await response.json();
         const addr = data.address;
 
-        // Water Body Validation
-        const isWater = 
-            data.class === 'waterway' || 
-            (data.class === 'natural' && data.type === 'water') || 
-            (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
-
+        const isWater = data.class === 'waterway' || (data.class === 'natural' && data.type === 'water') || (addr && (addr.sea || addr.ocean || addr.bay || addr.water));
         if (isWater) {
             this.locationError = "You cannot pin a water area. Please select a valid land location within Cavite.";
-            this.idVerification.city = '';
-            this.idVerification.barangay = '';
-            this.idVerification.block_address = '';
-            this.idVerification.latitude = '';
-            this.idVerification.longitude = '';
+            this.idVerification.city = ''; this.idVerification.barangay = ''; this.idVerification.block_address = ''; this.idVerification.latitude = ''; this.idVerification.longitude = '';
             return;
         }
         
         if (addr) {
           const rawCity = this.getAddressComponent(addr, ['city', 'town', 'municipality', 'village', 'county']);
-          const matchedCity = this.caviteCities.find(c => 
-            rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || 
-            c.toLowerCase().includes(rawCity.toLowerCase()))
-          );
-
+          const matchedCity = this.caviteCities.find(c => rawCity && (rawCity.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(rawCity.toLowerCase())));
           if (!matchedCity && addr.state !== 'Cavite') {
              this.locationError = "Location must be within Cavite province.";
              this.idVerification.city = '';
@@ -1301,79 +1090,47 @@ export default {
           }
 
           this.idVerification.city = matchedCity || rawCity;
-
           const rawBarangay = this.getAddressComponent(addr, ['quarter', 'neighbourhood', 'suburb', 'hamlet', 'district']);
           this.idVerification.barangay = rawBarangay.replace('Barangay', '').trim();
 
           const parts = [];
           if (addr.house_number) parts.push(`No. ${addr.house_number}`);
           if (addr.building) parts.push(addr.building);
-          
           const road = this.getAddressComponent(addr, ['road', 'pedestrian', 'highway', 'street']);
           if (road) parts.push(road);
-          
           const subdivision = this.getAddressComponent(addr, ['residential', 'subdivision', 'village', 'allotments']);
-          if (subdivision && subdivision !== rawCity && subdivision !== rawBarangay) {
-              parts.push(subdivision);
-          }
-
+          if (subdivision && subdivision !== rawCity && subdivision !== rawBarangay) parts.push(subdivision);
           this.idVerification.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map');
         }
-      } catch (error) {
-        console.error('Reverse geocoding error:', error);
-      }
+      } catch (error) { console.error('Reverse geocoding error:', error); }
     },
 
     async getCurrentLocation() {
-      if (!navigator.geolocation) {
-        this.locationError = "Geolocation is not supported by your browser";
-        return;
-      }
-      
-      this.gettingLocation = true;
-      this.locationError = "";
+      if (!navigator.geolocation) { this.locationError = "Geolocation is not supported by your browser"; return; }
+      this.gettingLocation = true; this.locationError = "";
       
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          
-          // Strict bounds check before processing
+          const lat = position.coords.latitude; const lon = position.coords.longitude;
           const caviteBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
           if (!caviteBounds.contains([lat, lon])) {
              this.locationError = "Your current device location is outside Cavite. Please pin manually.";
-             this.gettingLocation = false;
-             return;
+             this.gettingLocation = false; return;
           }
 
-          this.idVerification.latitude = lat.toString();
-          this.idVerification.longitude = lon.toString();
-          
+          this.idVerification.latitude = lat.toString(); this.idVerification.longitude = lon.toString();
           if (this.map && this.marker) {
-            this.map.flyTo([lat, lon], 16);
-            this.marker.setLatLng([lat, lon]);
-            await this.updateLocationFromCoords(lat, lon);
-          } else {
-            await this.updateLocationFromCoords(lat, lon);
-          }
-          
+            this.map.flyTo([lat, lon], 16); this.marker.setLatLng([lat, lon]); await this.updateLocationFromCoords(lat, lon);
+          } else await this.updateLocationFromCoords(lat, lon);
           this.gettingLocation = false;
         },
         (error) => {
           this.gettingLocation = false;
           switch(error.code) {
-            case error.PERMISSION_DENIED:
-              this.locationError = "User denied the request for Geolocation.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              this.locationError = "Location information is unavailable.";
-              break;
-            case error.TIMEOUT:
-              this.locationError = "Request timed out.";
-              break;
-            default:
-              this.locationError = "An unknown error occurred.";
-              break;
+            case error.PERMISSION_DENIED: this.locationError = "User denied the request for Geolocation."; break;
+            case error.POSITION_UNAVAILABLE: this.locationError = "Location information is unavailable."; break;
+            case error.TIMEOUT: this.locationError = "Request timed out."; break;
+            default: this.locationError = "An unknown error occurred."; break;
           }
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -1386,44 +1143,22 @@ export default {
         if (response.data.status === 'success') {
           const data = response.data.data
           this.idVerification = {
-            idType: data.id_type || '',
-            idNumber: data.id_number || '',
-            idPhoto: null,
-            idPhotoPreview: null,
-            idPhotoUrl: data.id_photo_url || null,
-            selfiePhoto: null,
-            selfiePhotoPreview: null,
-            selfiePhotoUrl: data.selfie_photo_url || null,
-            status: data.status || 'not_submitted',
-            submittedAt: data.submitted_at || null,
-            reviewedAt: data.reviewed_at || null,
-            rejectionReason: data.rejection_reason || null,
-            
-            // Assigning Address mapping
-            city: data.address?.city || '',
-            barangay: data.address?.barangay || '',
-            block_address: data.address?.block_address || '',
-            latitude: data.address?.latitude || '',
-            longitude: data.address?.longitude || '',
+            idType: data.id_type || '', idNumber: data.id_number || '',
+            idPhoto: null, idPhotoPreview: null, idPhotoUrl: data.id_photo_url || null,
+            selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: data.selfie_photo_url || null,
+            status: data.status || 'not_submitted', submittedAt: data.submitted_at || null, reviewedAt: data.reviewed_at || null, rejectionReason: data.rejection_reason || null,
+            city: data.address?.city || '', barangay: data.address?.barangay || '', block_address: data.address?.block_address || '', latitude: data.address?.latitude || '', longitude: data.address?.longitude || '',
           }
-          if (this.idVerification.status === 'pending' || this.idVerification.status === 'verified') {
+          if (this.idVerification.status === 'pending' || this.idVerification.status === 'verified' || this.idVerification.status === 'approved') {
             this.currentStep = 1
           } else {
-            // Setup map layout next tick if we start on step 1 naturally
-            if (!this.loading && !this.error) {
-              this.$nextTick(() => { this.initMap(); });
-            }
+            if (!this.loading && !this.error) this.$nextTick(() => { this.initMap(); });
           }
         }
-      } catch (error) {
-        console.error('Error loading ID verification status:', error)
-      }
+      } catch (error) { console.error('Error loading ID verification status:', error) }
     },
 
-    handleDragOver(event) {
-      this.isDraggingId = true
-      event.preventDefault()
-    },
+    handleDragOver(event) { this.isDraggingId = true; event.preventDefault() },
     handleDragLeave() { this.isDraggingId = false },
     handleIdDrop(event) {
       this.isDraggingId = false
@@ -1431,10 +1166,7 @@ export default {
       if (files.length > 0 && this.idVerification.status !== 'pending') this.processIdFile(files[0])
     },
 
-    handleSelfieDragOver(event) {
-      this.isDraggingSelfie = true
-      event.preventDefault()
-    },
+    handleSelfieDragOver(event) { this.isDraggingSelfie = true; event.preventDefault() },
     handleSelfieDragLeave() { this.isDraggingSelfie = false },
     handleSelfieDrop(event) {
       this.isDraggingSelfie = false
@@ -1442,12 +1174,8 @@ export default {
       if (files.length > 0 && this.idVerification.status !== 'pending') this.processSelfieFile(files[0])
     },
 
-    triggerIdUpload() {
-      if (this.idVerification.status !== 'pending') this.$refs.idFileInput.click()
-    },
-    triggerSelfieUpload() {
-      if (this.idVerification.status !== 'pending') this.$refs.selfieFileInput.click()
-    },
+    triggerIdUpload() { if (this.idVerification.status !== 'pending') this.$refs.idFileInput.click() },
+    triggerSelfieUpload() { if (this.idVerification.status !== 'pending') this.$refs.selfieFileInput.click() },
 
     handleIdUploadChange(event) {
       const file = event.target.files[0]
@@ -1459,14 +1187,8 @@ export default {
     },
 
     processIdFile(file) {
-      if (!file.type.startsWith('image/')) {
-        this.showNotification('Please upload an image file', 'error')
-        return
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        this.showNotification('File size must be less than 5MB', 'error')
-        return
-      }
+      if (!file.type.startsWith('image/')) { this.showNotification('Please upload an image file', 'error'); return }
+      if (file.size > 5 * 1024 * 1024) { this.showNotification('File size must be less than 5MB', 'error'); return }
       this.idVerificationErrors.idPhoto = null
       this.idUploadProgress = 0
       const interval = setInterval(() => {
@@ -1474,105 +1196,55 @@ export default {
         if (this.idUploadProgress >= 100) {
           clearInterval(interval)
           const reader = new FileReader()
-          reader.onload = (e) => {
-            this.idVerification.idPhotoPreview = e.target.result
-            this.idVerification.idPhoto = file
-            this.idVerification.idPhotoUrl = null
-            this.showNotification('ID photo uploaded successfully!', 'success')
-          }
+          reader.onload = (e) => { this.idVerification.idPhotoPreview = e.target.result; this.idVerification.idPhoto = file; this.idVerification.idPhotoUrl = null; this.showNotification('ID photo uploaded successfully!', 'success') }
           reader.readAsDataURL(file)
         }
       }, 50)
     },
 
     processSelfieFile(file) {
-      if (!file.type.startsWith('image/')) {
-        this.showNotification('Please upload an image file', 'error')
-        return
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        this.showNotification('File size must be less than 5MB', 'error')
-        return
-      }
+      if (!file.type.startsWith('image/')) { this.showNotification('Please upload an image file', 'error'); return }
+      if (file.size > 5 * 1024 * 1024) { this.showNotification('File size must be less than 5MB', 'error'); return }
       this.idVerificationErrors.selfiePhoto = null
       const reader = new FileReader()
-      reader.onload = (e) => {
-        this.idVerification.selfiePhotoPreview = e.target.result
-        this.idVerification.selfiePhoto = file
-        this.idVerification.selfiePhotoUrl = null
-        this.showNotification('Selfie uploaded successfully!', 'success')
-      }
+      reader.onload = (e) => { this.idVerification.selfiePhotoPreview = e.target.result; this.idVerification.selfiePhoto = file; this.idVerification.selfiePhotoUrl = null; this.showNotification('Selfie uploaded successfully!', 'success') }
       reader.readAsDataURL(file)
     },
 
-    removeIdPhoto() {
-      this.idVerification.idPhoto = null
-      this.idVerification.idPhotoPreview = null
-      this.idVerification.idPhotoUrl = null
-      this.idUploadProgress = 0
-    },
-    removeSelfiePhoto() {
-      this.idVerification.selfiePhoto = null
-      this.idVerification.selfiePhotoPreview = null
-      this.idVerification.selfiePhotoUrl = null
-    },
+    removeIdPhoto() { this.idVerification.idPhoto = null; this.idVerification.idPhotoPreview = null; this.idVerification.idPhotoUrl = null; this.idUploadProgress = 0 },
+    removeSelfiePhoto() { this.idVerification.selfiePhoto = null; this.idVerification.selfiePhotoPreview = null; this.idVerification.selfiePhotoUrl = null },
 
     async submitIdVerification() {
       if (!this.canSubmitIdVerification || this.idVerificationLoading) return
-      this.idVerificationLoading = true
-      this.idVerificationErrors = {}
+      this.idVerificationLoading = true; this.idVerificationErrors = {}
 
-      if (!this.idVerification.idType) {
-        this.idVerificationErrors.idType = 'Please select an ID type'
-        this.idVerificationLoading = false
-        return
-      }
-      if (!this.idVerification.idNumber.trim()) {
-        this.idVerificationErrors.idNumber = 'Please enter your ID number'
-        this.idVerificationLoading = false
-        return
-      }
+      if (!this.idVerification.idType) { this.idVerificationErrors.idType = 'Please select an ID type'; this.idVerificationLoading = false; return }
+      if (!this.idVerification.idNumber.trim()) { this.idVerificationErrors.idNumber = 'Please enter your ID number'; this.idVerificationLoading = false; return }
 
       try {
         const formData = new FormData()
-        formData.append('id_type', this.idVerification.idType)
-        formData.append('id_number', this.idVerification.idNumber)
-        formData.append('id_photo', this.idVerification.idPhoto)
-        formData.append('selfie_photo', this.idVerification.selfiePhoto)
-        
-        // Address Details
-        formData.append('province', 'Cavite')
-        formData.append('city', this.idVerification.city)
-        formData.append('barangay', this.idVerification.barangay)
-        formData.append('block_address', this.idVerification.block_address)
-        formData.append('latitude', this.idVerification.latitude)
-        formData.append('longitude', this.idVerification.longitude)
+        formData.append('id_type', this.idVerification.idType); formData.append('id_number', this.idVerification.idNumber)
+        formData.append('id_photo', this.idVerification.idPhoto); formData.append('selfie_photo', this.idVerification.selfiePhoto)
+        formData.append('province', 'Cavite'); formData.append('city', this.idVerification.city)
+        formData.append('barangay', this.idVerification.barangay); formData.append('block_address', this.idVerification.block_address)
+        formData.append('latitude', this.idVerification.latitude); formData.append('longitude', this.idVerification.longitude)
 
-        const response = await axios.post('/service-provider/requirements', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-
+        const response = await axios.post('/service-provider/requirements', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         if (response.data.status === 'success') {
           this.idVerification.status = 'pending'
           this.idVerification.submittedAt = response.data.data.submitted_at
           this.idVerification.idPhotoUrl = response.data.data.id_photo_url
           this.idVerification.selfiePhotoUrl = response.data.data.selfie_photo_url
-          this.idVerification.idPhoto = null
-          this.idVerification.selfiePhoto = null
+          this.idVerification.idPhoto = null; this.idVerification.selfiePhoto = null
           this.currentStep = 1
           this.showNotification('Verification submitted successfully!', 'success')
         }
       } catch (error) {
-        console.error('Error submitting ID verification:', error)
         if (error.response?.status === 422) {
           this.idVerificationErrors = error.response.data.errors || {}
           this.showNotification('Please fix the validation errors', 'error')
-        } else {
-          this.showNotification(error.response?.data?.message || 'Failed to submit verification', 'error')
-        }
-      } finally {
-        this.idVerificationLoading = false
-      }
+        } else this.showNotification(error.response?.data?.message || 'Failed to submit verification', 'error')
+      } finally { this.idVerificationLoading = false }
     }
   }
 }

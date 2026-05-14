@@ -981,10 +981,12 @@ export default {
     this.fetchUsers();
     this.fetchStatistics();
 
-    // Listen for new requirement submissions globally for admins
+    // 🔔 Listen for new requirement submissions globally for admins
     echo.private('admin.requirements')
         .listen('.RequirementSubmitted', (e) => {
             toast.info(`New requirements submitted by ${e.userName} (${e.role})`);
+            
+            // Instantly refresh the UI Data
             this.fetchUsers();
             this.fetchStatistics();
         });

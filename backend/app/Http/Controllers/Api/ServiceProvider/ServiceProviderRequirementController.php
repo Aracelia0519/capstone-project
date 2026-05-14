@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
 use App\Models\ServiceProvider\ServiceProviderAddress;
 use Illuminate\Support\Str;
+use App\Events\Requirements\RequirementSubmitted; // <-- Imported Event
+use App\Events\Requirements\RequirementStatusUpdated; // <-- Imported Event
 
 class ServiceProviderRequirementController extends Controller
 {
@@ -178,6 +180,9 @@ class ServiceProviderRequirementController extends Controller
 
             DB::commit();
 
+            // 🔔 Broadcast Event to Admin Frontend instantly
+            event(new RequirementSubmitted($user));
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'ID verification submitted successfully!',
@@ -296,6 +301,9 @@ class ServiceProviderRequirementController extends Controller
             }
 
             $requirement->load('user:id,first_name,last_name,email', 'address');
+
+            // 🔔 Broadcast Event back to the Service Provider instantly
+            event(new RequirementStatusUpdated($requirement->user_id, $requirement->status, $requirement->rejection_reason));
 
             return response()->json([
                 'status' => 'success',

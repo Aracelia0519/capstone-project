@@ -1,7 +1,7 @@
 <template>
   <SidebarProvider>
     <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-purple-500/30 overflow-hidden">
-      <Toaster position="top-right" />
+      <Toaster position="top-right" richColors />
       
       <VerificationModal 
         v-if="showVerificationModal" 
@@ -12,6 +12,7 @@
       />
 
       <sideBarServiceProvider 
+        :key="verificationStatus" 
         :verification-status="verificationStatus"
         @open-verification-modal="showVerificationModal = true"
         @logout-started="handleLogoutStart" 
@@ -75,13 +76,15 @@
 <script setup>
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toaster } from '@/components/ui/sonner'
+import { Toaster, toast } from 'vue-sonner' 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import sideBarServiceProvider from './sideBarServiceProvider.vue'
 import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket' // WebSockets
 import { LogOut } from 'lucide-vue-next'
+import { getCurrentUser } from '@/utils/auth' // Auth exactly like ClientLayout
 
 const route = useRoute()
 const router = useRouter()
@@ -97,6 +100,14 @@ const showVerificationModal = ref(false)
 const isLoggingOut = ref(false)
 const logoutProgress = ref(0)
 let progressInterval = null
+
+// Real-Time Notification Helper
+const showNotification = (message, type = 'info') => {
+  if (type === 'success') toast.success(message)
+  else if (type === 'error') toast.error(message)
+  else if (type === 'warning') toast.warning(message)
+  else toast.info(message)
+}
 
 const handleLogoutStart = () => {
   isLoggingOut.value = true
@@ -125,43 +136,99 @@ watch(() => route.query, (newQuery) => {
   }
 }, { immediate: true })
 
-const fetchData = async () => {
-  isLoading.value = true
+const fetchVerificationStatus = async () => {
   try {
-    const userResponse = await axios.get('/auth/me')
-    userData.value = userResponse.data.user
-    
-    // Fetch verification status for Service Provider
-    if (userData.value.role === 'service_provider') {
-      // Note: Make sure this endpoint matches your actual Service Provider requirements route
-      const verificationResponse = await axios.get('/service-provider/requirements') 
-      if (verificationResponse.data.status === 'success') {
-        verificationStatus.value = verificationResponse.data.data?.status || 'none'
-      }
+    const response = await axios.get('/service-provider/requirements') 
+    if (response.data.status === 'success') {
+      verificationStatus.value = response.data.data?.status || 'none'
     }
-    
+  } catch (error) {
+    console.error('Error fetching verification status', error)
+  }
+}
+
+const fetchDashboardData = async () => {
+  try {
     const roleEndpoints = {
       service_provider: '/dashboard/service-provider',
       admin: '/dashboard/admin'
     }
     
-    if (roleEndpoints[userData.value.role]) {
+    if (userData.value && roleEndpoints[userData.value.role]) {
       const res = await axios.get(roleEndpoints[userData.value.role])
       dashboardData.value = res.data.data
     }
   } catch (error) {
-    console.error('Failed to fetch data:', error)
-  } finally {
-    isLoading.value = false
+    console.error('Error fetching dashboard', error)
   }
 }
 
-onMounted(() => {
-  fetchData()
+// WEBSOCKET LOGIC
+const setupWebsocketListener = () => {
+  if (!userData.value || !userData.value.id) return
+  
+  // Prevent duplicate listeners
+  echo.leave(`user.${userData.value.id}.requirements`)
+  
+  echo.private(`user.${userData.value.id}.requirements`)
+    .listen('.RequirementStatusUpdated', (e) => {
+      // 1. Alert the User
+      if (e.status === 'verified' || e.status === 'approved') {
+        showNotification('Congratulations! Your professional verification has been approved.', 'success')
+        showVerificationModal.value = false
+        // 2. Reactively pushes to Sidebar
+        verificationStatus.value = 'verified' 
+        fetchDashboardData()
+      } else if (e.status === 'rejected') {
+        showNotification(`Verification Rejected: ${e.reason || 'Please update and resubmit your documents.'}`, 'error')
+        showVerificationModal.value = true
+        verificationStatus.value = 'rejected'
+      } else {
+        showNotification(`Verification Status Update: ${e.status.toUpperCase()}`, 'info')
+        verificationStatus.value = e.status
+      }
+    })
+}
+
+// Initialization Logic
+const initializeUserData = () => {
+  const data = localStorage.getItem('user_data')
+  if (data) {
+    userData.value = JSON.parse(data)
+  }
+}
+
+onMounted(async () => {
+  initializeUserData()
+  if (!userData.value) {
+    try {
+      userData.value = await getCurrentUser()
+      localStorage.setItem('user_data', JSON.stringify(userData.value))
+    } catch {
+      router.push('/Landing/logIn')
+      return 
+    }
+  }
+  
+  await fetchVerificationStatus() 
+  fetchDashboardData()
+  
+  // Attach Websocket listener safely AFTER user is validated
+  setupWebsocketListener()
+})
+
+watch(() => router.currentRoute.value.path, (path, oldPath) => {
+  if (path.includes('dashboard') && !oldPath.includes('dashboard')) {
+    fetchDashboardData()
+  }
 })
 
 onUnmounted(() => {
   if (progressInterval) clearInterval(progressInterval)
+  
+  if (userData.value && userData.value.id) {
+    echo.leave(`user.${userData.value.id}.requirements`)
+  }
 })
 </script>
 

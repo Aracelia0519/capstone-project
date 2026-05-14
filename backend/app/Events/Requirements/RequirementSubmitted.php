@@ -5,11 +5,11 @@ namespace App\Events\Requirements;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // <-- CHANGED
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class RequirementSubmitted implements ShouldBroadcast
+class RequirementSubmitted implements ShouldBroadcastNow // <-- CHANGED
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

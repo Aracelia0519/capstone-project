@@ -144,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineEmits, defineProps } from 'vue'
+import { ref, computed, onMounted, defineEmits, defineProps, toRefs } from 'vue' // <-- IMPORTED toRefs
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ClipboardCheck, Paintbrush, 
@@ -163,6 +163,10 @@ import { Avatar } from '@/components/ui/avatar'
 import api from '@/utils/axios'
 
 const props = defineProps({ verificationStatus: String })
+
+// 🔔 REACTIVITY FIX: Extract the prop safely so Vue never loses track of it!
+const { verificationStatus } = toRefs(props)
+
 const emit = defineEmits(['open-verification-modal', 'logout-started', 'logout-finished'])
 
 const { state, isMobile } = useSidebar()
@@ -172,8 +176,8 @@ const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
 const userName = ref('Paint Pro')
 
-// Compute verification status (Based on ServiceProviderRequirementController, the status string is 'verified')
-const isVerified = computed(() => props.verificationStatus === 'verified')
+// 🔔 Now checking the strictly reactive variable
+const isVerified = computed(() => verificationStatus.value === 'verified' || verificationStatus.value === 'approved')
 
 const navigation = [
   {
