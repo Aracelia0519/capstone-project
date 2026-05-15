@@ -357,7 +357,7 @@
 
             <div class="pt-6 border-t border-gray-200">
               <Button @click="saveSupplierInfo" 
-                :disabled="!supplierInfoChanged || savingSupplier || (verificationData && verificationData.has_submitted)"
+                :disabled="!supplierInfoChanged || savingSupplier || !!(verificationData && verificationData.has_submitted)"
                 class="h-auto px-6 py-3 rounded-xl transition-all duration-300 shadow-lg font-medium text-base w-full"
                 :class="[
                   supplierInfoChanged && !savingSupplier && (!verificationData || !verificationData.has_submitted)
@@ -804,12 +804,12 @@
                     </h4>
                     <div class="grid grid-cols-2 gap-3">
                       <template v-for="(value, key) in verificationForm" :key="key">
-                        <div v-if="key.includes('photo') && value && typeof value === 'object' && value.name" 
+                        <div v-if="key.includes('photo') && value && typeof value === 'object' && 'name' in (value as object)" 
                           class="flex items-center p-3 bg-white border border-gray-200 rounded-lg document-card">
                           <div class="p-1.5 bg-green-100 rounded-lg mr-3 shrink-0 icon-hover">
                             <CheckCircle2 class="w-4 h-4 text-green-500" />
                           </div>
-                          <span class="text-sm text-gray-700 truncate font-medium">{{ value.name }}</span>
+                          <span class="text-sm text-gray-700 truncate font-medium">{{ (value as File).name }}</span>
                         </div>
                       </template>
                     </div>
@@ -913,7 +913,7 @@
                 
                 <div class="pt-4 border-t border-gray-200">
                   <p class="text-xs text-gray-600 mb-1">Submitted:</p>
-                  <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at) }}</p>
+                  <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at || null) }}</p>
                 </div>
                 
                 <div v-if="verificationData.status === 'pending'" class="bg-linear-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
@@ -938,9 +938,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios' 
+import echo from '@/utils/websocket' 
 import { toast, Toaster } from 'vue-sonner'
 import { 
   Loader2, Save, User, Mail, Phone, Camera, 
@@ -952,6 +953,7 @@ import {
 } from 'lucide-vue-next'
 
 // Leaflet
+// @ts-ignore
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -980,6 +982,69 @@ import {
 
 const router = useRouter()
 
+// TypeScript Interfaces
+interface UserInfo {
+  id: number | null;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: string;
+  status: string;
+  created_at: string;
+}
+
+interface SupplierInfo {
+  company_name: string;
+  business_registration_number: string;
+  valid_id_type: string;
+  valid_id_type_display: string;
+  id_number: string;
+}
+
+interface AddressData {
+  province: string;
+  city: string;
+  barangay: string;
+  block_address: string;
+  latitude: string;
+  longitude: string;
+}
+
+interface VerificationData {
+  id?: number;
+  has_submitted: boolean;
+  status: string;
+  company_name?: string;
+  valid_id_type?: string;
+  id_type_name?: string;
+  id_number?: string;
+  business_registration_number?: string;
+  rejection_reason?: string;
+  address?: AddressData;
+  photos?: Record<string, string>;
+  submitted_at?: string;
+}
+
+interface VerificationForm {
+  company_name: string;
+  city: string;
+  barangay: string;
+  block_address: string;
+  latitude: string;
+  longitude: string;
+  valid_id_type: string;
+  id_number: string;
+  valid_id_photo: File | null;
+  dti_certificate_photo: File | null;
+  mayor_permit_photo: File | null;
+  barangay_clearance_photo: File | null;
+  business_registration_number: string;
+  business_registration_photo: File | null;
+}
+
 // State
 const loading = ref(false)
 const saving = ref(false)
@@ -994,9 +1059,9 @@ const gettingLocation = ref(false)
 const locationError = ref('')
 
 // Map State
-const map = ref(null)
-const marker = ref(null)
-const caviteLayer = ref(null)
+const map = ref<L.Map | null>(null)
+const marker = ref<L.Marker | null>(null)
+const caviteLayer = ref<L.GeoJSON | null>(null)
 
 // Constants
 const caviteCities = [
@@ -1008,7 +1073,7 @@ const caviteCities = [
 ]
 
 // Data Structures
-const userInfo = reactive({
+const userInfo = reactive<UserInfo>({
   id: null,
   first_name: '',
   last_name: '',
@@ -1021,9 +1086,9 @@ const userInfo = reactive({
   created_at: ''
 })
 
-const originalUserInfo = ref({})
+const originalUserInfo = ref<Partial<UserInfo>>({})
 
-const supplierInfo = reactive({
+const supplierInfo = reactive<SupplierInfo>({
   company_name: '',
   business_registration_number: '',
   valid_id_type: '',
@@ -1031,11 +1096,11 @@ const supplierInfo = reactive({
   id_number: ''
 })
 
-const originalSupplierInfo = ref({})
+const originalSupplierInfo = ref<Partial<SupplierInfo>>({})
 
-const verificationData = ref(null)
+const verificationData = ref<VerificationData | null>(null)
 
-const verificationForm = reactive({
+const verificationForm = reactive<VerificationForm>({
   company_name: '',
   city: '',
   barangay: '',
@@ -1063,11 +1128,11 @@ const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 
 // File Input Refs
-const valid_id_photo_input = ref(null)
-const dti_certificate_photo_input = ref(null)
-const mayor_permit_photo_input = ref(null)
-const barangay_clearance_photo_input = ref(null)
-const business_registration_photo_input = ref(null)
+const valid_id_photo_input = ref<HTMLInputElement | null>(null)
+const dti_certificate_photo_input = ref<HTMLInputElement | null>(null)
+const mayor_permit_photo_input = ref<HTMLInputElement | null>(null)
+const barangay_clearance_photo_input = ref<HTMLInputElement | null>(null)
+const business_registration_photo_input = ref<HTMLInputElement | null>(null)
 
 // Computed
 const currentPasswordFieldType = computed(() => showCurrentPassword.value ? 'text' : 'password')
@@ -1118,30 +1183,30 @@ const isVerificationFormValid = computed(() => {
 })
 
 // Methods
-const capitalize = (value) => {
+const capitalize = (value: any) => {
   if (!value) return ''
   value = value.toString()
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-const getInitials = (name) => {
+const getInitials = (name: string | null) => {
   if (!name) return '??'
-  return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+  return name.split(' ').map((word: string) => word[0]).join('').toUpperCase().slice(0, 2)
 }
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | null) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
   return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-const formatDateTime = (dateTimeString) => {
+const formatDateTime = (dateTimeString: string | null) => {
   if (!dateTimeString) return 'N/A'
   const date = new Date(dateTimeString)
   return date.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-const isStepValid = (step) => {
+const isStepValid = (step: number) => {
   switch(step) {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
     case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude && !locationError.value
@@ -1152,7 +1217,7 @@ const isStepValid = (step) => {
   }
 }
 
-const validateStep = (step) => {
+const validateStep = (step: number) => {
   return isStepValid(step)
 }
 
@@ -1182,8 +1247,8 @@ const scrollToTop = () => {
   }
 }
 
-const formatIDType = (type) => {
-  const types = {
+const formatIDType = (type: string) => {
+  const types: Record<string, string> = {
     'passport': 'Passport',
     'driver_license': "Driver's License",
     'umid': 'UMID',
@@ -1208,7 +1273,7 @@ const changeProfilePhoto = () => {
 
 // ---- LEAFLET MAP LOGIC ----
 
-const getAddressComponent = (address, keys) => {
+const getAddressComponent = (address: any, keys: string[]) => {
   if (!address) return '';
   for (const key of keys) {
     if (address[key]) return address[key];
@@ -1227,12 +1292,13 @@ const fixLeafletIcons = () => {
 
 // Function to strictly enforce Cavite boundary
 const drawCaviteBoundary = async () => {
+  if (!map.value) return;
   try {
     const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
     const data = await response.json();
     
     if (data && data.length > 0) {
-      const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
+      const caviteData = data.find((d: any) => d.class === 'boundary' && d.type === 'administrative') || data[0];
       const geojson = caviteData.geojson;
       
       caviteLayer.value = L.geoJSON(geojson, {
@@ -1243,7 +1309,7 @@ const drawCaviteBoundary = async () => {
           fillOpacity: 0.1,
           dashArray: '5, 5'
         }
-      }).addTo(map.value);
+      }).addTo(map.value as L.Map);
       
       const exactBounds = caviteLayer.value.getBounds();
       map.value.setMaxBounds(exactBounds.pad(0.02)); 
@@ -1275,24 +1341,26 @@ const initMap = () => {
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map.value)
+  }).addTo(map.value as L.Map)
 
-  marker.value = L.marker([startLat, startLng], { draggable: true }).addTo(map.value)
+  marker.value = L.marker([startLat, startLng], { draggable: true }).addTo(map.value as L.Map)
 
-  marker.value.on('dragend', async function(e) {
+  marker.value.on('dragend', async function(e: any) {
     const latlng = e.target.getLatLng()
     await updateLocationFromCoords(latlng.lat, latlng.lng)
   })
 
-  map.value.on('click', async function(e) {
-    marker.value.setLatLng(e.latlng)
-    await updateLocationFromCoords(e.latlng.lat, e.latlng.lng)
+  map.value.on('click', async function(e: any) {
+    if (marker.value) {
+      marker.value.setLatLng(e.latlng)
+      await updateLocationFromCoords(e.latlng.lat, e.latlng.lng)
+    }
   })
 
   drawCaviteBoundary();
 }
 
-const updateLocationFromCoords = async (lat, lon) => {
+const updateLocationFromCoords = async (lat: number | string, lon: number | string) => {
   locationError.value = '';
   verificationForm.latitude = lat.toString()
   verificationForm.longitude = lon.toString()
@@ -1358,7 +1426,7 @@ const updateLocationFromCoords = async (lat, lon) => {
       verificationForm.block_address = parts.length > 0 ? parts.join(', ') : (road || 'Location pinned on map')
       validateStep(2);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Reverse geocoding error:', error)
   }
 }
@@ -1398,7 +1466,7 @@ const getCurrentLocation = async () => {
       
       gettingLocation.value = false
     },
-    (error) => {
+    (error: any) => {
       gettingLocation.value = false
       switch(error.code) {
         case error.PERMISSION_DENIED:
@@ -1443,7 +1511,7 @@ const fetchUserData = async () => {
     } else {
       throw new Error(response.data.message || 'Failed to fetch user data')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching user data:', error)
     if (error.response && error.response.status === 401) {
       toast.error('Session expired. Please login again.')
@@ -1482,7 +1550,7 @@ const fetchSupplierData = async () => {
           id_number: ''
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching supplier data:', error)
       Object.assign(supplierInfo, {
           company_name: '',
@@ -1499,7 +1567,7 @@ const fetchVerificationData = async () => {
   try {
     const response = await axios.get('/supplier/requirements')
     if (response.data.status === 'success') {
-      verificationData.value = response.data.data
+      verificationData.value = response.data.data as VerificationData
       
       if (verificationData.value && verificationData.value.status === 'rejected') {
         verificationForm.company_name = verificationData.value.company_name || ''
@@ -1516,7 +1584,7 @@ const fetchVerificationData = async () => {
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching verification data:', error)
     verificationData.value = null
   }
@@ -1547,7 +1615,7 @@ const saveUserInfo = async () => {
     } else {
       throw new Error(response.data.message || 'Failed to update profile')
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error.response && error.response.status === 401) {
       toast.error('Session expired. Please login again.')
       setTimeout(() => {
@@ -1582,7 +1650,7 @@ const saveSupplierInfo = async () => {
     } else {
       throw new Error(response.data.message || 'Failed to update supplier information')
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error.response && error.response.status === 401) {
       toast.error('Session expired. Please login again.')
       setTimeout(() => {
@@ -1621,7 +1689,7 @@ const changePassword = async () => {
     } else {
       throw new Error(response.data.message || 'Failed to change password')
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error.response && error.response.status === 401) {
       toast.error('Session expired. Please login again.')
       setTimeout(() => {
@@ -1668,7 +1736,7 @@ const submitVerification = async () => {
     
     if (response.data.status === 'success') {
       toast.success(response.data.message)
-      verificationData.value = response.data.data
+      verificationData.value = response.data.data as VerificationData
       
       Object.assign(supplierInfo, {
         company_name: verificationData.value.company_name,
@@ -1700,7 +1768,7 @@ const submitVerification = async () => {
     } else {
       throw new Error(response.data.message || 'Failed to submit verification')
     }
-  } catch (error) {
+  } catch (error: any) {
     if (error.response && error.response.status === 401) {
       toast.error('Session expired. Please login again.')
       setTimeout(() => {
@@ -1714,7 +1782,7 @@ const submitVerification = async () => {
         const errors = Object.values(error.response.data.errors).flat()
         errorMessage = errors.join(', ')
       }
-      toast.error(errorMessage)
+      toast.error(errorMessage as string)
     }
   } finally {
     submittingVerification.value = false
@@ -1726,21 +1794,22 @@ const saveAllChanges = () => {
   if (supplierInfoChanged.value) saveSupplierInfo()
 }
 
-const triggerFileInput = (field) => {
-  const refMap = {
+const triggerFileInput = (field: keyof VerificationForm) => {
+  const refMap: Record<string, any> = {
     'valid_id_photo': valid_id_photo_input,
     'dti_certificate_photo': dti_certificate_photo_input,
     'mayor_permit_photo': mayor_permit_photo_input,
     'barangay_clearance_photo': barangay_clearance_photo_input,
     'business_registration_photo': business_registration_photo_input
   }
-  if(refMap[field] && refMap[field].value) {
-    refMap[field].value.click()
+  if(refMap[field as string] && refMap[field as string].value) {
+    refMap[field as string].value.click()
   }
 }
 
-const handleFileChange = (event, field) => {
-  const file = event.target.files[0]
+const handleFileChange = (event: Event, field: keyof VerificationForm) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
   if (file) {
     if (file.size > 5 * 1024 * 1024) {
       toast.error(`File "${file.name}" is too large. Maximum size is 5MB.`)
@@ -1751,21 +1820,22 @@ const handleFileChange = (event, field) => {
       toast.error(`File "${file.name}" must be JPG, PNG, or PDF.`)
       return
     }
-    verificationForm[field] = file
+    (verificationForm as any)[field] = file
     validateStep(currentStep.value)
   }
 }
 
-const handleFileDrop = (event, field) => {
-  const file = event.dataTransfer.files[0]
+const handleFileDrop = (event: DragEvent, field: keyof VerificationForm) => {
+  const file = event.dataTransfer?.files[0]
   if (file) {
-    const input = { target: { files: [file] } }
-    handleFileChange(input, field)
+    // Create a mock event object matching what handleFileChange expects
+    const inputEvent = { target: { files: [file] } } as unknown as Event
+    handleFileChange(inputEvent, field)
   }
 }
 
-const formatFieldName = (field) => {
-  return field.replace(/_/g, ' ').replace(/(?:^|\s)\S/g, a => a.toUpperCase()).replace('Photo', '').trim()
+const formatFieldName = (field: string) => {
+  return field.replace(/_/g, ' ').replace(/(?:^|\s)\S/g, (a: string) => a.toUpperCase()).replace('Photo', '').trim()
 }
 
 const getVerificationStatusTitle = () => {
@@ -1795,6 +1865,30 @@ onMounted(async () => {
     await fetchVerificationData()
   }
   setOriginalData()
+
+  // <-- Start WebSocket Listening Here -->
+  if (userInfo.id) {
+    echo.private(`user.${userInfo.id}.requirements`)
+      .listen('.RequirementStatusUpdated', async (e: any) => {
+        if (e.status === 'approved') {
+          toast.success('Your business verification has been approved!', { duration: 5000 });
+        } else if (e.status === 'rejected') {
+          toast.error(`Your business verification was rejected. Reason: ${e.reason}`, { duration: 7000 });
+        }
+        
+        // Instantly refresh the UI data
+        await fetchUserData();
+        await fetchSupplierData();
+        await fetchVerificationData();
+      });
+  }
+})
+
+// Clean up WebSocket connection when leaving
+onBeforeUnmount(() => {
+  if (userInfo.id) {
+    echo.leave(`user.${userInfo.id}.requirements`);
+  }
 })
 </script>
 

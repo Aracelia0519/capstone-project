@@ -11,6 +11,7 @@ use App\Models\Supplier\SupplierAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Events\Requirements\RequirementSubmitted; // <-- Added Import
 
 class SupplierRequirementController extends Controller
 {
@@ -187,6 +188,9 @@ class SupplierRequirementController extends Controller
                 ]);
 
                 DB::commit();
+
+                // <-- Broadcast Event to Admin UI Here
+                event(new RequirementSubmitted($user));
 
                 $photoUrls = $requirements->getAllPhotoUrls();
                 $requirements->load('address');

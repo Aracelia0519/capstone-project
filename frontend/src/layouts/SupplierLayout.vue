@@ -76,12 +76,14 @@
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
+import { toast } from 'vue-sonner' // <-- Added for notifications
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import SideBarSupplier from './sideBarSupplier.vue'
 import VerificationModal from './VerificationModal.vue'
 import axios from '@/utils/axios'
 import { LogOut } from 'lucide-vue-next'
+import echo from '@/utils/websocket' // <-- Added Websocket Import
 
 const route = useRoute()
 const router = useRouter()
@@ -126,10 +128,30 @@ watch(() => route.query, (newQuery) => {
   }
 }, { immediate: true })
 
+// --- WEBSOCKET LISTENER SETUP ---
+const setupWebSocket = () => {
+  if (userData.value && userData.value.id) {
+    echo.private(`user.${userData.value.id}.requirements`)
+      .listen('.RequirementStatusUpdated', async (e) => {
+        if (e.status === 'approved') {
+          verificationStatus.value = 'approved';
+          toast.success('Your business verification has been approved! Features are now unlocked.', { duration: 5000 });
+          // Fetch updated sidebar accessibilities
+          await fetchData();
+        } else if (e.status === 'rejected') {
+          verificationStatus.value = 'rejected';
+          toast.error(`Your business verification was rejected. Reason: ${e.reason}`, { duration: 7000 });
+          await fetchData();
+        }
+      });
+  }
+}
+
 const fetchData = async () => {
   isLoading.value = true
   try {
     const userResponse = await axios.get('/auth/me')
+    const isFirstLoad = !userData.value; // Track if this is initial load
     userData.value = userResponse.data.user
     
     // Fetch Sidebar Accessibilities specifically for this user's role
@@ -154,6 +176,11 @@ const fetchData = async () => {
       verificationStatus.value = 'approved' 
     }
 
+    // Initialize Websocket after establishing user ID
+    if (isFirstLoad) {
+      setupWebSocket();
+    }
+
   } catch (error) {
     console.error('Failed to fetch data:', error)
   } finally {
@@ -167,6 +194,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (progressInterval) clearInterval(progressInterval)
+  
+  // Cleanup Websocket Connection
+  if (userData.value && userData.value.id) {
+    echo.leave(`user.${userData.value.id}.requirements`);
+  }
 })
 </script>
 
