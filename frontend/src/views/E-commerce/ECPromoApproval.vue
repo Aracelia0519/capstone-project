@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue' // <-- ADDED onBeforeUnmount
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket' // <-- ADDED WEBSOCKET IMPORT
 import { Toaster, toast } from 'vue-sonner'
 import { 
   Search, CheckCircle2, XCircle, Eye, Calendar, Tag, Package, AlertCircle, Loader2, Clock, CheckCircle
@@ -32,6 +33,7 @@ const selectedPromo = ref(null)
 const showReviewModal = ref(false)
 const showConfirmDialog = ref(false)
 const pendingAction = ref({ type: '', id: null })
+const activeDistributorId = ref(null) // <-- Store ID for WebSocket
 
 // User Permissions setup via New RBAC Process
 const permissions = ref({
@@ -51,6 +53,21 @@ const requirePermission = (action, callback) => {
   if (callback) callback();
 }
 
+// WebSocket Setup
+const setupWebSocket = (distId) => {
+  if (!distId || activeDistributorId.value === distId) return; // Prevent double binding
+  activeDistributorId.value = distId;
+  
+  echo.private(`distributor.${distId}.promotions`)
+    .listen('.PromotionUpdated', (e) => {
+      // If someone created a new promotion, refresh the pending list
+      if (e.action === 'created') {
+        toast.info(`New Promotion Request: "${e.promotionName}" needs your approval.`);
+        fetchPendingPromotions();
+      }
+    });
+}
+
 const fetchPendingPromotions = async () => {
   loading.value = true
   try {
@@ -61,6 +78,10 @@ const fetchPendingPromotions = async () => {
       
       if (res.data.permissions) {
           permissions.value = res.data.permissions
+      }
+      
+      if (res.data.distributor_id) {
+          setupWebSocket(res.data.distributor_id);
       }
     }
   } catch (err) {
@@ -108,6 +129,12 @@ const executeAction = async () => {
 
 onMounted(fetchPendingPromotions)
 
+onBeforeUnmount(() => {
+  if (activeDistributorId.value) {
+    echo.leave(`distributor.${activeDistributorId.value}.promotions`);
+  }
+})
+
 const filteredPromotions = computed(() => {
   return pendingPromotions.value.filter(p => 
     p.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -127,38 +154,7 @@ const formatDate = (dateString) => {
 
 <template>
   <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8 text-white">
-    <Teleport to="body">
-      <Toaster
-        position="top-right"
-        :expand="false"
-        :rich-colors="false"
-        :close-button="true"
-        :theme="'light'"
-        :visible-toasts="1"
-        :container-style="{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 9999999,
-          pointerEvents: 'none',
-        }"
-        :toast-options="{
-          style: {
-            background: 'white',
-            color: 'black',
-            border: 'none',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.18)',
-            padding: '16px 20px',          
-            fontSize: '15px',              
-            minWidth: '280px',             
-            maxWidth: '400px',
-            borderRadius: '10px',          
-            pointerEvents: 'auto',
-          },
-        }"
-      />
-    </Teleport>
+    
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>

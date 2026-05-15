@@ -1,8 +1,6 @@
 <template>
   <div class="p-4 md:p-6 w-full max-w-8xl mx-auto space-y-6 md:space-y-8 relative">
-    <Teleport to="body">
-      <Toaster richColors position="top-right" expand />
-    </Teleport>
+    
     
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -331,8 +329,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue' // <-- Added onBeforeUnmount
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket' // <-- ADDED WEBSOCKET IMPORT
 import { Toaster, toast } from 'vue-sonner' 
 import { Search, Filter, MoreVertical } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -379,6 +378,7 @@ const currentRandomSuffix = ref(generateRandomSuffix())
 
 const promotions = ref([])
 const products = ref([])
+const activeDistributorId = ref(null) // <-- Store ID for WebSocket
 
 const promoForm = ref({
   name: '',
@@ -421,6 +421,23 @@ const fetchProducts = async () => {
   }
 }
 
+// WebSocket Setup
+const setupWebSocket = (distId) => {
+  if (!distId || activeDistributorId.value === distId) return; // Prevent double binding
+  activeDistributorId.value = distId;
+  
+  echo.private(`distributor.${distId}.promotions`)
+    .listen('.PromotionUpdated', (e) => {
+      // If we receive an event that someone approved/rejected a promotion, refresh list
+      if (e.action === 'approved') {
+        toast.success(`Promotion "${e.promotionName}" was approved!`);
+      } else if (e.action === 'rejected') {
+        toast.error(`Promotion "${e.promotionName}" was rejected.`);
+      }
+      fetchPromotions();
+    });
+}
+
 const fetchPromotions = async () => {
   loading.value = true
   try {
@@ -430,6 +447,11 @@ const fetchPromotions = async () => {
        
        if (res.data.permissions) {
          permissions.value = res.data.permissions
+       }
+
+       // Setup websocket once we know our distributor ID
+       if (res.data.distributor_id) {
+         setupWebSocket(res.data.distributor_id);
        }
     }
   } catch (err) {
@@ -450,6 +472,12 @@ const fetchPromotions = async () => {
 onMounted(() => {
   fetchProducts()
   fetchPromotions()
+})
+
+onBeforeUnmount(() => {
+  if (activeDistributorId.value) {
+    echo.leave(`distributor.${activeDistributorId.value}.promotions`);
+  }
 })
 
 const filteredPromotions = computed(() => {

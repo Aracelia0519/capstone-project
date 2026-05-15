@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Events\Promotions\PromotionUpdated; // <-- EVENT IMPORT
 
 class PromotionController extends Controller
 {
@@ -112,7 +113,8 @@ class PromotionController extends Controller
         return response()->json([
             'status' => 'success', 
             'data' => $promotions,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'distributor_id' => $distributorId // <-- Added to allow frontend to join websocket
         ]);
     }
 
@@ -206,6 +208,9 @@ class PromotionController extends Controller
             'end_date' => $validated['end_date'],
             'status' => 'pending'
         ]);
+
+        // <-- BROADCAST EVENT
+        event(new PromotionUpdated($distributorId, 'created', $promotion->name));
 
         return response()->json([
             'status' => 'success', 

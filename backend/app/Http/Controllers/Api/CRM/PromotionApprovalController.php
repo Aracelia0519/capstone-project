@@ -7,6 +7,7 @@ use App\Models\CRM\Promotion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Events\Promotions\PromotionUpdated; // <-- EVENT IMPORT
 
 class PromotionApprovalController extends Controller
 {
@@ -116,7 +117,8 @@ class PromotionApprovalController extends Controller
                 'status' => 'success',
                 'data' => $promotions,
                 'stats' => $stats,
-                'permissions' => $permissions
+                'permissions' => $permissions,
+                'distributor_id' => $distributorId // <-- ADDED FOR WEBSOCKET
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -148,6 +150,9 @@ class PromotionApprovalController extends Controller
 
             $promotion->update(['status' => 'active']);
 
+            // <-- BROADCAST EVENT
+            event(new PromotionUpdated($distributorId, 'approved', $promotion->name));
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Promotion approved and is now active.'
@@ -178,6 +183,9 @@ class PromotionApprovalController extends Controller
                 ->firstOrFail();
 
             $promotion->update(['status' => 'rejected']);
+
+            // <-- BROADCAST EVENT
+            event(new PromotionUpdated($distributorId, 'rejected', $promotion->name));
 
             return response()->json([
                 'status' => 'success',

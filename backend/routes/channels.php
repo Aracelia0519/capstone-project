@@ -305,3 +305,21 @@ Broadcast::channel('admin.requirements', function ($user) {
 Broadcast::channel('user.{id}.requirements', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
+
+// ------------- PROMOTIONS LIVE UPDATE CHANNEL -------------
+Broadcast::channel('distributor.{distributorId}.promotions', function ($user, $distributorId) {
+    if ($user->role === 'admin') return true;
+    if ($user->role === 'distributor' && (int)$user->id === (int)$distributorId) return true;
+
+    if ($user->role === 'operational_distributor') {
+        $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+        if ($opDist && (int)$opDist->parent_distributor_id === (int)$distributorId) return true;
+    }
+
+    if ($user->role === 'employee') {
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if ($employee && (int)$employee->parent_distributor_id === (int)$distributorId) return true;
+    }
+
+    return false;
+});
