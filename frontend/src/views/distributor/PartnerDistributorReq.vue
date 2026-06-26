@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 p-8 min-h-screen">
+  <div class="flex flex-col gap-6 p-8 min-h-screen bg-white">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Partnership Approvals</h1>
@@ -16,24 +16,24 @@
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card class="border shadow-sm">
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Pending Approvals</CardTitle>
           <Clock class="h-4 w-4 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">{{ requests.length }}</div>
+          <div class="text-2xl font-bold text-slate-900">{{ requests.length }}</div>
           <p class="text-xs text-muted-foreground">Requires immediate attention</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card class="border shadow-sm">
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Recently Reviewed</CardTitle>
           <CheckCircle2 class="h-4 w-4 text-emerald-500" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">0</div>
+          <div class="text-2xl font-bold text-slate-900">0</div>
           <p class="text-xs text-muted-foreground">In the last 7 days</p>
         </CardContent>
       </Card>
@@ -95,12 +95,12 @@
                   <Badge variant="outline" class="bg-indigo-50 text-indigo-700 border-indigo-200">
                     {{ req.creator?.role?.replace('_', ' ') }}
                   </Badge>
-                  <span class="text-sm font-medium">{{ req.creator?.first_name }} {{ req.creator?.last_name }}</span>
+                  <span class="text-sm font-medium text-slate-800">{{ req.creator?.first_name }} {{ req.creator?.last_name }}</span>
                 </div>
               </TableCell>
 
               <TableCell>
-                <div class="text-sm">{{ formatDate(req.created_at) }}</div>
+                <div class="text-sm text-slate-800">{{ formatDate(req.created_at) }}</div>
                 <div class="text-xs text-slate-500">{{ formatTime(req.created_at) }}</div>
               </TableCell>
 
@@ -122,7 +122,7 @@
     </Card>
 
     <Dialog :open="showViewDialog" @update:open="showViewDialog = $event">
-      <DialogContent class="sm:max-w-[600px] p-0 overflow-hidden">
+      <DialogContent class="sm:max-w-[600px] p-0 overflow-hidden bg-white">
         <div class="bg-slate-900 p-6 text-white">
           <div class="flex items-center gap-4">
             <div class="h-12 w-12 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-sm">
@@ -156,7 +156,7 @@
             <div class="space-y-3">
               <div class="flex items-center gap-3">
                 <Building2 class="h-4 w-4 text-slate-400" />
-                <span class="text-sm font-medium">{{ selectedRequest.supplier?.supplier_requirements?.company_name || selectedRequest.supplier?.first_name }}</span>
+                <span class="text-sm font-medium text-slate-900">{{ selectedRequest.supplier?.supplier_requirements?.company_name || selectedRequest.supplier?.first_name }}</span>
               </div>
               <div class="flex items-center gap-3">
                 <Mail class="h-4 w-4 text-slate-400" />
@@ -177,25 +177,32 @@
           </div>
         </div>
 
-        <div class="p-4 bg-slate-50 border-t flex justify-end gap-3">
-          <Button variant="outline" @click="showViewDialog = false">Close</Button>
-          <Button variant="destructive" @click="initiateReject" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
-            <XCircle class="h-4 w-4 mr-2" /> Reject
+        <div class="p-4 bg-slate-50 border-t flex flex-wrap justify-between items-center gap-3">
+          <!-- NEW: View Catalog Button -->
+          <Button variant="outline" @click="viewSupplierProducts(selectedRequest.supplier_id)" class="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+            <Package class="h-4 w-4 mr-2" /> View Catalog
           </Button>
-          <Button class="bg-indigo-600 hover:bg-indigo-700 text-white" @click="initiateApprove">
-            <CheckCircle2 class="h-4 w-4 mr-2" /> Proceed to Sign & Approve
-          </Button>
+
+          <div class="flex items-center gap-2">
+            <Button variant="outline" @click="showViewDialog = false" class="bg-white hover:bg-slate-100 text-slate-700 border-slate-200">Close</Button>
+            <Button variant="destructive" @click="initiateReject" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
+              <XCircle class="h-4 w-4 mr-2" /> Reject
+            </Button>
+            <Button class="bg-indigo-600 hover:bg-indigo-700 text-white" @click="initiateApprove">
+              <CheckCircle2 class="h-4 w-4 mr-2" /> Sign & Approve
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
 
     <AlertDialog :open="showRejectDialog" @update:open="showRejectDialog = $event">
-      <AlertDialogContent>
+      <AlertDialogContent class="bg-white border border-slate-200">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-red-600 flex items-center gap-2">
             <AlertCircle class="h-5 w-5" /> Reject Partnership Request
           </AlertDialogTitle>
-          <AlertDialogDescription>
+          <AlertDialogDescription class="text-slate-500">
             Are you sure you want to decline this request? The employee will be notified.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -204,13 +211,13 @@
           <label class="text-sm font-medium text-slate-700 mb-1 block">Reason for Rejection (Optional)</label>
           <textarea 
             v-model="rejectReason"
-            class="w-full rounded-md border border-slate-300 p-3 text-sm focus:border-red-500 focus:ring-red-500 min-h-[80px]"
+            class="w-full rounded-md border border-slate-300 p-3 text-sm focus:border-red-500 focus:ring-red-500 min-h-[80px] bg-white text-slate-800"
             placeholder="E.g., We already have a primary supplier for these goods..."
           ></textarea>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel :disabled="isRejecting">Cancel</AlertDialogCancel>
+          <AlertDialogCancel :disabled="isRejecting" class="bg-white text-slate-700 border-slate-200">Cancel</AlertDialogCancel>
           <Button variant="destructive" @click="submitReject" :disabled="isRejecting">
             <span v-if="isRejecting" class="mr-2 h-4 w-4 animate-spin">◌</span>
             Confirm Rejection
@@ -276,7 +283,7 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-2">
-                    <Button variant="outline" @click="showSignatureDialog = false">Cancel</Button>
+                    <Button variant="outline" class="bg-white border-slate-200 text-slate-700" @click="showSignatureDialog = false">Cancel</Button>
                     <Button 
                       :disabled="!hasDrawn || signing" 
                       @click="submitApprove" 
@@ -296,8 +303,9 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
-import echo from '@/utils/websocket.js' // Implemented Websocket
+import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
   Building2,
@@ -315,7 +323,8 @@ import {
   PenTool,
   FileText,
   FileX,
-  Loader2
+  Loader2,
+  Package
 } from 'lucide-vue-next'
 
 import {
@@ -349,6 +358,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+const router = useRouter()
+const route = useRoute()
+
 // State
 const requests = ref([])
 const loading = ref(true)
@@ -373,6 +385,13 @@ const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
 let ctx = null
 let isDrawing = false
+
+// --- Routing ---
+const viewSupplierProducts = (id) => {
+    // Dynamic routing to support both special-rbac and distributor paths
+    const basePath = route.path.startsWith('/special-rbac') ? '/special-rbac' : '/distributor';
+    router.push(`${basePath}/SupplierProducts/${id}`);
+}
 
 // --- Websocket Setup ---
 const setupWebsocket = (distributorId) => {

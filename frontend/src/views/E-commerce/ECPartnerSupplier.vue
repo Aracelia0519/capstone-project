@@ -115,7 +115,7 @@
            </div>
         </CardContent>
 
-        <CardFooter class="px-6 pb-6 pt-0 mt-auto">
+        <CardFooter class="px-6 pb-6 pt-0 mt-auto flex flex-col gap-2">
            <Button 
               v-if="supplier.status === 'available' || supplier.status === 'rejected'"
               @click="requirePermission('manage', () => initiatePartnership(supplier))" 
@@ -139,6 +139,14 @@
               class="w-full text-green-400 border-green-900/50 bg-green-900/20 hover:bg-green-900/30"
            >
               <i class="fas fa-check-circle mr-2"></i> Partnered
+           </Button>
+
+           <Button 
+              @click="viewSupplierProducts(supplier.id)"
+              variant="outline"
+              class="w-full border-blue-900/50 text-blue-400 bg-blue-900/10 hover:bg-blue-900/30 hover:text-blue-300 transition-all"
+           >
+              <i class="fas fa-box-open mr-2"></i> View Products
            </Button>
         </CardFooter>
       </Card>
@@ -433,6 +441,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios' 
 import echo from '@/utils/websocket.js' 
 import { Toaster, toast } from 'vue-sonner' 
@@ -451,6 +460,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+
+// Init Router
+const router = useRouter()
 
 // State
 const searchQuery = ref('')
@@ -551,6 +563,11 @@ const formatCurrency = (value) => {
     currency: 'PHP',
     minimumFractionDigits: 0
   }).format(value);
+}
+
+// NEW METHOD: Route to Supplier Products Page
+const viewSupplierProducts = (id) => {
+    router.push(`/ECommerce/PartnerSuppliers/${id}/Products`);
 }
 
 const fetchSuppliers = async () => {

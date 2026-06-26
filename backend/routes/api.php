@@ -358,6 +358,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
 
+        Route::get('/supplier-products/{id}', [\App\Http\Controllers\Api\Distributor\DistributorSupplierProductController::class, 'index']);
+
         Route::get('/paint-inventory', [\App\Http\Controllers\Api\Distributor\PaintInventoryController::class, 'index']);
         Route::get('/orders-requests', [\App\Http\Controllers\Api\Distributor\OrderRequestController::class, 'index']);
 
@@ -767,6 +769,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);
         Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);
+
+
+        // NEW: Fetch specific supplier's raw materials
+        Route::get('/partner-suppliers/{id}/products', [\App\Http\Controllers\Api\OperationDistributor\SupplierProductController::class, 'index']);
 
         // -----------------------------------------------------
         //  ECOMMERCE PAYMENTS (Operational Distributor)

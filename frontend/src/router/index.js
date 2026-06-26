@@ -115,6 +115,8 @@ import ECInventory from '@/views/E-commerce/ECInventory.vue'
 import ECPrepareOrder from '@/views/E-commerce/ECPrepareOrder.vue'
 import ECMessages from '@/views/E-commerce/ECMessages.vue'
 import ECPromoApproval from '@/views/E-commerce/ECPromoApproval.vue'
+import ECSupplierProducts from '@/views/E-commerce/ECSupplierProducts.vue'
+import DistributorSupplierProducts from '@/views/distributor/DistributorSupplierProducts.vue' // ADD THIS
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
@@ -266,6 +268,11 @@ const routes = [
         name: 'rbac_PartnerDistributorReq',
         component: PartnerDistributorReq,
         meta: { requiresVerification: true }
+      },
+      {
+        path: 'SupplierProducts/:id',
+        name: 'rbac_DistributorSupplierProducts',
+        component: DistributorSupplierProducts
       },
       {
         path: 'reportsD',
@@ -469,6 +476,11 @@ const routes = [
         name: 'rbac_ECPromoApproval',
         component: ECPromoApproval
       }, 
+      {
+        path: 'PartnerSuppliers/:id/Products',
+        name: 'rbac_ECSupplierProducts',
+        component: ECSupplierProducts
+      },
     ]
   },
   {
@@ -623,6 +635,11 @@ const routes = [
         name: 'PartnerDistributorReq',
         component: PartnerDistributorReq,
         meta: { requiresVerification: true }
+      },
+      {
+        path: 'SupplierProducts/:id',
+        name: 'DistributorSupplierProducts',
+        component: DistributorSupplierProducts
       },
       {
         path: 'reportsD',
@@ -1022,6 +1039,11 @@ const routes = [
         path: 'ECPromoApproval',
         name: 'ECPromoApproval',
         component: ECPromoApproval
+      },
+      {
+        path: 'PartnerSuppliers/:id/Products',
+        name: 'ECSupplierProducts',
+        component: ECSupplierProducts
       },
     ]
   },

@@ -1,5 +1,5 @@
 <?php
-
+// CRM
 namespace App\Events\Promotions;
 
 use Illuminate\Broadcasting\Channel;

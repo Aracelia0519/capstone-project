@@ -1,4 +1,5 @@
 <?php
+//DISTRIBUTOR AND SUPPLIER PARTNERSHIP
 
 namespace App\Events\Partnership;
 
