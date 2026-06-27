@@ -23,7 +23,7 @@ class PartnerRequestController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            if (!$user || !$user->isDistributor()) {
+            if (!$user || $user->role !== 'distributor') {
                 return response()->json(['message' => 'Unauthorized. Only Distributors can manage internal requests.'], 403);
             }
 
@@ -59,7 +59,7 @@ class PartnerRequestController extends Controller
     /**
      * Approve an internal request, apply signature, and forward to supplier.
      */
-    public function approve(Request $request, $id)
+    public function approve(Request $request, int $id)
     {
         $request->validate([
             'signature_image' => 'required|string'
@@ -123,7 +123,6 @@ class PartnerRequestController extends Controller
                 'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
             ])->find($partnershipRequest->id);
 
-            // FIX: Convert to array to bypass Eloquent queue stripping custom variables
             $payload = $broadcastRequest->toArray();
             $payload['agreement_url'] = $broadcastRequest->agreement_path ? url('storage/' . $broadcastRequest->agreement_path) : null;
             $payload['distributor_signature_url'] = $broadcastRequest->distributor_signature_path ? url('storage/' . $broadcastRequest->distributor_signature_path) : null;
@@ -135,7 +134,6 @@ class PartnerRequestController extends Controller
                 }
             }
 
-            // Convert back to standard object for the Event
             $eventPayload = json_decode(json_encode($payload));
             broadcast(new PartnershipRequestUpdated($eventPayload))->toOthers();
 
@@ -153,7 +151,7 @@ class PartnerRequestController extends Controller
     /**
      * Reject an internal request.
      */
-    public function reject(Request $request, $id)
+    public function reject(Request $request, int $id)
     {
         try {
             /** @var \App\Models\User $user */
@@ -180,7 +178,6 @@ class PartnerRequestController extends Controller
                 'creator' => function ($q) { $q->select('id', 'first_name', 'last_name', 'role'); }
             ])->find($partnershipRequest->id);
 
-            // FIX: Convert to array to bypass Eloquent queue stripping custom variables
             $payload = $broadcastRequest->toArray();
             
             if ($broadcastRequest->distributor) {

@@ -178,7 +178,6 @@
         </div>
 
         <div class="p-4 bg-slate-50 border-t flex flex-wrap justify-between items-center gap-3">
-          <!-- NEW: View Catalog Button -->
           <Button variant="outline" @click="viewSupplierProducts(selectedRequest.supplier_id)" class="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
             <Package class="h-4 w-4 mr-2" /> View Catalog
           </Button>
@@ -253,17 +252,23 @@
                     <div class="flex items-center justify-between mb-2">
                         <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <PenTool class="h-4 w-4 text-indigo-600" />
-                            Draw Your Signature to Approve
+                            Draw or Upload Signature
                         </label>
-                        <Button variant="ghost" size="sm" class="h-7 text-xs text-slate-500 hover:text-red-600" @click="clearSignature">
-                            Clear Pad
-                        </Button>
+                        <div class="flex items-center gap-2">
+                            <input type="file" ref="signatureFileInput" accept="image/*" class="hidden" @change="handleSignatureUpload" />
+                            <Button variant="ghost" size="sm" class="h-7 text-xs text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100" @click="signatureFileInput.click()">
+                                <Upload class="h-3 w-3 mr-1" /> Upload Image
+                            </Button>
+                            <Button variant="ghost" size="sm" class="h-7 text-xs text-slate-500 hover:text-red-600" @click="clearSignature">
+                                Clear Pad
+                            </Button>
+                        </div>
                     </div>
                     
                     <div class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="canvasContainer">
                         <canvas 
                             ref="signatureCanvas" 
-                            class="w-full h-[160px] sm:h-[180px] cursor-crosshair touch-none"
+                            class="w-full h-[160px] sm:h-[180px] cursor-crosshair touch-none bg-white"
                             @mousedown="startDrawing"
                             @mousemove="draw"
                             @mouseup="stopDrawing"
@@ -274,7 +279,7 @@
                         ></canvas>
                         
                         <div v-if="!hasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
-                            <span class="text-slate-400 font-medium select-none">Sign Here to Approve</span>
+                            <span class="text-slate-400 font-medium select-none">Sign Here or Upload Image</span>
                         </div>
                     </div>
                     <p class="text-xs text-slate-500 mt-2 text-center">
@@ -324,7 +329,8 @@ import {
   FileText,
   FileX,
   Loader2,
-  Package
+  Package,
+  Upload
 } from 'lucide-vue-next'
 
 import {
@@ -379,6 +385,7 @@ const isRejecting = ref(false)
 const showSignatureDialog = ref(false)
 const signing = ref(false)
 const hasDrawn = ref(false)
+const signatureFileInput = ref(null)
 
 // Canvas State
 const signatureCanvas = ref(null)
@@ -388,7 +395,6 @@ let isDrawing = false
 
 // --- Routing ---
 const viewSupplierProducts = (id) => {
-    // Dynamic routing to support both special-rbac and distributor paths
     const basePath = route.path.startsWith('/special-rbac') ? '/special-rbac' : '/distributor';
     router.push(`${basePath}/SupplierProducts/${id}`);
 }
@@ -404,7 +410,6 @@ const setupWebsocket = (distributorId) => {
             const req = e.request;
             const index = requests.value.findIndex(r => r.id === req.id);
             if (index !== -1) {
-                // FIX: Splice guarantees Vue reactivity updates
                 requests.value.splice(index, 1, req);
             } else if (req.status === 'pending_internal') {
                 requests.value.unshift(req);
@@ -471,6 +476,36 @@ const clearSignature = () => {
   if (!ctx || !signatureCanvas.value) return
   ctx.clearRect(0, 0, signatureCanvas.value.width, signatureCanvas.value.height)
   hasDrawn.value = false
+}
+
+const handleSignatureUpload = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    const img = new Image()
+    img.onload = () => {
+      if (!ctx || !signatureCanvas.value) return
+      clearSignature() // Reset canvas before drawing
+      
+      const canvas = signatureCanvas.value
+      const hRatio = canvas.width / img.width
+      const vRatio = canvas.height / img.height
+      
+      // Calculate scaling to perfectly fit inside the canvas bounds
+      const ratio = Math.min(hRatio, vRatio) * 0.95 
+      
+      const centerShift_x = (canvas.width - img.width * ratio) / 2
+      const centerShift_y = (canvas.height - img.height * ratio) / 2
+      
+      ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio)
+      hasDrawn.value = true
+    }
+    img.src = event.target.result
+  }
+  reader.readAsDataURL(file)
+  e.target.value = '' // reset input for subsequent uploads
 }
 
 watch(showSignatureDialog, async (newVal) => {

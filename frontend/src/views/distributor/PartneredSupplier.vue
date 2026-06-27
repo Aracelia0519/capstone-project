@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen">
+  <div class="flex flex-col gap-6 p-4 sm:p-8 min-h-screen relative">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">My Suppliers</h1>
@@ -140,8 +140,8 @@
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="w-48">
-              <DropdownMenuItem>
-                <Mail class="mr-2 h-4 w-4" /> Message
+              <DropdownMenuItem @click="openChat(supplier)">
+                <MessageSquare class="mr-2 h-4 w-4 text-indigo-600" /> Message
               </DropdownMenuItem>
               <DropdownMenuItem @click="viewAgreement(supplier)">
                 <FileText class="mr-2 h-4 w-4" /> View Contracts
@@ -191,6 +191,59 @@
       </Button>
     </div>
 
+    <!-- Chat Drawer Overlay -->
+    <div v-if="showChatPanel" class="fixed inset-0 bg-slate-900/50 z-[100] transition-opacity" @click="closeChat"></div>
+
+    <!-- Chat Drawer -->
+    <div v-if="showChatPanel" class="fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl z-[105] flex flex-col transform transition-transform duration-300">
+        <!-- Header -->
+        <div class="p-4 border-b bg-slate-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                    {{ chatPartnerName.charAt(0) }}
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800">{{ chatPartnerName }}</h3>
+                    <p class="text-xs text-slate-500">Partnership Chat</p>
+                </div>
+            </div>
+            <Button variant="ghost" size="icon" @click="closeChat">
+                <X class="h-5 w-5 text-slate-500" />
+            </Button>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-100" ref="chatScrollContainer">
+            <div v-if="isChatLoading" class="flex justify-center items-center h-full">
+                <Loader2 class="h-6 w-6 animate-spin text-slate-400" />
+            </div>
+            <template v-else>
+                <div v-if="chatMessages.length === 0" class="text-center text-slate-500 my-10 text-sm">
+                    No messages yet. Start the conversation!
+                </div>
+                <div v-for="msg in chatMessages" :key="msg.id" class="flex" :class="msg.sender_id === currentDistributorId ? 'justify-end' : 'justify-start'">
+                    <div class="max-w-[80%] rounded-2xl px-4 py-2 text-sm" :class="msg.sender_id === currentDistributorId ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-slate-800 rounded-bl-none shadow-sm'">
+                        {{ msg.message }}
+                        <div class="text-[10px] mt-1 opacity-70" :class="msg.sender_id === currentDistributorId ? 'text-indigo-100' : 'text-slate-400'">
+                            {{ formatTime(msg.created_at) }}
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t">
+            <form @submit.prevent="sendMessage" class="flex gap-2">
+                <Input v-model="newMessage" placeholder="Type a message..." class="flex-1" :disabled="isSending" />
+                <Button type="submit" size="icon" class="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0" :disabled="!newMessage.trim() || isSending">
+                    <Send class="h-4 w-4" v-if="!isSending" />
+                    <Loader2 class="h-4 w-4 animate-spin" v-else />
+                </Button>
+            </form>
+        </div>
+    </div>
+
     <Sheet :open="isSheetOpen" @update:open="isSheetOpen = $event">
       <SheetContent class="w-full sm:max-w-[540px] overflow-y-auto p-0 gap-0 border-l border-slate-200 [&>button]:hidden">
         
@@ -226,7 +279,7 @@
         <div class="p-6 space-y-8 bg-white min-h-full" v-if="selectedSupplier">
           
           <div class="grid grid-cols-2 gap-3">
-            <Button class="bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-sm w-full">
+            <Button class="bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-sm w-full" @click="openChat(selectedSupplier)">
               <MessageSquare class="mr-2 h-4 w-4" /> Message
             </Button>
             <Button variant="outline" class="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-sm w-full">
@@ -675,9 +728,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue' // ADDED onUnmounted
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue' 
 import api from '@/utils/axios'
-import echo from '@/utils/websocket.js' // ADDED Websocket Setup
+import echo from '@/utils/websocket.js' 
 import { toast } from 'vue-sonner'
 import { 
   Search, 
@@ -703,10 +756,10 @@ import {
   Loader2,
   PenTool,
   Download,
-  Clock
+  Clock,
+  Send
 } from 'lucide-vue-next'
 
-// Shadcn UI Imports
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -729,7 +782,17 @@ const statusFilter = ref('all')
 const categoryFilter = ref('all')
 const isSheetOpen = ref(false)
 const selectedSupplier = ref(null)
-const currentDistributorId = ref(null) // ADDED variable for WebSockets
+const currentDistributorId = ref(null) 
+
+// Chat State
+const showChatPanel = ref(false)
+const chatMessages = ref([])
+const newMessage = ref('')
+const chatPartnerId = ref(null)
+const chatPartnerName = ref('')
+const isChatLoading = ref(false)
+const isSending = ref(false)
+const chatScrollContainer = ref(null)
 
 // Agreement Signature State
 const showAgreementDialog = ref(false)
@@ -777,14 +840,11 @@ const setupWebsocket = (distributorId) => {
     echo.private(`distributor.${distributorId}.requests`)
         .listen('.SupplierRequest.Updated', (e) => {
             const req = e.request || e;
-            // The payload has `supplier_id` (User ID), we must match the correct object key based on what our backend index() array provides.
-            // Our backend index() returns `supplier_user_id` as the reference to the supplier's actual user ID.
             const index = suppliers.value.findIndex(s => s.supplier_user_id === req.supplier_id);
             
             if (index !== -1) {
                 const supplier = suppliers.value[index];
                 
-                // Deep update properties sent from the WebSocket payload
                 supplier.status = req.status;
                 supplier.is_signed = !!req.distributor_signature_url;
                 supplier.is_supplier_signed = !!req.supplier_signature_url;
@@ -795,24 +855,20 @@ const setupWebsocket = (distributorId) => {
                 supplier.distributor_termination_signature_url = req.distributor_termination_signature_url;
                 supplier.supplier_termination_signature_url = req.supplier_termination_signature_url;
                 
-                // Force Vue to react and update the UI
                 suppliers.value.splice(index, 1, supplier);
                 
                 toast.info('Supplier Status Updated', { 
                     description: `Partnership status changed to: ${req.status.replace('_', ' ')}` 
                 });
                 
-                // If the user currently has the dialog open for this exact supplier, refresh the dialog state too.
                 if (selectedSupplier.value && selectedSupplier.value.supplier_user_id === req.supplier_id) {
                     selectedSupplier.value = { ...supplier };
                 }
             } else {
-                // If the supplier wasn't in our active list at all (e.g., they just got accepted), fetch them fresh.
                 fetchSuppliers();
             }
         })
         .listen('.PartnershipRequest.Updated', (e) => {
-            // Also listen to actions triggered by other distributor tabs/employees
             const req = e.request || e;
             const index = suppliers.value.findIndex(s => s.supplier_user_id === req.supplier_id);
             if (index !== -1) {
@@ -827,9 +883,81 @@ const setupWebsocket = (distributorId) => {
                     selectedSupplier.value = { ...supplier };
                 }
             }
+        })
+        .listen('.PartnershipMessageSent', (e) => {
+            if (showChatPanel.value && (e.message.sender_id === chatPartnerId.value || e.message.receiver_id === chatPartnerId.value)) {
+                if (!chatMessages.value.find(m => m.id === e.message.id)) {
+                    chatMessages.value.push(e.message);
+                    scrollToBottom();
+                }
+            } else if (!showChatPanel.value && e.message.receiver_id === currentDistributorId.value) {
+                toast.info('New Message', { description: 'You received a new message from a partner.' });
+            }
         });
 }
 
+// --- Chat Logic ---
+const openChat = (supplier) => {
+    chatPartnerId.value = supplier.supplier_user_id; 
+    chatPartnerName.value = supplier.company_name || 'Supplier';
+    showChatPanel.value = true;
+    fetchChatMessages();
+}
+
+const fetchChatMessages = async () => {
+    isChatLoading.value = true;
+    try {
+        const res = await api.get(`/distributor/partnered-suppliers/${chatPartnerId.value}/chat`);
+        if (res.data.success) {
+            chatMessages.value = res.data.data;
+            scrollToBottom();
+        }
+    } catch (e) {
+        toast.error('Failed to load chat');
+    } finally {
+        isChatLoading.value = false;
+    }
+}
+
+const sendMessage = async () => {
+    if (!newMessage.value.trim() || isSending.value) return;
+    isSending.value = true;
+    try {
+        const res = await api.post(`/distributor/partnered-suppliers/${chatPartnerId.value}/chat`, {
+            message: newMessage.value
+        });
+        if (res.data.success) {
+            // FIX: Prevent duplication race condition
+            if (!chatMessages.value.find(m => m.id === res.data.data.id)) {
+                chatMessages.value.push(res.data.data);
+                scrollToBottom();
+            }
+            newMessage.value = '';
+        }
+    } catch (e) {
+        toast.error('Failed to send message');
+    } finally {
+        isSending.value = false;
+    }
+}
+
+const closeChat = () => {
+    showChatPanel.value = false;
+    chatPartnerId.value = null;
+}
+
+const scrollToBottom = () => {
+    nextTick(() => {
+        if (chatScrollContainer.value) {
+            chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight;
+        }
+    });
+}
+
+const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+}
 
 // --- Helpers ---
 
@@ -873,7 +1001,6 @@ const fetchSuppliers = async () => {
     if (response.data.success) {
       suppliers.value = response.data.data
       
-      // Initialize WebSocket once we have the distributor ID
       if (response.data.distributor_id) {
           currentDistributorId.value = response.data.distributor_id;
           setupWebsocket(response.data.distributor_id);
@@ -1226,7 +1353,7 @@ const initCanvas = () => {
   ctx.lineWidth = 3
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = '#1e1b4b' // Dark indigo ink
+  ctx.strokeStyle = '#1e1b4b' 
 }
 
 const getCoordinates = (e, canvas) => {
@@ -1284,7 +1411,7 @@ const initReactivateCanvas = () => {
   reactivateCtx.lineWidth = 3
   reactivateCtx.lineCap = 'round'
   reactivateCtx.lineJoin = 'round'
-  reactivateCtx.strokeStyle = '#4f46e5' // Indigo for reactivation
+  reactivateCtx.strokeStyle = '#4f46e5' 
 }
 
 const startDrawingReactivate = (e) => {
@@ -1329,7 +1456,7 @@ const initTermCanvas = () => {
   termCtx.lineWidth = 3
   termCtx.lineCap = 'round'
   termCtx.lineJoin = 'round'
-  termCtx.strokeStyle = '#dc2626' // Red ink for termination intent
+  termCtx.strokeStyle = '#dc2626' 
 }
 
 const startDrawingTerm = (e) => {
@@ -1432,7 +1559,6 @@ onMounted(() => {
   fetchSuppliers()
 })
 
-// ADDED cleanup for websocket channel
 onUnmounted(() => {
     if (currentDistributorId.value) {
         echo.leave(`distributor.${currentDistributorId.value}.requests`);

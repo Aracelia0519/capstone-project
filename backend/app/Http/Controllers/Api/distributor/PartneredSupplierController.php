@@ -12,16 +12,14 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\User; 
-use App\Models\OperationDistributor\DistributorSupplier; // ADDED
-use App\Events\Partnership\PartnershipRequestUpdated; // ADDED
+use App\Models\OperationDistributor\DistributorSupplier;
+use App\Events\Partnership\PartnershipRequestUpdated;
+use App\Models\PartnershipMessage;
+use App\Events\PartnershipMessageSent;
 
 class PartneredSupplierController extends Controller
 {
-    /**
-     * Helper to format the payload properly so it bridges to WebSockets perfectly.
-     * Bypasses Eloquent Queue Model stripping to ensure URLs reach the Vue frontend.
-     */
-    private function formatRequestForBroadcast($distributorId, $supplierId)
+    private function formatRequestForBroadcast(int $distributorId, int $supplierId)
     {
         $req = DistributorSupplier::with([
             'supplier' => function ($q) { $q->select('id', 'first_name', 'last_name', 'email', 'phone'); },
@@ -50,21 +48,15 @@ class PartneredSupplierController extends Controller
         return json_decode(json_encode($payload));
     }
 
-    /**
-     * Get all active/partnered suppliers for the current distributor.
-     */
     public function index()
     {
         try {
-            /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            // Ensure the user is a distributor
-            if (!$user || !$user->isDistributor()) {
+            if (!$user || $user->role !== 'distributor') {
                 return response()->json(['message' => 'Unauthorized.'], 403);
             }
 
-            // Fetch partnerships
             $partnerships = SupplierPartner::where('distributor_id', $user->id)
                 ->with([
                     'supplier', 
@@ -73,13 +65,11 @@ class PartneredSupplierController extends Controller
                 ])
                 ->get();
 
-            // Transform data for the frontend
             $data = $partnerships->map(function ($partner) use ($user) {
                 $supplier = $partner->supplier;
                 $req = $supplier->supplierRequirements;
                 $address = $req ? $req->address : null;
 
-                // Format Address
                 $fullAddress = 'Address not available';
                 $locationShort = 'N/A';
                 
@@ -88,7 +78,6 @@ class PartneredSupplierController extends Controller
                     $locationShort = "{$address->city}, {$address->province}";
                 }
 
-                // Fetch the actual documented agreement from distributor_suppliers table
                 $distSupplier = \App\Models\OperationDistributor\DistributorSupplier::where('distributor_id', $user->id)
                     ->where('supplier_id', $supplier->id)
                     ->first();
@@ -97,12 +86,10 @@ class PartneredSupplierController extends Controller
                     ? url('storage/' . $distSupplier->agreement_path) 
                     : null;
 
-                // Distributor Signature
                 $distributorSignatureUrl = $distSupplier && $distSupplier->distributor_signature_path 
                     ? url('storage/' . $distSupplier->distributor_signature_path) 
                     : null;
                 
-                // Supplier Signature
                 $supplierSignatureUrl = $distSupplier && $distSupplier->supplier_signature_path 
                     ? url('storage/' . $distSupplier->supplier_signature_path) 
                     : null;
@@ -117,7 +104,6 @@ class PartneredSupplierController extends Controller
                     ? $distSupplier->supplier_signed_at->format('M d, Y h:i A') 
                     : null;
                     
-                // Termination Documents and Signatures
                 $terminationUrl = $distSupplier && $distSupplier->termination_path 
                     ? url('storage/' . $distSupplier->termination_path) 
                     : null;
@@ -148,7 +134,6 @@ class PartneredSupplierController extends Controller
                     'id_number' => $req ? $req->id_number : 'N/A',
                     'partnership_date' => $partner->partnership_start_date->format('M d, Y'),
                     
-                    // Appended Agreement & Signatures Payload
                     'agreement_url' => $agreementUrl,
                     'is_signed' => $isSigned,
                     'signed_at' => $signedAt,
@@ -157,7 +142,6 @@ class PartneredSupplierController extends Controller
                     'supplier_signature_url' => $supplierSignatureUrl,
                     'distributor_supplier_id' => $distSupplier ? $distSupplier->id : null,
                     
-                    // Appended Termination Payload
                     'termination_url' => $terminationUrl,
                     'distributor_termination_signature_url' => $distributorTermSigUrl,
                     'supplier_termination_signature_url' => $supplierTermSigUrl,
@@ -178,20 +162,15 @@ class PartneredSupplierController extends Controller
         }
     }
 
-    /**
-     * Fetch the raw HTML content of the agreement for the frontend to merge signatures.
-     */
-    public function getAgreementRaw($id)
+    public function getAgreementRaw(int $id)
     {
         try {
             $user = Auth::user();
             
-            // Find the active partnership reference
             $partner = SupplierPartner::where('id', $id)
                 ->where('distributor_id', $user->id)
                 ->firstOrFail();
             
-            // Find the actual document record
             $distSupplier = \App\Models\OperationDistributor\DistributorSupplier::where('distributor_id', $user->id)
                 ->where('supplier_id', $partner->supplier_id)
                 ->first();
@@ -200,7 +179,6 @@ class PartneredSupplierController extends Controller
                 return response()->json(['success' => false, 'message' => 'Agreement document not found.'], 404);
             }
 
-            // Read the file directly from storage to bypass CORS issues on the frontend
             $htmlContent = Storage::disk('public')->get($distSupplier->agreement_path);
 
             return response()->json([
@@ -216,10 +194,7 @@ class PartneredSupplierController extends Controller
         }
     }
 
-    /**
-     * Fetch raw HTML for Termination Agreement and Verify Pending Requests
-     */
-    public function getTerminationRaw($id)
+    public function getTerminationRaw(int $id)
     {
         try {
             $user = Auth::user();
@@ -232,7 +207,6 @@ class PartneredSupplierController extends Controller
                 ->where('supplier_id', $partner->supplier_id)
                 ->first();
 
-            // Check if the physical document is already generated. If yes, return it.
             if ($distSupplier && $distSupplier->termination_path) {
                 $htmlContent = Storage::disk('public')->get($distSupplier->termination_path);
                 return response()->json([
@@ -241,7 +215,6 @@ class PartneredSupplierController extends Controller
                 ]);
             }
             
-            // SECURITY CHECK: Verify if there are active procurement requests
             $hasPending = DB::table('procurement_requests')
                 ->where('supplier_id', $partner->supplier_id)
                 ->where('distributor_id', $user->id)
@@ -255,7 +228,6 @@ class PartneredSupplierController extends Controller
                 ], 400);
             }
 
-            // Generate HTML for the termination notice (Fresh Template)
             $supplierName = $partner->supplier->full_name ?? 'Supplier'; 
             $distributorName = $user->full_name ?? 'Distributor';
             $date = now()->format('F d, Y');
@@ -287,10 +259,7 @@ class PartneredSupplierController extends Controller
         }
     }
 
-    /**
-     * Terminate Partnership, apply signature, and email supplier.
-     */
-    public function terminatePartnership(Request $request, $id)
+    public function terminatePartnership(Request $request, int $id)
     {
         $request->validate([
             'signature_image' => 'required|string'
@@ -303,7 +272,6 @@ class PartneredSupplierController extends Controller
                 ->where('distributor_id', $user->id)
                 ->firstOrFail();
 
-            // Re-validate pending requests just in case
             $hasPending = DB::table('procurement_requests')
                 ->where('supplier_id', $partner->supplier_id)
                 ->where('distributor_id', $user->id)
@@ -321,7 +289,6 @@ class PartneredSupplierController extends Controller
                 ->where('supplier_id', $partner->supplier_id)
                 ->first();
 
-            // Process Base64 Signature Image
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
             
@@ -333,11 +300,9 @@ class PartneredSupplierController extends Controller
             $imageType = $imageTypeAux[1] ?? 'png';
             $imageBase64 = base64_decode($imageParts[1]);
 
-            // Save the signature
             $fileName = 'agreements/terminations/signatures/distributor_' . $user->id . '_supplier_' . $partner->supplier_id . '_' . time() . '.' . $imageType;
             Storage::disk('public')->put($fileName, $imageBase64);
 
-            // Generate physical HTML document to save in storage
             $supplierName = $partner->supplier->full_name ?? 'Supplier'; 
             $distributorName = $user->full_name ?? 'Distributor';
             $date = now()->format('F d, Y');
@@ -359,14 +324,10 @@ class PartneredSupplierController extends Controller
             $htmlFileName = 'agreements/terminations/documents/termination_' . $user->id . '_' . $partner->supplier_id . '_' . time() . '.html';
             Storage::disk('public')->put($htmlFileName, $docHtml);
 
-            // Ensure our ENUM allows the pending_termination state dynamically
             try {
                 DB::statement("ALTER TABLE distributor_suppliers MODIFY COLUMN status ENUM('pending_internal','pending_supplier','active','rejected','disconnected','pending_termination','terminated','pending_reactivation') DEFAULT 'pending_internal'");
-            } catch (\Exception $e) {
-                // If it fails due to permissions, it will fallback to safely continuing with standard updating
-            }
+            } catch (\Exception $e) {}
 
-            // Add required tracking columns if they don't exist yet
             if (!Schema::hasColumn('distributor_suppliers', 'termination_path')) {
                 Schema::table('distributor_suppliers', function ($table) {
                     $table->string('termination_path')->nullable();
@@ -383,17 +344,12 @@ class PartneredSupplierController extends Controller
                 $distSupplier->save();
             }
 
-            // Update SupplierPartner Table Status
             $partner->status = 'pending_termination';
             $partner->save();
 
-            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
             $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
             if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
 
-            // ==========================================
-            // EMAIL NOTIFICATION LOGIC TO SUPPLIER
-            // ==========================================
             config([
                 'mail.default' => 'smtp',
                 'mail.mailers.smtp.transport' => 'smtp',
@@ -440,10 +396,7 @@ class PartneredSupplierController extends Controller
         }
     }
 
-    /**
-     * Digitally sign the partnership agreement with an image.
-     */
-    public function signAgreement(Request $request, $id)
+    public function signAgreement(Request $request, int $id)
     {
         $request->validate([
             'signature_image' => 'required|string'
@@ -452,12 +405,10 @@ class PartneredSupplierController extends Controller
         try {
             $user = Auth::user();
             
-            // Find the active partnership reference
             $partner = SupplierPartner::where('id', $id)
                 ->where('distributor_id', $user->id)
                 ->firstOrFail();
             
-            // Find the actual document record in the distributor_suppliers table
             $distSupplier = \App\Models\OperationDistributor\DistributorSupplier::where('distributor_id', $user->id)
                 ->where('supplier_id', $partner->supplier_id)
                 ->first();
@@ -470,7 +421,6 @@ class PartneredSupplierController extends Controller
                 return response()->json(['success' => false, 'message' => 'Agreement is already signed.'], 400);
             }
 
-            // Process Base64 Signature Image
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
             
@@ -482,21 +432,17 @@ class PartneredSupplierController extends Controller
             $imageType = $imageTypeAux[1] ?? 'png';
             $imageBase64 = base64_decode($imageParts[1]);
 
-            // Save the image
             $fileName = 'agreements/signatures/distributor_' . $user->id . '_supplier_' . $partner->supplier_id . '_' . time() . '.' . $imageType;
             Storage::disk('public')->put($fileName, $imageBase64);
 
-            // Apply signature, timestamp, and update STATUS to pending_supplier
             $distSupplier->distributor_signed_at = now();
             $distSupplier->distributor_signature_path = $fileName;
             $distSupplier->status = 'pending_supplier';
             $distSupplier->save();
 
-            // Update the main SupplierPartner model's status to match
             $partner->status = 'pending_supplier';
             $partner->save();
 
-            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
             $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
             if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
 
@@ -514,10 +460,7 @@ class PartneredSupplierController extends Controller
         }
     }
 
-    /**
-     * Reactivate a terminated partnership by submitting a new signature to the original agreement.
-     */
-    public function reactivatePartnership(Request $request, $id)
+    public function reactivatePartnership(Request $request, int $id)
     {
         $request->validate([
             'signature_image' => 'required|string'
@@ -526,7 +469,6 @@ class PartneredSupplierController extends Controller
         try {
             $user = Auth::user();
             
-            // Fetch partnership checking it is in a valid state to be reactivated
             $partner = SupplierPartner::with('supplier')->where('id', $id)
                 ->where('distributor_id', $user->id)
                 ->whereIn('status', ['terminated', 'disconnected'])
@@ -540,7 +482,6 @@ class PartneredSupplierController extends Controller
                 return response()->json(['success' => false, 'message' => 'Original agreement document not found.'], 404);
             }
 
-            // Process Base64 Signature Image
             $base64Image = $request->signature_image;
             $imageParts = explode(";base64,", $base64Image);
             
@@ -552,27 +493,20 @@ class PartneredSupplierController extends Controller
             $imageType = $imageTypeAux[1] ?? 'png';
             $imageBase64 = base64_decode($imageParts[1]);
 
-            // Save the new signature
             $fileName = 'agreements/signatures/distributor_reactivation_' . $user->id . '_supplier_' . $partner->supplier_id . '_' . time() . '.' . $imageType;
             Storage::disk('public')->put($fileName, $imageBase64);
 
-            // Dynamically ensure DB Enum support
             try {
                 DB::statement("ALTER TABLE distributor_suppliers MODIFY COLUMN status ENUM('pending_internal','pending_supplier','active','rejected','disconnected','pending_termination','terminated','pending_reactivation') DEFAULT 'pending_internal'");
                 DB::statement("ALTER TABLE supplier_partners MODIFY COLUMN status ENUM('active','suspended','terminated','rejected','pending_termination','pending_supplier','pending_reactivation') DEFAULT 'active'");
-            } catch (\Exception $e) {
-                // Ignore if it fails due to permissions
-            }
+            } catch (\Exception $e) {}
 
-            // Reset document states to represent a fresh agreement process for reactivation
             $distSupplier->distributor_signature_path = $fileName;
             $distSupplier->distributor_signed_at = now();
             
-            // Clear supplier signature so they have to agree again
             $distSupplier->supplier_signature_path = null;
             $distSupplier->supplier_signed_at = null;
             
-            // Wipe termination history trace for this active flow
             $distSupplier->termination_path = null;
             $distSupplier->distributor_termination_signature_path = null;
             $distSupplier->distributor_termination_signed_at = null;
@@ -582,17 +516,12 @@ class PartneredSupplierController extends Controller
             $distSupplier->status = 'pending_reactivation';
             $distSupplier->save();
 
-            // Update main record
             $partner->status = 'pending_reactivation';
             $partner->save();
 
-            // BROADCAST TO SUPPLIER DASHBOARD (WebSocket Sync)
             $payload = $this->formatRequestForBroadcast($user->id, $partner->supplier_id);
             if ($payload) broadcast(new PartnershipRequestUpdated($payload))->toOthers();
 
-            // ==========================================
-            // EMAIL NOTIFICATION LOGIC TO SUPPLIER
-            // ==========================================
             config([
                 'mail.default' => 'smtp',
                 'mail.mailers.smtp.transport' => 'smtp',
@@ -638,6 +567,47 @@ class PartneredSupplierController extends Controller
                 'success' => false,
                 'message' => 'Failed to reactivate partnership: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function getChatMessages(int $supplierId)
+    {
+        try {
+            $user = Auth::user();
+            $distributorId = $user->id;
+
+            $messages = PartnershipMessage::where(function($q) use ($distributorId, $supplierId) {
+                $q->where('sender_id', $distributorId)->where('receiver_id', $supplierId);
+            })->orWhere(function($q) use ($distributorId, $supplierId) {
+                $q->where('sender_id', $supplierId)->where('receiver_id', $distributorId);
+            })->orderBy('created_at', 'asc')->get();
+
+            return response()->json(['success' => true, 'data' => $messages]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function sendChatMessage(Request $request, int $supplierId)
+    {
+        $request->validate(['message' => 'required|string']);
+
+        try {
+            $user = Auth::user();
+            $distributorId = $user->id;
+
+            $message = PartnershipMessage::create([
+                'sender_id' => $distributorId,
+                'receiver_id' => $supplierId,
+                'message' => $request->message,
+                'is_read' => false
+            ]);
+
+            broadcast(new PartnershipMessageSent($message))->toOthers();
+
+            return response()->json(['success' => true, 'data' => $message]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

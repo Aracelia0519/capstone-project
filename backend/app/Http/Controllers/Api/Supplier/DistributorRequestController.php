@@ -13,6 +13,8 @@ use App\Models\OperationDistributor\DistributorSupplier;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\User; 
 use App\Events\Partnership\SupplierRequestUpdated;
+use App\Models\PartnershipMessage;
+use App\Events\PartnershipMessageSent;
 
 class DistributorRequestController extends Controller
 {
@@ -26,10 +28,6 @@ class DistributorRequestController extends Controller
         return $supplierId;
     }
 
-    /**
-     * Helper to format the request exactly as the frontend expects it via WebSockets.
-     * FIX: Array conversion bypasses Model Queue Serialization drops.
-     */
     private function formatRequestForBroadcast($id)
     {
         $req = DistributorSupplier::with([
@@ -42,7 +40,6 @@ class DistributorRequestController extends Controller
 
         $payload = $req->toArray();
 
-        // Safely map all URLs into the raw array payload
         $payload['agreement_url'] = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
         $payload['distributor_signature_url'] = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
         $payload['supplier_signature_url'] = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
@@ -57,7 +54,6 @@ class DistributorRequestController extends Controller
             $payload['distributor']['company_name'] = $distributorReq->company_name;
         }
 
-        // Return as generic object
         return json_decode(json_encode($payload));
     }
 
@@ -576,5 +572,46 @@ class DistributorRequestController extends Controller
             'mail.from.address' => 'IspyMILK@gmail.com',
             'mail.from.name' => 'CaviteGoPaint',
         ]);
+    }
+
+    public function getChatMessages($distributorId)
+    {
+        try {
+            $user = Auth::user();
+            $supplierId = $this->resolveSupplierId($user);
+
+            $messages = PartnershipMessage::where(function($q) use ($distributorId, $supplierId) {
+                $q->where('sender_id', $distributorId)->where('receiver_id', $supplierId);
+            })->orWhere(function($q) use ($distributorId, $supplierId) {
+                $q->where('sender_id', $supplierId)->where('receiver_id', $distributorId);
+            })->orderBy('created_at', 'asc')->get();
+
+            return response()->json(['success' => true, 'data' => $messages]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function sendChatMessage(Request $request, $distributorId)
+    {
+        $request->validate(['message' => 'required|string']);
+
+        try {
+            $user = Auth::user();
+            $supplierId = $this->resolveSupplierId($user);
+
+            $message = PartnershipMessage::create([
+                'sender_id' => $supplierId,
+                'receiver_id' => $distributorId,
+                'message' => $request->message,
+                'is_read' => false
+            ]);
+
+            broadcast(new PartnershipMessageSent($message))->toOthers();
+
+            return response()->json(['success' => true, 'data' => $message]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

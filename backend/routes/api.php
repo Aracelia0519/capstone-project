@@ -67,6 +67,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sidebar', [\App\Http\Controllers\Api\SpecialRBAC\SpecialRBACSidebarController::class, 'getSidebarAccess']);
     });
 
+    
+
     // Dashboard data routes
     Route::prefix('dashboard')->group(function () {
         Route::get('/admin', [DashboardController::class, 'adminDashboard']);
@@ -468,7 +470,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Distributor\PartnerRequestController::class, 'reject']);
+
+            Route::get('/{id}/chat', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getChatMessages']);
+            Route::post('/{id}/chat', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'sendChatMessage']);
         });
+
+        Route::get('/partnered-suppliers/{id}/chat', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getChatMessages']);
+        Route::post('/partnered-suppliers/{id}/chat', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'sendChatMessage']);
 
         Route::prefix('procurement-fulfillment')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ProcurementReadyController::class, 'index']);
@@ -694,6 +702,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::post('/{id}/reactivate-approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approveReactivation']);
             Route::post('/{id}/reactivate-reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'rejectReactivation']);
+
+            Route::get('/{id}/chat', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'getChatMessages']);
+            Route::post('/{id}/chat', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'sendChatMessage']);
+        
         });
 
         Route::prefix('orders')->group(function () {

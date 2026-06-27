@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 p-8 min-h-screen">
+  <div class="flex flex-col gap-6 p-8 min-h-screen relative">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Distributor Partnerships</h1>
@@ -173,21 +173,26 @@
               </TableCell>
 
               <TableCell class="text-right">
-                <Button v-if="req.status === 'pending_supplier'" variant="outline" size="sm" @click="viewRequest(req)">
-                  Review Proposal
-                </Button>
-                <Button v-else-if="req.status === 'active'" variant="secondary" size="sm" class="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" @click="viewOfficialDocument(req)">
-                  <FileBadge class="h-4 w-4 mr-2" /> View Official Document
-                </Button>
-                <Button v-else-if="req.status === 'pending_reactivation'" variant="outline" size="sm" class="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100" @click="viewReactivateDocument(req)">
-                  <RefreshCcw class="h-4 w-4 mr-2" /> Review Reactivation
-                </Button>
-                <Button v-else-if="req.status === 'pending_termination'" variant="destructive" size="sm" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100" @click="viewTerminationDocument(req)">
-                  <AlertTriangle class="h-4 w-4 mr-2" /> Review Termination
-                </Button>
-                <Button v-else-if="req.status === 'terminated' || req.status === 'disconnected'" variant="outline" size="sm" class="bg-slate-50 text-slate-700 border-slate-200" @click="viewTerminationDocument(req)">
-                  <Download class="h-4 w-4 mr-2" /> Final Document
-                </Button>
+                <div class="flex items-center justify-end gap-2">
+                    <Button type="button" variant="outline" size="sm" @click.stop.prevent="openChat(req)" class="text-blue-600 border-blue-200 hover:bg-blue-50 shrink-0 relative z-10">
+                        <MessageSquare class="h-4 w-4 mr-1 pointer-events-none" /> Chat
+                    </Button>
+                    <Button v-if="req.status === 'pending_supplier'" variant="outline" size="sm" @click="viewRequest(req)">
+                        Review Proposal
+                    </Button>
+                    <Button v-else-if="req.status === 'active'" variant="secondary" size="sm" class="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 shrink-0" @click="viewOfficialDocument(req)">
+                        <FileBadge class="h-4 w-4 mr-2" /> View Document
+                    </Button>
+                    <Button v-else-if="req.status === 'pending_reactivation'" variant="outline" size="sm" class="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 shrink-0" @click="viewReactivateDocument(req)">
+                        <RefreshCcw class="h-4 w-4 mr-2" /> Reactivation
+                    </Button>
+                    <Button v-else-if="req.status === 'pending_termination'" variant="destructive" size="sm" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 shrink-0" @click="viewTerminationDocument(req)">
+                        <AlertTriangle class="h-4 w-4 mr-2" /> Termination
+                    </Button>
+                    <Button v-else-if="req.status === 'terminated' || req.status === 'disconnected'" variant="outline" size="sm" class="bg-slate-50 text-slate-700 border-slate-200 shrink-0" @click="viewTerminationDocument(req)">
+                        <Download class="h-4 w-4 mr-2" /> Final Document
+                    </Button>
+                </div>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -239,7 +244,10 @@
           </div>
         </div>
 
-        <div class="p-4 bg-slate-50 border-t flex justify-end gap-3">
+        <div class="p-4 bg-slate-50 border-t flex justify-end items-center gap-3">
+          <Button type="button" variant="outline" @click.stop.prevent="openChat(selectedRequest)" class="text-blue-600 border-blue-200 hover:bg-blue-50 mr-auto">
+            <MessageSquare class="h-4 w-4 mr-2 pointer-events-none" /> Message Buyer
+          </Button>
           <Button variant="outline" @click="showViewDialog = false">Close</Button>
           <Button variant="destructive" @click="initiateReject" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
             <XCircle class="h-4 w-4 mr-2" /> Decline
@@ -357,9 +365,14 @@
                         <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <PenTool class="h-4 w-4 text-blue-600" /> Counter-Sign to Activate
                         </label>
-                        <Button variant="ghost" size="sm" @click="clearSignature">Clear Pad</Button>
+                        <div class="flex items-center gap-2">
+                          <button @click="signatureMode = 'draw'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
+                          <button @click="signatureMode = 'upload'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
+                          <Button v-if="signatureMode === 'draw'" variant="ghost" size="sm" @click="clearSignature">Clear Pad</Button>
+                        </div>
                     </div>
-                    <div class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="canvasContainer">
+                    
+                    <div v-if="signatureMode === 'draw'" class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="canvasContainer">
                         <canvas 
                             ref="signatureCanvas" 
                             class="w-full h-[160px] cursor-crosshair touch-none"
@@ -367,10 +380,22 @@
                             @touchstart.prevent="startDrawing" @touchmove.prevent="draw" @touchend.prevent="stopDrawing"
                         ></canvas>
                     </div>
+                    
+                    <div v-else class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[160px]">
+                      <input type="file" accept="image/*" class="hidden" ref="sigFileInput" @change="handleSignatureUpload($event, 'initial')" />
+                      <div v-if="uploadedSigUrl" class="flex flex-col items-center gap-2">
+                        <img :src="uploadedSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
+                        <Button type="button" variant="outline" size="sm" @click="uploadedSigUrl = ''; uploadedSigBase64 = ''">Remove file</Button>
+                      </div>
+                      <Button v-else type="button" variant="outline" @click="$refs.sigFileInput.click()">
+                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
+                      </Button>
+                      <p class="text-xs text-slate-400 mt-2">Supports PNG, JPG, or JPEG image formats</p>
+                    </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <Button variant="outline" @click="showSignatureDialog = false">Cancel</Button>
-                    <Button :disabled="!hasDrawn || isProcessing" @click="submitApprove" class="bg-blue-600 text-white hover:bg-blue-700">
+                    <Button :disabled="((signatureMode === 'draw' && !hasDrawn) || (signatureMode === 'upload' && !uploadedSigBase64)) || isProcessing" @click="submitApprove" class="bg-blue-600 text-white hover:bg-blue-700">
                         <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Activating...
                     </Button>
                 </div>
@@ -407,9 +432,14 @@
                         <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <PenTool class="h-4 w-4 text-purple-600" /> Counter-Sign to Reactivate
                         </label>
-                        <Button variant="ghost" size="sm" @click="clearReactivateSignature">Clear Pad</Button>
+                        <div class="flex items-center gap-2">
+                          <button @click="reactivateSignatureMode = 'draw'" :class="{'text-purple-600 font-bold border-b-2 border-purple-600': reactivateSignatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
+                          <button @click="reactivateSignatureMode = 'upload'" :class="{'text-purple-600 font-bold border-b-2 border-purple-600': reactivateSignatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
+                          <Button v-if="reactivateSignatureMode === 'draw'" variant="ghost" size="sm" @click="clearReactivateSignature">Clear Pad</Button>
+                        </div>
                     </div>
-                    <div class="border-2 border-dashed border-purple-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="reactivateCanvasContainer">
+                    
+                    <div v-if="reactivateSignatureMode === 'draw'" class="border-2 border-dashed border-purple-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="reactivateCanvasContainer">
                         <canvas 
                             ref="reactivateSignatureCanvas" 
                             class="w-full h-[140px] cursor-crosshair touch-none"
@@ -420,10 +450,21 @@
                             <span class="text-slate-400 font-medium select-none">Supplier Sign Here</span>
                         </div>
                     </div>
+
+                    <div v-else class="border-2 border-dashed border-purple-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[140px]">
+                      <input type="file" accept="image/*" class="hidden" ref="reactivateSigFileInput" @change="handleSignatureUpload($event, 'reactivate')" />
+                      <div v-if="uploadedReactivateSigUrl" class="flex flex-col items-center gap-2">
+                        <img :src="uploadedReactivateSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
+                        <Button type="button" variant="outline" size="sm" @click="uploadedReactivateSigUrl = ''; uploadedReactivateSigBase64 = ''">Remove file</Button>
+                      </div>
+                      <Button v-else type="button" variant="outline" @click="$refs.reactivateSigFileInput.click()">
+                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
+                      </Button>
+                    </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-2">
                     <Button variant="outline" @click="initiateReactivateReject" class="bg-red-50 text-red-700 border-red-200 hover:bg-red-100">Decline Reactivation</Button>
-                    <Button :disabled="!hasDrawnReactivate || isProcessing" @click="submitReactivateApprove" class="bg-purple-600 text-white hover:bg-purple-700">
+                    <Button :disabled="((reactivateSignatureMode === 'draw' && !hasDrawnReactivate) || (reactivateSignatureMode === 'upload' && !uploadedReactivateSigBase64)) || isProcessing" @click="submitReactivateApprove" class="bg-purple-600 text-white hover:bg-purple-700">
                         <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Sign & Reactivate
                     </Button>
                 </div>
@@ -472,9 +513,14 @@
                         <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
                             <PenTool class="h-4 w-4 text-red-600" /> Countersign to Finalize Termination
                         </label>
-                        <Button variant="ghost" size="sm" @click="clearTermSignature">Clear Pad</Button>
+                        <div class="flex items-center gap-2">
+                          <button @click="termSignatureMode = 'draw'" :class="{'text-red-600 font-bold border-b-2 border-red-600': termSignatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
+                          <button @click="termSignatureMode = 'upload'" :class="{'text-red-600 font-bold border-b-2 border-red-600': termSignatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
+                          <Button v-if="termSignatureMode === 'draw'" variant="ghost" size="sm" @click="clearTermSignature">Clear Pad</Button>
+                        </div>
                     </div>
-                    <div class="border-2 border-dashed border-red-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="termCanvasContainer">
+                    
+                    <div v-if="termSignatureMode === 'draw'" class="border-2 border-dashed border-red-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="termCanvasContainer">
                         <canvas 
                             ref="termSignatureCanvas" 
                             class="w-full h-[140px] cursor-crosshair touch-none"
@@ -485,11 +531,22 @@
                             <span class="text-slate-400 font-medium select-none">Supplier Sign Here</span>
                         </div>
                     </div>
+
+                    <div v-else class="border-2 border-dashed border-red-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[140px]">
+                      <input type="file" accept="image/*" class="hidden" ref="termSigFileInput" @change="handleSignatureUpload($event, 'termination')" />
+                      <div v-if="uploadedTermSigUrl" class="flex flex-col items-center gap-2">
+                        <img :src="uploadedTermSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
+                        <Button type="button" variant="outline" size="sm" @click="uploadedTermSigUrl = ''; uploadedTermSigBase64 = ''">Remove file</Button>
+                      </div>
+                      <Button v-else type="button" variant="outline" @click="$refs.termSigFileInput.click()">
+                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
+                      </Button>
+                    </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 pt-2">
                     <Button variant="outline" @click="initiateTermReject" class="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">Decline Termination</Button>
-                    <Button :disabled="!hasDrawnTerm || isProcessing" @click="submitTermApprove" class="bg-red-600 text-white hover:bg-red-700">
+                    <Button :disabled="((termSignatureMode === 'draw' && !hasDrawnTerm) || (termSignatureMode === 'upload' && !uploadedTermSigBase64)) || isProcessing" @click="submitTermApprove" class="bg-red-600 text-white hover:bg-red-700">
                         <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Sign & End Partnership
                     </Button>
                 </div>
@@ -540,35 +597,7 @@
               class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-300"
             ></iframe>
         </div>
-        <div class="p-6 border-t bg-white shrink-0 z-10 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] overflow-y-auto max-h-[40vh] sm:max-h-none">
-            <h4 class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-3 sm:mb-4">Official Signatures</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
-               <div class="flex flex-col items-center justify-center border border-slate-200 p-3 sm:p-4 rounded-xl bg-slate-50 relative">
-                    <Badge class="absolute -top-3 left-4 bg-indigo-100 text-indigo-700 border border-indigo-200">Distributor (Buyer)</Badge>
-                    <div class="h-16 sm:h-20 w-full flex items-center justify-center mt-2">
-                        <img v-if="selectedRequest?.distributor_signature_url" :src="selectedRequest.distributor_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                        <span v-else class="text-xs sm:text-sm text-slate-400 italic">Signature not found</span>
-                    </div>
-                    <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
-                    <p class="text-xs sm:text-sm font-bold text-slate-800">{{ selectedRequest?.distributor?.company_name || selectedRequest?.distributor?.first_name }}</p>
-                    <p class="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        <CheckCircle2 class="h-3 w-3 text-emerald-500" /> Signed
-                    </p>
-                </div>
-
-                <div class="flex flex-col items-center justify-center border border-slate-200 p-3 sm:p-4 rounded-xl bg-slate-50 relative">
-                    <Badge class="absolute -top-3 left-4 bg-blue-100 text-blue-700 border border-blue-200">Supplier (Seller)</Badge>
-                    <div class="h-16 sm:h-20 w-full flex items-center justify-center mt-2">
-                        <img v-if="selectedRequest?.supplier_signature_url" :src="selectedRequest.supplier_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                        <span v-else class="text-xs sm:text-sm text-slate-400 italic">Signature not found</span>
-                    </div>
-                    <Separator class="my-2 sm:my-3 w-3/4 bg-slate-300" />
-                    <p class="text-xs sm:text-sm font-bold text-slate-800">Your Business</p>
-                    <p class="text-[10px] sm:text-xs text-slate-500 mt-1 flex items-center gap-1">
-                        <CheckCircle2 class="h-3 w-3 text-emerald-500" /> Signed
-                    </p>
-                </div>
-            </div>
+        <div class="p-6 border-t bg-white shrink-0 z-10 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
             <div class="flex justify-end mt-4">
                 <Button variant="outline" @click="showOfficialDocDialog = false">Close Document</Button>
             </div>
@@ -576,18 +605,74 @@
       </DialogContent>
     </Dialog>
 
+    <!-- Teleport the Chat Drawer to body to break out of Radix Dialog pointer-event traps -->
+    <Teleport to="body">
+      <!-- Chat Drawer Overlay -->
+      <div v-if="showChatPanel" class="fixed inset-0 bg-slate-900/50 z-[9998] transition-opacity" @click="closeChat"></div>
+
+      <!-- Chat Drawer -->
+      <div v-if="showChatPanel" class="fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] flex flex-col transform transition-transform duration-300 pointer-events-auto">
+          <!-- Header -->
+          <div class="p-4 border-b bg-slate-50 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                      {{ chatPartnerName.charAt(0) }}
+                  </div>
+                  <div>
+                      <h3 class="font-bold text-slate-800">{{ chatPartnerName }}</h3>
+                      <p class="text-xs text-slate-500">Partnership Chat</p>
+                  </div>
+              </div>
+              <Button type="button" variant="ghost" size="icon" @click="closeChat">
+                  <X class="h-5 w-5 text-slate-500" />
+              </Button>
+          </div>
+
+          <!-- Messages Area -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-100" ref="chatScrollContainer">
+              <div v-if="isChatLoading" class="flex justify-center items-center h-full">
+                  <Loader2 class="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+              <template v-else>
+                  <div v-if="chatMessages.length === 0" class="text-center text-slate-500 my-10 text-sm">
+                      No messages yet. Start the conversation!
+                  </div>
+                  <div v-for="msg in chatMessages" :key="msg.id" class="flex" :class="msg.sender_id === currentSupplierId ? 'justify-end' : 'justify-start'">
+                      <div class="max-w-[80%] rounded-2xl px-4 py-2 text-sm" :class="msg.sender_id === currentSupplierId ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white text-slate-800 rounded-bl-none shadow-sm'">
+                          {{ msg.message }}
+                          <div class="text-[10px] mt-1 opacity-70" :class="msg.sender_id === currentSupplierId ? 'text-blue-100' : 'text-slate-400'">
+                              {{ formatTime(msg.created_at) }}
+                          </div>
+                      </div>
+                  </div>
+              </template>
+          </div>
+
+          <!-- Input Area -->
+          <div class="p-4 bg-white border-t">
+              <form @submit.prevent="sendMessage" class="flex gap-2">
+                  <Input v-model="newMessage" placeholder="Type a message..." class="flex-1" :disabled="isSending" />
+                  <Button type="submit" size="icon" class="bg-blue-600 hover:bg-blue-700 text-white shrink-0" :disabled="!newMessage.trim() || isSending">
+                      <Send class="h-4 w-4" v-if="!isSending" />
+                      <Loader2 class="h-4 w-4 animate-spin" v-else />
+                  </Button>
+              </form>
+          </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import api from '@/utils/axios'
-import echo from '@/utils/websocket.js' // Websockets
+import echo from '@/utils/websocket.js' 
 import { toast } from 'vue-sonner'
 import { 
   Store, Briefcase, CheckCircle2, XCircle, AlertCircle, MapPin, Phone, Mail, 
   RefreshCw, RefreshCcw, Search, PenTool, FileText, FileBadge, FileX, Loader2, Clock, Ban,
-  AlertTriangle, Download
+  AlertTriangle, Download, MessageSquare, Send, X
 } from 'lucide-vue-next'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -605,11 +690,21 @@ const loading = ref(true)
 const searchQuery = ref('')
 const isProcessing = ref(false)
 const activeTab = ref('pending') 
-const currentSupplierId = ref(null) // Added for Websockets
+const currentSupplierId = ref(null) 
 
 const selectedRequest = ref(null)
 const showViewDialog = ref(false)
 const showOfficialDocDialog = ref(false)
+
+// Chat State
+const showChatPanel = ref(false)
+const chatMessages = ref([])
+const newMessage = ref('')
+const chatPartnerId = ref(null)
+const chatPartnerName = ref('')
+const isChatLoading = ref(false)
+const isSending = ref(false)
+const chatScrollContainer = ref(null)
 
 // Reject State
 const showRejectDialog = ref(false)
@@ -626,6 +721,19 @@ const reactivateRejectReason = ref('')
 // Document Fetching state
 const terminationHtml = ref('')
 const loadingTermDoc = ref(false)
+
+// Signature Mode States ('draw' | 'upload')
+const signatureMode = ref('draw')
+const termSignatureMode = ref('draw')
+const reactivateSignatureMode = ref('draw')
+
+// Uploaded file variables
+const uploadedSigUrl = ref('')
+const uploadedSigBase64 = ref('')
+const uploadedTermSigUrl = ref('')
+const uploadedTermSigBase64 = ref('')
+const uploadedReactivateSigUrl = ref('')
+const uploadedReactivateSigBase64 = ref('')
 
 // Initial Signature State
 const showSignatureDialog = ref(false)
@@ -662,7 +770,6 @@ const setupWebsocket = (supplierId) => {
             const req = e.request;
             const index = requests.value.findIndex(r => r.id === req.id);
             if (index !== -1) {
-                // FIX: Splice ensures deep reactivity, preventing stale iframe urls!
                 requests.value.splice(index, 1, req);
             } else {
                 requests.value.unshift(req);
@@ -673,12 +780,115 @@ const setupWebsocket = (supplierId) => {
             const req = e.request;
             const index = requests.value.findIndex(r => r.id === req.id);
             if (index !== -1) {
-                // FIX: Splice ensures deep reactivity!
                 requests.value.splice(index, 1, req);
             } else {
                 requests.value.unshift(req);
             }
+        })
+        .listen('.PartnershipMessageSent', (e) => {
+            if (showChatPanel.value && (e.message.sender_id === chatPartnerId.value || e.message.receiver_id === chatPartnerId.value)) {
+                if (!chatMessages.value.find(m => m.id === e.message.id)) {
+                    chatMessages.value.push(e.message);
+                    scrollToBottom();
+                }
+            } else if (!showChatPanel.value && e.message.receiver_id === currentSupplierId.value) {
+                toast.info('New Message', { description: 'You received a new message from a partner.' });
+            }
         });
+}
+
+// --- Chat Logic ---
+const openChat = (req) => {
+    if (!req) return;
+    
+    // Crucial fix: Close shadcn dialogs so pointer events aren't trapped
+    if (showViewDialog.value) showViewDialog.value = false;
+    
+    chatPartnerId.value = req.distributor_id || req.distributor?.id;
+    chatPartnerName.value = req.distributor?.company_name || req.distributor?.first_name || 'Distributor';
+    showChatPanel.value = true;
+    fetchChatMessages();
+}
+
+const fetchChatMessages = async () => {
+    isChatLoading.value = true;
+    try {
+        const res = await api.get(`/supplier/distributor-requests/${chatPartnerId.value}/chat`);
+        if (res.data.success) {
+            chatMessages.value = res.data.data;
+            scrollToBottom();
+        }
+    } catch (e) {
+        toast.error('Failed to load chat');
+    } finally {
+        isChatLoading.value = false;
+    }
+}
+
+const sendMessage = async () => {
+    if (!newMessage.value.trim() || isSending.value) return;
+    isSending.value = true;
+    try {
+        const res = await api.post(`/supplier/distributor-requests/${chatPartnerId.value}/chat`, {
+            message: newMessage.value
+        });
+        if (res.data.success) {
+            // FIX: Prevent duplication race condition
+            if (!chatMessages.value.find(m => m.id === res.data.data.id)) {
+                chatMessages.value.push(res.data.data);
+                scrollToBottom();
+            }
+            newMessage.value = '';
+        }
+    } catch (e) {
+        toast.error('Failed to send message');
+    } finally {
+        isSending.value = false;
+    }
+}
+
+const closeChat = () => {
+    showChatPanel.value = false;
+    chatPartnerId.value = null;
+}
+
+const scrollToBottom = () => {
+    nextTick(() => {
+        if (chatScrollContainer.value) {
+            chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight;
+        }
+    });
+}
+
+const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+}
+
+// --- File Attachment Handler ---
+const handleSignatureUpload = (event, target) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please select an image file.')
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    if (target === 'initial') {
+      uploadedSigUrl.value = e.target.result
+      uploadedSigBase64.value = e.target.result
+    } else if (target === 'termination') {
+      uploadedTermSigUrl.value = e.target.result
+      uploadedTermSigBase64.value = e.target.result
+    } else if (target === 'reactivate') {
+      uploadedReactivateSigUrl.value = e.target.result
+      uploadedReactivateSigBase64.value = e.target.result
+    }
+  }
+  reader.readAsDataURL(file)
 }
 
 // --- Canvas Initializers ---
@@ -709,7 +919,7 @@ const initReactivateCanvas = () => {
   reactivateCtx = reactivateSignatureCanvas.value.getContext('2d')
   reactivateCtx.lineWidth = 3
   reactivateCtx.lineCap = 'round'
-  reactivateCtx.strokeStyle = '#9333ea' // Purple ink for reactivation
+  reactivateCtx.strokeStyle = '#9333ea' 
 }
 
 const getCoordinates = (e, canvasObj) => {
@@ -738,10 +948,59 @@ const drawReactivate = (e) => { if (!isReactivateDrawing) return; const c = getC
 const stopReactivateDrawing = () => { isReactivateDrawing = false; if(reactivateCtx) reactivateCtx.closePath() }
 const clearReactivateSignature = () => { if (!reactivateCtx) return; reactivateCtx.clearRect(0, 0, reactivateSignatureCanvas.value.width, reactivateSignatureCanvas.value.height); hasDrawnReactivate.value = false }
 
+watch(showSignatureDialog, async (newVal) => { 
+  if (newVal) { 
+    hasDrawn.value = false; 
+    uploadedSigUrl.value = ''; 
+    uploadedSigBase64.value = '';
+    if(signatureMode.value === 'draw') {
+      await nextTick(); 
+      setTimeout(initCanvas, 50) 
+    }
+  }
+})
+watch(signatureMode, async (newVal) => {
+  if (newVal === 'draw') {
+    await nextTick();
+    setTimeout(initCanvas, 50)
+  }
+})
 
-watch(showSignatureDialog, async (newVal) => { if (newVal) { hasDrawn.value = false; await nextTick(); setTimeout(initCanvas, 50) }})
-watch(showTermSignatureDialog, async (newVal) => { if (newVal && selectedRequest.value?.status === 'pending_termination') { hasDrawnTerm.value = false; await nextTick(); setTimeout(initTermCanvas, 50) }})
-watch(showReactivateSignatureDialog, async (newVal) => { if (newVal && selectedRequest.value?.status === 'pending_reactivation') { hasDrawnReactivate.value = false; await nextTick(); setTimeout(initReactivateCanvas, 50) }})
+watch(showTermSignatureDialog, async (newVal) => { 
+  if (newVal && selectedRequest.value?.status === 'pending_termination') { 
+    hasDrawnTerm.value = false; 
+    uploadedTermSigUrl.value = '';
+    uploadedTermSigBase64.value = '';
+    if(termSignatureMode.value === 'draw') {
+      await nextTick(); 
+      setTimeout(initTermCanvas, 50) 
+    }
+  }
+})
+watch(termSignatureMode, async (newVal) => {
+  if (newVal === 'draw' && selectedRequest.value?.status === 'pending_termination') {
+    await nextTick();
+    setTimeout(initTermCanvas, 50)
+  }
+})
+
+watch(showReactivateSignatureDialog, async (newVal) => { 
+  if (newVal && selectedRequest.value?.status === 'pending_reactivation') { 
+    hasDrawnReactivate.value = false; 
+    uploadedReactivateSigUrl.value = '';
+    uploadedReactivateSigBase64.value = '';
+    if(reactivateSignatureMode.value === 'draw') {
+      await nextTick(); 
+      setTimeout(initReactivateCanvas, 50) 
+    }
+  }
+})
+watch(reactivateSignatureMode, async (newVal) => {
+  if (newVal === 'draw' && selectedRequest.value?.status === 'pending_reactivation') {
+    await nextTick();
+    setTimeout(initReactivateCanvas, 50)
+  }
+})
 
 
 // --- API Logic ---
@@ -808,10 +1067,16 @@ const viewTerminationDocument = async (req) => {
 // Initial Actions
 const initiateApprove = () => { showViewDialog.value = false; showSignatureDialog.value = true }
 const submitApprove = async () => {
-  if (!selectedRequest.value || !hasDrawn.value) return
+  if (!selectedRequest.value) return
+  if (signatureMode.value === 'draw' && !hasDrawn.value) return
+  if (signatureMode.value === 'upload' && !uploadedSigBase64.value) return
+
   isProcessing.value = true
   try {
-    const b64 = signatureCanvas.value.toDataURL('image/png')
+    const b64 = signatureMode.value === 'draw' 
+      ? signatureCanvas.value.toDataURL('image/png') 
+      : uploadedSigBase64.value
+
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/approve`, { signature_image: b64 })
     if (res.data.success) {
       showSignatureDialog.value = false
@@ -859,10 +1124,16 @@ const submitTermReject = async () => {
 }
 
 const submitTermApprove = async () => {
-  if (!selectedRequest.value || !hasDrawnTerm.value) return
+  if (!selectedRequest.value) return
+  if (termSignatureMode.value === 'draw' && !hasDrawnTerm.value) return
+  if (termSignatureMode.value === 'upload' && !uploadedTermSigBase64.value) return
+
   isProcessing.value = true
   try {
-    const b64 = termSignatureCanvas.value.toDataURL('image/png')
+    const b64 = termSignatureMode.value === 'draw'
+      ? termSignatureCanvas.value.toDataURL('image/png')
+      : uploadedTermSigBase64.value
+
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/terminate-approve`, { signature_image: b64 })
     if (res.data.success) {
       showTermSignatureDialog.value = false
@@ -894,10 +1165,16 @@ const submitReactivateReject = async () => {
 }
 
 const submitReactivateApprove = async () => {
-  if (!selectedRequest.value || !hasDrawnReactivate.value) return
+  if (!selectedRequest.value) return
+  if (reactivateSignatureMode.value === 'draw' && !hasDrawnReactivate.value) return
+  if (reactivateSignatureMode.value === 'upload' && !uploadedReactivateSigBase64.value) return
+
   isProcessing.value = true
   try {
-    const b64 = reactivateSignatureCanvas.value.toDataURL('image/png')
+    const b64 = reactivateSignatureMode.value === 'draw'
+      ? reactivateSignatureCanvas.value.toDataURL('image/png')
+      : uploadedReactivateSigBase64.value
+
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reactivate-approve`, { signature_image: b64 })
     if (res.data.success) {
       showReactivateSignatureDialog.value = false
@@ -961,7 +1238,6 @@ const downloadTerminationDoc = async () => {
 }
 
 const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-const formatTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) : ''
 
 onMounted(() => fetchRequests())
 
