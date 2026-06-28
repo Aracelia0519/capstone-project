@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Distributor Partnerships</h1>
         <p class="text-slate-500 mt-2 text-sm">
-          Manage incoming partnership proposals, active partners, and termination requests.
+          Manage incoming partnership proposals, active partners, and negotiations.
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle class="text-sm font-medium">Pending Proposals</CardTitle>
@@ -40,23 +40,12 @@
 
       <Card>
         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Reactivations</CardTitle>
-          <RefreshCcw class="h-4 w-4 text-purple-500" />
+          <CardTitle class="text-sm font-medium">Archived</CardTitle>
+          <XCircle class="h-4 w-4 text-slate-500" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">{{ reactivationRequestsCount }}</div>
-          <p class="text-xs text-muted-foreground">Requested reactivation</p>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle class="text-sm font-medium">Terminations</CardTitle>
-          <Ban class="h-4 w-4 text-red-500" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">{{ terminationRequestsCount }}</div>
-          <p class="text-xs text-muted-foreground">Pending termination</p>
+          <div class="text-2xl font-bold">{{ archivedRequestsCount }}</div>
+          <p class="text-xs text-muted-foreground">Ended partnerships</p>
         </CardContent>
       </Card>
     </div>
@@ -78,18 +67,11 @@
           Active Partners ({{ activeRequestsCount }})
         </button>
         <button 
-          @click="activeTab = 'reactivations'" 
-          :class="{'text-purple-600 border-b-2 border-purple-600 font-bold': activeTab === 'reactivations', 'text-slate-500 hover:text-slate-700': activeTab !== 'reactivations'}" 
+          @click="activeTab = 'archived'" 
+          :class="{'text-slate-600 border-b-2 border-slate-600 font-bold': activeTab === 'archived', 'text-slate-500 hover:text-slate-700': activeTab !== 'archived'}" 
           class="pb-2 text-sm font-medium transition-colors whitespace-nowrap px-2"
         >
-          Reactivations ({{ reactivationRequestsCount }})
-        </button>
-        <button 
-          @click="activeTab = 'terminations'" 
-          :class="{'text-red-600 border-b-2 border-red-600 font-bold': activeTab === 'terminations', 'text-slate-500 hover:text-slate-700': activeTab !== 'terminations'}" 
-          class="pb-2 text-sm font-medium transition-colors whitespace-nowrap px-2"
-        >
-          Terminations ({{ terminationRequestsCount }})
+          Archived ({{ archivedRequestsCount }})
         </button>
       </div>
 
@@ -111,7 +93,7 @@
             <TableRow class="bg-slate-50/50">
               <TableHead>Distributor (Buyer)</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Date Updated</TableHead>
+              <TableHead>Contract Until</TableHead>
               <TableHead>Message / Terms</TableHead>
               <TableHead class="text-right">Action</TableHead>
             </TableRow>
@@ -145,25 +127,27 @@
               
               <TableCell>
                 <Badge v-if="req.status === 'pending_supplier'" variant="outline" class="bg-amber-50 text-amber-700 border-amber-200">
-                  <Clock class="h-3 w-3 mr-1"/> Pending
+                  <Clock class="h-3 w-3 mr-1"/> Negotiating
                 </Badge>
                 <Badge v-else-if="req.status === 'active'" variant="outline" class="bg-emerald-50 text-emerald-700 border-emerald-200">
                   <CheckCircle2 class="h-3 w-3 mr-1"/> Active
                 </Badge>
-                <Badge v-else-if="req.status === 'pending_reactivation'" variant="outline" class="bg-purple-50 text-purple-700 border-purple-200">
-                  <RefreshCcw class="h-3 w-3 mr-1"/> Reactivating
-                </Badge>
-                <Badge v-else-if="req.status === 'pending_termination'" variant="outline" class="bg-red-50 text-red-700 border-red-200">
-                  <Ban class="h-3 w-3 mr-1"/> Terminating
-                </Badge>
-                <Badge v-else-if="req.status === 'terminated' || req.status === 'disconnected'" variant="outline" class="bg-slate-100 text-slate-700 border-slate-300">
+                <Badge v-else variant="outline" class="bg-slate-100 text-slate-700 border-slate-300">
                   <XCircle class="h-3 w-3 mr-1"/> Ended
                 </Badge>
               </TableCell>
 
               <TableCell>
-                <div class="text-sm">{{ formatDate(req.updated_at) }}</div>
-                <div class="text-xs text-slate-500">{{ formatTime(req.updated_at) }}</div>
+                <div class="text-sm font-medium text-slate-800">
+                    <span v-if="(req.status === 'active' || req.status === 'pending_supplier') && (req.proposed_end_date || req.contract_end_date)">
+                        {{ formatDate(req.proposed_end_date || req.contract_end_date) }}
+                    </span>
+                    <span v-else class="text-slate-400">N/A</span>
+                </div>
+                <div class="text-xs text-slate-500" v-if="req.status === 'pending_supplier'">
+                   <span v-if="req.last_proposed_by === 'supplier'" class="text-amber-600">Pending Distributor</span>
+                   <span v-else class="text-blue-600">Action Required</span>
+                </div>
               </TableCell>
 
               <TableCell>
@@ -183,14 +167,8 @@
                     <Button v-else-if="req.status === 'active'" variant="secondary" size="sm" class="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 shrink-0" @click="viewOfficialDocument(req)">
                         <FileBadge class="h-4 w-4 mr-2" /> View Document
                     </Button>
-                    <Button v-else-if="req.status === 'pending_reactivation'" variant="outline" size="sm" class="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 shrink-0" @click="viewReactivateDocument(req)">
-                        <RefreshCcw class="h-4 w-4 mr-2" /> Reactivation
-                    </Button>
-                    <Button v-else-if="req.status === 'pending_termination'" variant="destructive" size="sm" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 shrink-0" @click="viewTerminationDocument(req)">
-                        <AlertTriangle class="h-4 w-4 mr-2" /> Termination
-                    </Button>
-                    <Button v-else-if="req.status === 'terminated' || req.status === 'disconnected'" variant="outline" size="sm" class="bg-slate-50 text-slate-700 border-slate-200 shrink-0" @click="viewTerminationDocument(req)">
-                        <Download class="h-4 w-4 mr-2" /> Final Document
+                    <Button v-else variant="outline" size="sm" class="bg-slate-50 text-slate-700 border-slate-200 shrink-0" @click="viewOfficialDocument(req)">
+                        <Download class="h-4 w-4 mr-2" /> Document
                     </Button>
                 </div>
               </TableCell>
@@ -216,7 +194,7 @@
           </div>
         </div>
 
-        <div class="p-6 space-y-6" v-if="selectedRequest">
+        <div class="p-6 space-y-4" v-if="selectedRequest">
           <div>
             <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Distributor Profile</h4>
             <div class="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
@@ -242,6 +220,37 @@
               </div>
             </div>
           </div>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+             <h4 class="text-sm font-bold text-blue-900 flex items-center gap-2 mb-2">
+                 <Calendar class="h-4 w-4" /> Contract Duration Negotiation
+             </h4>
+             <div class="text-sm text-blue-800 flex flex-col gap-2">
+                 <div>
+                    <strong>Target End Date:</strong> 
+                    <span v-if="selectedRequest.proposed_end_date || selectedRequest.contract_end_date">
+                        {{ formatDate(selectedRequest.proposed_end_date || selectedRequest.contract_end_date) }}
+                    </span>
+                    <span v-else class="text-amber-600">Not set</span>
+                 </div>
+                 
+                 <div v-if="!selectedRequest.proposed_end_date && !selectedRequest.contract_end_date">
+                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">No end date set. Please propose one.</span>
+                 </div>
+                 <div v-else-if="selectedRequest.last_proposed_by === 'supplier'">
+                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">Awaiting Distributor to review your proposed date.</span>
+                 </div>
+                 <div v-else class="text-xs">
+                    Please accept the current date and sign, or propose a new duration.
+                 </div>
+                 
+                 <div class="mt-2" v-if="selectedRequest.last_proposed_by !== 'supplier'">
+                    <Button variant="outline" size="sm" class="bg-white" @click="showProposeDateDialog = true">
+                        Propose <span v-if="selectedRequest.contract_end_date || selectedRequest.proposed_end_date">New </span>Date
+                    </Button>
+                 </div>
+             </div>
+          </div>
         </div>
 
         <div class="p-4 bg-slate-50 border-t flex justify-end items-center gap-3">
@@ -252,10 +261,30 @@
           <Button variant="destructive" @click="initiateReject" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200">
             <XCircle class="h-4 w-4 mr-2" /> Decline
           </Button>
-          <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="initiateApprove">
+          <Button class="bg-blue-600 hover:bg-blue-700 text-white" :disabled="selectedRequest?.last_proposed_by === 'supplier'" @click="initiateApprove">
             <CheckCircle2 class="h-4 w-4 mr-2" /> Proceed to Sign & Accept
           </Button>
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="showProposeDateDialog" @update:open="showProposeDateDialog = $event">
+      <DialogContent>
+          <DialogHeader>
+              <DialogTitle>Propose New Contract Date</DialogTitle>
+              <DialogDescription>Select a new end date for this partnership. The distributor will need to accept it.</DialogDescription>
+          </DialogHeader>
+          <div class="py-4">
+              <label class="text-sm font-semibold mb-2 block">New End Date</label>
+              <Input type="date" v-model="proposedDate" />
+              <p class="text-xs text-slate-500 mt-2">Date must be at least 1 month from today.</p>
+          </div>
+          <div class="flex justify-end gap-2">
+              <Button variant="outline" @click="showProposeDateDialog = false">Cancel</Button>
+              <Button class="bg-blue-600 text-white" :disabled="!isDateValid || isProcessing" @click="submitProposeDate">
+                  <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Send Proposal
+              </Button>
+          </div>
       </DialogContent>
     </Dialog>
 
@@ -287,298 +316,64 @@
       </AlertDialogContent>
     </AlertDialog>
 
-    <AlertDialog :open="showTermRejectDialog" @update:open="showTermRejectDialog = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-blue-600 flex items-center gap-2">
-            <AlertCircle class="h-5 w-5" /> Decline Termination
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            You are declining the termination request. The partnership will revert to <strong>Active</strong> status and the distributor will be notified.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div class="py-4">
-          <label class="text-sm font-medium text-slate-700 mb-1 block">Reason for Declining (Optional)</label>
-          <textarea 
-            v-model="termRejectReason"
-            class="w-full rounded-md border border-slate-300 p-3 text-sm focus:border-blue-500 focus:ring-blue-500 min-h-[80px]"
-            placeholder="E.g., Let's resolve the pending transactions first..."
-          ></textarea>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="isProcessing">Cancel</AlertDialogCancel>
-          <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="submitTermReject" :disabled="isProcessing">
-            <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
-            Decline Termination
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
-    <AlertDialog :open="showReactivateRejectDialog" @update:open="showReactivateRejectDialog = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle class="text-red-600 flex items-center gap-2">
-            <AlertCircle class="h-5 w-5" /> Decline Reactivation
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            You are declining the reactivation request. The partnership will remain <strong>Terminated</strong> and the distributor will be notified.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <div class="py-4">
-          <label class="text-sm font-medium text-slate-700 mb-1 block">Reason for Declining (Optional)</label>
-          <textarea 
-            v-model="reactivateRejectReason"
-            class="w-full rounded-md border border-slate-300 p-3 text-sm focus:border-red-500 focus:ring-red-500 min-h-[80px]"
-            placeholder="E.g., We are no longer accepting returning partners at this time..."
-          ></textarea>
-        </div>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="isProcessing">Cancel</AlertDialogCancel>
-          <Button variant="destructive" @click="submitReactivateReject" :disabled="isProcessing">
-            <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
-            Decline Reactivation
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
     <Dialog :open="showSignatureDialog" @update:open="showSignatureDialog = $event">
-      <DialogContent class="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
-        <DialogHeader class="p-4 border-b bg-white shrink-0">
-          <DialogTitle class="flex items-center gap-2 text-slate-800">
-            <FileText class="h-5 w-5 text-blue-600" />
+      <DialogContent class="w-[95vw] max-w-6xl h-[95vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
+        <DialogHeader class="p-4 sm:p-6 border-b bg-white shrink-0">
+          <DialogTitle class="flex items-center gap-2 text-xl sm:text-2xl text-slate-800">
+            <FileText class="h-6 w-6 text-blue-600" />
             Accept Partnership Agreement
           </DialogTitle>
         </DialogHeader>
-        <div class="flex-1 overflow-hidden p-4 relative bg-slate-100">
+        <div class="flex-1 overflow-hidden p-4 sm:p-6 relative bg-slate-100 min-h-[200px]">
             <iframe 
               v-if="selectedRequest?.agreement_url" 
               :src="selectedRequest.agreement_url" 
               class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
             ></iframe>
         </div>
-        <div class="p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-10">
-            <div class="flex flex-col gap-4 max-w-4xl mx-auto">
+        <div class="p-4 sm:p-6 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-10 overflow-y-auto max-h-[50vh]">
+            <div class="flex flex-col gap-4 w-full max-w-5xl mx-auto">
                 <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <PenTool class="h-4 w-4 text-blue-600" /> Counter-Sign to Activate
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                        <label class="text-base font-semibold text-slate-700 flex items-center gap-2">
+                            <PenTool class="h-5 w-5 text-blue-600" /> Counter-Sign to Activate
                         </label>
-                        <div class="flex items-center gap-2">
-                          <button @click="signatureMode = 'draw'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
-                          <button @click="signatureMode = 'upload'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
-                          <Button v-if="signatureMode === 'draw'" variant="ghost" size="sm" @click="clearSignature">Clear Pad</Button>
+                        <div class="flex items-center gap-2 sm:gap-4">
+                          <button @click="signatureMode = 'draw'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'draw'}" class="text-sm px-2 pb-1">Draw Pad</button>
+                          <button @click="signatureMode = 'upload'" :class="{'text-blue-600 font-bold border-b-2 border-blue-600': signatureMode === 'upload'}" class="text-sm px-2 pb-1">Upload File</button>
+                          <Button v-if="signatureMode === 'draw'" variant="ghost" size="sm" class="h-9" @click="clearSignature">Clear Pad</Button>
                         </div>
                     </div>
                     
-                    <div v-if="signatureMode === 'draw'" class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="canvasContainer">
+                    <div v-if="signatureMode === 'draw'" class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative w-full h-[200px]" ref="canvasContainer">
                         <canvas 
                             ref="signatureCanvas" 
-                            class="w-full h-[160px] cursor-crosshair touch-none"
+                            class="w-full h-full cursor-crosshair touch-none bg-white"
                             @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
                             @touchstart.prevent="startDrawing" @touchmove.prevent="draw" @touchend.prevent="stopDrawing"
                         ></canvas>
                     </div>
                     
-                    <div v-else class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[160px]">
-                      <input type="file" accept="image/*" class="hidden" ref="sigFileInput" @change="handleSignatureUpload($event, 'initial')" />
+                    <div v-else class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[200px]">
+                      <input type="file" accept="image/*" class="hidden" ref="sigFileInput" @change="handleSignatureUpload($event)" />
                       <div v-if="uploadedSigUrl" class="flex flex-col items-center gap-2">
-                        <img :src="uploadedSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
+                        <img :src="uploadedSigUrl" class="h-[140px] object-contain border p-2 bg-white rounded shadow-sm" />
                         <Button type="button" variant="outline" size="sm" @click="uploadedSigUrl = ''; uploadedSigBase64 = ''">Remove file</Button>
                       </div>
                       <Button v-else type="button" variant="outline" @click="$refs.sigFileInput.click()">
-                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
+                        <Download class="h-5 w-5 mr-2" /> Choose Signature Image
                       </Button>
                       <p class="text-xs text-slate-400 mt-2">Supports PNG, JPG, or JPEG image formats</p>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <Button variant="outline" @click="showSignatureDialog = false">Cancel</Button>
-                    <Button :disabled="((signatureMode === 'draw' && !hasDrawn) || (signatureMode === 'upload' && !uploadedSigBase64)) || isProcessing" @click="submitApprove" class="bg-blue-600 text-white hover:bg-blue-700">
-                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Activating...
+                <div class="flex flex-col sm:flex-row justify-end gap-3 mt-4">
+                    <Button variant="outline" class="px-6 w-full sm:w-auto" @click="showSignatureDialog = false">Cancel</Button>
+                    <Button class="bg-blue-600 text-white hover:bg-blue-700 min-w-[200px] px-6 w-full sm:w-auto" :disabled="((signatureMode === 'draw' && !hasDrawn) || (signatureMode === 'upload' && !uploadedSigBase64)) || isProcessing" @click="submitApprove">
+                        <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" /> Activating...
                     </Button>
                 </div>
             </div>
         </div>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog :open="showReactivateSignatureDialog" @update:open="showReactivateSignatureDialog = $event">
-      <DialogContent class="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
-        <DialogHeader class="p-4 border-b bg-white shrink-0">
-          <DialogTitle class="flex items-center gap-2 text-indigo-800">
-            <RefreshCcw class="h-5 w-5 text-purple-600" />
-            Review Partnership Reactivation
-          </DialogTitle>
-        </DialogHeader>
-        <div class="flex-1 overflow-hidden p-4 relative bg-slate-100">
-            <iframe 
-              v-if="selectedRequest?.agreement_url" 
-              :src="selectedRequest.agreement_url" 
-              class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
-            ></iframe>
-        </div>
-        <div class="p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-10 max-h-[40vh] overflow-y-auto">
-            <div class="flex flex-col gap-4 max-w-4xl mx-auto">
-                <div class="p-3 bg-purple-50 border border-purple-100 rounded-lg flex items-center gap-4">
-                     <div class="h-16 w-32 bg-white border flex items-center justify-center shrink-0">
-                         <img :src="selectedRequest?.distributor_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                     </div>
-                     <p class="text-sm text-purple-800 font-medium">Distributor has re-signed the agreement to reactivate the partnership. Please countersign to restore their active status.</p>
-                </div>
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <PenTool class="h-4 w-4 text-purple-600" /> Counter-Sign to Reactivate
-                        </label>
-                        <div class="flex items-center gap-2">
-                          <button @click="reactivateSignatureMode = 'draw'" :class="{'text-purple-600 font-bold border-b-2 border-purple-600': reactivateSignatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
-                          <button @click="reactivateSignatureMode = 'upload'" :class="{'text-purple-600 font-bold border-b-2 border-purple-600': reactivateSignatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
-                          <Button v-if="reactivateSignatureMode === 'draw'" variant="ghost" size="sm" @click="clearReactivateSignature">Clear Pad</Button>
-                        </div>
-                    </div>
-                    
-                    <div v-if="reactivateSignatureMode === 'draw'" class="border-2 border-dashed border-purple-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="reactivateCanvasContainer">
-                        <canvas 
-                            ref="reactivateSignatureCanvas" 
-                            class="w-full h-[140px] cursor-crosshair touch-none"
-                            @mousedown="startReactivateDrawing" @mousemove="drawReactivate" @mouseup="stopReactivateDrawing" @mouseleave="stopReactivateDrawing"
-                            @touchstart.prevent="startReactivateDrawing" @touchmove.prevent="drawReactivate" @touchend.prevent="stopReactivateDrawing"
-                        ></canvas>
-                        <div v-if="!hasDrawnReactivate" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
-                            <span class="text-slate-400 font-medium select-none">Supplier Sign Here</span>
-                        </div>
-                    </div>
-
-                    <div v-else class="border-2 border-dashed border-purple-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[140px]">
-                      <input type="file" accept="image/*" class="hidden" ref="reactivateSigFileInput" @change="handleSignatureUpload($event, 'reactivate')" />
-                      <div v-if="uploadedReactivateSigUrl" class="flex flex-col items-center gap-2">
-                        <img :src="uploadedReactivateSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
-                        <Button type="button" variant="outline" size="sm" @click="uploadedReactivateSigUrl = ''; uploadedReactivateSigBase64 = ''">Remove file</Button>
-                      </div>
-                      <Button v-else type="button" variant="outline" @click="$refs.reactivateSigFileInput.click()">
-                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
-                      </Button>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <Button variant="outline" @click="initiateReactivateReject" class="bg-red-50 text-red-700 border-red-200 hover:bg-red-100">Decline Reactivation</Button>
-                    <Button :disabled="((reactivateSignatureMode === 'draw' && !hasDrawnReactivate) || (reactivateSignatureMode === 'upload' && !uploadedReactivateSigBase64)) || isProcessing" @click="submitReactivateApprove" class="bg-purple-600 text-white hover:bg-purple-700">
-                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Sign & Reactivate
-                    </Button>
-                </div>
-            </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog :open="showTermSignatureDialog" @update:open="showTermSignatureDialog = $event">
-      <DialogContent class="max-w-5xl h-[100dvh] sm:h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
-        <DialogHeader class="p-4 border-b bg-white shrink-0">
-          <DialogTitle class="flex items-center justify-between w-full pr-6 gap-3">
-             <span class="flex items-center gap-2 text-slate-800">
-                <Ban class="h-5 w-5 text-red-600" />
-                Partnership Termination Document
-             </span>
-             <Button v-if="selectedRequest?.status === 'terminated' || selectedRequest?.status === 'disconnected'" variant="outline" size="sm" @click="downloadTerminationDoc" class="text-indigo-600 hover:text-indigo-700 border-indigo-200 bg-indigo-50 shrink-0">
-                <Download class="h-4 w-4 mr-2" /> Download Final Document
-            </Button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div class="flex-1 overflow-hidden p-4 relative bg-slate-100 overflow-y-auto">
-            <div v-if="loadingTermDoc" class="h-full flex flex-col items-center justify-center text-slate-500">
-                <Loader2 class="h-8 w-8 animate-spin mb-2 text-red-500" />
-                <p>Retrieving official document...</p>
-            </div>
-            <div v-else-if="terminationHtml" class="bg-white rounded-lg shadow-sm border border-slate-200 h-full overflow-y-auto p-6" v-html="terminationHtml"></div>
-            <div v-else class="flex flex-col h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
-                <FileX class="h-12 w-12 text-slate-300 mb-2" />
-                <p>Termination document not found.</p>
-            </div>
-        </div>
-
-        <div v-if="selectedRequest?.status === 'pending_termination'" class="p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-10 max-h-[40vh] overflow-y-auto">
-            <div class="flex flex-col gap-4 max-w-4xl mx-auto">
-                <div class="p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-4">
-                     <div class="h-16 w-32 bg-white border flex items-center justify-center shrink-0">
-                         <img :src="selectedRequest.distributor_termination_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                     </div>
-                     <p class="text-sm text-red-800 font-medium">Distributor has initiated termination and applied their signature. Please countersign to officially end the partnership or decline to stay active.</p>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <PenTool class="h-4 w-4 text-red-600" /> Countersign to Finalize Termination
-                        </label>
-                        <div class="flex items-center gap-2">
-                          <button @click="termSignatureMode = 'draw'" :class="{'text-red-600 font-bold border-b-2 border-red-600': termSignatureMode === 'draw'}" class="text-xs px-2 pb-1">Draw Pad</button>
-                          <button @click="termSignatureMode = 'upload'" :class="{'text-red-600 font-bold border-b-2 border-red-600': termSignatureMode === 'upload'}" class="text-xs px-2 pb-1">Upload File</button>
-                          <Button v-if="termSignatureMode === 'draw'" variant="ghost" size="sm" @click="clearTermSignature">Clear Pad</Button>
-                        </div>
-                    </div>
-                    
-                    <div v-if="termSignatureMode === 'draw'" class="border-2 border-dashed border-red-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="termCanvasContainer">
-                        <canvas 
-                            ref="termSignatureCanvas" 
-                            class="w-full h-[140px] cursor-crosshair touch-none"
-                            @mousedown="startTermDrawing" @mousemove="drawTerm" @mouseup="stopTermDrawing" @mouseleave="stopTermDrawing"
-                            @touchstart.prevent="startTermDrawing" @touchmove.prevent="drawTerm" @touchend.prevent="stopTermDrawing"
-                        ></canvas>
-                        <div v-if="!hasDrawnTerm" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
-                            <span class="text-slate-400 font-medium select-none">Supplier Sign Here</span>
-                        </div>
-                    </div>
-
-                    <div v-else class="border-2 border-dashed border-red-300 rounded-lg bg-slate-50 p-6 flex flex-col items-center justify-center min-h-[140px]">
-                      <input type="file" accept="image/*" class="hidden" ref="termSigFileInput" @change="handleSignatureUpload($event, 'termination')" />
-                      <div v-if="uploadedTermSigUrl" class="flex flex-col items-center gap-2">
-                        <img :src="uploadedTermSigUrl" class="h-[100px] object-contain border p-2 bg-white rounded shadow-sm" />
-                        <Button type="button" variant="outline" size="sm" @click="uploadedTermSigUrl = ''; uploadedTermSigBase64 = ''">Remove file</Button>
-                      </div>
-                      <Button v-else type="button" variant="outline" @click="$refs.termSigFileInput.click()">
-                        <Download class="h-4 w-4 mr-2" /> Choose Signature Image
-                      </Button>
-                    </div>
-                </div>
-                
-                <div class="flex justify-end gap-3 pt-2">
-                    <Button variant="outline" @click="initiateTermReject" class="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100">Decline Termination</Button>
-                    <Button :disabled="((termSignatureMode === 'draw' && !hasDrawnTerm) || (termSignatureMode === 'upload' && !uploadedTermSigBase64)) || isProcessing" @click="submitTermApprove" class="bg-red-600 text-white hover:bg-red-700">
-                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Sign & End Partnership
-                    </Button>
-                </div>
-            </div>
-        </div>
-
-        <div v-else-if="selectedRequest?.status === 'terminated' || selectedRequest?.status === 'disconnected'" class="p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-10 max-h-[40vh] overflow-y-auto">
-             <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">Official Termination Signatures</h4>
-             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <div class="flex flex-col items-center justify-center border border-slate-200 p-4 rounded-xl bg-slate-50 relative">
-                    <Badge class="absolute -top-3 left-4 bg-indigo-100 text-indigo-700 border border-indigo-200">Distributor</Badge>
-                    <div class="h-20 w-full flex items-center justify-center mt-2">
-                        <img :src="selectedRequest.distributor_termination_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                    </div>
-                    <Separator class="my-3 w-3/4 bg-slate-300" />
-                    <p class="text-sm font-bold text-slate-800">{{ selectedRequest.distributor?.company_name }}</p>
-                </div>
-                <div class="flex flex-col items-center justify-center border border-slate-200 p-4 rounded-xl bg-slate-50 relative">
-                    <Badge class="absolute -top-3 left-4 bg-blue-100 text-blue-700 border border-blue-200">Supplier</Badge>
-                    <div class="h-20 w-full flex items-center justify-center mt-2">
-                        <img v-if="selectedRequest.supplier_termination_signature_url" :src="selectedRequest.supplier_termination_signature_url" class="max-h-full object-contain mix-blend-multiply opacity-90" />
-                        <span v-else class="text-sm text-slate-400 italic">Signature not found</span>
-                    </div>
-                    <Separator class="my-3 w-3/4 bg-slate-300" />
-                    <p class="text-sm font-bold text-slate-800">Your Business</p>
-                    <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                        <CheckCircle2 class="h-3 w-3 text-emerald-500" /> Ended
-                    </p>
-                </div>
-            </div>
-        </div>
-
       </DialogContent>
     </Dialog>
 
@@ -605,14 +400,10 @@
       </DialogContent>
     </Dialog>
 
-    <!-- Teleport the Chat Drawer to body to break out of Radix Dialog pointer-event traps -->
     <Teleport to="body">
-      <!-- Chat Drawer Overlay -->
       <div v-if="showChatPanel" class="fixed inset-0 bg-slate-900/50 z-[9998] transition-opacity" @click="closeChat"></div>
 
-      <!-- Chat Drawer -->
       <div v-if="showChatPanel" class="fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] flex flex-col transform transition-transform duration-300 pointer-events-auto">
-          <!-- Header -->
           <div class="p-4 border-b bg-slate-50 flex items-center justify-between">
               <div class="flex items-center gap-3">
                   <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
@@ -628,7 +419,6 @@
               </Button>
           </div>
 
-          <!-- Messages Area -->
           <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-100" ref="chatScrollContainer">
               <div v-if="isChatLoading" class="flex justify-center items-center h-full">
                   <Loader2 class="h-6 w-6 animate-spin text-slate-400" />
@@ -648,7 +438,6 @@
               </template>
           </div>
 
-          <!-- Input Area -->
           <div class="p-4 bg-white border-t">
               <form @submit.prevent="sendMessage" class="flex gap-2">
                   <Input v-model="newMessage" placeholder="Type a message..." class="flex-1" :disabled="isSending" />
@@ -671,8 +460,8 @@ import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
   Store, Briefcase, CheckCircle2, XCircle, AlertCircle, MapPin, Phone, Mail, 
-  RefreshCw, RefreshCcw, Search, PenTool, FileText, FileBadge, FileX, Loader2, Clock, Ban,
-  AlertTriangle, Download, MessageSquare, Send, X
+  RefreshCw, Search, PenTool, FileText, FileBadge, FileX, Loader2, Clock, Calendar,
+  Download, MessageSquare, Send, X, Upload
 } from 'lucide-vue-next'
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -684,7 +473,6 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-// State
 const requests = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
@@ -696,7 +484,9 @@ const selectedRequest = ref(null)
 const showViewDialog = ref(false)
 const showOfficialDocDialog = ref(false)
 
-// Chat State
+const showProposeDateDialog = ref(false)
+const proposedDate = ref('')
+
 const showChatPanel = ref(false)
 const chatMessages = ref([])
 const newMessage = ref('')
@@ -706,104 +496,57 @@ const isChatLoading = ref(false)
 const isSending = ref(false)
 const chatScrollContainer = ref(null)
 
-// Reject State
 const showRejectDialog = ref(false)
 const rejectReason = ref('')
 
-// Term Reject State
-const showTermRejectDialog = ref(false)
-const termRejectReason = ref('')
-
-// Reactivate Reject State
-const showReactivateRejectDialog = ref(false)
-const reactivateRejectReason = ref('')
-
-// Document Fetching state
-const terminationHtml = ref('')
-const loadingTermDoc = ref(false)
-
-// Signature Mode States ('draw' | 'upload')
 const signatureMode = ref('draw')
-const termSignatureMode = ref('draw')
-const reactivateSignatureMode = ref('draw')
-
-// Uploaded file variables
 const uploadedSigUrl = ref('')
 const uploadedSigBase64 = ref('')
-const uploadedTermSigUrl = ref('')
-const uploadedTermSigBase64 = ref('')
-const uploadedReactivateSigUrl = ref('')
-const uploadedReactivateSigBase64 = ref('')
-
-// Initial Signature State
 const showSignatureDialog = ref(false)
 const hasDrawn = ref(false)
+const sigFileInput = ref(null)
+
 const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
 let ctx = null
 let isDrawing = false
 
-// Termination Signature State
-const showTermSignatureDialog = ref(false)
-const hasDrawnTerm = ref(false)
-const termSignatureCanvas = ref(null)
-const termCanvasContainer = ref(null)
-let termCtx = null
-let isTermDrawing = false
+const isDateValid = computed(() => {
+    if (!proposedDate.value) return false;
+    const selected = new Date(proposedDate.value);
+    const minDate = new Date();
+    minDate.setMonth(minDate.getMonth() + 1);
+    return selected >= minDate;
+});
 
-// Reactivation Signature State
-const showReactivateSignatureDialog = ref(false)
-const hasDrawnReactivate = ref(false)
-const reactivateSignatureCanvas = ref(null)
-const reactivateCanvasContainer = ref(null)
-let reactivateCtx = null
-let isReactivateDrawing = false
-
-// --- WebSocket Logic ---
 const setupWebsocket = (supplierId) => {
     if (!supplierId) return;
-
     echo.leave(`supplier.${supplierId}.requests`);
-
     echo.private(`supplier.${supplierId}.requests`)
         .listen('.PartnershipRequest.Updated', (e) => {
             const req = e.request;
             const index = requests.value.findIndex(r => r.id === req.id);
-            if (index !== -1) {
-                requests.value.splice(index, 1, req);
-            } else {
-                requests.value.unshift(req);
-                toast.info('Partnership Update', { description: 'A distributor updated a partnership request.' });
-            }
+            if (index !== -1) requests.value.splice(index, 1, req);
+            else { requests.value.unshift(req); toast.info('Partnership Update', { description: 'A distributor updated a partnership request.' }); }
         })
         .listen('.SupplierRequest.Updated', (e) => {
             const req = e.request;
             const index = requests.value.findIndex(r => r.id === req.id);
-            if (index !== -1) {
-                requests.value.splice(index, 1, req);
-            } else {
-                requests.value.unshift(req);
-            }
+            if (index !== -1) requests.value.splice(index, 1, req);
+            else requests.value.unshift(req);
         })
         .listen('.PartnershipMessageSent', (e) => {
             if (showChatPanel.value && (e.message.sender_id === chatPartnerId.value || e.message.receiver_id === chatPartnerId.value)) {
-                if (!chatMessages.value.find(m => m.id === e.message.id)) {
-                    chatMessages.value.push(e.message);
-                    scrollToBottom();
-                }
+                if (!chatMessages.value.find(m => m.id === e.message.id)) { chatMessages.value.push(e.message); scrollToBottom(); }
             } else if (!showChatPanel.value && e.message.receiver_id === currentSupplierId.value) {
                 toast.info('New Message', { description: 'You received a new message from a partner.' });
             }
         });
 }
 
-// --- Chat Logic ---
 const openChat = (req) => {
     if (!req) return;
-    
-    // Crucial fix: Close shadcn dialogs so pointer events aren't trapped
     if (showViewDialog.value) showViewDialog.value = false;
-    
     chatPartnerId.value = req.distributor_id || req.distributor?.id;
     chatPartnerName.value = req.distributor?.company_name || req.distributor?.first_name || 'Distributor';
     showChatPanel.value = true;
@@ -814,84 +557,36 @@ const fetchChatMessages = async () => {
     isChatLoading.value = true;
     try {
         const res = await api.get(`/supplier/distributor-requests/${chatPartnerId.value}/chat`);
-        if (res.data.success) {
-            chatMessages.value = res.data.data;
-            scrollToBottom();
-        }
-    } catch (e) {
-        toast.error('Failed to load chat');
-    } finally {
-        isChatLoading.value = false;
-    }
+        if (res.data.success) { chatMessages.value = res.data.data; scrollToBottom(); }
+    } catch (e) { toast.error('Failed to load chat'); } finally { isChatLoading.value = false; }
 }
 
 const sendMessage = async () => {
     if (!newMessage.value.trim() || isSending.value) return;
     isSending.value = true;
     try {
-        const res = await api.post(`/supplier/distributor-requests/${chatPartnerId.value}/chat`, {
-            message: newMessage.value
-        });
+        const res = await api.post(`/supplier/distributor-requests/${chatPartnerId.value}/chat`, { message: newMessage.value });
         if (res.data.success) {
-            // FIX: Prevent duplication race condition
-            if (!chatMessages.value.find(m => m.id === res.data.data.id)) {
-                chatMessages.value.push(res.data.data);
-                scrollToBottom();
-            }
+            if (!chatMessages.value.find(m => m.id === res.data.data.id)) { chatMessages.value.push(res.data.data); scrollToBottom(); }
             newMessage.value = '';
         }
-    } catch (e) {
-        toast.error('Failed to send message');
-    } finally {
-        isSending.value = false;
-    }
+    } catch (e) { toast.error('Failed to send message'); } finally { isSending.value = false; }
 }
 
-const closeChat = () => {
-    showChatPanel.value = false;
-    chatPartnerId.value = null;
-}
+const closeChat = () => { showChatPanel.value = false; chatPartnerId.value = null; }
+const scrollToBottom = () => { nextTick(() => { if (chatScrollContainer.value) { chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight; } }); }
+const formatTime = (dateStr) => { if (!dateStr) return ''; return new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }) }
+const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
 
-const scrollToBottom = () => {
-    nextTick(() => {
-        if (chatScrollContainer.value) {
-            chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight;
-        }
-    });
-}
-
-const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
-}
-
-// --- File Attachment Handler ---
-const handleSignatureUpload = (event, target) => {
+const handleSignatureUpload = (event) => {
   const file = event.target.files[0]
   if (!file) return
-
-  if (!file.type.startsWith('image/')) {
-    toast.error('Please select an image file.')
-    return
-  }
-
+  if (!file.type.startsWith('image/')) { toast.error('Please select an image file.'); return }
   const reader = new FileReader()
-  reader.onload = (e) => {
-    if (target === 'initial') {
-      uploadedSigUrl.value = e.target.result
-      uploadedSigBase64.value = e.target.result
-    } else if (target === 'termination') {
-      uploadedTermSigUrl.value = e.target.result
-      uploadedTermSigBase64.value = e.target.result
-    } else if (target === 'reactivate') {
-      uploadedReactivateSigUrl.value = e.target.result
-      uploadedReactivateSigBase64.value = e.target.result
-    }
-  }
+  reader.onload = (e) => { uploadedSigUrl.value = e.target.result; uploadedSigBase64.value = e.target.result }
   reader.readAsDataURL(file)
 }
 
-// --- Canvas Initializers ---
 const initCanvas = () => {
   if (!signatureCanvas.value || !canvasContainer.value) return
   signatureCanvas.value.width = canvasContainer.value.clientWidth
@@ -902,26 +597,6 @@ const initCanvas = () => {
   ctx.strokeStyle = '#1e3a8a'
 }
 
-const initTermCanvas = () => {
-  if (!termSignatureCanvas.value || !termCanvasContainer.value) return
-  termSignatureCanvas.value.width = termCanvasContainer.value.clientWidth
-  termSignatureCanvas.value.height = termCanvasContainer.value.clientHeight
-  termCtx = termSignatureCanvas.value.getContext('2d')
-  termCtx.lineWidth = 3
-  termCtx.lineCap = 'round'
-  termCtx.strokeStyle = '#dc2626'
-}
-
-const initReactivateCanvas = () => {
-  if (!reactivateSignatureCanvas.value || !reactivateCanvasContainer.value) return
-  reactivateSignatureCanvas.value.width = reactivateCanvasContainer.value.clientWidth
-  reactivateSignatureCanvas.value.height = reactivateCanvasContainer.value.clientHeight
-  reactivateCtx = reactivateSignatureCanvas.value.getContext('2d')
-  reactivateCtx.lineWidth = 3
-  reactivateCtx.lineCap = 'round'
-  reactivateCtx.strokeStyle = '#9333ea' 
-}
-
 const getCoordinates = (e, canvasObj) => {
   if (!canvasObj) return { x: 0, y: 0 }
   const rect = canvasObj.getBoundingClientRect()
@@ -930,110 +605,39 @@ const getCoordinates = (e, canvasObj) => {
   return { x: clientX - rect.left, y: clientY - rect.top }
 }
 
-// Initial Agreement Drawing
 const startDrawing = (e) => { isDrawing = true; hasDrawn.value = true; const c = getCoordinates(e, signatureCanvas.value); ctx.beginPath(); ctx.moveTo(c.x, c.y) }
 const draw = (e) => { if (!isDrawing) return; const c = getCoordinates(e, signatureCanvas.value); ctx.lineTo(c.x, c.y); ctx.stroke() }
 const stopDrawing = () => { isDrawing = false; if(ctx) ctx.closePath() }
 const clearSignature = () => { if (!ctx) return; ctx.clearRect(0, 0, signatureCanvas.value.width, signatureCanvas.value.height); hasDrawn.value = false }
 
-// Termination Drawing
-const startTermDrawing = (e) => { isTermDrawing = true; hasDrawnTerm.value = true; const c = getCoordinates(e, termSignatureCanvas.value); termCtx.beginPath(); termCtx.moveTo(c.x, c.y) }
-const drawTerm = (e) => { if (!isTermDrawing) return; const c = getCoordinates(e, termSignatureCanvas.value); termCtx.lineTo(c.x, c.y); termCtx.stroke() }
-const stopTermDrawing = () => { isTermDrawing = false; if(termCtx) termCtx.closePath() }
-const clearTermSignature = () => { if (!termCtx) return; termCtx.clearRect(0, 0, termSignatureCanvas.value.width, termSignatureCanvas.value.height); hasDrawnTerm.value = false }
-
-// Reactivation Drawing
-const startReactivateDrawing = (e) => { isReactivateDrawing = true; hasDrawnReactivate.value = true; const c = getCoordinates(e, reactivateSignatureCanvas.value); reactivateCtx.beginPath(); reactivateCtx.moveTo(c.x, c.y) }
-const drawReactivate = (e) => { if (!isReactivateDrawing) return; const c = getCoordinates(e, reactivateSignatureCanvas.value); reactivateCtx.lineTo(c.x, c.y); reactivateCtx.stroke() }
-const stopReactivateDrawing = () => { isReactivateDrawing = false; if(reactivateCtx) reactivateCtx.closePath() }
-const clearReactivateSignature = () => { if (!reactivateCtx) return; reactivateCtx.clearRect(0, 0, reactivateSignatureCanvas.value.width, reactivateSignatureCanvas.value.height); hasDrawnReactivate.value = false }
-
 watch(showSignatureDialog, async (newVal) => { 
   if (newVal) { 
-    hasDrawn.value = false; 
-    uploadedSigUrl.value = ''; 
-    uploadedSigBase64.value = '';
-    if(signatureMode.value === 'draw') {
-      await nextTick(); 
-      setTimeout(initCanvas, 50) 
-    }
+    hasDrawn.value = false; uploadedSigUrl.value = ''; uploadedSigBase64.value = '';
+    if(signatureMode.value === 'draw') { await nextTick(); setTimeout(initCanvas, 50) }
   }
 })
-watch(signatureMode, async (newVal) => {
-  if (newVal === 'draw') {
-    await nextTick();
-    setTimeout(initCanvas, 50)
-  }
-})
+watch(signatureMode, async (newVal) => { if (newVal === 'draw') { await nextTick(); setTimeout(initCanvas, 50) } })
 
-watch(showTermSignatureDialog, async (newVal) => { 
-  if (newVal && selectedRequest.value?.status === 'pending_termination') { 
-    hasDrawnTerm.value = false; 
-    uploadedTermSigUrl.value = '';
-    uploadedTermSigBase64.value = '';
-    if(termSignatureMode.value === 'draw') {
-      await nextTick(); 
-      setTimeout(initTermCanvas, 50) 
-    }
-  }
-})
-watch(termSignatureMode, async (newVal) => {
-  if (newVal === 'draw' && selectedRequest.value?.status === 'pending_termination') {
-    await nextTick();
-    setTimeout(initTermCanvas, 50)
-  }
-})
-
-watch(showReactivateSignatureDialog, async (newVal) => { 
-  if (newVal && selectedRequest.value?.status === 'pending_reactivation') { 
-    hasDrawnReactivate.value = false; 
-    uploadedReactivateSigUrl.value = '';
-    uploadedReactivateSigBase64.value = '';
-    if(reactivateSignatureMode.value === 'draw') {
-      await nextTick(); 
-      setTimeout(initReactivateCanvas, 50) 
-    }
-  }
-})
-watch(reactivateSignatureMode, async (newVal) => {
-  if (newVal === 'draw' && selectedRequest.value?.status === 'pending_reactivation') {
-    await nextTick();
-    setTimeout(initReactivateCanvas, 50)
-  }
-})
-
-
-// --- API Logic ---
 const fetchRequests = async () => {
   loading.value = true
   try {
     const response = await api.get('/supplier/distributor-requests')
     if (response.data.success) {
       requests.value = response.data.data
-      
-      if (response.data.supplier_id) {
-          currentSupplierId.value = response.data.supplier_id;
-          setupWebsocket(response.data.supplier_id);
-      }
+      if (response.data.supplier_id) { currentSupplierId.value = response.data.supplier_id; setupWebsocket(response.data.supplier_id); }
     }
-  } catch (error) {
-    toast.error('Failed to load records')
-  } finally {
-    loading.value = false
-  }
+  } catch (error) { toast.error('Failed to load records') } finally { loading.value = false }
 }
 
 const pendingRequestsCount = computed(() => requests.value.filter(r => r.status === 'pending_supplier').length)
 const activeRequestsCount = computed(() => requests.value.filter(r => r.status === 'active').length)
-const terminationRequestsCount = computed(() => requests.value.filter(r => r.status === 'pending_termination').length)
-const reactivationRequestsCount = computed(() => requests.value.filter(r => r.status === 'pending_reactivation').length)
+const archivedRequestsCount = computed(() => requests.value.filter(r => r.status === 'terminated' || r.status === 'disconnected').length)
 
 const filteredRequests = computed(() => {
   let list = []
   if (activeTab.value === 'pending') list = requests.value.filter(r => r.status === 'pending_supplier')
   else if (activeTab.value === 'active') list = requests.value.filter(r => r.status === 'active')
-  else if (activeTab.value === 'reactivations') list = requests.value.filter(r => r.status === 'pending_reactivation')
-  else if (activeTab.value === 'terminations') list = requests.value.filter(r => r.status === 'pending_termination' || r.status === 'terminated' || r.status === 'disconnected')
+  else if (activeTab.value === 'archived') list = requests.value.filter(r => r.status === 'terminated' || r.status === 'disconnected')
   
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -1044,27 +648,21 @@ const filteredRequests = computed(() => {
 
 const viewRequest = (req) => { selectedRequest.value = req; showViewDialog.value = true }
 const viewOfficialDocument = (req) => { selectedRequest.value = req; showOfficialDocDialog.value = true }
-const viewReactivateDocument = (req) => { selectedRequest.value = req; showReactivateSignatureDialog.value = true }
 
-const viewTerminationDocument = async (req) => { 
-    selectedRequest.value = req; 
-    showTermSignatureDialog.value = true;
-    loadingTermDoc.value = true;
-    terminationHtml.value = '';
-
+const submitProposeDate = async () => {
+    if (!selectedRequest.value || !isDateValid.value) return;
+    isProcessing.value = true;
     try {
-        const response = await api.get(`/supplier/distributor-requests/${req.id}/termination-raw`);
-        if (response.data.success) {
-            terminationHtml.value = response.data.html;
+        const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/propose-date`, { proposed_date: proposedDate.value });
+        if (res.data.success) {
+            showProposeDateDialog.value = false;
+            showViewDialog.value = false;
+            toast.success('Proposal Sent', { description: 'The distributor will review your proposed date.' });
+            fetchRequests();
         }
-    } catch (error) {
-        toast.error('Failed to load termination document');
-    } finally {
-        loadingTermDoc.value = false;
-    }
+    } catch (err) { toast.error('Action Failed') } finally { isProcessing.value = false; }
 }
 
-// Initial Actions
 const initiateApprove = () => { showViewDialog.value = false; showSignatureDialog.value = true }
 const submitApprove = async () => {
   if (!selectedRequest.value) return
@@ -1073,18 +671,15 @@ const submitApprove = async () => {
 
   isProcessing.value = true
   try {
-    const b64 = signatureMode.value === 'draw' 
-      ? signatureCanvas.value.toDataURL('image/png') 
-      : uploadedSigBase64.value
-
+    const b64 = signatureMode.value === 'draw' ? signatureCanvas.value.toDataURL('image/png') : uploadedSigBase64.value
     const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/approve`, { signature_image: b64 })
     if (res.data.success) {
       showSignatureDialog.value = false
       activeTab.value = 'active'
       toast.success('Partnership Activated')
+      fetchRequests();
     }
-  } catch (err) { toast.error('Approval Failed') }
-  finally { isProcessing.value = false }
+  } catch (err) { toast.error('Approval Failed') } finally { isProcessing.value = false }
 }
 
 const initiateReject = () => { rejectReason.value = ''; showViewDialog.value = false; showRejectDialog.value = true }
@@ -1096,154 +691,11 @@ const submitReject = async () => {
     if (res.data.success) {
       showRejectDialog.value = false
       toast.info('Proposal Declined')
+      fetchRequests();
     }
-  } catch (err) { toast.error('Action Failed') }
-  finally { isProcessing.value = false }
+  } catch (err) { toast.error('Action Failed') } finally { isProcessing.value = false }
 }
-
-
-// Termination Actions
-const initiateTermReject = () => {
-    termRejectReason.value = ''
-    showTermSignatureDialog.value = false
-    showTermRejectDialog.value = true
-}
-
-const submitTermReject = async () => {
-  if (!selectedRequest.value) return
-  isProcessing.value = true
-  try {
-    const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/terminate-reject`, { reason: termRejectReason.value })
-    if (res.data.success) {
-      showTermRejectDialog.value = false
-      activeTab.value = 'active'
-      toast.success('Termination Declined, Partnership Restored')
-    }
-  } catch (err) { toast.error('Action Failed') }
-  finally { isProcessing.value = false }
-}
-
-const submitTermApprove = async () => {
-  if (!selectedRequest.value) return
-  if (termSignatureMode.value === 'draw' && !hasDrawnTerm.value) return
-  if (termSignatureMode.value === 'upload' && !uploadedTermSigBase64.value) return
-
-  isProcessing.value = true
-  try {
-    const b64 = termSignatureMode.value === 'draw'
-      ? termSignatureCanvas.value.toDataURL('image/png')
-      : uploadedTermSigBase64.value
-
-    const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/terminate-approve`, { signature_image: b64 })
-    if (res.data.success) {
-      showTermSignatureDialog.value = false
-      toast.success('Partnership Terminated')
-    }
-  } catch (err) { toast.error('Termination Failed') }
-  finally { isProcessing.value = false }
-}
-
-// Reactivation Actions
-const initiateReactivateReject = () => {
-    reactivateRejectReason.value = ''
-    showReactivateSignatureDialog.value = false
-    showReactivateRejectDialog.value = true
-}
-
-const submitReactivateReject = async () => {
-  if (!selectedRequest.value) return
-  isProcessing.value = true
-  try {
-    const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reactivate-reject`, { reason: reactivateRejectReason.value })
-    if (res.data.success) {
-      showReactivateRejectDialog.value = false
-      activeTab.value = 'terminations'
-      toast.success('Reactivation Declined, Kept as Terminated')
-    }
-  } catch (err) { toast.error('Action Failed') }
-  finally { isProcessing.value = false }
-}
-
-const submitReactivateApprove = async () => {
-  if (!selectedRequest.value) return
-  if (reactivateSignatureMode.value === 'draw' && !hasDrawnReactivate.value) return
-  if (reactivateSignatureMode.value === 'upload' && !uploadedReactivateSigBase64.value) return
-
-  isProcessing.value = true
-  try {
-    const b64 = reactivateSignatureMode.value === 'draw'
-      ? reactivateSignatureCanvas.value.toDataURL('image/png')
-      : uploadedReactivateSigBase64.value
-
-    const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/reactivate-approve`, { signature_image: b64 })
-    if (res.data.success) {
-      showReactivateSignatureDialog.value = false
-      activeTab.value = 'active'
-      toast.success('Partnership Reactivated Successfully')
-    }
-  } catch (err) { toast.error('Reactivation Failed') }
-  finally { isProcessing.value = false }
-}
-
-// Download Termination Document
-const downloadTerminationDoc = async () => {
-    if (!selectedRequest.value) return;
-    const toastId = toast.loading('Preparing Final Document...');
-    try {
-        const response = await api.get(`/supplier/distributor-requests/${selectedRequest.value.id}/termination-raw`);
-        if (!response.data.success) throw new Error("Document load failed");
-
-        let htmlContent = response.data.html;
-        let sigHtml = `
-        <div style="margin-top: 60px; padding-top: 30px; border-top: 2px solid #cbd5e1; font-family: 'Helvetica Neue', Arial, sans-serif; page-break-inside: avoid;">
-            <h3 style="text-align: center; color: #dc2626; text-transform: uppercase;">Official Cryptographic Signatures</h3>
-            <div style="display: flex; justify-content: space-around; margin-top: 40px;">
-                <div style="text-align: center; width: 40%;">
-                    <p style="font-weight: bold; margin-bottom: 10px;">Distributor</p>
-                    <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
-                        <img src="${selectedRequest.value.distributor_termination_signature_url}" style="max-height: 100px; max-width: 100%; object-fit: contain;" />
-                    </div>
-                    <hr style="border: 0; border-top: 1px solid #94a3b8; margin: 15px 0;" />
-                </div>
-                <div style="text-align: center; width: 40%;">
-                    <p style="font-weight: bold; margin-bottom: 10px;">Supplier</p>
-                    <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
-                        <img src="${selectedRequest.value.supplier_termination_signature_url}" style="max-height: 100px; max-width: 100%; object-fit: contain;" />
-                    </div>
-                    <hr style="border: 0; border-top: 1px solid #94a3b8; margin: 15px 0;" />
-                </div>
-            </div>
-        </div>`;
-
-        if (htmlContent.includes('</body>')) {
-            htmlContent = htmlContent.replace('</body>', sigHtml + '</body>');
-        } else {
-            htmlContent += sigHtml;
-        }
-
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = `Final_Termination_${selectedRequest.value.distributor?.company_name.replace(/\s+/g, '_')}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-
-        toast.success('Document Downloaded', { id: toastId });
-    } catch (e) {
-        toast.error('Download Failed', { id: toastId });
-    }
-}
-
-const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
 
 onMounted(() => fetchRequests())
-
-onUnmounted(() => {
-    if (currentSupplierId.value) {
-        echo.leave(`supplier.${currentSupplierId.value}.requests`);
-    }
-})
+onUnmounted(() => { if (currentSupplierId.value) echo.leave(`supplier.${currentSupplierId.value}.requests`); })
 </script>

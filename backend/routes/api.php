@@ -398,6 +398,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/partnered-suppliers/{id}/agreement-raw', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getAgreementRaw']);
         Route::post('/partnered-suppliers/{id}/sign', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'signAgreement']);
 
+        Route::post('/partnered-suppliers/{id}/propose-date', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'proposeDate']);
+        Route::post('/partnered-suppliers/{id}/accept-proposed-date', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'acceptProposedDate']);
+        Route::post('/partnered-suppliers/{id}/renew-contract', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'renewContract']);
+
         Route::get('/partnered-suppliers/{id}/termination-raw', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'getTerminationRaw']);
         Route::post('/partnered-suppliers/{id}/terminate', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'terminatePartnership']);
         Route::post('/partnered-suppliers/{id}/reactivate', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'reactivatePartnership']);
@@ -695,6 +699,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'reject']);
+
+            Route::post('/{id}/propose-date', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'proposeDate']);
 
             Route::post('/{id}/terminate-approve', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'approveTermination']);
             Route::post('/{id}/terminate-reject', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'rejectTermination']);

@@ -188,7 +188,7 @@
               <XCircle class="h-4 w-4 mr-2" /> Reject
             </Button>
             <Button class="bg-indigo-600 hover:bg-indigo-700 text-white" @click="initiateApprove">
-              <CheckCircle2 class="h-4 w-4 mr-2" /> Sign & Approve
+              <CheckCircle2 class="h-4 w-4 mr-2" /> Establish Contract
             </Button>
           </div>
         </div>
@@ -226,49 +226,63 @@
     </AlertDialog>
 
     <Dialog :open="showSignatureDialog" @update:open="showSignatureDialog = $event">
-      <DialogContent class="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl">
-        <DialogHeader class="p-4 border-b bg-white shrink-0">
-          <DialogTitle class="flex items-center gap-2 text-slate-800">
-            <FileText class="h-5 w-5 text-indigo-600" />
-            Approve & Sign Agreement - {{ selectedRequest?.supplier?.supplier_requirements?.company_name || selectedRequest?.supplier?.first_name }}
+      <DialogContent class="w-[95vw] max-w-7xl h-[95vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
+        <DialogHeader class="p-4 sm:p-6 border-b bg-white shrink-0">
+          <DialogTitle class="flex items-center gap-2 text-xl sm:text-2xl text-slate-800">
+            <FileText class="h-6 w-6 text-indigo-600" />
+            Set Duration & Sign Agreement - {{ selectedRequest?.supplier?.supplier_requirements?.company_name || selectedRequest?.supplier?.first_name }}
           </DialogTitle>
         </DialogHeader>
         
-        <div class="flex-1 overflow-hidden p-4 relative bg-slate-100">
+        <div class="flex-1 overflow-hidden p-4 sm:p-6 relative bg-slate-100 flex gap-6 min-h-[200px]">
             <iframe 
               v-if="selectedRequest?.agreement_url" 
               :src="selectedRequest.agreement_url" 
               class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
             ></iframe>
-            <div v-else class="flex flex-col h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
+            <div v-else class="flex flex-col w-full h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
                 <FileX class="h-12 w-12 text-slate-300 mb-2" />
                 <p>No digital agreement document was found for this request.</p>
             </div>
         </div>
 
-        <div class="p-4 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
-            <div class="flex flex-col gap-4 max-w-4xl mx-auto">
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <PenTool class="h-4 w-4 text-indigo-600" />
+        <div class="p-4 sm:p-6 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] overflow-x-hidden overflow-y-auto max-h-[50vh]">
+            <div class="flex flex-col md:flex-row gap-6 sm:gap-8 w-full mx-auto">
+                <div class="w-full md:w-1/3">
+                    <label class="text-sm sm:text-base font-semibold text-slate-700 flex items-center gap-2 mb-2 sm:mb-3">
+                        <Calendar class="h-5 w-5 text-indigo-600" />
+                        Contract End Date
+                    </label>
+                    <Input type="date" v-model="contractEndDate" class="w-full text-base sm:text-lg p-2 sm:p-3 h-auto" />
+                    <p v-if="!isDateValid && contractEndDate" class="text-xs text-red-500 mt-1">
+                        Contract must last at least 1 month from today.
+                    </p>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-2 sm:mt-3">
+                        Set an expiration date for this partnership. The supplier can negotiate this date.
+                    </p>
+                </div>
+
+                <div class="w-full md:w-2/3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                        <label class="text-sm sm:text-base font-semibold text-slate-700 flex items-center gap-2">
+                            <PenTool class="h-5 w-5 text-indigo-600" />
                             Draw or Upload Signature
                         </label>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <input type="file" ref="signatureFileInput" accept="image/*" class="hidden" @change="handleSignatureUpload" />
-                            <Button variant="ghost" size="sm" class="h-7 text-xs text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100" @click="signatureFileInput.click()">
-                                <Upload class="h-3 w-3 mr-1" /> Upload Image
+                            <Button variant="ghost" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 shrink-0" @click="signatureFileInput.click()">
+                                <Upload class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Upload Image
                             </Button>
-                            <Button variant="ghost" size="sm" class="h-7 text-xs text-slate-500 hover:text-red-600" @click="clearSignature">
+                            <Button variant="ghost" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm text-slate-500 hover:text-red-600 shrink-0" @click="clearSignature">
                                 Clear Pad
                             </Button>
                         </div>
                     </div>
                     
-                    <div class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative" ref="canvasContainer">
+                    <div class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative w-full h-[180px] sm:h-[220px]" ref="canvasContainer">
                         <canvas 
                             ref="signatureCanvas" 
-                            class="w-full h-[160px] sm:h-[180px] cursor-crosshair touch-none bg-white"
+                            class="w-full h-full cursor-crosshair touch-none bg-white block"
                             @mousedown="startDrawing"
                             @mousemove="draw"
                             @mouseup="stopDrawing"
@@ -279,25 +293,22 @@
                         ></canvas>
                         
                         <div v-if="!hasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
-                            <span class="text-slate-400 font-medium select-none">Sign Here or Upload Image</span>
+                            <span class="text-slate-400 font-medium select-none text-base sm:text-lg">Sign Here or Upload Image</span>
                         </div>
                     </div>
-                    <p class="text-xs text-slate-500 mt-2 text-center">
-                        By signing and submitting, you formally approve this request and legally bind your business to the agreement shown above.
-                    </p>
                 </div>
+            </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <Button variant="outline" class="bg-white border-slate-200 text-slate-700" @click="showSignatureDialog = false">Cancel</Button>
-                    <Button 
-                      :disabled="!hasDrawn || signing" 
-                      @click="submitApprove" 
-                      class="bg-indigo-600 text-white hover:bg-indigo-700 min-w-[140px]"
-                    >
-                        <Loader2 v-if="signing" class="mr-2 h-4 w-4 animate-spin" />
-                        {{ signing ? 'Approving...' : 'Sign & Approve' }}
-                    </Button>
-                </div>
+            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-4 sm:mt-6 w-full mx-auto">
+                <Button variant="outline" class="bg-white border-slate-200 text-slate-700 px-6 w-full sm:w-auto" @click="showSignatureDialog = false">Cancel</Button>
+                <Button 
+                  :disabled="!hasDrawn || !isDateValid || signing" 
+                  @click="submitApprove" 
+                  class="bg-indigo-600 text-white hover:bg-indigo-700 min-w-[200px] px-6 w-full sm:w-auto"
+                >
+                    <Loader2 v-if="signing" class="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    {{ signing ? 'Approving...' : 'Sign & Submit to Supplier' }}
+                </Button>
             </div>
         </div>
       </DialogContent>
@@ -313,61 +324,20 @@ import api from '@/utils/axios'
 import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
-  Building2,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  User as UserIcon,
-  Phone,
-  Mail,
-  Calendar,
-  MessageSquare,
-  RefreshCw,
-  Search,
-  PenTool,
-  FileText,
-  FileX,
-  Loader2,
-  Package,
-  Upload
+  Building2, Clock, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Calendar,
+  RefreshCw, Search, PenTool, FileText, FileX, Loader2, Package, Upload
 } from 'lucide-vue-next'
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const router = useRouter()
 const route = useRoute()
 
-// State
 const requests = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
@@ -376,35 +346,38 @@ const currentDistributorId = ref(null)
 const selectedRequest = ref(null)
 const showViewDialog = ref(false)
 
-// Reject State
 const showRejectDialog = ref(false)
 const rejectReason = ref('')
 const isRejecting = ref(false)
 
-// Signature & Approve State
 const showSignatureDialog = ref(false)
 const signing = ref(false)
 const hasDrawn = ref(false)
 const signatureFileInput = ref(null)
 
-// Canvas State
 const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
 let ctx = null
 let isDrawing = false
 
-// --- Routing ---
+const contractEndDate = ref('')
+
+const isDateValid = computed(() => {
+    if (!contractEndDate.value) return false;
+    const selected = new Date(contractEndDate.value);
+    const minDate = new Date();
+    minDate.setMonth(minDate.getMonth() + 1);
+    return selected >= minDate;
+});
+
 const viewSupplierProducts = (id) => {
     const basePath = route.path.startsWith('/special-rbac') ? '/special-rbac' : '/distributor';
     router.push(`${basePath}/SupplierProducts/${id}`);
 }
 
-// --- Websocket Setup ---
 const setupWebsocket = (distributorId) => {
     if (!distributorId) return;
-
     echo.leave(`distributor.${distributorId}.requests`);
-
     echo.private(`distributor.${distributorId}.requests`)
         .listen('.PartnershipRequest.Created', (e) => {
             const req = e.request;
@@ -421,13 +394,10 @@ const setupWebsocket = (distributorId) => {
         });
 }
 
-// --- Canvas Logic ---
 const initCanvas = () => {
   if (!signatureCanvas.value || !canvasContainer.value) return
-  
   signatureCanvas.value.width = canvasContainer.value.clientWidth
   signatureCanvas.value.height = canvasContainer.value.clientHeight
-  
   ctx = signatureCanvas.value.getContext('2d')
   ctx.lineWidth = 3
   ctx.lineCap = 'round'
@@ -438,212 +408,137 @@ const initCanvas = () => {
 const getCoordinates = (e) => {
   if (!signatureCanvas.value) return { x: 0, y: 0 }
   const rect = signatureCanvas.value.getBoundingClientRect()
-  
   const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX
   const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY
-  
-  return {
-    x: clientX - rect.left,
-    y: clientY - rect.top
-  }
+  return { x: clientX - rect.left, y: clientY - rect.top }
 }
 
 const startDrawing = (e) => {
-  isDrawing = true
-  hasDrawn.value = true
-  const coords = getCoordinates(e)
-  ctx.beginPath()
-  ctx.moveTo(coords.x, coords.y)
+  isDrawing = true; hasDrawn.value = true;
+  const coords = getCoordinates(e); ctx.beginPath(); ctx.moveTo(coords.x, coords.y)
 }
-
 const draw = (e) => {
-  if (!isDrawing) return
-  const coords = getCoordinates(e)
-  ctx.lineTo(coords.x, coords.y)
-  ctx.stroke()
+  if (!isDrawing) return;
+  const coords = getCoordinates(e); ctx.lineTo(coords.x, coords.y); ctx.stroke()
 }
-
 const stopDrawing = () => {
-  if (!isDrawing) return
-  isDrawing = false
-  ctx.closePath()
+  if (!isDrawing) return;
+  isDrawing = false; ctx.closePath()
 }
-
 const startDrawingTouch = (e) => startDrawing(e)
 const drawTouch = (e) => draw(e)
-
 const clearSignature = () => {
-  if (!ctx || !signatureCanvas.value) return
-  ctx.clearRect(0, 0, signatureCanvas.value.width, signatureCanvas.value.height)
-  hasDrawn.value = false
+  if (!ctx || !signatureCanvas.value) return;
+  ctx.clearRect(0, 0, signatureCanvas.value.width, signatureCanvas.value.height); hasDrawn.value = false
 }
 
 const handleSignatureUpload = (e) => {
   const file = e.target.files[0]
   if (!file) return
-  
   const reader = new FileReader()
   reader.onload = (event) => {
     const img = new Image()
     img.onload = () => {
       if (!ctx || !signatureCanvas.value) return
-      clearSignature() // Reset canvas before drawing
-      
+      clearSignature()
       const canvas = signatureCanvas.value
       const hRatio = canvas.width / img.width
       const vRatio = canvas.height / img.height
-      
-      // Calculate scaling to perfectly fit inside the canvas bounds
       const ratio = Math.min(hRatio, vRatio) * 0.95 
-      
       const centerShift_x = (canvas.width - img.width * ratio) / 2
       const centerShift_y = (canvas.height - img.height * ratio) / 2
-      
       ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio)
       hasDrawn.value = true
     }
     img.src = event.target.result
   }
   reader.readAsDataURL(file)
-  e.target.value = '' // reset input for subsequent uploads
+  e.target.value = ''
 }
 
 watch(showSignatureDialog, async (newVal) => {
   if (newVal) {
-    hasDrawn.value = false
-    await nextTick()
-    setTimeout(initCanvas, 50) 
+    hasDrawn.value = false;
+    contractEndDate.value = '';
+    await nextTick();
+    setTimeout(initCanvas, 50); 
   }
 })
 
-// --- Data Fetching ---
 const fetchRequests = async () => {
   loading.value = true
   try {
     const response = await api.get('/distributor/partner-requests')
     if (response.data.success) {
       requests.value = response.data.data
-      
       if (response.data.distributor_id) {
           currentDistributorId.value = response.data.distributor_id;
           setupWebsocket(response.data.distributor_id);
       }
     }
-  } catch (error) {
-    console.error('Failed to fetch', error)
-    toast.error('Failed to load requests')
-  } finally {
-    loading.value = false
-  }
+  } catch (error) { toast.error('Failed to load requests') } 
+  finally { loading.value = false }
 }
 
 const filteredRequests = computed(() => {
   if (!searchQuery.value) return requests.value
-  
   const q = searchQuery.value.toLowerCase()
   return requests.value.filter(req => {
     const compName = req.supplier?.supplier_requirements?.company_name?.toLowerCase() || ''
     const creatorName = `${req.creator?.first_name} ${req.creator?.last_name}`.toLowerCase()
-    
     return compName.includes(q) || creatorName.includes(q)
   })
 })
 
-const viewRequest = (req) => {
-  selectedRequest.value = req
-  showViewDialog.value = true
-}
+const viewRequest = (req) => { selectedRequest.value = req; showViewDialog.value = true }
 
-// --- Formatting Helpers ---
-const formatDate = (dateStr) => {
-  return new Date(dateStr).toLocaleDateString('en-PH', {
-    month: 'short', day: 'numeric', year: 'numeric'
-  })
-}
+const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
 
-const formatTime = (dateStr) => {
-  return new Date(dateStr).toLocaleTimeString('en-PH', {
-    hour: '2-digit', minute: '2-digit'
-  })
-}
-
-// --- Action Flows ---
-
-// 1. Approve & Sign Flow
-const initiateApprove = () => {
-  showViewDialog.value = false
-  showSignatureDialog.value = true
-}
+const initiateApprove = () => { showViewDialog.value = false; showSignatureDialog.value = true }
 
 const submitApprove = async () => {
-  if (!selectedRequest.value || !hasDrawn.value || !signatureCanvas.value) return
+  if (!selectedRequest.value || !hasDrawn.value || !signatureCanvas.value || !isDateValid.value) return
   
   signing.value = true
   const signatureBase64 = signatureCanvas.value.toDataURL('image/png')
 
   try {
     const response = await api.post(`/distributor/partner-requests/${selectedRequest.value.id}/approve`, {
-      signature_image: signatureBase64
+      signature_image: signatureBase64,
+      contract_end_date: contractEndDate.value
     })
     
     if (response.data.success) {
       requests.value = requests.value.filter(req => req.id !== selectedRequest.value.id)
-      
-      toast.success('Partnership Approved & Signed', {
-        description: 'The request has been officially forwarded to the supplier.',
-      })
+      toast.success('Partnership Approved & Forwarded', { description: 'The agreement and duration have been sent to the supplier.' })
       showSignatureDialog.value = false
       selectedRequest.value = null
     }
   } catch (error) {
-    console.error(error)
-    toast.error('Approval Failed', {
-      description: error.response?.data?.message || 'Server error occurred.'
-    })
+    toast.error('Approval Failed', { description: error.response?.data?.message || 'Server error occurred.' })
     showViewDialog.value = true
-  } finally {
-    signing.value = false
-  }
+  } finally { signing.value = false }
 }
 
-// 2. Reject Flow
-const initiateReject = () => {
-  rejectReason.value = ''
-  showViewDialog.value = false
-  showRejectDialog.value = true
-}
+const initiateReject = () => { rejectReason.value = ''; showViewDialog.value = false; showRejectDialog.value = true }
 
 const submitReject = async () => {
   if (!selectedRequest.value) return
-  
   isRejecting.value = true
   try {
-    const response = await api.post(`/distributor/partner-requests/${selectedRequest.value.id}/reject`, {
-      reason: rejectReason.value
-    })
-    
+    const response = await api.post(`/distributor/partner-requests/${selectedRequest.value.id}/reject`, { reason: rejectReason.value })
     if (response.data.success) {
       requests.value = requests.value.filter(req => req.id !== selectedRequest.value.id)
       showRejectDialog.value = false
       selectedRequest.value = null
-      
-      toast.info('Request Rejected', {
-        description: 'Internal request has been declined.',
-      })
+      toast.info('Request Rejected', { description: 'Internal request has been declined.' })
     }
-  } catch (error) {
-    console.error(error)
-    toast.error('Action Failed', {
-      description: error.response?.data?.message || 'Server error occurred.'
-    })
-  } finally {
-    isRejecting.value = false
-  }
+  } catch (error) { toast.error('Action Failed', { description: error.response?.data?.message || 'Server error occurred.' }) } 
+  finally { isRejecting.value = false }
 }
 
-onMounted(() => {
-  fetchRequests()
-})
+onMounted(() => fetchRequests())
 
 onUnmounted(() => {
     if (currentDistributorId.value) {
