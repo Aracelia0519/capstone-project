@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use App\Events\Requirements\RequirementStatusUpdated; // <-- Added Import
+use App\Events\Requirements\RequirementStatusUpdated;
 
 class AdminUserController extends Controller
 {
@@ -226,6 +226,7 @@ class AdminUserController extends Controller
             'business_registration_photo_url' => $requirement->business_registration_photo ? Storage::url($requirement->business_registration_photo) : null,
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
+            'resubmission_count' => $requirement->resubmission_count ?? 0,
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
             'is_complete' => $requirement->getIsCompleteAttribute(),
@@ -266,6 +267,7 @@ class AdminUserController extends Controller
             
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
+            'resubmission_count' => $requirement->resubmission_count ?? 0,
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
             'is_complete' => $requirement->is_complete,
@@ -286,6 +288,7 @@ class AdminUserController extends Controller
             'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
+            'resubmission_count' => $requirement->resubmission_count ?? 0,
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
         ];
@@ -307,6 +310,7 @@ class AdminUserController extends Controller
             'selfie_with_id_photo_url' => $requirement->getSelfiePhotoUrl(),
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
+            'resubmission_count' => $requirement->resubmission_count ?? 0,
             'submitted_at' => $requirement->submitted_at,
             'reviewed_at' => $requirement->reviewed_at,
         ];
@@ -887,6 +891,73 @@ class AdminUserController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change password',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset resubmission attempts to 0
+     */
+    public function resetResubmission($id)
+    {
+        try {
+            $authUser = Auth::user();
+            if ($authUser->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access. Admin privileges required.'
+                ], 403);
+            }
+
+            $targetUser = User::find($id);
+
+            if (!$targetUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            // Reset based on role
+            switch ($targetUser->role) {
+                case 'client':
+                    if ($targetUser->clientRequirement) {
+                        $targetUser->clientRequirement->resubmission_count = 0;
+                        $targetUser->clientRequirement->save();
+                    }
+                    break;
+                case 'distributor':
+                    if ($targetUser->distributorRequirement) {
+                        $targetUser->distributorRequirement->resubmission_count = 0;
+                        $targetUser->distributorRequirement->save();
+                    }
+                    break;
+                case 'service_provider':
+                    if ($targetUser->serviceProviderRequirement) {
+                        $targetUser->serviceProviderRequirement->resubmission_count = 0;
+                        $targetUser->serviceProviderRequirement->save();
+                    }
+                    break;
+                case 'supplier':
+                    $supplierRequirement = SupplierRequirements::where('user_id', $targetUser->id)->first();
+                    if ($supplierRequirement) {
+                        $supplierRequirement->resubmission_count = 0;
+                        $supplierRequirement->save();
+                    }
+                    break;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Resubmission count reset to 0 for {$targetUser->full_name}.",
+                'user' => $this->transformUser($targetUser)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reset resubmission count',
                 'error' => $e->getMessage()
             ], 500);
         }

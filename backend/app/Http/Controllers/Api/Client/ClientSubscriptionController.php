@@ -380,4 +380,17 @@ class ClientSubscriptionController extends Controller
             return response()->json(['success' => false, 'message' => 'Verification process failed: ' . $e->getMessage()], 500);
         }
     }
+
+    // ----- ADDED: Subscription History Fetch Method -----
+    public function getSubscriptionHistory(Request $request)
+    {
+        $history = ClientSubscription::where('client_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $history
+        ]);
+    }
 }

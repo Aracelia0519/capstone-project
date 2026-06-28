@@ -199,8 +199,12 @@
                 
                 <TableCell class="text-right">
                   <div class="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" @click="viewUser(user)" class="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50">
-                      <i class="fas fa-eye text-xs">View</i>
+                    <!-- Support Chat Action Button -->
+                    <Button variant="ghost" size="icon" @click="openAdminChat(user)" class="h-8 w-8 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50" title="Message User">
+                      <i class="fas fa-comment-dots text-xs"></i>
+                    </Button>
+                    <Button variant="ghost" size="icon" @click="viewUser(user)" class="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="View User Details">
+                      <i class="fas fa-eye text-xs"></i>
                     </Button>
                   </div>
                 </TableCell>
@@ -248,6 +252,7 @@
       </CardContent>
     </Card>
 
+    <!-- Modal User Views and Actions Go Here -->
     <Dialog :open="showViewModal" @update:open="closeViewModal">
       <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -267,9 +272,14 @@
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="icon" @click="closeViewModal" class="rounded-full hover:bg-slate-200">
-              <i class="fas fa-times text-slate-500"></i>
-            </Button>
+            <div class="flex items-center gap-2">
+              <Button variant="outline" size="sm" @click="openAdminChat(viewingUser)" class="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+                <i class="fas fa-comment-dots mr-2"></i> Message
+              </Button>
+              <Button variant="ghost" size="icon" @click="closeViewModal" class="rounded-full hover:bg-slate-200">
+                <i class="fas fa-times text-slate-500"></i>
+              </Button>
+            </div>
           </div>
 
           <ScrollArea class="flex-1 p-6 bg-white overflow-y-auto">
@@ -372,11 +382,14 @@
                 </Card>
 
                 <Card>
-                  <CardHeader>
+                  <CardHeader class="flex flex-row items-center justify-between">
                      <CardTitle class="flex items-center gap-2">
                         <i class="fas fa-folder-open text-purple-600"></i>
                         Requirements & Documents
                      </CardTitle>
+                     <Badge v-if="getResubmissionCount(viewingUser) > 0" variant="outline" :class="getResubmissionCount(viewingUser) >= 3 ? 'text-red-600 border-red-200 bg-red-50' : 'text-amber-600 border-amber-200 bg-amber-50'">
+                        Attempts: {{ getResubmissionCount(viewingUser) }} / 3
+                     </Badge>
                   </CardHeader>
                   <CardContent>
                      <div v-if="loadingRequirements" class="flex justify-center py-8">
@@ -389,141 +402,155 @@
 
                      <div v-else class="space-y-6">
 
-  <div v-if="viewingUser.role === 'distributor' && userRequirements.distributor">
-    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
-      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Company Name</Label>
-          <p class="font-medium text-slate-900">{{ userRequirements.distributor.company_name }}</p>
-        </div>
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Registration Number</Label>
-          <p class="font-medium text-slate-900">{{ userRequirements.distributor.business_registration_number }}</p>
-        </div>
-      </div>
-    </div>
+                        <div v-if="getResubmissionCount(viewingUser) >= 3" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                           <div class="flex items-start sm:items-center gap-3 text-red-700">
+                              <i class="fas fa-exclamation-triangle text-xl mt-0.5 sm:mt-0"></i>
+                              <div>
+                                 <p class="font-bold text-sm">Maximum Resubmissions Reached</p>
+                                 <p class="text-xs mt-0.5">This user has reached the maximum of 3 submission attempts and is blocked from submitting further. You can reset their attempts to 0.</p>
+                              </div>
+                           </div>
+                           <Button @click="resetResubmission(viewingUser)" variant="destructive" size="sm" class="shrink-0 whitespace-nowrap shadow-sm hover:shadow-md transition-all">
+                              <i class="fas fa-redo mr-2"></i> Reset to 0
+                           </Button>
+                        </div>
 
-    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-      <i class="fas fa-file-image text-slate-400"></i> Business Documents
-    </h4>
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="(doc, label) in {
-        'Valid ID': userRequirements.distributor.valid_id_photo_url,
-        'DTI Certificate': userRequirements.distributor.dti_certificate_photo_url,
-        'Mayor\'s Permit': userRequirements.distributor.mayor_permit_photo_url,
-        'Barangay Clearance': userRequirements.distributor.barangay_clearance_photo_url,
-        'Business Registration': userRequirements.distributor.business_registration_photo_url
-      }" :key="label">
-        <div v-if="doc" 
-             class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
-             @click="showImageModal(doc, label)">
-          <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
-            <span class="text-white text-xs font-semibold">{{ label }}</span>
-          </div>
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-xl"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+                        <!-- User Type Specific Document Displays -->
+                        <div v-if="viewingUser.role === 'distributor' && userRequirements.distributor">
+                            <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
+                            <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1">
+                                <Label class="text-xs text-slate-500">Company Name</Label>
+                                <p class="font-medium text-slate-900">{{ userRequirements.distributor.company_name }}</p>
+                                </div>
+                                <div class="space-y-1">
+                                <Label class="text-xs text-slate-500">Registration Number</Label>
+                                <p class="font-medium text-slate-900">{{ userRequirements.distributor.business_registration_number }}</p>
+                                </div>
+                            </div>
+                            </div>
 
-  <div v-if="viewingUser.role === 'supplier' && userRequirements.supplier">
-    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
-      <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Company Name</Label>
-          <p class="font-medium text-slate-900">{{ userRequirements.supplier.company_name }}</p>
-        </div>
-        <div class="space-y-1">
-          <Label class="text-xs text-slate-500">Registration Number</Label>
-          <p class="font-medium text-slate-900">{{ userRequirements.supplier.business_registration_number }}</p>
-        </div>
-        <div v-if="userRequirements.supplier.address" class="md:col-span-2 space-y-1">
-          <Label class="text-xs text-slate-500">Business Address</Label>
-          <p class="font-medium text-slate-900">
-            {{ userRequirements.supplier.address.block_address }}, 
-            {{ userRequirements.supplier.address.barangay }}, 
-            {{ userRequirements.supplier.address.city }}, 
-            {{ userRequirements.supplier.address.province }}
-          </p>
-        </div>
-      </div>
-    </div>
+                            <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fas fa-file-image text-slate-400"></i> Business Documents
+                            </h4>
+                            <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="(doc, label) in {
+                                'Valid ID': userRequirements.distributor.valid_id_photo_url,
+                                'DTI Certificate': userRequirements.distributor.dti_certificate_photo_url,
+                                'Mayor\'s Permit': userRequirements.distributor.mayor_permit_photo_url,
+                                'Barangay Clearance': userRequirements.distributor.barangay_clearance_photo_url,
+                                'Business Registration': userRequirements.distributor.business_registration_photo_url
+                            }" :key="label">
+                                <div v-if="doc" 
+                                    class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                                    @click="showImageModal(doc, label)">
+                                <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
+                                    <span class="text-white text-xs font-semibold">{{ label }}</span>
+                                </div>
+                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i class="fas fa-search-plus text-white text-xl"></i>
+                                </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
 
-    <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-      <i class="fas fa-file-image text-slate-400"></i> Business Documents
-    </h4>
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="(doc, label) in {
-        'Valid ID': userRequirements.supplier.valid_id_photo_url,
-        'DTI Certificate': userRequirements.supplier.dti_certificate_photo_url,
-        'Mayor\'s Permit': userRequirements.supplier.mayor_permit_photo_url,
-        'Barangay Clearance': userRequirements.supplier.barangay_clearance_photo_url,
-        'Business Registration': userRequirements.supplier.business_registration_photo_url
-      }" :key="label">
-        <div v-if="doc" 
-             class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
-             @click="showImageModal(doc, label)">
-          <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
-            <span class="text-white text-xs font-semibold">{{ label }}</span>
-          </div>
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <i class="fas fa-search-plus text-white text-xl"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+                        <div v-if="viewingUser.role === 'supplier' && userRequirements.supplier">
+                            <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6">
+                            <h4 class="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Business Information</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1">
+                                <Label class="text-xs text-slate-500">Company Name</Label>
+                                <p class="font-medium text-slate-900">{{ userRequirements.supplier.company_name }}</p>
+                                </div>
+                                <div class="space-y-1">
+                                <Label class="text-xs text-slate-500">Registration Number</Label>
+                                <p class="font-medium text-slate-900">{{ userRequirements.supplier.business_registration_number }}</p>
+                                </div>
+                                <div v-if="userRequirements.supplier.address" class="md:col-span-2 space-y-1">
+                                <Label class="text-xs text-slate-500">Business Address</Label>
+                                <p class="font-medium text-slate-900">
+                                    {{ userRequirements.supplier.address.block_address }}, 
+                                    {{ userRequirements.supplier.address.barangay }}, 
+                                    {{ userRequirements.supplier.address.city }}, 
+                                    {{ userRequirements.supplier.address.province }}
+                                </p>
+                                </div>
+                            </div>
+                            </div>
 
-  <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider)">
-    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6 flex items-center justify-between">
-      <div class="space-y-1">
-        <Label class="text-xs text-slate-500">ID Type</Label>
-        <p class="font-medium text-slate-900">
-          {{ viewingUser.role === 'client' ? (userRequirements.client.valid_id_type_display || userRequirements.client.valid_id_type) : 
-             (userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type) }}
-        </p>
-      </div>
-      <div class="space-y-1 text-right">
-        <Label class="text-xs text-slate-500">ID Number</Label>
-        <p class="font-medium text-slate-900 font-mono">
-          {{ viewingUser.role === 'client' ? userRequirements.client.id_number : 
-             userRequirements.service_provider.id_number }}
-        </p>
-      </div>
-    </div>
+                            <h4 class="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fas fa-file-image text-slate-400"></i> Business Documents
+                            </h4>
+                            <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="(doc, label) in {
+                                'Valid ID': userRequirements.supplier.valid_id_photo_url,
+                                'DTI Certificate': userRequirements.supplier.dti_certificate_photo_url,
+                                'Mayor\'s Permit': userRequirements.supplier.mayor_permit_photo_url,
+                                'Barangay Clearance': userRequirements.supplier.barangay_clearance_photo_url,
+                                'Business Registration': userRequirements.supplier.business_registration_photo_url
+                            }" :key="label">
+                                <div v-if="doc" 
+                                    class="group relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md transition-all"
+                                    @click="showImageModal(doc, label)">
+                                <img :src="doc" :alt="label" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-3 opacity-100 transition-opacity">
+                                    <span class="text-white text-xs font-semibold">{{ label }}</span>
+                                </div>
+                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i class="fas fa-search-plus text-white text-xl"></i>
+                                </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div v-if="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url">
-        <h6 class="text-sm font-medium text-slate-700 mb-3">Valid ID</h6>
-        <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
-             @click="showImageModal(viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url, 'Valid ID')">
-          <img :src="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url" class="w-full h-48 object-cover">
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <i class="fas fa-expand text-white text-xl"></i>
-          </div>
-        </div>
-      </div>
+                        <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider)">
+                            <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6 flex items-center justify-between">
+                            <div class="space-y-1">
+                                <Label class="text-xs text-slate-500">ID Type</Label>
+                                <p class="font-medium text-slate-900">
+                                {{ viewingUser.role === 'client' ? (userRequirements.client.valid_id_type_display || userRequirements.client.valid_id_type) : 
+                                    (userRequirements.service_provider.valid_id_type_display || userRequirements.service_provider.valid_id_type) }}
+                                </p>
+                            </div>
+                            <div class="space-y-1 text-right">
+                                <Label class="text-xs text-slate-500">ID Number</Label>
+                                <p class="font-medium text-slate-900 font-mono">
+                                {{ viewingUser.role === 'client' ? userRequirements.client.id_number : 
+                                    userRequirements.service_provider.id_number }}
+                                </p>
+                            </div>
+                            </div>
 
-      <div v-if="viewingUser.role === 'service_provider' && userRequirements.service_provider.selfie_with_id_photo_url">
-        <h6 class="text-sm font-medium text-slate-700 mb-3">Selfie with ID</h6>
-        <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
-             @click="showImageModal(userRequirements.service_provider.selfie_with_id_photo_url, 'Selfie with ID')">
-          <img :src="userRequirements.service_provider.selfie_with_id_photo_url" class="w-full h-48 object-cover">
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <i class="fas fa-expand text-white text-xl"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div v-if="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url">
+                                <h6 class="text-sm font-medium text-slate-700 mb-3">Valid ID</h6>
+                                <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
+                                    @click="showImageModal(viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url, 'Valid ID')">
+                                <img :src="viewingUser.role === 'client' ? userRequirements.client.valid_id_photo_url : userRequirements.service_provider.valid_id_photo_url" class="w-full h-48 object-cover">
+                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i class="fas fa-expand text-white text-xl"></i>
+                                </div>
+                                </div>
+                            </div>
 
-</div>
+                            <div v-if="viewingUser.role === 'service_provider' && userRequirements.service_provider.selfie_with_id_photo_url">
+                                <h6 class="text-sm font-medium text-slate-700 mb-3">Selfie with ID</h6>
+                                <div class="group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer shadow-sm hover:shadow-md"
+                                    @click="showImageModal(userRequirements.service_provider.selfie_with_id_photo_url, 'Selfie with ID')">
+                                <img :src="userRequirements.service_provider.selfie_with_id_photo_url" class="w-full h-48 object-cover">
+                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <i class="fas fa-expand text-white text-xl"></i>
+                                </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -787,6 +814,55 @@
       </div>
     </Dialog>
 
+    <!-- Admin Support Chat Slide-over Panel -->
+    <transition name="slide-right">
+      <div v-if="showAdminChat" class="fixed inset-y-0 right-0 z-[100] w-full sm:w-96 bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+        <!-- Chat Header -->
+        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" :style="{ backgroundColor: activeChatUser?.avatar_color || '#4f46e5' }">
+              {{ activeChatUser?.initials || 'U' }}
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900">{{ activeChatUser?.full_name }}</h3>
+              <p class="text-xs text-slate-500">{{ activeChatUser?.role_display }}</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" @click="closeAdminChat" class="text-slate-500 hover:bg-slate-200 rounded-full">
+            <i class="fas fa-times"></i>
+          </Button>
+        </div>
+        
+        <!-- Chat Messages -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50" ref="adminChatContainer">
+          <div v-if="adminChatLoading" class="flex justify-center items-center h-full">
+             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+          <div v-else-if="adminChatMessages.length === 0" class="text-center text-slate-500 text-sm mt-10 flex flex-col items-center">
+            <i class="fas fa-comments text-4xl mb-3 text-slate-300"></i>
+            <p>No messages yet.</p>
+            <p class="text-xs mt-1">Start a conversation with {{ activeChatUser?.first_name }}!</p>
+          </div>
+          <div v-else v-for="msg in adminChatMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === activeChatUser.id ? 'items-start' : 'items-end'">
+            <div class="max-w-[80%] p-3 rounded-2xl text-sm shadow-sm" :class="msg.sender_id === activeChatUser.id ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-none' : 'bg-blue-600 text-white rounded-tr-none'">
+              {{ msg.message }}
+            </div>
+            <span class="text-[10px] text-slate-400 mt-1 mx-1">{{ formatDateTime(msg.created_at) }}</span>
+          </div>
+        </div>
+        
+        <!-- Chat Input Form -->
+        <div class="p-4 border-t border-slate-100 bg-white">
+          <form @submit.prevent="sendAdminChatMessage" class="flex gap-2">
+            <Input v-model="newAdminChatMessage" placeholder="Type your message..." class="flex-1 rounded-full bg-slate-50 border-slate-200 focus-visible:ring-blue-500" />
+            <Button type="submit" :disabled="!newAdminChatMessage.trim() || sendingAdminMessage" class="rounded-full w-10 h-10 p-0 bg-blue-600 hover:bg-blue-700 text-white shrink-0">
+              <i class="fas fa-paper-plane" :class="{'fa-spinner fa-spin': sendingAdminMessage}"></i>
+            </Button>
+          </form>
+        </div>
+      </div>
+    </transition>
+
     <AlertDialog :open="alertDialog.open" @update:open="alertDialog.open = $event">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -889,6 +965,14 @@ export default {
         to: 0
       },
       
+      // Admin Chat States
+      showAdminChat: false,
+      activeChatUser: null,
+      adminChatMessages: [],
+      newAdminChatMessage: '',
+      adminChatLoading: false,
+      sendingAdminMessage: false,
+
       // Wizard Data
       addUserStep: 1,
       validationErrors: {},
@@ -993,6 +1077,9 @@ export default {
   },
   beforeUnmount() {
       echo.leave('admin.requirements');
+      if (this.activeChatUser) {
+          echo.leave(`support.user.${this.activeChatUser.id}`);
+      }
   },
   watch: {
     activeTab() {
@@ -1004,6 +1091,100 @@ export default {
     }
   },
   methods: {
+    // ---- Admin Chat System Methods ----
+    async openAdminChat(user) {
+      if (this.activeChatUser && this.activeChatUser.id !== user.id) {
+          echo.leave(`support.user.${this.activeChatUser.id}`);
+      }
+      this.activeChatUser = user;
+      this.showAdminChat = true;
+      await this.fetchAdminChatMessages();
+      this.setupAdminChatListener(user.id);
+    },
+
+    closeAdminChat() {
+      if (this.activeChatUser) {
+          echo.leave(`support.user.${this.activeChatUser.id}`);
+      }
+      this.showAdminChat = false;
+      this.activeChatUser = null;
+      this.adminChatMessages = [];
+      this.newAdminChatMessage = '';
+    },
+
+    async fetchAdminChatMessages() {
+      if (!this.activeChatUser) return;
+      this.adminChatLoading = true;
+      try {
+        const res = await api.get(`/admin/support/messages/${this.activeChatUser.id}`);
+        if (res.data.status === 'success') {
+          this.adminChatMessages = res.data.messages;
+          this.scrollToBottomAdminChat();
+        }
+      } catch (e) {
+        toast.error('Failed to load chat messages');
+      } finally {
+        this.adminChatLoading = false;
+      }
+    },
+
+    async sendAdminChatMessage() {
+      if (!this.newAdminChatMessage.trim() || this.sendingAdminMessage || !this.activeChatUser) return;
+      const msgText = this.newAdminChatMessage;
+      this.newAdminChatMessage = '';
+      this.sendingAdminMessage = true;
+
+      // Optimistic UI Update
+      const tempId = Date.now();
+      this.adminChatMessages.push({
+          id: tempId,
+          sender_id: 'admin_self', // Helper flag for optimistic UI
+          message: msgText,
+          created_at: new Date().toISOString()
+      });
+      this.scrollToBottomAdminChat();
+
+      try {
+          const res = await api.post(`/admin/support/messages/${this.activeChatUser.id}`, { message: msgText });
+          if (res.data.status === 'success') {
+              const idx = this.adminChatMessages.findIndex(m => m.id === tempId);
+              if (idx !== -1) this.adminChatMessages[idx] = res.data.message_data;
+          }
+      } catch (e) {
+          toast.error('Failed to send message');
+          this.adminChatMessages = this.adminChatMessages.filter(m => m.id !== tempId);
+      } finally {
+          this.sendingAdminMessage = false;
+          this.scrollToBottomAdminChat();
+      }
+    },
+
+    setupAdminChatListener(userId) {
+      echo.private(`support.user.${userId}`)
+        .listen('.SupportMessageSent', (e) => {
+          if (this.activeChatUser && this.activeChatUser.id === userId) {
+              if (e.message.sender_id === userId) {
+                  this.adminChatMessages.push(e.message);
+                  this.scrollToBottomAdminChat();
+              }
+          }
+        });
+    },
+
+    scrollToBottomAdminChat() {
+      this.$nextTick(() => {
+        const container = this.$refs.adminChatContainer;
+        if (container) container.scrollTop = container.scrollHeight;
+      });
+    },
+
+    formatDateTime(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    },
+    // -----------------------------------
+
     confirmAction(title, description, action) {
       this.alertDialog = {
         open: true,
@@ -1136,20 +1317,6 @@ export default {
                         ...user.verification_details,
                         valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
                         selfie_with_id_photo_url: user.verification_details.selfie_with_id_photo ? `${storageUrl}/storage/${user.verification_details.selfie_with_id_photo}` : null
-                      }
-                    };
-                  }
-                  break;
-                case 'supplier':
-                  if (user.verification_details) {
-                    this.userRequirements = {
-                      supplier: {
-                        ...user.verification_details,
-                        valid_id_photo_url: user.verification_details.valid_id_photo ? `${storageUrl}/storage/${user.verification_details.valid_id_photo}` : null,
-                        dti_certificate_photo_url: user.verification_details.dti_certificate_photo ? `${storageUrl}/storage/${user.verification_details.dti_certificate_photo}` : null,
-                        mayor_permit_photo_url: user.verification_details.mayor_permit_photo ? `${storageUrl}/storage/${user.verification_details.mayor_permit_photo}` : null,
-                        barangay_clearance_photo_url: user.verification_details.barangay_clearance_photo ? `${storageUrl}/storage/${user.verification_details.barangay_clearance_photo}` : null,
-                        business_registration_photo_url: user.verification_details.business_registration_photo ? `${storageUrl}/storage/${user.verification_details.business_registration_photo}` : null
                       }
                     };
                   }
@@ -1444,11 +1611,44 @@ export default {
       this.showConfirmPassword = false;
     },
     
-    formatCurrency(amount) {
-      if (!amount) return '₱0.00';
-      return '₱' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    getResubmissionCount(user) {
+      if (!this.userRequirements || !user.role) return 0;
+      const reqs = this.userRequirements[user.role];
+      return reqs ? (reqs.resubmission_count || 0) : 0;
+    },
+
+    resetResubmission(user) {
+      this.confirmAction(
+        'Reset Resubmission Attempts',
+        `Are you sure you want to reset the resubmission attempts for ${user.full_name} to 0? This will allow them to submit their requirements again.`,
+        async () => {
+          try {
+            const response = await api.post(`/admin/users/${user.id}/reset-resubmission`);
+            if (response.data.success) {
+              toast.success(response.data.message || 'Resubmission count reset successfully');
+              await this.fetchUserRequirements(user.id);
+              this.fetchUsers();
+            } else {
+              toast.error(response.data.message || 'Failed to reset resubmission count');
+            }
+          } catch (error) {
+            this.handleError(error);
+          }
+        }
+      );
     },
     
+    formatDate(dateString) {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
     getRoleBadgeClass(role) {
       const classes = {
         'admin': 'border-red-200 bg-red-50 text-red-700 hover:bg-red-50',
@@ -1511,15 +1711,6 @@ export default {
       return classes[status] || 'bg-slate-500';
     },
     
-    getStatusIcon(status) {
-      const icons = {
-        'active': 'fas fa-check-circle text-green-600',
-        'inactive': 'fas fa-times-circle text-red-600',
-        'pending': 'fas fa-clock text-amber-600'
-      };
-      return icons[status] || 'fas fa-question-circle text-slate-600';
-    },
-    
     getVerificationDetails(user) {
       if (!user.verification_details) return '';
       const details = user.verification_details;
@@ -1529,17 +1720,6 @@ export default {
         return details.valid_id_type || '';
       }
       return '';
-    },
-    
-    formatDate(dateString) {
-      if (!dateString) return 'N/A';
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
     },
     
     handleError(error) {
@@ -1575,3 +1755,34 @@ export default {
   }
 }
 </script>
+
+<style>
+/* This imports the missing Font Awesome library so your icons are visible instantly */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+</style>
+
+<style scoped>
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s ease-in-out;
+}
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
+/* Base custom scrollbars for specific sections */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+</style>

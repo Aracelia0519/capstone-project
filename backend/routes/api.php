@@ -100,8 +100,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
 
+        // --- NEW CLIENT SUPPORT CHAT ROUTES ---
+        Route::get('/support/messages', [\App\Http\Controllers\Api\SupportController::class, 'getClientMessages']);
+        Route::post('/support/messages', [\App\Http\Controllers\Api\SupportController::class, 'sendClientMessage']);
+
         Route::prefix('subscription')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'getCurrentSubscription']);
+            Route::get('/history', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'getSubscriptionHistory']); // <-- ADD THIS LINE
             Route::post('/subscribe', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'subscribe']);
             Route::post('/verify', [\App\Http\Controllers\Api\Client\ClientSubscriptionController::class, 'verifyGcashPayment']);
         });
@@ -506,6 +511,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
+
+        // --- NEW ADMIN SUPPORT CHAT ROUTES ---
+        Route::get('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'getAdminMessages']);
+        Route::post('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'sendAdminMessage']);
+
         Route::prefix('users')->group(function () {
             Route::get('/', [AdminUserController::class, 'index']);
             Route::post('/', [AdminUserController::class, 'store']);
@@ -519,6 +529,8 @@ Route::middleware('auth:sanctum')->group(function () {
             
             Route::post('/{id}/approve', [AdminUserController::class, 'approve']);
             Route::post('/{id}/reject', [AdminUserController::class, 'reject']);
+
+            Route::post('/{id}/reset-resubmission', [AdminUserController::class, 'resetResubmission']);
             
         });
     });

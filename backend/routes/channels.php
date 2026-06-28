@@ -324,4 +324,10 @@ Broadcast::channel('distributor.{distributorId}.promotions', function ($user, $d
     return false;
 });
 
+// Admin Support Chat Channel
+Broadcast::channel('support.user.{id}', function ($user, $id) {
+    // Both the Client involved AND the Admin can listen to this channel
+    return (int) $user->id === (int) $id || $user->role === 'admin';
+});
+
 

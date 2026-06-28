@@ -46,6 +46,7 @@ class ClientRequirementController extends Controller
                     'status' => $requirement->status,
                     'status_class' => $requirement->status_class,
                     'rejection_reason' => $requirement->rejection_reason,
+                    'resubmission_count' => $requirement->resubmission_count ?? 0,
                     'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s'),
                     'address' => $requirement->address
@@ -109,15 +110,23 @@ class ClientRequirementController extends Controller
             }
             
             // Check if user already has a pending or approved submission
-            $existing = ClientRequirement::where('user_id', $user->id)
-                ->whereIn('status', ['pending', 'approved'])
-                ->first();
+            $existing = ClientRequirement::where('user_id', $user->id)->first();
                 
             if ($existing) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You already have a ' . $existing->status . ' ID verification submission'
-                ], 400);
+                if (in_array($existing->status, ['pending', 'approved', 'verified'])) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You already have a ' . $existing->status . ' ID verification submission'
+                    ], 400);
+                }
+                
+                // Maximum 3 Submissions Blocker
+                if ($existing->resubmission_count >= 3) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Maximum resubmission attempts reached. Please contact admin via Chat.'
+                    ], 403);
+                }
             }
             
             // Handle file upload
@@ -131,17 +140,15 @@ class ClientRequirementController extends Controller
             // The path to store in database
             $dbFilePath = $folderPath . '/' . $fileName;
             
-            // Create or update client requirement
-            $requirement = ClientRequirement::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'valid_id_type' => $request->id_type,
-                    'id_number' => $request->id_number,
-                    'valid_id_photo' => $dbFilePath,
-                    'status' => 'pending',
-                    'rejection_reason' => null
-                ]
-            );
+            // Create or update client requirement (Using object approach to avoid fillable issues)
+            $requirement = ClientRequirement::firstOrNew(['user_id' => $user->id]);
+            $requirement->valid_id_type = $request->id_type;
+            $requirement->id_number = $request->id_number;
+            $requirement->valid_id_photo = $dbFilePath;
+            $requirement->status = 'pending';
+            $requirement->rejection_reason = null;
+            $requirement->resubmission_count = $existing ? ($existing->resubmission_count + 1) : 1;
+            $requirement->save();
 
             // Create or update address
             ClientAddress::updateOrCreate(
@@ -172,6 +179,7 @@ class ClientRequirementController extends Controller
                     'id_photo_url' => asset('storage/' . $dbFilePath),
                     'status' => $requirement->status,
                     'status_class' => $requirement->status_class,
+                    'resubmission_count' => $requirement->resubmission_count,
                     'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
                     'address' => $requirement->address
                 ]

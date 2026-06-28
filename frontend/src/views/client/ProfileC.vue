@@ -543,15 +543,27 @@
               <p class="text-slate-400 mb-8">
                 {{ getStatusMessage(idVerification.status) }}
               </p>
+
+              <div v-if="idVerification.resubmission_count >= 3" class="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-left">
+                  <div class="flex items-center gap-2 mb-2 font-bold">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      Maximum Attempts Reached
+                  </div>
+                  <p class="text-sm">You have reached the maximum of 3 submission attempts. You cannot submit your requirements anymore. Please contact the administrator via chat to request a reset.</p>
+              </div>
               
               <div v-if="idVerification.status !== 'not_submitted'" class="bg-slate-800/50 rounded-xl p-4 text-left border border-slate-700/50">
                 <div class="flex justify-between py-2 border-b border-slate-700/30">
                   <span class="text-slate-500 text-sm">Submitted On</span>
                   <span class="text-slate-300 font-medium">{{ formatDateTime(idVerification.submittedAt || new Date()) }}</span>
                 </div>
-                <div class="flex justify-between py-2">
+                <div class="flex justify-between py-2 border-b border-slate-700/30">
                   <span class="text-slate-500 text-sm">Reference ID</span>
                   <span class="text-indigo-400 font-mono font-medium">VER-{{ Math.random().toString(36).substr(2, 9).toUpperCase() }}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                  <span class="text-slate-500 text-sm">Attempts Used</span>
+                  <span class="text-slate-300 font-medium">{{ idVerification.resubmission_count }} / 3</span>
                 </div>
               </div>
             </div>
@@ -597,6 +609,7 @@
               @click="restartVerification"
               variant="outline"
               class="border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10"
+              :disabled="idVerification.resubmission_count >= 3"
             >
               Restart
             </Button>
@@ -606,6 +619,68 @@
         </CardContent>
       </Card>
 
+    </div>
+
+    <!-- Floating Chat Widget (Connected to Backend) -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <!-- Chat Window -->
+      <transition name="fade-slide">
+        <div v-if="showAdminChat" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-80 sm:w-96 h-[32rem] mb-4 flex flex-col overflow-hidden">
+          <!-- Chat Header -->
+          <div class="p-4 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-white font-medium text-sm">Admin Support</h3>
+                <p class="text-xs text-emerald-400">Online</p>
+              </div>
+            </div>
+            <button @click="toggleAdminChat" class="text-slate-400 hover:text-white">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <!-- Chat Messages -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesContainer">
+            <div v-if="chatLoading" class="flex justify-center py-4">
+              <svg class="animate-spin h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div v-else-if="chatMessages.length === 0" class="text-center text-slate-500 text-sm mt-10">No messages yet. Start a conversation!</div>
+            <div v-for="msg in chatMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === user.id ? 'items-end' : 'items-start'">
+              <div class="max-w-[80%] p-3 rounded-2xl text-sm" :class="msg.sender_id === user.id ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'">
+                {{ msg.message }}
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1">{{ formatDateTime(msg.created_at) }}</span>
+            </div>
+          </div>
+          <!-- Chat Input -->
+          <div class="p-3 border-t border-slate-800 bg-slate-900">
+            <form @submit.prevent="sendAdminMessage" class="flex gap-2">
+              <input v-model="newChatMessage" type="text" placeholder="Type a message..." class="flex-1 bg-slate-800 border-none rounded-full px-4 text-sm text-white focus:ring-1 focus:ring-indigo-500" />
+              <button type="submit" :disabled="!newChatMessage.trim() || sendingMessage" class="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center text-white disabled:opacity-50">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </transition>
+      
+      <!-- Chat Toggle Button -->
+      <button @click="toggleAdminChat" class="w-14 h-14 bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] flex items-center justify-center text-white hover:bg-indigo-700 hover:scale-105 transition-all">
+        <svg v-if="!showAdminChat" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
+        <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        <span v-if="unreadAdminMessages > 0 && !showAdminChat" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-slate-900">{{ unreadAdminMessages }}</span>
+      </button>
     </div>
 
   </div>
@@ -619,14 +694,10 @@ import echo from '@/utils/websocket'
 // Leaflet
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-// @ts-ignore
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
-// @ts-ignore
 import iconUrl from 'leaflet/dist/images/marker-icon.png'
-// @ts-ignore
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png'
 
-// Shadcn Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -642,12 +713,7 @@ export default {
   name: 'ClientProfile',
   components: {
     Card, CardContent, CardHeader, CardTitle, CardDescription,
-    Button,
-    Input,
-    Label,
-    Textarea,
-    Badge,
-    Progress,
+    Button, Input, Label, Textarea, Badge, Progress,
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
     Toaster
   },
@@ -663,6 +729,15 @@ export default {
       showCurrentPassword: false,
       showNewPassword: false,
       showConfirmPassword: false,
+      
+      // Admin Chat States
+      showAdminChat: false,
+      chatMessages: [],
+      newChatMessage: '',
+      chatLoading: false,
+      sendingMessage: false,
+      unreadAdminMessages: 0,
+
       user: {
         id: null,
         first_name: '',
@@ -731,6 +806,7 @@ export default {
         idPhoto: null,
         idPhotoPreview: '',
         status: 'not_submitted',
+        resubmission_count: 0,
         loading: false,
         error: null,
         errors: {},
@@ -783,6 +859,7 @@ export default {
     },
     
     canProceedToNextStep() {
+      if (this.idVerification.resubmission_count >= 3) return false;
       switch(this.currentStep) {
         case 0:
           return !!(this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude && !this.locationError)
@@ -809,6 +886,7 @@ export default {
             this.idVerification.latitude &&
             this.idVerification.longitude &&
             this.idVerification.status === 'not_submitted' && 
+            this.idVerification.resubmission_count < 3 &&
             !this.locationError
     }
   },
@@ -843,9 +921,80 @@ export default {
   beforeUnmount() {
       if (this.user.id) {
           echo.leave(`user.${this.user.id}.requirements`);
+          echo.leave(`support.user.${this.user.id}`);
       }
   },
   methods: {
+    // ---- Admin Chat Methods ----
+    toggleAdminChat() {
+      this.showAdminChat = !this.showAdminChat;
+      if (this.showAdminChat) {
+        this.unreadAdminMessages = 0;
+        this.fetchAdminMessages();
+      }
+    },
+    async fetchAdminMessages() {
+      this.chatLoading = true;
+      try {
+        const res = await axios.get('/client/support/messages');
+        if (res.data.status === 'success') {
+          this.chatMessages = res.data.messages;
+          this.scrollToBottom();
+        }
+      } catch(e) {
+        console.error('Failed to load support messages', e);
+      } finally {
+        this.chatLoading = false;
+      }
+    },
+    async sendAdminMessage() {
+      if (!this.newChatMessage.trim() || this.sendingMessage) return;
+      const msg = this.newChatMessage;
+      this.newChatMessage = '';
+      this.sendingMessage = true;
+      
+      const tempMsg = {
+        id: Date.now(),
+        sender_id: this.user.id,
+        message: msg,
+        created_at: new Date().toISOString()
+      };
+      this.chatMessages.push(tempMsg);
+      this.scrollToBottom();
+
+      try {
+        const res = await axios.post('/client/support/messages', { message: msg });
+        if (res.data.status === 'success') {
+          const index = this.chatMessages.findIndex(m => m.id === tempMsg.id);
+          if (index !== -1) this.chatMessages[index] = res.data.message_data;
+        }
+      } catch (e) {
+        this.showNotification('Failed to send message', 'error');
+        this.chatMessages = this.chatMessages.filter(m => m.id !== tempMsg.id);
+      } finally {
+        this.sendingMessage = false;
+        this.scrollToBottom();
+      }
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const container = this.$refs.chatMessagesContainer;
+        if (container) container.scrollTop = container.scrollHeight;
+      });
+    },
+    setupChatListener() {
+      if (!this.user.id) return;
+      echo.private(`support.user.${this.user.id}`)
+        .listen('.SupportMessageSent', (e) => {
+          if (e.message.sender_id !== this.user.id) {
+            this.chatMessages.push(e.message);
+            if (!this.showAdminChat) this.unreadAdminMessages++;
+            else this.scrollToBottom();
+          }
+        });
+    },
+    // ----------------------------
+
     evaluateStep(stepIndex) {
       if (this.canProceedToNextStep && this.currentStep === stepIndex) {
         this.wizardSteps[stepIndex].completed = true
@@ -904,6 +1053,11 @@ export default {
     },
     
     restartVerification() {
+      if (this.idVerification.resubmission_count >= 3) {
+          this.showNotification('Maximum submission attempts reached. Cannot restart.', 'error')
+          return
+      }
+
       if (this.idVerification.status !== 'pending') {
         this.currentStep = 0
         this.idVerification.idType = ''
@@ -965,8 +1119,8 @@ export default {
           this.originalUser = JSON.parse(JSON.stringify(this.user))
           this.hasChanges = false
           
-          // Set up WebSocket Listener
           this.setupRequirementsListener();
+          this.setupChatListener();
 
           await this.loadIdVerificationData()
           await this.fetchGcashNumber() 
@@ -1068,6 +1222,7 @@ export default {
           this.idVerification.idType = data.id_type || ''
           this.idVerification.idNumber = data.id_number || ''
           this.idVerification.status = data.status || 'not_submitted'
+          this.idVerification.resubmission_count = data.resubmission_count || 0
           this.idVerification.submittedAt = data.submitted_at || null
           if (data.id_photo_url) this.idVerification.idPhotoPreview = data.id_photo_url
           
@@ -1141,18 +1296,15 @@ export default {
       }, 100);
     },
 
-    // NEW METHOD: Fetches the GeoJSON boundary of Cavite, draws it, and restricts the map view completely
     async drawCaviteBoundary() {
       try {
         const response = await fetch('https://nominatim.openstreetmap.org/search?state=Cavite&country=Philippines&polygon_geojson=1&format=json');
         const data = await response.json();
         
         if (data && data.length > 0) {
-          // Find the result that represents the administrative boundary of the province
           const caviteData = data.find(d => d.class === 'boundary' && d.type === 'administrative') || data[0];
           const geojson = caviteData.geojson;
           
-          // Draw the exact outline shape of Cavite on the map
           this.caviteLayer = L.geoJSON(geojson, {
             style: {
               color: '#4f46e5', // Indigo border
@@ -1163,24 +1315,16 @@ export default {
             }
           }).addTo(this.map);
           
-          // Get the exact bounds of this drawn shape
           const exactBounds = this.caviteLayer.getBounds();
-          
-          // STRICT RESTRICTION: Lock the user's panning directly to these bounds.
-          // pad(0.02) gives a tiny 2% wiggle room so the border line is comfortably visible.
           this.map.setMaxBounds(exactBounds.pad(0.02)); 
-          
-          // Adjust zoom
           this.map.setMinZoom(10);
           
-          // Center nicely if we don't have a pinned address already
           if (!this.idVerification.latitude) {
             this.map.fitBounds(exactBounds);
           }
         }
       } catch (err) {
         console.error('Failed to load exactly boundary for Cavite:', err);
-        // Fallback constraint if API fails
         const fallbackBounds = L.latLngBounds([14.0000, 120.5000], [14.6000, 121.1000]);
         this.map.setMaxBounds(fallbackBounds);
       }
@@ -1371,6 +1515,7 @@ export default {
         
         if (response.data.status === 'success') {
           this.idVerification.status = response.data.id_verification.status
+          this.idVerification.resubmission_count = response.data.id_verification.resubmission_count
           this.idVerification.submittedAt = response.data.id_verification.submitted_at
           
           this.wizardSteps[4].completed = true
@@ -1385,7 +1530,7 @@ export default {
           this.idVerification.errors = error.response.data.errors || {}
           this.showNotification('Please fix validation errors', 'error')
         } else {
-          this.showNotification(error.message || 'Failed to submit', 'error')
+          this.showNotification(error.response?.data?.message || error.message || 'Failed to submit', 'error')
         }
       } finally {
         this.idVerification.loading = false
@@ -1501,6 +1646,15 @@ export default {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
+
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); }
 ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }

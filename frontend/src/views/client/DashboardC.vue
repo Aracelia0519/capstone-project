@@ -6,6 +6,77 @@
       <p class="text-white font-bold text-lg">Processing your subscription...</p>
     </div>
 
+    <!-- History Modal -->
+    <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+      <div class="bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <!-- Modal Header -->
+        <div class="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <History class="w-5 h-5 text-sky-400" />
+            Billing & Subscription History
+          </h2>
+          <button @click="showHistoryModal = false" class="text-slate-400 hover:text-white transition-colors bg-slate-800 hover:bg-slate-700 p-2 rounded-full">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto custom-scrollbar">
+          <div v-if="isLoadingHistory" class="py-10 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+            <span>Loading history...</span>
+          </div>
+          
+          <div v-else-if="!subscriptionHistory.length" class="py-10 text-center text-slate-500">
+            No past subscriptions found on your account.
+          </div>
+          
+          <div v-else class="overflow-x-auto rounded-xl border border-slate-700/50">
+            <Table>
+              <TableHeader class="bg-slate-800/80">
+                <TableRow class="border-slate-700/50 hover:bg-transparent">
+                  <TableHead class="text-slate-300 py-4 font-semibold w-[200px]">Reference No.</TableHead>
+                  <TableHead class="text-slate-300 py-4 font-semibold">Plan</TableHead>
+                  <TableHead class="text-slate-300 py-4 font-semibold">Amount</TableHead>
+                  <TableHead class="text-slate-300 py-4 font-semibold">Start Date</TableHead>
+                  <TableHead class="text-slate-300 py-4 font-semibold">End Date</TableHead>
+                  <TableHead class="text-slate-300 py-4 font-semibold text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow 
+                  v-for="sub in subscriptionHistory" 
+                  :key="sub.id" 
+                  class="border-slate-700/50 hover:bg-slate-800/30 transition-colors"
+                >
+                  <TableCell class="font-mono text-xs text-slate-400">
+                    {{ sub.reference_number }}
+                  </TableCell>
+                  <TableCell class="font-medium text-white capitalize">
+                    {{ sub.plan_name.replace('_', ' ') }}
+                  </TableCell>
+                  <TableCell class="text-slate-300">
+                    ₱{{ parseFloat(sub.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                  </TableCell>
+                  <TableCell class="text-slate-400 text-sm">
+                    {{ formatDate(sub.start_date) }}
+                  </TableCell>
+                  <TableCell class="text-slate-400 text-sm">
+                    {{ formatDate(sub.end_date) }}
+                  </TableCell>
+                  <TableCell class="text-right">
+                    <Badge :class="getSubStatusClass(sub.status)">
+                      {{ sub.status }}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <section class="hero-section relative overflow-hidden rounded-3xl border border-sky-500/10 bg-gradient-to-br from-slate-800/80 to-slate-900/90 p-6 md:p-10 mb-10 shadow-2xl">
       <div class="hero-gradient absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(56,189,248,0.15),transparent_70%)]"></div>
       
@@ -36,6 +107,7 @@
       </div>
     </section>
 
+    <!-- Pricing/Current Subscription Section -->
     <section class="mb-12">
       <div class="text-center mb-8">
         <h2 class="text-3xl md:text-4xl font-black tracking-tighter bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 bg-clip-text text-transparent inline-flex items-center gap-3">
@@ -43,10 +115,18 @@
           Color Mixing Lab Pro
         </h2>
         <p class="text-slate-400 mt-3 max-w-2xl mx-auto">Unlock advanced virtual color mixing, precision harmony palettes, and deep influence analysis to visualize your perfect blend before you buy.</p>
-        <p v-if="currentSubscription" class="mt-4 inline-block bg-slate-800 text-sky-400 font-bold px-4 py-2 rounded-full border border-slate-700">
-          Current Plan: <span class="uppercase tracking-wider">{{ currentSubscription.plan_name.replace('_', ' ') }}</span>
-          <span class="text-xs text-slate-400 font-normal ml-2">Valid until {{ formatDate(currentSubscription.end_date) }}</span>
-        </p>
+        
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <p v-if="currentSubscription" class="inline-block bg-slate-800 text-sky-400 font-bold px-4 py-2 rounded-full border border-slate-700">
+            Current Plan: <span class="uppercase tracking-wider">{{ currentSubscription.plan_name.replace('_', ' ') }}</span>
+            <span class="text-xs text-slate-400 font-normal ml-2">Valid until {{ formatDate(currentSubscription.end_date) }}</span>
+          </p>
+          
+          <Button @click="showHistoryModal = true" variant="outline" class="bg-slate-800/50 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 rounded-full h-10 px-4 transition-all">
+            <History class="w-4 h-4 mr-2 text-sky-400" />
+            Billing History
+          </Button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -143,6 +223,7 @@
       </div>
     </section>
 
+    <!-- Marketing/Info Section -->
     <section class="border-t border-slate-800 pt-12 pb-6">
       <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div class="max-w-3xl">
@@ -249,7 +330,7 @@ import {
   Palette, ClipboardList, ChevronRight, 
   User, Paintbrush2, History, FileText, Info, 
   ShoppingCart, Sparkles, Check, Truck, MessageSquare, 
-  LineChart, Smartphone
+  LineChart, Smartphone, X
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -257,7 +338,10 @@ const route = useRoute()
 
 // --- SUBSCRIPTION STATE ---
 const currentSubscription = ref(null)
+const subscriptionHistory = ref([])
+const isLoadingHistory = ref(false)
 const isProcessingPayment = ref(false)
+const showHistoryModal = ref(false) // NEW State for Modal
 
 const planHierarchy = {
   'starter': 1,
@@ -286,6 +370,9 @@ onMounted(() => {
   } else {
     fetchCurrentSubscription()
   }
+  
+  // Fetch Subscription History on component mount
+  fetchSubscriptionHistory()
 })
 
 // --- API METHODS ---
@@ -298,6 +385,20 @@ const fetchCurrentSubscription = async () => {
     }
   } catch (error) {
     console.error('Error fetching subscription:', error)
+  }
+}
+
+const fetchSubscriptionHistory = async () => {
+  isLoadingHistory.value = true;
+  try {
+    const response = await api.get('/client/subscription/history')
+    if (response.data.success) {
+      subscriptionHistory.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Error fetching subscription history:', error)
+  } finally {
+    isLoadingHistory.value = false;
   }
 }
 
@@ -315,6 +416,7 @@ const handleSubscribe = async (planKey) => {
       } else {
         toast.success(response.data.message);
         await fetchCurrentSubscription();
+        await fetchSubscriptionHistory(); // Refresh history table instantly for Starter plan
         isProcessingPayment.value = false;
       }
     }
@@ -336,44 +438,17 @@ const verifyGcashPayment = async (referenceNumber) => {
       toast.success('Subscription Activated!', { description: response.data.message });
       router.replace({ query: {} }); // Strip the params
       await fetchCurrentSubscription();
+      await fetchSubscriptionHistory(); // Refresh history table
     }
   } catch (error) {
     toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'Payment could not be verified.' });
     router.replace({ query: {} });
     await fetchCurrentSubscription();
+    await fetchSubscriptionHistory();
   } finally {
     isProcessingPayment.value = false;
   }
 }
-
-// --- Original Existing Data State ---
-
-const dashboardStats = reactive({
-  activeProjects: 3,
-  colorsSelected: 8,
-  totalRequests: 5,
-  providersAvailable: 12
-})
-
-const serviceRequests = reactive([
-  { id: 1, type: 'Living Room Painting', serviceProvider: 'John Paint Masters', date: '2024-03-15', status: 'in-progress', progress: 65 },
-  { id: 2, type: 'Exterior House Paint', serviceProvider: 'Cavite Pro Painters', date: '2024-03-20', status: 'pending', progress: 20 },
-  { id: 3, type: 'Kitchen Cabinet Paint', serviceProvider: 'Color Experts PH', date: '2024-03-10', status: 'completed', progress: 100 }
-])
-
-const selectedColors = reactive([
-  { id: 1, name: 'Ocean Breeze', hex: '#38bdf8', rgb: '56, 189, 248', project: 'Bedroom Renovation', date: 'Today' },
-  { id: 2, name: 'Misty Morning', hex: '#c084fc', rgb: '192, 132, 252', project: 'Living Room', date: 'Yesterday' },
-  { id: 3, name: 'Sunset Glow', hex: '#f59e0b', rgb: '245, 158, 11', project: 'Kitchen Accent', date: 'Mar 18' },
-  { id: 4, name: 'Forest Green', hex: '#10b981', rgb: '16, 185, 129', project: 'Study Room', date: 'Mar 15' }
-])
-
-const recentActivity = reactive([
-  { id: 1, type: 'color', description: 'Saved "Sunset Glow" to Lab', project: 'Kitchen Accent', date: 'Today, 10:30 AM', status: 'completed' },
-  { id: 2, type: 'request', description: 'Service request submitted', project: 'Kitchen Cabinet Paint', date: 'Mar 18, 2:15 PM', status: 'in-progress' },
-  { id: 3, type: 'update', description: 'Project status updated', project: 'Living Room Painting', date: 'Mar 17, 4:45 PM', status: 'pending' },
-  { id: 4, type: 'color', description: 'Generated Analogous Palette', project: 'Study Room', date: 'Mar 16, 11:20 AM', status: 'completed' },
-])
 
 // --- Helper Methods ---
 
@@ -388,23 +463,17 @@ const formatDate = (date) => {
   })
 }
 
-const formatStatus = (status) => {
-  const statusMap = { 'pending': 'Pending', 'in-progress': 'In Progress', 'completed': 'Completed' }
-  return statusMap[status] || status
+// Helper to stylize the status badge inside the data table
+const getSubStatusClass = (status) => {
+  const base = 'px-2 py-0.5 uppercase text-[10px] font-bold tracking-wider border ';
+  switch(status.toLowerCase()) {
+    case 'active': return base + 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    case 'expired': return base + 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+    case 'pending': return base + 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    default: return base + 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+  }
 }
 
-const getStatusClass = (status) => {
-  if (status === 'completed') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-  if (status === 'in-progress') return 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-  return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-}
-
-const getActivityIconClass = (type) => {
-  const base = "p-1.5 rounded-md border "
-  if (type === 'color') return base + "bg-purple-500/10 text-purple-400 border-purple-500/20"
-  if (type === 'request') return base + "bg-sky-500/10 text-sky-400 border-sky-500/20"
-  return base + "bg-amber-500/10 text-amber-400 border-amber-500/20"
-}
 </script>
 
 <style scoped>
@@ -415,5 +484,20 @@ const getActivityIconClass = (type) => {
 
 .hero-section {
   backdrop-filter: blur(10px);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.3); 
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.6); 
 }
 </style>

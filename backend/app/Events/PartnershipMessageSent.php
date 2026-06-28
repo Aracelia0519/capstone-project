@@ -1,5 +1,5 @@
 <?php
-
+//Distributor and Supplier
 namespace App\Events;
 
 use App\Models\PartnershipMessage;
