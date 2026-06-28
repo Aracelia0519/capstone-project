@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
 use App\Models\ServiceProvider\ServiceProviderAddress;
 use Illuminate\Support\Str;
-use App\Events\Requirements\RequirementSubmitted; // <-- Imported Event
-use App\Events\Requirements\RequirementStatusUpdated; // <-- Imported Event
+use App\Events\Requirements\RequirementSubmitted; 
+use App\Events\Requirements\RequirementStatusUpdated;
+use App\Models\SupportMessage; // <-- ADDED FOR CHAT
+use App\Events\SupportMessageSent; // <-- ADDED FOR CHAT
 
 class ServiceProviderRequirementController extends Controller
 {
@@ -42,6 +44,7 @@ class ServiceProviderRequirementController extends Controller
                     'submitted_at' => null,
                     'reviewed_at' => null,
                     'rejection_reason' => null,
+                    'resubmission_count' => 0,
                     'id_photo_url' => null,
                     'selfie_photo_url' => null,
                     'address' => null
@@ -58,6 +61,7 @@ class ServiceProviderRequirementController extends Controller
                 'submitted_at' => $requirement->submitted_at,
                 'reviewed_at' => $requirement->reviewed_at,
                 'rejection_reason' => $requirement->rejection_reason,
+                'resubmission_count' => $requirement->resubmission_count ?? 0,
                 'id_photo_url' => $requirement->valid_id_photo 
                     ? asset('storage/' . $requirement->valid_id_photo)
                     : null,
@@ -88,8 +92,9 @@ class ServiceProviderRequirementController extends Controller
         $validator = Validator::make($request->all(), [
             'id_type' => 'required|in:phil_id,passport,driver_license,umid,prc_id,voter_id,postal_id,philhealth,nbi,senior_citizen,other',
             'id_number' => 'required|string|max:50',
-            'id_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
-            'selfie_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+            // Image validation depends on if they are submitting for the first time or replacing files
+            'id_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+            'selfie_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // 5MB
             
             // Address validation strictly enforced to Cavite bounds
             'province' => 'required|string|in:Cavite',
@@ -117,14 +122,35 @@ class ServiceProviderRequirementController extends Controller
 
         // Check if already has pending or approved verification
         $existing = ServiceProviderRequirement::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'verified'])
             ->first();
 
         if ($existing) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You already have a ' . $existing->status . ' ID verification.'
-            ], 400);
+            if (in_array($existing->status, ['pending', 'verified', 'approved'])) {
+                 return response()->json([
+                    'status' => 'error',
+                    'message' => 'You already have a ' . $existing->status . ' ID verification.'
+                ], 400);
+            }
+
+            // Maximum 3 Submissions Blocker
+            if ($existing->resubmission_count >= 3) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Maximum resubmission attempts reached. Please contact admin via Chat.'
+                ], 403);
+            }
+        } else {
+            // Require images for initial submission
+            if (!$request->hasFile('id_photo') || !$request->hasFile('selfie_photo')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Validation failed',
+                    'errors' => [
+                        'id_photo' => ['The ID photo is required.'],
+                        'selfie_photo' => ['The selfie photo is required.']
+                    ]
+                ], 422);
+            }
         }
 
         DB::beginTransaction();
@@ -150,20 +176,29 @@ class ServiceProviderRequirementController extends Controller
                 $selfiePhotoPath = Storage::disk('public')->putFileAs($selfiePhotoFolder, $selfiePhoto, $selfiePhotoName);
             }
 
-            // Create or update requirement
-            $requirement = ServiceProviderRequirement::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'valid_id_type' => $request->id_type,
-                    'id_number' => $request->id_number,
-                    'valid_id_photo' => $idPhotoPath,
-                    'selfie_with_id_photo' => $selfiePhotoPath,
-                    'status' => 'pending',
-                    'submitted_at' => now(),
-                    'reviewed_at' => null,
-                    'rejection_reason' => null
-                ]
-            );
+            // Create or update requirement using firstOrNew to prevent mass assignment array errors if column is new
+            $requirement = ServiceProviderRequirement::firstOrNew(['user_id' => $user->id]);
+            $requirement->valid_id_type = $request->id_type;
+            $requirement->id_number = $request->id_number;
+            
+            if ($idPhotoPath) {
+                $requirement->valid_id_photo = $idPhotoPath;
+            } elseif ($existing && $existing->valid_id_photo) {
+                $requirement->valid_id_photo = $existing->valid_id_photo;
+            }
+
+            if ($selfiePhotoPath) {
+                $requirement->selfie_with_id_photo = $selfiePhotoPath;
+            } elseif ($existing && $existing->selfie_with_id_photo) {
+                $requirement->selfie_with_id_photo = $existing->selfie_with_id_photo;
+            }
+
+            $requirement->status = 'pending';
+            $requirement->submitted_at = now();
+            $requirement->reviewed_at = null;
+            $requirement->rejection_reason = null;
+            $requirement->resubmission_count = $existing ? ($existing->resubmission_count + 1) : 1;
+            $requirement->save();
 
             // Create or update address
             ServiceProviderAddress::updateOrCreate(
@@ -191,8 +226,9 @@ class ServiceProviderRequirementController extends Controller
                     'id_type' => $requirement->valid_id_type,
                     'id_number' => $requirement->id_number,
                     'submitted_at' => $requirement->submitted_at,
-                    'id_photo_url' => $idPhotoPath ? asset('storage/' . $idPhotoPath) : null,
-                    'selfie_photo_url' => $selfiePhotoPath ? asset('storage/' . $selfiePhotoPath) : null,
+                    'resubmission_count' => $requirement->resubmission_count,
+                    'id_photo_url' => $requirement->valid_id_photo ? asset('storage/' . $requirement->valid_id_photo) : null,
+                    'selfie_photo_url' => $requirement->selfie_with_id_photo ? asset('storage/' . $requirement->selfie_with_id_photo) : null,
                     'address' => $requirement->address
                 ]
             ]);
@@ -249,6 +285,7 @@ class ServiceProviderRequirementController extends Controller
                     'status' => $requirement->status,
                     'submitted_at' => $requirement->submitted_at,
                     'reviewed_at' => $requirement->reviewed_at,
+                    'resubmission_count' => $requirement->resubmission_count ?? 0,
                     'address' => $requirement->address
                 ];
             });
@@ -317,6 +354,7 @@ class ServiceProviderRequirementController extends Controller
                     'id_number' => $requirement->id_number,
                     'status' => $requirement->status,
                     'rejection_reason' => $requirement->rejection_reason,
+                    'resubmission_count' => $requirement->resubmission_count ?? 0,
                     'submitted_at' => $requirement->submitted_at,
                     'reviewed_at' => $requirement->reviewed_at,
                     'address' => $requirement->address,
@@ -385,5 +423,38 @@ class ServiceProviderRequirementController extends Controller
                 'recent_submissions' => $recentSubmissions
             ]
         ]);
+    }
+
+    /**
+     * Get Support Messages
+     */
+    public function getSupportMessages(Request $request)
+    {
+        $userId = $request->user()->id;
+        $messages = SupportMessage::where('sender_id', $userId)
+            ->orWhere('receiver_id', $userId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'messages' => $messages]);
+    }
+
+    /**
+     * Send Support Message
+     */
+    public function sendSupportMessage(Request $request)
+    {
+        $request->validate(['message' => 'required|string']);
+        $userId = $request->user()->id;
+
+        $message = SupportMessage::create([
+            'sender_id' => $userId,
+            'receiver_id' => null, // Goes to Admin pool
+            'message' => $request->message
+        ]);
+
+        broadcast(new SupportMessageSent($message, $userId))->toOthers();
+
+        return response()->json(['status' => 'success', 'message_data' => $message]);
     }
 }

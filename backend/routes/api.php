@@ -220,6 +220,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
 
+        Route::get('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'getSupportMessages']);
+        Route::post('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'sendSupportMessage']);
+
         Route::prefix('orders')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'index']);
             Route::get('/{id}/pickup-details', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'getPickUpDetails']);

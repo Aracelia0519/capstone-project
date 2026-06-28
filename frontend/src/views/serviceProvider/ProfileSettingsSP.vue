@@ -371,7 +371,7 @@
              </CardHeader>
              
              <CardContent>
-              <div v-if="idVerification.status === 'verified'" class="bg-green-900/20 border border-green-800 rounded-xl p-4 mb-6">
+              <div v-if="idVerification.status === 'verified' || idVerification.status === 'approved'" class="bg-green-900/20 border border-green-800 rounded-xl p-4 mb-6">
                 <div class="flex items-center gap-3">
                   <CheckCircle2 class="w-6 h-6 text-green-400" />
                   <div>
@@ -381,7 +381,32 @@
                 </div>
               </div>
 
-               <div v-if="idVerification.status !== 'verified'" class="mb-8 px-2 overflow-x-auto">
+              <!-- MAX RESUBMISSION UI BLOCK -->
+              <div v-if="idVerification.resubmission_count >= 3" class="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-xl text-red-400 text-left">
+                  <div class="flex items-center gap-2 mb-2 font-bold">
+                      <AlertTriangle class="w-5 h-5" />
+                      Maximum Attempts Reached
+                  </div>
+                  <p class="text-sm">You have reached the maximum of 3 submission attempts. You cannot submit your requirements anymore. Please contact the administrator via chat to request a reset.</p>
+              </div>
+
+              <!-- SUBMISSION STATUS TRACKER UI BLOCK -->
+              <div v-if="idVerification.status !== 'not_submitted'" class="bg-gray-800/50 rounded-xl p-4 text-left border border-gray-700/50 mb-6">
+                <div class="flex justify-between py-2 border-b border-gray-700/30">
+                  <span class="text-gray-500 text-sm">Submitted On</span>
+                  <span class="text-gray-300 font-medium">{{ formatDate(idVerification.submittedAt) || 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-700/30">
+                  <span class="text-gray-500 text-sm">Status</span>
+                  <span :class="idVerificationStatusClass">{{ idVerificationStatus }}</span>
+                </div>
+                <div class="flex justify-between py-2">
+                  <span class="text-gray-500 text-sm">Attempts Used</span>
+                  <span class="text-gray-300 font-medium">{{ idVerification.resubmission_count }} / 3</span>
+                </div>
+              </div>
+
+               <div v-if="idVerification.status !== 'verified' && idVerification.status !== 'approved'" class="mb-8 px-2 overflow-x-auto">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4 min-w-125">
                   <div class="flex items-center gap-4 w-full md:w-auto">
                     
@@ -430,7 +455,7 @@
                 </div>
               </div>
 
-               <div v-if="idVerification.status !== 'verified'" class="space-y-6">
+               <div v-if="idVerification.status !== 'verified' && idVerification.status !== 'approved'" class="space-y-6">
                 <div v-show="currentStep === 1" class="space-y-6 animate-fade-in">
                     <h3 class="text-lg font-semibold text-white mb-6 flex items-center gap-2">
                        <MapPin class="w-5 h-5 text-blue-400" /> Step 1: Address & Location
@@ -445,7 +470,7 @@
 
                         <div class="space-y-2">
                           <Label class="text-gray-300">City/Municipality <span class="text-red-500">*</span></Label>
-                          <Select v-model="idVerification.city" :disabled="idVerification.status === 'pending'">
+                          <Select v-model="idVerification.city" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3">
                             <SelectTrigger class="w-full bg-gray-800 border-gray-700 text-white">
                                <SelectValue placeholder="Select City/Municipality" />
                             </SelectTrigger>
@@ -458,18 +483,18 @@
 
                       <div class="space-y-2">
                         <Label class="text-gray-300">Barangay <span class="text-red-500">*</span></Label>
-                        <Input v-model="idVerification.barangay" type="text" :disabled="idVerification.status === 'pending'" class="bg-gray-800 border-gray-700 text-white" placeholder="Enter Barangay" />
+                        <Input v-model="idVerification.barangay" type="text" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3" class="bg-gray-800 border-gray-700 text-white" placeholder="Enter Barangay" />
                       </div>
 
                       <div class="space-y-2">
                         <Label class="text-gray-300">Block/Street/Subdivision <span class="text-red-500">*</span></Label>
-                        <Textarea v-model="idVerification.block_address" rows="2" :disabled="idVerification.status === 'pending'" class="bg-gray-800 border-gray-700 text-white resize-none" placeholder="Block No., Lot No., Street Name, Subdivision/Village" />
+                        <Textarea v-model="idVerification.block_address" rows="2" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3" class="bg-gray-800 border-gray-700 text-white resize-none" placeholder="Block No., Lot No., Street Name, Subdivision/Village" />
                       </div>
 
                       <div class="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                           <Label class="text-gray-300">Pin Location <span class="text-red-500">*</span></Label>
-                          <Button type="button" size="sm" @click="getCurrentLocation" :disabled="gettingLocation || idVerification.status === 'pending'" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1 text-xs w-full sm:w-auto flex justify-center">
+                          <Button type="button" size="sm" @click="getCurrentLocation" :disabled="gettingLocation || ['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-1 text-xs w-full sm:w-auto flex justify-center">
                             <Navigation v-if="!gettingLocation" class="w-3 h-3 mr-1.5" />
                             <Loader2 v-else class="w-3 h-3 mr-1.5 animate-spin" />
                             {{ gettingLocation ? 'Locating...' : 'Get My Location' }}
@@ -503,7 +528,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                       <div class="space-y-2">
                         <Label class="text-gray-300">Select ID Type <span class="text-red-400">*</span></Label>
-                         <Select v-model="idVerification.idType" :disabled="idVerification.status === 'pending'">
+                         <Select v-model="idVerification.idType" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3">
                           <SelectTrigger class="w-full bg-gray-800 border-gray-700 text-white">
                              <SelectValue placeholder="Select ID Type" />
                           </SelectTrigger>
@@ -524,7 +549,7 @@
                         <Label class="text-gray-300">ID Number <span class="text-red-400">*</span></Label>
                         <Input 
                           v-model="idVerification.idNumber"
-                          :disabled="idVerification.status === 'pending'"
+                          :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3"
                           class="bg-gray-800 border-gray-700 text-white"
                           placeholder="Enter ID number"
                         />
@@ -544,14 +569,14 @@
                         @dragover.prevent="handleDragOver"
                         @dragleave="handleDragLeave"
                         @drop.prevent="handleIdDrop"
-                        @click="idVerification.status !== 'pending' ? triggerIdUpload() : null"
+                        @click="(['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3) ? null : triggerIdUpload()"
                         class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
                         :class="[
                           idUploadClasses,
-                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-purple-900/10'
+                          (['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-purple-900/10'
                         ]"
                       >
-                        <input type="file" ref="idFileInput" @change="handleIdUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
+                        <input type="file" ref="idFileInput" @change="handleIdUploadChange" accept="image/*" class="hidden" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3"/>
                         
                         <div v-if="!idVerification.idPhotoPreview && !idVerification.idPhotoUrl" class="space-y-4">
                           <UploadCloud class="w-16 h-16 text-gray-500 mx-auto" />
@@ -564,7 +589,7 @@
                         <div v-else class="space-y-4">
                           <div class="relative inline-block">
                              <img :src="idVerification.idPhotoPreview || idVerification.idPhotoUrl" alt="ID Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
-                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeIdPhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
+                             <button v-if="!['pending', 'verified', 'approved'].includes(idVerification.status) && idVerification.resubmission_count < 3" @click.stop="removeIdPhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
                                <X class="w-4 h-4" />
                              </button>
                           </div>
@@ -590,14 +615,14 @@
                         @dragover.prevent="handleSelfieDragOver"
                         @dragleave="handleSelfieDragLeave"
                         @drop.prevent="handleSelfieDrop"
-                        @click="idVerification.status !== 'pending' ? triggerSelfieUpload() : null"
+                        @click="(['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3) ? null : triggerSelfieUpload()"
                         class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300"
                         :class="[
                           selfieUploadClasses,
-                          idVerification.status === 'pending' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-pink-900/10'
+                          (['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-pink-900/10'
                         ]"
                       >
-                        <input type="file" ref="selfieFileInput" @change="handleSelfieUploadChange" accept="image/*" class="hidden" :disabled="idVerification.status === 'pending'"/>
+                        <input type="file" ref="selfieFileInput" @change="handleSelfieUploadChange" accept="image/*" class="hidden" :disabled="['pending', 'verified', 'approved'].includes(idVerification.status) || idVerification.resubmission_count >= 3"/>
                         
                         <div v-if="!idVerification.selfiePhotoPreview && !idVerification.selfiePhotoUrl" class="space-y-4">
                           <User class="w-16 h-16 text-gray-500 mx-auto" />
@@ -610,7 +635,7 @@
                         <div v-else class="space-y-4">
                           <div class="relative inline-block">
                              <img :src="idVerification.selfiePhotoPreview || idVerification.selfiePhotoUrl" alt="Selfie Preview" class="max-h-48 mx-auto rounded-lg shadow-lg border border-gray-700" />
-                             <button v-if="idVerification.status !== 'pending'" @click.stop="removeSelfiePhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
+                             <button v-if="!['pending', 'verified', 'approved'].includes(idVerification.status) && idVerification.resubmission_count < 3" @click.stop="removeSelfiePhoto" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md">
                                <X class="w-4 h-4" />
                              </button>
                           </div>
@@ -631,7 +656,7 @@
                   </div>
                 </div>
 
-                <div v-if="idVerification.status !== 'pending' && idVerification.status !== 'verified'" class="flex justify-between pt-6 border-t border-gray-800">
+                <div v-if="!['pending', 'verified', 'approved'].includes(idVerification.status)" class="flex justify-between pt-6 border-t border-gray-800">
                   <Button 
                     @click="prevStep" 
                     v-if="currentStep > 1" 
@@ -668,6 +693,60 @@
              </CardContent>
           </Card>
       </div>
+
+      <!-- Floating Chat Widget (Connected to Backend) -->
+      <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <!-- Chat Window -->
+        <transition name="fade-slide">
+          <div v-if="showAdminChat" class="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-80 sm:w-96 h-[32rem] mb-4 flex flex-col overflow-hidden">
+            <!-- Chat Header -->
+            <div class="p-4 border-b border-gray-800 bg-gray-800/50 flex justify-between items-center">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                  <UserCog class="w-4 h-4"/>
+                </div>
+                <div>
+                  <h3 class="text-white font-medium text-sm">Admin Support</h3>
+                  <p class="text-xs text-green-400">Online</p>
+                </div>
+              </div>
+              <button @click="toggleAdminChat" class="text-gray-400 hover:text-white">
+                <X class="w-5 h-5"/>
+              </button>
+            </div>
+            <!-- Chat Messages -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesContainer">
+              <div v-if="chatLoading" class="flex justify-center py-4">
+                <Loader2 class="animate-spin h-5 w-5 text-blue-500" />
+              </div>
+              <div v-else-if="chatMessages.length === 0" class="text-center text-gray-500 text-sm mt-10">No messages yet. Start a conversation!</div>
+              <div v-for="msg in chatMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === user.id ? 'items-end' : 'items-start'">
+                <div class="max-w-[80%] p-3 rounded-2xl text-sm" :class="msg.sender_id === user.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-800 text-gray-200 rounded-tl-none'">
+                  {{ msg.message }}
+                </div>
+                <span class="text-[10px] text-gray-500 mt-1">{{ formatDateTime(msg.created_at) }}</span>
+              </div>
+            </div>
+            <!-- Chat Input -->
+            <div class="p-3 border-t border-gray-800 bg-gray-900">
+              <form @submit.prevent="sendAdminMessage" class="flex gap-2">
+                <input v-model="newChatMessage" type="text" placeholder="Type a message..." class="flex-1 bg-gray-800 border-none rounded-full px-4 text-sm text-white focus:ring-1 focus:ring-blue-500" />
+                <button type="submit" :disabled="!newChatMessage.trim() || sendingMessage" class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white disabled:opacity-50">
+                  <Navigation class="w-4 h-4" style="transform: rotate(90deg);" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </transition>
+        
+        <!-- Chat Toggle Button -->
+        <button @click="toggleAdminChat" class="w-14 h-14 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center text-white hover:bg-blue-700 hover:scale-105 transition-all">
+          <MessageSquare v-if="!showAdminChat" class="w-6 h-6" />
+          <X v-else class="w-6 h-6" />
+          <span v-if="unreadAdminMessages > 0 && !showAdminChat" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-gray-900">{{ unreadAdminMessages }}</span>
+        </button>
+      </div>
+
     </main>
   </div>
 </template>
@@ -675,8 +754,8 @@
 <script>
 import { getCurrentUser, clearAuthData } from '@/utils/auth'
 import axios from '@/utils/axios'
+import echo from '@/utils/websocket'
 import { Toaster, toast } from 'vue-sonner'
-// ❌ WEBSOCKET IMPORT REMOVED - The Layout handles this now!
 
 // Leaflet
 import 'leaflet/dist/leaflet.css'
@@ -707,19 +786,18 @@ import {
   UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle, 
   Camera, Shield, CheckCircle2, AlertTriangle, Key, User, 
   FileBadge, Check, X, CreditCard, Image, UploadCloud, 
-  ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation
+  ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation, MessageSquare
 } from 'lucide-vue-next'
 
 export default {
   name: 'ProfileSettingsPage',
-  // 🔔 ADDED PROP: This listens to the Layout's WebSocket changes!
   props: ['verificationStatus'],
   components: {
     Toaster, Button, Input, Label, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
     Card, CardContent, CardHeader, CardTitle, CardDescription, Avatar, AvatarFallback, AvatarImage,
     Badge, Progress, Separator, UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle,
     Camera, Shield, CheckCircle2, AlertTriangle, Key, User, FileBadge, Check, X, CreditCard, Image, UploadCloud,
-    ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation
+    ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation, MessageSquare
   },
   data() {
     return {
@@ -744,7 +822,7 @@ export default {
       stats: { completedJobs: 0, satisfaction: 0, activeProjects: 0 },
       // ID Verification
       idVerification: {
-        city: '', barangay: '', block_address: '', latitude: '', longitude: '', idType: '', idNumber: '', idPhoto: null, idPhotoPreview: null, idPhotoUrl: null, selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: null, status: 'not_submitted', submittedAt: null, reviewedAt: null, rejectionReason: null
+        city: '', barangay: '', block_address: '', latitude: '', longitude: '', idType: '', idNumber: '', idPhoto: null, idPhotoPreview: null, idPhotoUrl: null, selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: null, status: 'not_submitted', submittedAt: null, reviewedAt: null, rejectionReason: null, resubmission_count: 0
       },
       idVerificationErrors: {},
       isDraggingId: false,
@@ -758,7 +836,15 @@ export default {
       map: null, marker: null, caviteLayer: null,
       caviteCities: [
         'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 'Dasmariñas', 'General Emilio Aguinaldo', 'General Mariano Alvarez', 'General Trias', 'Imus', 'Indang', 'Kawit', 'Magallanes', 'Maragondon', 'Mendez', 'Naic', 'Noveleta', 'Rosario', 'Silang', 'Tagaytay', 'Tanza', 'Ternate', 'Trece Martires'
-      ]
+      ],
+
+      // Admin Chat States
+      showAdminChat: false,
+      chatMessages: [],
+      newChatMessage: '',
+      chatLoading: false,
+      sendingMessage: false,
+      unreadAdminMessages: 0,
     }
   },
   computed: {
@@ -813,9 +899,11 @@ export default {
       return this.idVerification.idType && this.idVerification.idNumber && (this.idVerification.idPhoto || this.idVerification.idPhotoUrl) && 
              (this.idVerification.selfiePhoto || this.idVerification.selfiePhotoUrl) && this.idVerification.city && this.idVerification.barangay &&
              this.idVerification.block_address && this.idVerification.latitude && this.idVerification.longitude &&
-             this.idVerification.status !== 'pending' && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved'
+             !['pending', 'verified', 'approved'].includes(this.idVerification.status) &&
+             this.idVerification.resubmission_count < 3
     },
     canProceedToNextStep() {
+      if (this.idVerification.resubmission_count >= 3) return false;
       switch (this.currentStep) {
         case 1: return this.idVerification.city && this.idVerification.barangay.trim() && this.idVerification.block_address.trim() && this.idVerification.latitude && this.idVerification.longitude && !this.locationError;
         case 2: return this.idVerification.idType && this.idVerification.idNumber.trim();
@@ -826,21 +914,20 @@ export default {
     }
   },
   watch: {
-    // 🔔 Auto-updates local profile view when the Layout gets the WebSocket event!
     verificationStatus(newStatus) {
       if (newStatus && newStatus !== this.idVerification.status) {
         this.loadIdVerificationStatus();
       }
     },
     currentStep(newStep) {
-      if (newStep === 1 && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved') {
+      if (newStep === 1 && !['verified', 'approved'].includes(this.idVerification.status)) {
         this.$nextTick(() => { if (!this.loading && !this.error) this.initMap(); });
       } else {
         if (this.map) { this.map.remove(); this.map = null; this.marker = null; this.caviteLayer = null; }
       }
     },
     loading(isLoading) {
-      if (!isLoading && !this.error && this.currentStep === 1 && this.idVerification.status !== 'verified' && this.idVerification.status !== 'approved') {
+      if (!isLoading && !this.error && this.currentStep === 1 && !['verified', 'approved'].includes(this.idVerification.status)) {
         this.$nextTick(() => { this.initMap(); });
       }
     }
@@ -863,7 +950,105 @@ export default {
       })
     }, 100)
   },
+  beforeUnmount() {
+      if (this.user.id) {
+          echo.leave(`user.${this.user.id}.requirements`); // MUST LEAVE THE CHANNEL
+          echo.leave(`support.user.${this.user.id}`);
+      }
+  },
   methods: {
+    // ---- WebSockets & Real-time Update Methods ----
+    setupRequirementsListener() {
+        if (!this.user.id) return;
+        
+        echo.private(`user.${this.user.id}.requirements`)
+            .listen('.RequirementStatusUpdated', (e) => {
+                let msg = e.status === 'reset' 
+                    ? 'Your submission attempts have been reset to 0 by the administrator.'
+                    : `Your verification status was updated to: ${e.status}`;
+                
+                this.showNotification(msg, e.status === 'rejected' ? 'error' : 'success');
+                
+                if (e.reason) {
+                    this.showNotification(`Reason: ${e.reason}`, 'error');
+                }
+                // INSTANTLY RELOAD THE DATA
+                this.loadIdVerificationStatus();
+            });
+    },
+
+    setupChatListener() {
+      if (!this.user.id) return;
+      echo.private(`support.user.${this.user.id}`)
+        .listen('.SupportMessageSent', (e) => {
+          if (e.message.sender_id !== this.user.id) {
+            this.chatMessages.push(e.message);
+            if (!this.showAdminChat) this.unreadAdminMessages++;
+            else this.scrollToBottom();
+          }
+        });
+    },
+    // ------------------------------------------------
+
+    // ---- Admin Chat Methods ----
+    toggleAdminChat() {
+      this.showAdminChat = !this.showAdminChat;
+      if (this.showAdminChat) {
+        this.unreadAdminMessages = 0;
+        this.fetchAdminMessages();
+      }
+    },
+    async fetchAdminMessages() {
+      this.chatLoading = true;
+      try {
+        const res = await axios.get('/service-provider/support/messages');
+        if (res.data.status === 'success') {
+          this.chatMessages = res.data.messages;
+          this.scrollToBottom();
+        }
+      } catch(e) {
+        console.error('Failed to load support messages', e);
+      } finally {
+        this.chatLoading = false;
+      }
+    },
+    async sendAdminMessage() {
+      if (!this.newChatMessage.trim() || this.sendingMessage) return;
+      const msg = this.newChatMessage;
+      this.newChatMessage = '';
+      this.sendingMessage = true;
+      
+      const tempMsg = {
+        id: Date.now(),
+        sender_id: this.user.id,
+        message: msg,
+        created_at: new Date().toISOString()
+      };
+      this.chatMessages.push(tempMsg);
+      this.scrollToBottom();
+
+      try {
+        const res = await axios.post('/service-provider/support/messages', { message: msg });
+        if (res.data.status === 'success') {
+          const index = this.chatMessages.findIndex(m => m.id === tempMsg.id);
+          if (index !== -1) this.chatMessages[index] = res.data.message_data;
+        }
+      } catch (e) {
+        this.showNotification('Failed to send message', 'error');
+        this.chatMessages = this.chatMessages.filter(m => m.id !== tempMsg.id);
+      } finally {
+        this.sendingMessage = false;
+        this.scrollToBottom();
+      }
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const container = this.$refs.chatMessagesContainer;
+        if (container) container.scrollTop = container.scrollHeight;
+      });
+    },
+    // ----------------------------
+
     showNotification(message, type = 'info') {
       if (type === 'success') toast.success(message)
       else if (type === 'error') toast.error(message)
@@ -889,7 +1074,9 @@ export default {
           await this.fetchServiceProviderStats()
           this.showNotification('Profile loaded successfully!', 'success')
           
-          // ❌ setupWebsocket() REMOVED FROM HERE
+          // INIT WEBSOCKETS HERE
+          this.setupRequirementsListener();
+          this.setupChatListener();
         } else {
           throw new Error('Failed to load profile data')
         }
@@ -933,6 +1120,12 @@ export default {
       } catch (e) { return 'Unknown' }
     },
     
+    formatDateTime(dateTime) {
+      if (!dateTime) return 'Unknown'
+      const date = new Date(dateTime)
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    },
+
     formatRole(role) {
       const roles = { 'client': 'Client Account', 'distributor': 'Distributor Account', 'service_provider': 'Service Provider Account', 'admin': 'Administrator' }
       return roles[role] || (role ? role.replace('_', ' ') : 'Service Provider')
@@ -1147,9 +1340,10 @@ export default {
             idPhoto: null, idPhotoPreview: null, idPhotoUrl: data.id_photo_url || null,
             selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: data.selfie_photo_url || null,
             status: data.status || 'not_submitted', submittedAt: data.submitted_at || null, reviewedAt: data.reviewed_at || null, rejectionReason: data.rejection_reason || null,
+            resubmission_count: data.resubmission_count || 0,
             city: data.address?.city || '', barangay: data.address?.barangay || '', block_address: data.address?.block_address || '', latitude: data.address?.latitude || '', longitude: data.address?.longitude || '',
           }
-          if (this.idVerification.status === 'pending' || this.idVerification.status === 'verified' || this.idVerification.status === 'approved') {
+          if (['pending', 'verified', 'approved'].includes(this.idVerification.status)) {
             this.currentStep = 1
           } else {
             if (!this.loading && !this.error) this.$nextTick(() => { this.initMap(); });
@@ -1163,7 +1357,7 @@ export default {
     handleIdDrop(event) {
       this.isDraggingId = false
       const files = event.dataTransfer.files
-      if (files.length > 0 && this.idVerification.status !== 'pending') this.processIdFile(files[0])
+      if (files.length > 0 && !['pending', 'verified', 'approved'].includes(this.idVerification.status) && this.idVerification.resubmission_count < 3) this.processIdFile(files[0])
     },
 
     handleSelfieDragOver(event) { this.isDraggingSelfie = true; event.preventDefault() },
@@ -1171,19 +1365,26 @@ export default {
     handleSelfieDrop(event) {
       this.isDraggingSelfie = false
       const files = event.dataTransfer.files
-      if (files.length > 0 && this.idVerification.status !== 'pending') this.processSelfieFile(files[0])
+      if (files.length > 0 && !['pending', 'verified', 'approved'].includes(this.idVerification.status) && this.idVerification.resubmission_count < 3) this.processSelfieFile(files[0])
     },
 
-    triggerIdUpload() { if (this.idVerification.status !== 'pending') this.$refs.idFileInput.click() },
-    triggerSelfieUpload() { if (this.idVerification.status !== 'pending') this.$refs.selfieFileInput.click() },
+    triggerIdUpload() { 
+      if (['pending', 'verified', 'approved'].includes(this.idVerification.status) || this.idVerification.resubmission_count >= 3) return
+      this.$refs.idFileInput.click() 
+    },
+    
+    triggerSelfieUpload() { 
+      if (['pending', 'verified', 'approved'].includes(this.idVerification.status) || this.idVerification.resubmission_count >= 3) return
+      this.$refs.selfieFileInput.click() 
+    },
 
     handleIdUploadChange(event) {
       const file = event.target.files[0]
-      if (file && this.idVerification.status !== 'pending') this.processIdFile(file)
+      if (file && !['pending', 'verified', 'approved'].includes(this.idVerification.status) && this.idVerification.resubmission_count < 3) this.processIdFile(file)
     },
     handleSelfieUploadChange(event) {
       const file = event.target.files[0]
-      if (file && this.idVerification.status !== 'pending') this.processSelfieFile(file)
+      if (file && !['pending', 'verified', 'approved'].includes(this.idVerification.status) && this.idVerification.resubmission_count < 3) this.processSelfieFile(file)
     },
 
     processIdFile(file) {
@@ -1224,7 +1425,11 @@ export default {
       try {
         const formData = new FormData()
         formData.append('id_type', this.idVerification.idType); formData.append('id_number', this.idVerification.idNumber)
-        formData.append('id_photo', this.idVerification.idPhoto); formData.append('selfie_photo', this.idVerification.selfiePhoto)
+        
+        // Append photos if they are new files, otherwise the backend will keep the existing ones
+        if (this.idVerification.idPhoto) formData.append('id_photo', this.idVerification.idPhoto)
+        if (this.idVerification.selfiePhoto) formData.append('selfie_photo', this.idVerification.selfiePhoto)
+        
         formData.append('province', 'Cavite'); formData.append('city', this.idVerification.city)
         formData.append('barangay', this.idVerification.barangay); formData.append('block_address', this.idVerification.block_address)
         formData.append('latitude', this.idVerification.latitude); formData.append('longitude', this.idVerification.longitude)
@@ -1235,6 +1440,7 @@ export default {
           this.idVerification.submittedAt = response.data.data.submitted_at
           this.idVerification.idPhotoUrl = response.data.data.id_photo_url
           this.idVerification.selfiePhotoUrl = response.data.data.selfie_photo_url
+          this.idVerification.resubmission_count = response.data.data.resubmission_count
           this.idVerification.idPhoto = null; this.idVerification.selfiePhoto = null
           this.currentStep = 1
           this.showNotification('Verification submitted successfully!', 'success')
@@ -1251,13 +1457,21 @@ export default {
 </script>
 
 <style scoped>
-/* Key animations from original file */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Chat transition animations */
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
 }
 
 /* Custom scrollbar */

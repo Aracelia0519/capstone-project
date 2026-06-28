@@ -1,5 +1,5 @@
 <?php
-
+//Client and adm in Verification and conversation
 namespace App\Events;
 
 use App\Models\SupportMessage;
