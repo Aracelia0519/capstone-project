@@ -66,6 +66,7 @@ class DistributorRequirementController extends Controller
                     'verification_status' => $requirements->status,
                     'status_class' => $requirements->status_class,
                     'rejection_reason' => $requirements->rejection_reason,
+                    'resubmission_count' => $requirements->resubmission_count ?? 0, // NEW
                     'is_complete' => $requirements->is_complete,
                     'has_submitted' => true,
                     'photos' => $photoUrls,
@@ -137,22 +138,30 @@ class DistributorRequirementController extends Controller
                 ], 422);
             }
             
-            // Check if user already has a pending or approved submission
-            $existing = DistributorRequirements::where('user_id', $user->id)
-                ->whereIn('status', ['pending', 'approved'])
-                ->first();
-                
-            if ($existing) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You already have a ' . $existing->status . ' business verification submission'
-                ], 400);
-            }
-            
             // Use Transaction to ensure both Requirements and Address are saved
             DB::beginTransaction();
             
             try {
+                // Check if user already has a pending or approved submission
+                $existing = DistributorRequirements::where('user_id', $user->id)->first();
+                    
+                if ($existing) {
+                    if (in_array($existing->status, ['pending', 'approved'])) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'You already have a ' . $existing->status . ' business verification submission'
+                        ], 400);
+                    }
+
+                    // NEW: Maximum Resubmission limitation
+                    if ($existing->resubmission_count >= 3) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Maximum resubmission attempts reached. Please contact admin via Chat.'
+                        ], 403);
+                    }
+                }
+                
                 // Handle file uploads
                 $uploadData = [];
                 $photoFields = [
@@ -175,32 +184,36 @@ class DistributorRequirementController extends Controller
                     }
                 }
                 
-                // Create distributor requirement
-                $requirements = DistributorRequirements::create([
-                    'user_id' => $user->id,
-                    'company_name' => $request->company_name,
-                    'valid_id_type' => $request->valid_id_type,
-                    'id_number' => $request->id_number,
-                    'valid_id_photo' => $uploadData['valid_id_photo'],
-                    'dti_certificate_photo' => $uploadData['dti_certificate_photo'],
-                    'mayor_permit_photo' => $uploadData['mayor_permit_photo'],
-                    'barangay_clearance_photo' => $uploadData['barangay_clearance_photo'],
-                    'business_registration_number' => $request->business_registration_number,
-                    'business_registration_photo' => $uploadData['business_registration_photo'],
-                    'status' => 'pending',
-                    'rejection_reason' => null
-                ]);
+                // Fetch or Initialize Distributor Requirements (Resubmission Friendly)
+                $requirements = DistributorRequirements::firstOrNew(['user_id' => $user->id]);
+                $requirements->company_name = $request->company_name;
+                $requirements->valid_id_type = $request->valid_id_type;
+                $requirements->id_number = $request->id_number;
+                
+                if (isset($uploadData['valid_id_photo'])) $requirements->valid_id_photo = $uploadData['valid_id_photo'];
+                if (isset($uploadData['dti_certificate_photo'])) $requirements->dti_certificate_photo = $uploadData['dti_certificate_photo'];
+                if (isset($uploadData['mayor_permit_photo'])) $requirements->mayor_permit_photo = $uploadData['mayor_permit_photo'];
+                if (isset($uploadData['barangay_clearance_photo'])) $requirements->barangay_clearance_photo = $uploadData['barangay_clearance_photo'];
+                if (isset($uploadData['business_registration_photo'])) $requirements->business_registration_photo = $uploadData['business_registration_photo'];
+                
+                $requirements->business_registration_number = $request->business_registration_number;
+                $requirements->status = 'pending';
+                $requirements->rejection_reason = null;
+                $requirements->resubmission_count = $existing ? ($existing->resubmission_count + 1) : 1;
+                $requirements->save();
 
-                // Create Address
-                DistributorAddress::create([
-                    'distributor_requirements_id' => $requirements->id,
-                    'province' => 'Cavite', // Enforced as per request
-                    'city' => $request->city,
-                    'barangay' => $request->barangay,
-                    'block_address' => $request->block_address,
-                    'latitude' => $request->latitude,
-                    'longitude' => $request->longitude,
-                ]);
+                // Create or Update Address
+                DistributorAddress::updateOrCreate(
+                    ['distributor_requirements_id' => $requirements->id],
+                    [
+                        'province' => 'Cavite', // Enforced as per request
+                        'city' => $request->city,
+                        'barangay' => $request->barangay,
+                        'block_address' => $request->block_address,
+                        'latitude' => $request->latitude,
+                        'longitude' => $request->longitude,
+                    ]
+                );
 
                 DB::commit();
 
@@ -225,6 +238,7 @@ class DistributorRequirementController extends Controller
                         'is_verified' => false,
                         'verification_status' => 'pending',
                         'status_class' => $requirements->status_class,
+                        'resubmission_count' => $requirements->resubmission_count, // NEW
                         'is_complete' => $requirements->is_complete,
                         'has_submitted' => true,
                         'photos' => $photoUrls,

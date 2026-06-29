@@ -435,9 +435,18 @@
                 </div>
               </div>
             </div>
+            
+            <!-- NEW: Max Attempts Warning UI -->
+            <div v-if="verificationData.resubmission_count >= 3" class="mt-4 p-4 mx-6 bg-red-50 border border-red-200 rounded-xl text-red-600 text-left shadow-sm">
+                <div class="flex items-center gap-2 mb-2 font-bold">
+                    <AlertCircle class="w-5 h-5" />
+                    Maximum Attempts Reached
+                </div>
+                <p class="text-sm">You have reached the maximum of 3 submission attempts. You cannot submit your requirements anymore. Please contact the administrator via chat to request a reset.</p>
+            </div>
           </div>
 
-          <div v-if="!verificationData || !verificationData.has_submitted || verificationData.status === 'rejected'">
+          <div v-if="!verificationData || !verificationData.has_submitted || (verificationData.status === 'rejected' && verificationData.resubmission_count < 3)">
             <div class="p-6 border-b border-gray-200 bg-linear-to-r from-gray-50 to-blue-50">
               <div class="flex items-center justify-between relative">
                 <div class="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0"></div>
@@ -848,10 +857,10 @@
                 </Button>
 
                 <Button v-if="currentStep === 5" @click="submitVerification" 
-                  :disabled="!isStepValid(5) || !acceptedTerms || submittingVerification"
+                  :disabled="!isStepValid(5) || !acceptedTerms || submittingVerification || (verificationData && (verificationData.resubmission_count || 0) >= 3)"
                   class="h-auto px-5 py-2.5 rounded-xl transition-all duration-300 flex items-center font-medium shadow-md touch-friendly"
                   :class="[
-                    isStepValid(5) && acceptedTerms && !submittingVerification 
+                    isStepValid(5) && acceptedTerms && !submittingVerification && (!verificationData || (verificationData.resubmission_count || 0) < 3)
                       ? 'bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect' 
                       : 'bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-not-allowed',
                     submittingVerification ? 'bg-linear-to-r from-green-400 to-green-500 cursor-wait' : ''
@@ -911,9 +920,15 @@
                   </div>
                 </div>
                 
-                <div class="pt-4 border-t border-gray-200">
-                  <p class="text-xs text-gray-600 mb-1">Submitted:</p>
-                  <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at) }}</p>
+                <div class="pt-4 border-t border-gray-200 flex justify-between">
+                  <div>
+                    <p class="text-xs text-gray-600 mb-1">Submitted:</p>
+                    <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at) }}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-xs text-gray-600 mb-1">Attempts Used:</p>
+                    <p class="font-semibold text-gray-900">{{ verificationData.resubmission_count || 0 }} / 3</p>
+                  </div>
                 </div>
                 
                 <div v-if="verificationData.status === 'pending'" class="bg-linear-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
@@ -934,6 +949,60 @@
       </div>
 
     </div>
+
+    <!-- NEW: Floating Support Chat Widget (Connected to Backend) -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <!-- Chat Window -->
+      <transition name="fade-slide">
+        <div v-if="showAdminChat" class="bg-white border border-gray-200 rounded-xl shadow-2xl w-80 sm:w-96 h-[32rem] mb-4 flex flex-col overflow-hidden">
+          <!-- Chat Header -->
+          <div class="p-4 border-b border-gray-200 bg-linear-to-r from-blue-500 to-purple-600 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white">
+                <MessageSquare class="w-4 h-4" />
+              </div>
+              <div>
+                <h3 class="text-white font-medium text-sm">Admin Support</h3>
+                <p class="text-xs text-blue-100">Online</p>
+              </div>
+            </div>
+            <button @click="toggleAdminChat" class="text-white/80 hover:text-white transition-colors">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <!-- Chat Messages -->
+          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" ref="chatMessagesContainer">
+            <div v-if="chatLoading" class="flex justify-center py-4">
+              <Loader2 class="animate-spin h-5 w-5 text-blue-500" />
+            </div>
+            <div v-else-if="chatMessages.length === 0" class="text-center text-gray-500 text-sm mt-10">No messages yet. Start a conversation!</div>
+            <div v-for="msg in chatMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === userInfo.id ? 'items-end' : 'items-start'">
+              <div class="max-w-[80%] p-3 rounded-2xl text-sm shadow-sm" :class="msg.sender_id === userInfo.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'">
+                {{ msg.message }}
+              </div>
+              <span class="text-[10px] text-gray-400 mt-1">{{ formatDateTime(msg.created_at) }}</span>
+            </div>
+          </div>
+          <!-- Chat Input -->
+          <div class="p-3 border-t border-gray-200 bg-white">
+            <form @submit.prevent="sendAdminMessage" class="flex gap-2">
+              <input v-model="newChatMessage" type="text" placeholder="Type a message..." class="flex-1 bg-gray-100 border-transparent rounded-full px-4 text-sm text-gray-800 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all" />
+              <button type="submit" :disabled="!newChatMessage.trim() || sendingMessage" class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white disabled:opacity-50 transition-transform hover:scale-105 active:scale-95">
+                <Send class="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </transition>
+      
+      <!-- Chat Toggle Button -->
+      <button @click="toggleAdminChat" class="w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center text-white hover:scale-105 transition-transform duration-300 relative group">
+        <MessageSquare v-if="!showAdminChat" class="w-6 h-6 group-hover:animate-bounce" />
+        <X v-else class="w-6 h-6" />
+        <span v-if="unreadAdminMessages > 0 && !showAdminChat" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm">{{ unreadAdminMessages }}</span>
+      </button>
+    </div>
+
   </div>
 </template>
 
@@ -949,7 +1018,7 @@ import {
   Briefcase, Lock, ShieldCheck, AlertTriangle, 
   Eye, EyeOff, Key, Info, Building2, CreditCard, 
   Upload, FileText, CheckCircle, ChevronLeft, ChevronRight,
-  MapPin, Navigation
+  MapPin, Navigation, MessageSquare, Send, X
 } from 'lucide-vue-next'
 
 // Leaflet
@@ -998,6 +1067,15 @@ const locationError = ref('')
 const map = ref(null)
 const marker = ref(null)
 const caviteLayer = ref(null)
+
+// NEW: Chat States
+const showAdminChat = ref(false)
+const chatMessages = ref([])
+const newChatMessage = ref('')
+const chatLoading = ref(false)
+const sendingMessage = ref(false)
+const unreadAdminMessages = ref(0)
+const chatMessagesContainer = ref(null)
 
 // Constants
 const caviteCities = [
@@ -1457,6 +1535,84 @@ watch(currentStep, async (newStep) => {
   }
 })
 
+// ---- CHAT METHODS ----
+const toggleAdminChat = () => {
+  showAdminChat.value = !showAdminChat.value;
+  if (showAdminChat.value) {
+    unreadAdminMessages.value = 0;
+    fetchAdminMessages();
+  }
+}
+
+const fetchAdminMessages = async () => {
+  chatLoading.value = true;
+  try {
+    const res = await axios.get('/client/support/messages');
+    if (res.data.status === 'success') {
+      chatMessages.value = res.data.messages;
+      scrollToBottom();
+    }
+  } catch(e) {
+    console.error('Failed to load support messages', e);
+  } finally {
+    chatLoading.value = false;
+  }
+}
+
+const sendAdminMessage = async () => {
+  if (!newChatMessage.value.trim() || sendingMessage.value) return;
+  const msg = newChatMessage.value;
+  newChatMessage.value = '';
+  sendingMessage.value = true;
+  
+  const tempMsg = {
+    id: Date.now(),
+    sender_id: userInfo.id,
+    message: msg,
+    created_at: new Date().toISOString()
+  };
+  chatMessages.value.push(tempMsg);
+  scrollToBottom();
+
+  try {
+    const res = await axios.post('/client/support/messages', { message: msg });
+    if (res.data.status === 'success') {
+      const index = chatMessages.value.findIndex(m => m.id === tempMsg.id);
+      if (index !== -1) chatMessages.value[index] = res.data.message_data;
+    }
+  } catch (e) {
+    toast.error('Failed to send message');
+    chatMessages.value = chatMessages.value.filter(m => m.id !== tempMsg.id);
+  } finally {
+    sendingMessage.value = false;
+    scrollToBottom();
+  }
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatMessagesContainer.value) {
+      chatMessagesContainer.value.scrollTop = chatMessagesContainer.value.scrollHeight;
+    }
+  });
+}
+
+const setupChatListener = () => {
+  if (!userInfo.id) return;
+  echo.private(`support.user.${userInfo.id}`)
+    .listen('.SupportMessageSent', (e) => {
+      if (e.message.sender_id !== userInfo.id) {
+        chatMessages.value.push(e.message);
+        if (!showAdminChat.value) {
+          unreadAdminMessages.value++;
+        } else {
+          scrollToBottom();
+        }
+      }
+    });
+}
+// ----------------------
+
 // API Calls
 const fetchUserData = async () => {
   loading.value = true
@@ -1663,6 +1819,12 @@ const changePassword = async () => {
 }
 
 const submitVerification = async () => {
+  // NEW: Additional block check with fallback to 0
+  if (verificationData.value && (verificationData.value.resubmission_count || 0) >= 3) {
+      toast.error('Maximum resubmission attempts reached. Please contact admin.');
+      return;
+  }
+
   if (!isVerificationFormValid.value || !acceptedTerms.value || submittingVerification.value) return
   
   submittingVerification.value = true
@@ -1819,13 +1981,14 @@ const getVerificationStatusMessage = () => {
 // Lifecycle
 onMounted(async () => {
   await fetchUserData()
+  setupChatListener()
+  
   await fetchDistributorData()
   if (userInfo.role === 'distributor') {
     await fetchVerificationData()
   }
   setOriginalData()
 
-  // 🔔 [FIXED] Ensure the channel perfectly matches channels.php AND Event file string interpolation
   if (userInfo.id) {
     echo.private(`user.${userInfo.id}.requirements`)
       .listen('.RequirementStatusUpdated', async (e) => {
@@ -1845,6 +2008,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (userInfo.id) {
     echo.leave(`user.${userInfo.id}.requirements`);
+    echo.leave(`support.user.${userInfo.id}`);
   }
 })
 </script>
@@ -2235,5 +2399,14 @@ html {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* NEW: For Chat Box Transition */
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
 }
 </style>
