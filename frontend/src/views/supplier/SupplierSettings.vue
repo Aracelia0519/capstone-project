@@ -13,7 +13,6 @@
       </div>
     </div>
 
-    <Toaster position="top-right" />
 
     <div class="mb-6">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -435,9 +434,17 @@
                 </div>
               </div>
             </div>
+            
+            <div v-if="verificationData.resubmission_count >= 3 && verificationData.status === 'rejected'" class="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-left">
+              <div class="flex items-center gap-2 mb-2 font-bold">
+                <Lock class="w-5 h-5" />
+                Maximum Attempts Reached
+              </div>
+              <p class="text-sm">You have reached the maximum of 3 submission attempts. You cannot submit your requirements anymore. Please contact the administrator via chat to request a reset.</p>
+            </div>
           </div>
 
-          <div v-if="!verificationData || !verificationData.has_submitted || verificationData.status === 'rejected'">
+          <div v-if="!verificationData || !verificationData.has_submitted || (verificationData.status === 'rejected' && verificationData.resubmission_count < 3)">
             <div class="p-6 border-b border-gray-200 bg-linear-to-r from-gray-50 to-blue-50">
               <div class="flex items-center justify-between relative">
                 <div class="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0"></div>
@@ -852,7 +859,7 @@
                   class="h-auto px-5 py-2.5 rounded-xl transition-all duration-300 flex items-center font-medium shadow-md touch-friendly"
                   :class="[
                     isStepValid(5) && acceptedTerms && !submittingVerification 
-                      ? 'bg-linear-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect' 
+                      ? 'bg-linear-to-r from-green-50 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/25 btn-hover-effect' 
                       : 'bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-not-allowed',
                     submittingVerification ? 'bg-linear-to-r from-green-400 to-green-500 cursor-wait' : ''
                   ]">
@@ -864,10 +871,15 @@
             </CardContent>
           </div>
 
-          <CardContent v-if="verificationData && verificationData.has_submitted && (verificationData.status === 'pending' || verificationData.status === 'approved')" 
+          <CardContent v-if="verificationData && verificationData.has_submitted && (verificationData.status === 'pending' || verificationData.status === 'approved' || (verificationData.status === 'rejected' && verificationData.resubmission_count >= 3))" 
             class="p-6">
             <div class="document-card bg-linear-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-5">
-              <h3 class="font-bold text-gray-800 mb-4">Submitted Documents</h3>
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-800">Submitted Documents</h3>
+                <Badge variant="outline" class="text-slate-600 bg-slate-50">
+                  Attempts: {{ verificationData.resubmission_count }} / 3
+                </Badge>
+              </div>
               <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -934,6 +946,61 @@
       </div>
 
     </div>
+
+    <!-- Floating Support Chat Window Widget -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <transition name="fade-slide">
+        <div v-if="showAdminChat" class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-80 sm:w-96 h-128 mb-4 flex flex-col overflow-hidden">
+          <div class="p-4 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-white font-medium text-sm">Admin Support</h3>
+                <p class="text-xs text-emerald-400">Online</p>
+              </div>
+            </div>
+            <button @click="toggleAdminChat" class="text-slate-400 hover:text-white">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesContainer">
+            <div v-if="chatLoading" class="flex justify-center py-4">
+              <Loader2 class="animate-spin h-5 w-5 text-blue-500" />
+            </div>
+            <div v-else-if="chatMessages.length === 0" class="text-center text-slate-500 text-sm mt-10">No messages yet. Start a conversation!</div>
+            <div v-for="msg in chatMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === userInfo.id ? 'items-end' : 'items-start'">
+              <div class="max-w-[80%] p-3 rounded-2xl text-sm" :class="msg.sender_id === userInfo.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'">
+                {{ msg.message }}
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1">{{ formatDateTimeShort(msg.created_at) }}</span>
+            </div>
+          </div>
+          <div class="p-3 border-t border-slate-800 bg-slate-900">
+            <form @submit.prevent="sendAdminMessage" class="flex gap-2">
+              <input v-model="newChatMessage" type="text" placeholder="Type a message..." class="flex-1 bg-slate-800 border-none rounded-full px-4 text-sm text-white focus:ring-1 focus:ring-blue-500" />
+              <button type="submit" :disabled="!newChatMessage.trim() || sendingMessage" class="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white disabled:opacity-50">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </transition>
+      
+      <button @click="toggleAdminChat" class="w-14 h-14 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center justify-center text-white hover:bg-blue-700 hover:scale-105 transition-all">
+        <svg v-if="!showAdminChat" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
+        <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        <span v-if="unreadAdminMessages > 0 && !showAdminChat" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-slate-900">{{ unreadAdminMessages }}</span>
+      </button>
+    </div>
+
   </div>
 </template>
 
@@ -1025,6 +1092,7 @@ interface VerificationData {
   rejection_reason?: string;
   address?: AddressData;
   photos?: Record<string, string>;
+  resubmission_count: number;
   submitted_at?: string;
 }
 
@@ -1062,6 +1130,15 @@ const locationError = ref('')
 const map = ref<L.Map | null>(null)
 const marker = ref<L.Marker | null>(null)
 const caviteLayer = ref<L.GeoJSON | null>(null)
+
+// Admin Support Chat Widget States
+const showAdminChat = ref(false)
+const chatMessages = ref<any[]>([])
+const newChatMessage = ref('')
+const chatLoading = ref(false)
+const sendingMessage = ref(false)
+const unreadAdminMessages = ref(0)
+const chatMessagesContainer = ref<HTMLElement | null>(null)
 
 // Constants
 const caviteCities = [
@@ -1179,7 +1256,8 @@ const isVerificationFormValid = computed(() => {
          verificationForm.mayor_permit_photo &&
          verificationForm.barangay_clearance_photo &&
          verificationForm.business_registration_number &&
-         verificationForm.business_registration_photo
+         verificationForm.business_registration_photo &&
+         (!verificationData.value || verificationData.value.resubmission_count < 3)
 })
 
 // Methods
@@ -1206,7 +1284,14 @@ const formatDateTime = (dateTimeString: string | null) => {
   return date.toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+const formatDateTimeShort = (dateString: string | null) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
 const isStepValid = (step: number) => {
+  if (verificationData.value && verificationData.value.resubmission_count >= 3) return false;
   switch(step) {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
     case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude && !locationError.value
@@ -1269,6 +1354,79 @@ const toggleConfirmPasswordVisibility = () => showConfirmPassword.value = !showC
 
 const changeProfilePhoto = () => {
   toast.info('Feature to change profile photo would open file picker')
+}
+
+// Support Chat Widget Logic
+const toggleAdminChat = () => {
+  showAdminChat.value = !showAdminChat.value;
+  if (showAdminChat.value) {
+    unreadAdminMessages.value = 0;
+    fetchAdminMessages();
+  }
+}
+
+const fetchAdminMessages = async () => {
+  chatLoading.value = true;
+  try {
+    const res = await axios.get('/client/support/messages');
+    if (res.data.status === 'success') {
+      chatMessages.value = res.data.messages;
+      scrollToBottom();
+    }
+  } catch (e) {
+    console.error('Failed to load support messages', e);
+  } finally {
+    chatLoading.value = false;
+  }
+}
+
+const sendAdminMessage = async () => {
+  if (!newChatMessage.value.trim() || sendingMessage.value) return;
+  const msg = newChatMessage.value;
+  newChatMessage.value = '';
+  sendingMessage.value = true;
+  
+  const tempMsg = {
+    id: Date.now(),
+    sender_id: userInfo.id,
+    message: msg,
+    created_at: new Date().toISOString()
+  };
+  chatMessages.value.push(tempMsg);
+  scrollToBottom();
+
+  try {
+    const res = await axios.post('/client/support/messages', { message: msg });
+    if (res.data.status === 'success') {
+      const index = chatMessages.value.findIndex(m => m.id === tempMsg.id);
+      if (index !== -1) chatMessages.value[index] = res.data.message_data;
+    }
+  } catch (e) {
+    toast.error('Failed to send message');
+    chatMessages.value = chatMessages.value.filter(m => m.id !== tempMsg.id);
+  } finally {
+    sendingMessage.value = false;
+    scrollToBottom();
+  }
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    const container = chatMessagesContainer.value;
+    if (container) container.scrollTop = container.scrollHeight;
+  });
+}
+
+const setupChatListener = () => {
+  if (!userInfo.id) return;
+  echo.private(`support.user.${userInfo.id}`)
+    .listen('.SupportMessageSent', (e: any) => {
+      if (e.message.sender_id !== userInfo.id) {
+        chatMessages.value.push(e.message);
+        if (!showAdminChat.value) unreadAdminMessages.value++;
+        else scrollToBottom();
+      }
+    });
 }
 
 // ---- LEAFLET MAP LOGIC ----
@@ -1569,7 +1727,7 @@ const fetchVerificationData = async () => {
     if (response.data.status === 'success') {
       verificationData.value = response.data.data as VerificationData
       
-      if (verificationData.value && verificationData.value.status === 'rejected') {
+      if (verificationData.value && verificationData.value.status === 'rejected' && verificationData.value.resubmission_count < 3) {
         verificationForm.company_name = verificationData.value.company_name || ''
         verificationForm.valid_id_type = verificationData.value.valid_id_type || ''
         verificationForm.id_number = verificationData.value.id_number || ''
@@ -1828,7 +1986,6 @@ const handleFileChange = (event: Event, field: keyof VerificationForm) => {
 const handleFileDrop = (event: DragEvent, field: keyof VerificationForm) => {
   const file = event.dataTransfer?.files[0]
   if (file) {
-    // Create a mock event object matching what handleFileChange expects
     const inputEvent = { target: { files: [file] } } as unknown as Event
     handleFileChange(inputEvent, field)
   }
@@ -1853,7 +2010,11 @@ const getVerificationStatusMessage = () => {
   switch (verificationData.value.status) {
     case 'approved': return 'Your business verification has been approved. You now have full access to all supplier features.'
     case 'pending': return 'Your documents are under review. Please wait for admin approval. This usually takes 3-5 business days.'
-    case 'rejected': return 'Your verification has been rejected. Please review the reason below and resubmit with corrected documents.'
+    case 'rejected': 
+      if (verificationData.value.resubmission_count >= 3) {
+        return 'Your verification has been rejected and maximum resubmission limits have been reached. You must contact administration to reset your profile.';
+      }
+      return 'Your verification has been rejected. Please review the reason below and resubmit with corrected documents.'
     default: return 'Please upload all required documents for business verification.'
   }
 }
@@ -1865,6 +2026,7 @@ onMounted(async () => {
     await fetchVerificationData()
   }
   setOriginalData()
+  setupChatListener();
 
   // <-- Start WebSocket Listening Here -->
   if (userInfo.id) {
@@ -1888,6 +2050,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (userInfo.id) {
     echo.leave(`user.${userInfo.id}.requirements`);
+    echo.leave(`support.user.${userInfo.id}`);
   }
 })
 </script>
@@ -2277,5 +2440,13 @@ html {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
 }
 </style>

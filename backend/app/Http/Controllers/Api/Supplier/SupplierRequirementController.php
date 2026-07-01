@@ -11,7 +11,7 @@ use App\Models\Supplier\SupplierAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Events\Requirements\RequirementSubmitted; // <-- Added Import
+use App\Events\Requirements\RequirementSubmitted;
 
 class SupplierRequirementController extends Controller
 {
@@ -38,7 +38,8 @@ class SupplierRequirementController extends Controller
                     'data' => [
                         'is_verified' => false,
                         'verification_status' => 'none',
-                        'has_submitted' => false
+                        'has_submitted' => false,
+                        'resubmission_count' => 0
                     ]
                 ], 200);
             }
@@ -63,6 +64,7 @@ class SupplierRequirementController extends Controller
                     'is_complete' => $requirements->is_complete,
                     'has_submitted' => true,
                     'photos' => $photoUrls,
+                    'resubmission_count' => $requirements->resubmission_count ?? 0,
                     'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $requirements->updated_at->format('Y-m-d H:i:s')
                 ]
@@ -129,15 +131,23 @@ class SupplierRequirementController extends Controller
                 ], 422);
             }
             
-            $existing = SupplierRequirements::where('user_id', $user->id)
-                ->whereIn('status', ['pending', 'approved'])
-                ->first();
+            $existing = SupplierRequirements::where('user_id', $user->id)->first();
                 
             if ($existing) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You already have a ' . $existing->status . ' business verification submission'
-                ], 400);
+                if (in_array($existing->status, ['pending', 'approved'])) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You already have a ' . $existing->status . ' business verification submission'
+                    ], 400);
+                }
+
+                // Maximum 3 Submissions Blocker
+                if ($existing->resubmission_count >= 3) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Maximum resubmission attempts reached. Please contact admin via Chat.'
+                    ], 403);
+                }
             }
             
             DB::beginTransaction();
@@ -162,34 +172,37 @@ class SupplierRequirementController extends Controller
                     }
                 }
                 
-                $requirements = SupplierRequirements::create([
-                    'user_id' => $user->id,
-                    'company_name' => $request->company_name,
-                    'valid_id_type' => $request->valid_id_type,
-                    'id_number' => $request->id_number,
-                    'valid_id_photo' => $uploadData['valid_id_photo'],
-                    'dti_certificate_photo' => $uploadData['dti_certificate_photo'],
-                    'mayor_permit_photo' => $uploadData['mayor_permit_photo'],
-                    'barangay_clearance_photo' => $uploadData['barangay_clearance_photo'],
-                    'business_registration_number' => $request->business_registration_number,
-                    'business_registration_photo' => $uploadData['business_registration_photo'],
-                    'status' => 'pending',
-                    'rejection_reason' => null
-                ]);
+                // Directly assigning to bypass model $fillable restrictions
+                $requirements = SupplierRequirements::firstOrNew(['user_id' => $user->id]);
+                $requirements->company_name = $request->company_name;
+                $requirements->valid_id_type = $request->valid_id_type;
+                $requirements->id_number = $request->id_number;
+                $requirements->valid_id_photo = $uploadData['valid_id_photo'];
+                $requirements->dti_certificate_photo = $uploadData['dti_certificate_photo'];
+                $requirements->mayor_permit_photo = $uploadData['mayor_permit_photo'];
+                $requirements->barangay_clearance_photo = $uploadData['barangay_clearance_photo'];
+                $requirements->business_registration_number = $request->business_registration_number;
+                $requirements->business_registration_photo = $uploadData['business_registration_photo'];
+                $requirements->status = 'pending';
+                $requirements->rejection_reason = null;
+                $requirements->resubmission_count = $existing ? ($existing->resubmission_count + 1) : 1;
+                $requirements->save();
 
-                SupplierAddress::create([
-                    'supplier_requirements_id' => $requirements->id,
-                    'province' => 'Cavite', 
-                    'city' => $request->city,
-                    'barangay' => $request->barangay,
-                    'block_address' => $request->block_address,
-                    'latitude' => $request->latitude,
-                    'longitude' => $request->longitude,
-                ]);
+                SupplierAddress::updateOrCreate(
+                    ['supplier_requirements_id' => $requirements->id],
+                    [
+                        'province' => 'Cavite', 
+                        'city' => $request->city,
+                        'barangay' => $request->barangay,
+                        'block_address' => $request->block_address,
+                        'latitude' => $request->latitude,
+                        'longitude' => $request->longitude,
+                    ]
+                );
 
                 DB::commit();
 
-                // <-- Broadcast Event to Admin UI Here
+                // Broadcast Event to Admin UI Here
                 event(new RequirementSubmitted($user));
 
                 $photoUrls = $requirements->getAllPhotoUrls();
@@ -204,7 +217,8 @@ class SupplierRequirementController extends Controller
                         'address' => $requirements->address,
                         'status' => 'pending',
                         'has_submitted' => true,
-                        'photos' => $photoUrls
+                        'photos' => $photoUrls,
+                        'resubmission_count' => $requirements->resubmission_count
                     ]
                 ], 200);
 
