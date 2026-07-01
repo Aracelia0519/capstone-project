@@ -88,7 +88,6 @@
               <div class="flex gap-1">
                 <span v-if="product.distributor_gcash_enabled" class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">GCASH</span>
                 <span v-if="product.distributor_pickup_enabled" class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">PICK-UP</span>
-                <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">COD</span>
               </div>
             </div>
           </div>
@@ -235,16 +234,8 @@
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200" :class="paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm' : 'border-slate-700 bg-slate-800'">
-                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
-                      <div class="flex items-center justify-between w-full">
-                        <span class="font-bold text-white">COD</span>
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-emerald-500' : 'border-slate-600'">
-                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    </label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    
 
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!product?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
                       <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!product?.distributor_gcash_enabled" />

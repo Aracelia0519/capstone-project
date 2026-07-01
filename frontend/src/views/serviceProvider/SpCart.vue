@@ -233,10 +233,8 @@
                 
                 <div class="mt-8 pt-6 border-t border-slate-700">
                   <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
-                      <span class="text-[10px] sm:text-xs font-bold text-white">COD</span>
-                    </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    
                     <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
                       <span class="text-[10px] sm:text-xs font-bold text-white">GCash</span>
                     </div>
@@ -280,20 +278,9 @@
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 bg-slate-800" :class="paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm' : 'border-slate-700 hover:border-slate-600'">
-                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
-                      <div class="flex items-center justify-between w-full">
-                        <span class="font-bold text-white flex items-center gap-2">
-                          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                          COD
-                        </span>
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-emerald-500' : 'border-slate-600'">
-                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    </label>
+                    
 
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden bg-slate-800" :class="[
                         !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 cursor-pointer')

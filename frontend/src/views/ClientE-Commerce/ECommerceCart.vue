@@ -233,10 +233,7 @@
                 
                 <div class="mt-8 pt-6 border-t border-gray-700/50">
                   <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
-                  <div class="grid grid-cols-3 gap-2">
-                    <div class="h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
-                      <span class="text-[10px] sm:text-xs font-bold text-white">COD</span>
-                    </div>
+                  <div class="grid grid-cols-2 gap-2">
                     <div class="h-10 bg-white/5 rounded-lg flex items-center justify-center border border-white/10 hover:bg-white/10 transition-colors">
                       <span class="text-[10px] sm:text-xs font-bold text-white">GCash</span>
                     </div>
@@ -306,21 +303,8 @@
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200" :class="paymentMethod === 'cod' ? 'border-green-500 bg-green-50/30 shadow-sm' : 'border-gray-100 hover:border-gray-200'">
-                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
-                      <div class="flex items-center justify-between w-full">
-                        <span class="font-bold text-gray-900 flex items-center gap-2">
-                          <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                          COD
-                        </span>
-                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-green-500' : 'border-gray-300'">
-                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    </label>
-
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
                         !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'gcash' ? 'border-blue-500 bg-blue-50/30 shadow-sm cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
                       ]">
@@ -424,10 +408,9 @@
         <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
-              <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <svg v-else-if="paymentMethod === 'gcash'" class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+              <svg v-if="paymentMethod === 'gcash'" class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
               <svg v-else class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-              Confirm {{ paymentMethod === 'cod' ? 'COD' : (paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up') }} Order
+              Confirm {{ paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up' }} Order
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
               You are placing a bulk order for <strong class="text-gray-900">{{ totalItems }} items</strong>.
@@ -437,17 +420,14 @@
               <span v-if="paymentMethod === 'gcash'" class="text-blue-600 text-sm font-semibold mt-2 block">
                 You will be redirected to complete your GCash payment securely.
               </span>
-              <span v-else-if="paymentMethod === 'pick-up'" class="text-amber-600 text-sm mt-2 block font-semibold">
+              <span v-else class="text-amber-600 text-sm mt-2 block font-semibold">
                 You will pay for and pick up your items at the physical store.
-              </span>
-              <span v-else class="text-sm mt-2 block">
-                This will be collected upon delivery.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
             <AlertDialogCancel @click="isCheckoutAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Go Back</AlertDialogCancel>
-            <AlertDialogAction @click="confirmCheckout" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md" :class="paymentMethod === 'cod' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : (paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20')">
+            <AlertDialogAction @click="confirmCheckout" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md" :class="paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'">
               {{ isProcessing ? 'Processing...' : (paymentMethod === 'gcash' ? 'Proceed to GCash' : 'Place Order') }}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -500,7 +480,7 @@ const isCheckoutModalOpen = ref(false)
 const isCheckoutAlertOpen = ref(false)
 const addressMode = ref('default')
 const customAddress = ref('')
-const paymentMethod = ref('cod')
+const paymentMethod = ref('gcash')
 
 // Shipping States
 const shippingFeeEst = ref(0)
@@ -544,13 +524,13 @@ const isPickupAvailable = computed(() => {
 
 watch(isGcashAvailable, (avail) => {
   if (!avail && paymentMethod.value === 'gcash') {
-    paymentMethod.value = 'cod'
+    paymentMethod.value = 'pick-up'
   }
 })
 
 watch(isPickupAvailable, (avail) => {
   if (!avail && paymentMethod.value === 'pick-up') {
-    paymentMethod.value = 'cod'
+    paymentMethod.value = 'gcash'
   }
 })
 
@@ -688,7 +668,7 @@ const openCheckoutModal = () => {
   }
   addressMode.value = 'default'
   customAddress.value = ''
-  paymentMethod.value = 'cod'
+  paymentMethod.value = 'gcash'
   isCheckoutModalOpen.value = true
 }
 
@@ -839,7 +819,7 @@ const confirmCheckout = async () => {
           window.location.href = response.data.checkout_url
         }, 1500)
       } else {
-        toast.success('Cart checked out successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'Cash on Delivery') + ')')
+        toast.success('Cart checked out successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'GCash') + ')')
         if (response.data.receipt_data) { downloadReceipt(response.data.receipt_data); }
         
         isCheckoutAlertOpen.value = false

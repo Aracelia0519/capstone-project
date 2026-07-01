@@ -305,7 +305,6 @@
                   <div class="wizard-form-group">
                     <label class="block text-sm text-gray-300 mb-2">Payment Terms <span class="text-red-400">*</span></label>
                     <select v-model="requestForm.payment_terms" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white appearance-none">
-                      <option v-if="selectedSupplierSettings.is_cod_enabled" value="cod">Cash on Delivery</option>
                       <option v-if="selectedSupplierSettings.is_gcash_enabled" value="gcash">GCash</option>
                       <option v-if="selectedSupplierSettings.is_bank_enabled" value="bank">Bank Transfer</option>
                       <option v-if="!selectedSupplierSettings.is_cod_enabled && !selectedSupplierSettings.is_gcash_enabled && !selectedSupplierSettings.is_bank_enabled" value="" disabled>No Payment Methods Available</option>

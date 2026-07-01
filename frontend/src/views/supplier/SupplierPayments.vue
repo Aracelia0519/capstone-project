@@ -18,27 +18,7 @@
 
       <div v-else class="space-y-6">
         
-        <Card class="border-border shadow-sm">
-          <CardHeader class="pb-4">
-            <div class="flex items-start justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <Banknote class="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle class="text-xl">Cash on Delivery (COD)</CardTitle>
-                  <CardDescription class="mt-1">
-                    Allow clients to pay in cash upon successful delivery of their items.
-                  </CardDescription>
-                </div>
-              </div>
-              <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-2">
-                <input type="checkbox" v-model="settingsForm.is_cod_enabled" class="sr-only peer">
-                <div class="w-14 h-7 bg-muted-foreground/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-          </CardHeader>
-        </Card>
+        
 
         <Card class="border-border shadow-sm transition-all duration-300" :class="{'ring-1 ring-blue-500 border-blue-500': settingsForm.is_gcash_enabled}">
           <CardHeader class="pb-4 border-b border-border/50">
