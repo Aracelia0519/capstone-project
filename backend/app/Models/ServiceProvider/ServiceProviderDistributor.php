@@ -23,7 +23,10 @@ class ServiceProviderDistributor extends Model
         'sp_signed_at',
         'sp_signature_path',
         'distributor_signed_at',
-        'distributor_signature_path'
+        'distributor_signature_path',
+        'contract_end_date',
+        'proposed_end_date',
+        'last_proposed_by',
     ];
 
     protected $casts = [

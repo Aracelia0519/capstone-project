@@ -1,7 +1,5 @@
 <template>
   <div class="min-h-screen font-sans bg-[#0f172a] text-slate-200">
-    
-
     <header class="sticky top-0 z-40 backdrop-blur-xl border-b border-slate-800/60 shadow-lg bg-slate-900/75">
       <div class="px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
@@ -30,18 +28,12 @@
 
         <div class="mt-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div class="flex p-1 bg-slate-800/50 backdrop-blur-md rounded-xl border border-slate-700/50 overflow-x-auto hide-scrollbar w-full sm:w-auto">
-            <button v-for="tab in ['All', 'Connected', 'Pending', 'Disconnected']" :key="tab" @click="activeTab = tab"
+            <button v-for="tab in ['All', 'Connected', 'Negotiating', 'Expired']" :key="tab" @click="activeTab = tab"
               class="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-300 relative whitespace-nowrap"
               :class="activeTab === tab ? 'text-white shadow-md bg-indigo-500/20 border border-indigo-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'">
               {{ tab }}
-              <span v-if="tab === 'Pending' && pendingCount > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-amber-500 rounded-full shadow-lg shadow-amber-500/30">
-                {{ pendingCount }}
-              </span>
-              <span v-if="tab === 'Connected' && connectedCount > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/30">
-                {{ connectedCount }}
-              </span>
-              <span v-if="tab === 'Disconnected' && disconnectedCount > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-lg shadow-red-500/30">
-                {{ disconnectedCount }}
+              <span v-if="tab === 'Negotiating' && negotiatingCount > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-amber-500 rounded-full shadow-lg shadow-amber-500/30">
+                {{ negotiatingCount }}
               </span>
             </button>
           </div>
@@ -91,17 +83,13 @@
             <span v-if="distributor.status === 'active'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 backdrop-blur-md shadow-sm">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2 animate-pulse"></span> Connected
             </span>
-            <span v-else-if="distributor.status === 'pending'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 backdrop-blur-md shadow-sm">
+            <span v-else-if="distributor.status === 'pending' || distributor.status === 'negotiating'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 backdrop-blur-md shadow-sm">
               <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Awaiting Approval
+              {{ distributor.last_proposed_by === 'distributor' ? 'Action Required' : 'Awaiting Review' }}
             </span>
-            <span v-else-if="distributor.status === 'pending_termination'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20 backdrop-blur-md shadow-sm">
-              <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-              Termination Pending
-            </span>
-            <span v-else-if="distributor.status === 'disconnected'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 backdrop-blur-md shadow-sm">
+            <span v-else-if="distributor.status === 'expired'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 backdrop-blur-md shadow-sm">
               <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-              Terminated
+              Contract Expired
             </span>
           </div>
 
@@ -136,10 +124,24 @@
                   <span v-if="distributor.specialties.length === 0" class="text-xs text-slate-500 italic">No materials listed yet.</span>
                 </div>
               </div>
+              
+              <div v-if="distributor.status === 'active' || distributor.status === 'expired'">
+                <p class="text-[10px] sm:text-xs font-bold tracking-wider text-slate-500 uppercase mb-1">Contract End Date</p>
+                <p class="text-sm font-semibold" :class="distributor.status === 'expired' || isNearExpiry(distributor.contract_end_date) ? 'text-red-400' : 'text-slate-300'">
+                  {{ formatDate(distributor.contract_end_date) }}
+                  <span v-if="isNearExpiry(distributor.contract_end_date) && distributor.status === 'active'" class="ml-2 text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30">Expiring Soon</span>
+                </p>
+              </div>
             </div>
           </div>
 
           <div class="px-6 sm:px-8 py-4 sm:py-5 bg-slate-900/50 border-t border-slate-800/80 mt-auto">
+            <!-- View Products button (always visible) -->
+            <button @click="goToProducts(distributor.id)"
+              class="w-full mb-2 py-2 sm:py-2.5 px-4 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:border-indigo-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              View Products
+            </button>
             
             <button v-if="!distributor.status" @click="openModal(distributor)"
               class="w-full py-2.5 sm:py-3 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center justify-center gap-2">
@@ -147,41 +149,23 @@
               Request Partnership
             </button>
             
-            <button v-else-if="distributor.status === 'pending'" disabled
-              class="w-full py-2.5 sm:py-3 px-4 bg-slate-800 text-slate-400 text-sm font-medium rounded-xl border border-slate-700 cursor-not-allowed flex items-center justify-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Review in Progress
-            </button>
-
-            <div v-else-if="distributor.status === 'pending_termination'" class="w-full flex flex-col gap-2">
-              <template v-if="distributor.distributor_termination_signed_at && !distributor.sp_termination_signed_at">
-                <span class="text-[10px] text-red-400 font-semibold text-center uppercase tracking-wider bg-red-500/10 py-1 rounded-md border border-red-500/20 mb-1">Distributor Requested Termination</span>
-                <button @click="openTerminationReviewModal(distributor)"
-                  class="w-full py-2.5 sm:py-3 px-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 hover:border-red-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
-                  <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  Review Dist. Request
-                </button>
-              </template>
-              
-              <template v-else-if="distributor.sp_termination_signed_at && !distributor.distributor_termination_signed_at">
-                <span class="text-[10px] text-orange-400 font-semibold text-center uppercase tracking-wider bg-orange-500/10 py-1 rounded-md border border-orange-500/20 mb-1">Awaiting Dist. Approval</span>
-                <button v-if="distributor.termination_url" @click="downloadTermination(distributor)"
-                  class="w-full py-2.5 sm:py-3 px-4 bg-slate-800 hover:bg-slate-700 text-orange-400 text-sm font-medium rounded-xl border border-slate-700 flex items-center justify-center gap-2 transition-colors">
-                  <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                  View Document
-                </button>
-              </template>
+            <div v-else-if="distributor.status === 'pending' || distributor.status === 'negotiating'">
+              <button v-if="distributor.last_proposed_by === 'distributor'" @click="openNegotiationModal(distributor)"
+                class="w-full py-2.5 sm:py-3 px-4 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 hover:border-amber-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+                Review Proposal
+              </button>
+              <button v-else disabled
+                class="w-full py-2.5 sm:py-3 px-4 bg-slate-800 text-slate-400 text-sm font-medium rounded-xl border border-slate-700 cursor-not-allowed flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Review in Progress
+              </button>
             </div>
 
-            <div v-else-if="distributor.status === 'disconnected'" class="flex gap-2 sm:gap-3">
-              <button @click="openReactivationModal(distributor)" 
-                class="flex-1 py-2.5 sm:py-3 px-4 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+            <div v-else-if="distributor.status === 'expired'" class="flex gap-2 sm:gap-3">
+              <button @click="openRenewalModal(distributor)" 
+                class="w-full py-2.5 sm:py-3 px-4 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                Request Reactivation
-              </button>
-              <button v-if="distributor.termination_url" @click="downloadTermination(distributor)" title="Download Termination Document" 
-                class="p-2.5 sm:p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-slate-600 shrink-0">
-                <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Renew Contract
               </button>
             </div>
             
@@ -191,10 +175,10 @@
                   Order
                </button>
                <button @click="downloadAgreement(distributor)" title="Download Agreement Document" class="p-2.5 sm:p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all border border-slate-600 shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" /></svg>
                </button>
-               <button @click="openSpInitiatedTerminationModal(distributor)" title="Request Partnership Termination" class="p-2.5 sm:p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/30 shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+               <button v-if="isNearExpiry(distributor.contract_end_date)" @click="openRenewalModal(distributor)" title="Renew Contract" class="p-2.5 sm:p-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl transition-all border border-indigo-500/30 shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                </button>
             </div>
           </div>
@@ -202,6 +186,7 @@
       </div>
     </main>
 
+    <!-- Request Partnership Modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeModal">
       <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
@@ -222,10 +207,18 @@
                <p class="text-sm text-slate-300 leading-relaxed">By submitting this request, you agree to abide by the distributor's wholesale policies. Once approved, you will gain access to their catalog and partner-tier pricing.</p>
             </div>
 
-            <div>
-              <label class="block text-sm font-semibold text-slate-300 mb-2">Introductory Message (Optional)</label>
-              <textarea v-model="requestMessage" rows="3" placeholder="Briefly introduce your business and expected procurement volume..."
-                class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner resize-none"></textarea>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">Proposed Contract End Date <span class="text-red-400">*</span></label>
+                <input type="date" v-model="proposedDate" :min="minAllowedDate" class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner" />
+                <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Contracts must be at least 1 month in duration.</p>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">Introductory Message (Optional)</label>
+                <textarea v-model="requestMessage" rows="3" placeholder="Briefly introduce your business and expected procurement volume..."
+                  class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner resize-none"></textarea>
+              </div>
             </div>
 
             <div>
@@ -245,14 +238,34 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                  <label class="block text-sm font-semibold text-slate-300">Your Digital Signature <span class="text-red-400">*</span></label>
-                 <button @click="clearSignature" class="text-xs sm:text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Clear Signature</button>
+                 <div class="flex items-center gap-2">
+                   <button @click="signatureMethod = 'draw'" :class="signatureMethod === 'draw' ? 'text-indigo-400' : 'text-slate-500'" class="text-xs sm:text-sm font-medium transition-colors">Draw</button>
+                   <span class="text-slate-600">|</span>
+                   <button @click="signatureMethod = 'upload'" :class="signatureMethod === 'upload' ? 'text-indigo-400' : 'text-slate-500'" class="text-xs sm:text-sm font-medium transition-colors">Upload</button>
+                 </div>
               </div>
-              <div class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
-                <canvas ref="signaturePad" width="600" height="200" class="w-full h-[150px] sm:h-[200px] touch-none cursor-crosshair"
+
+              <div v-if="signatureMethod === 'draw'" class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
+                <div class="flex justify-end p-1 bg-slate-100 border-b border-slate-300">
+                  <button @click="clearSignature" class="text-[10px] sm:text-xs text-red-500 font-bold uppercase tracking-wider px-2">Clear</button>
+                </div>
+                <canvas ref="signaturePad" width="600" height="150" class="w-full h-[150px] touch-none cursor-crosshair"
                   @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
                   @touchstart.prevent="startDrawingTouch" @touchmove.prevent="drawTouch" @touchend.prevent="stopDrawing"></canvas>
-                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center pt-6">
                   <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here</span>
+                </div>
+              </div>
+
+              <div v-else class="border border-dashed border-slate-600 rounded-xl bg-slate-900/50 p-6 flex flex-col items-center justify-center relative min-h-[150px]">
+                <input type="file" accept="image/png, image/jpeg" @change="handleSignatureUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div v-if="!uploadedSignature" class="text-center text-slate-400">
+                  <svg class="w-8 h-8 mx-auto mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  <span class="text-sm font-medium">Click to upload signature (PNG/JPG)</span>
+                </div>
+                <div v-else class="flex flex-col items-center">
+                  <img :src="uploadedSignature" class="max-h-[100px] object-contain mb-2" />
+                  <span class="text-xs text-indigo-400">Click to change</span>
                 </div>
               </div>
             </div>
@@ -287,207 +300,31 @@
       </div>
     </div>
 
-    <div v-if="showTerminationModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeTerminationModal">
-      <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
-        
-        <div class="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-900/95 rounded-t-2xl z-10 sticky top-0">
-          <div class="flex items-center gap-3">
-             <div class="p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-             </div>
-            <div>
-              <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Review Termination</h2>
-              <p class="text-xs sm:text-sm text-slate-400 mt-1">Termination requested by <span class="font-semibold text-red-400">{{ selectedTermination?.name }}</span></p>
-            </div>
-          </div>
-          <button @click="closeTerminationModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div class="p-5 sm:p-8 overflow-y-auto custom-scrollbar flex-1 relative">
-          <div class="space-y-6 sm:space-y-8">
-            <div class="bg-red-500/10 border border-red-500/20 p-4 sm:p-5 rounded-xl flex items-start gap-4">
-               <p class="text-sm text-slate-300 leading-relaxed">The distributor has submitted a formal request to terminate this commercial partnership. Please review the official document below. You may choose to approve the termination (officially revoking access) or decline it.</p>
-            </div>
-
-            <div class="space-y-3">
-              <label class="block text-sm font-semibold text-slate-300 flex items-center justify-between">
-                <span>Official Termination Request Document</span>
-              </label>
-              <div class="h-[250px] sm:h-[350px] border border-slate-700 rounded-xl overflow-hidden bg-white shadow-inner">
-                <iframe 
-                  v-if="selectedTermination?.termination_url" 
-                  :src="selectedTermination.termination_url" 
-                  class="w-full h-full border-0"
-                ></iframe>
-                <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-900">
-                  <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  Document not available.
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                 <label class="block text-sm font-semibold text-slate-300">Your Signature <span class="text-red-400">*</span></label>
-                 <button @click="clearTerminationSignature" class="text-xs sm:text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Clear Pad</button>
-              </div>
-              <div class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
-                <canvas ref="termSignaturePad" width="600" height="150" class="w-full h-[150px] touch-none cursor-crosshair"
-                  @mousedown="startTermDrawing" @mousemove="drawTerm" @mouseup="stopTermDrawing" @mouseleave="stopTermDrawing"
-                  @touchstart.prevent="startTermDrawingTouch" @touchmove.prevent="drawTermTouch" @touchend.prevent="stopTermDrawing"></canvas>
-                <div v-if="!hasTermSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here to Approve Termination</span>
-                </div>
-              </div>
-            </div>
-
-            <label class="flex items-start gap-3 sm:gap-4 p-4 rounded-xl border border-slate-700/50 bg-slate-800/20 cursor-pointer group hover:bg-slate-800/40 transition-colors">
-              <div class="relative flex items-center justify-center shrink-0 mt-0.5">
-                 <input type="checkbox" v-model="agreedToTermination" class="peer appearance-none w-5 h-5 border-2 border-slate-500 rounded bg-slate-900 checked:bg-red-500 checked:border-red-500 transition-colors cursor-pointer" />
-                 <svg class="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                 </svg>
-              </div>
-              <span class="text-sm text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors">
-                I understand that by signing and approving, I am officially dissolving this partnership and my wholesale access will be revoked.
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div class="px-5 sm:px-8 py-4 sm:py-5 border-t border-slate-800 bg-slate-900/95 flex flex-col-reverse sm:flex-row justify-between gap-3 sm:gap-4 shrink-0 rounded-b-2xl">
-          <button @click="submitDeclineTermination" :disabled="isSubmittingTermination" 
-            class="w-full sm:w-auto px-6 py-2.5 sm:py-3 text-slate-300 bg-transparent hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-            Decline Request
-          </button>
-          <button @click="submitApproveTermination" :disabled="!agreedToTermination || !hasTermSignature || isSubmittingTermination"
-            class="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <svg v-if="isSubmittingTermination" class="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span v-if="isSubmittingTermination">Processing...</span>
-            <span v-else>Approve Termination</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showSpInitiatedModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeSpInitiatedTerminationModal">
+    <!-- Negotiation Modal -->
+    <div v-if="showNegotiationModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeNegotiationModal">
       <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
         <div class="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-900/95 rounded-t-2xl z-10 sticky top-0">
           <div>
-            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-              Request Partnership Termination
-            </h2>
-            <p class="text-xs sm:text-sm text-slate-400 mt-1">Initiating termination with <span class="font-semibold text-red-400">{{ selectedSpTermination?.name }}</span></p>
+            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Contract Negotiation</h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Reviewing proposal from <span class="font-semibold text-indigo-400">{{ selectedDistributor?.name }}</span></p>
           </div>
-          <button @click="closeSpInitiatedTerminationModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
+          <button @click="closeNegotiationModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         <div class="p-5 sm:p-8 overflow-y-auto custom-scrollbar flex-1 relative">
           <div class="space-y-6 sm:space-y-8">
-            <div class="bg-red-500/10 border border-red-500/20 p-4 sm:p-5 rounded-xl flex items-start gap-4">
-               <p class="text-sm text-slate-300 leading-relaxed">This will generate a formal Termination Request Document. Once the distributor approves, your access to their catalog will be permanently revoked.</p>
+            <div class="bg-amber-500/10 border border-amber-500/20 p-4 sm:p-5 rounded-xl flex flex-col gap-2">
+               <span class="text-sm font-semibold text-amber-400">Distributor Proposed Date</span>
+               <p class="text-slate-300 text-lg">The distributor has proposed the contract end date: <strong class="text-white">{{ formatDate(selectedDistributor?.proposed_end_date) }}</strong>.</p>
             </div>
 
-            <div>
-              <label class="block text-sm font-semibold text-slate-300 mb-2">Termination Reason / Message (Optional)</label>
-              <textarea v-model="spTerminationMessage" rows="3" placeholder="Briefly explain your reason for terminating the partnership..."
-                class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all text-sm shadow-inner resize-none"></textarea>
-            </div>
-
-            <div>
-               <label class="block text-sm font-semibold text-slate-300 mb-2">Terms of Revocation</label>
-               <div class="bg-slate-950 border border-slate-700 p-4 sm:p-5 rounded-xl text-sm text-slate-400 h-40 sm:h-48 overflow-y-auto custom-scrollbar shadow-inner leading-relaxed">
-                  <h4 class="font-bold text-slate-200 mb-2">1. Access Revocation</h4>
-                  <p class="mb-4">Upon final approval by the Distributor, access to the Distributor's wholesale catalog and partner-tier pricing will be revoked.</p>
-                  
-                  <h4 class="font-bold text-slate-200 mb-2">2. Transaction Fulfillment</h4>
-                  <p class="mb-4">Any pending transactions initiated prior to this date shall be processed normally, subject to standard review.</p>
-
-                  <h4 class="font-bold text-slate-200 mb-2">3. Mutual Confidentiality</h4>
-                  <p>Both parties are reminded of their obligation to protect proprietary business data obtained during the partnership period.</p>
-               </div>
-            </div>
-
-            <div class="space-y-3">
-              <div class="flex items-center justify-between">
-                 <label class="block text-sm font-semibold text-slate-300">Your Digital Signature <span class="text-red-400">*</span></label>
-                 <button @click="clearSpTermSignature" class="text-xs sm:text-sm text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Clear Signature</button>
-              </div>
-              <div class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
-                <canvas ref="spTermSignaturePad" width="600" height="200" class="w-full h-[150px] sm:h-[200px] touch-none cursor-crosshair"
-                  @mousedown="startSpTermDrawing" @mousemove="drawSpTerm" @mouseup="stopSpTermDrawing" @mouseleave="stopSpTermDrawing"
-                  @touchstart.prevent="startSpTermDrawingTouch" @touchmove.prevent="drawSpTermTouch" @touchend.prevent="stopSpTermDrawing"></canvas>
-                <div v-if="!hasSpTermSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here to Terminate</span>
-                </div>
-              </div>
-            </div>
-
-            <label class="flex items-start gap-3 sm:gap-4 p-4 rounded-xl border border-slate-700/50 bg-slate-800/20 cursor-pointer group hover:bg-slate-800/40 transition-colors">
-              <div class="relative flex items-center justify-center shrink-0 mt-0.5">
-                 <input type="checkbox" v-model="spTerminationAgreedToTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-500 rounded bg-slate-900 checked:bg-red-500 checked:border-red-500 transition-colors cursor-pointer" />
-                 <svg class="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                 </svg>
-              </div>
-              <span class="text-sm text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors">
-                I hereby affix my signature and formally request the termination of this partnership. This document will be sent to the distributor for final execution.
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div class="px-5 sm:px-8 py-4 sm:py-5 border-t border-slate-800 bg-slate-900/95 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 shrink-0 rounded-b-2xl">
-          <button @click="closeSpInitiatedTerminationModal" :disabled="isSubmittingSpTermination" class="w-full sm:w-auto px-6 py-2.5 sm:py-3 text-slate-300 bg-transparent hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
-            Cancel
-          </button>
-          <button @click="submitSpInitiatedTermination" :disabled="!isFormValidSpTermination || isSubmittingSpTermination"
-            class="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <svg v-if="isSubmittingSpTermination" class="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span v-if="isSubmittingSpTermination">Submitting...</span>
-            <span v-else>Send Termination Request</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showReactivationModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeReactivationModal">
-      <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
-        
-        <div class="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-900/95 rounded-t-2xl z-10 sticky top-0">
-          <div>
-            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Request Partnership Reactivation
-            </h2>
-            <p class="text-xs sm:text-sm text-slate-400 mt-1">Proposing to restore commercial relationship with <span class="font-semibold text-emerald-400">{{ selectedReactivation?.name }}</span></p>
-          </div>
-          <button @click="closeReactivationModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div class="p-5 sm:p-8 overflow-y-auto custom-scrollbar flex-1 relative">
-          <div class="space-y-6 sm:space-y-8">
-            <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 sm:p-5 rounded-xl flex items-start gap-4">
-               <svg class="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-               <p class="text-sm text-slate-300 leading-relaxed">This will generate a fresh Partnership Agreement. Once the distributor approves, your previous access to their wholesale catalog and partner-tier pricing will be fully restored.</p>
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-300 mb-2">Reactivation Message (Optional)</label>
-              <textarea v-model="reactivationMessage" rows="3" placeholder="Briefly explain your intent to reconnect..."
-                class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-inner resize-none"></textarea>
+            <div v-if="negotiationMode === 'counter'">
+              <label class="block text-sm font-semibold text-slate-300 mb-2">Counter Proposal End Date <span class="text-red-400">*</span></label>
+              <input type="date" v-model="proposedDate" :min="minAllowedDate" class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner" />
+              <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Contracts must be at least 1 month in duration.</p>
             </div>
 
             <div>
@@ -506,44 +343,180 @@
 
             <div class="space-y-3">
               <div class="flex items-center justify-between">
-                 <label class="block text-sm font-semibold text-slate-300">Your Digital Signature <span class="text-red-400">*</span></label>
-                 <button @click="clearReactivationSignature" class="text-xs sm:text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors">Clear Signature</button>
+                 <label class="block text-sm font-semibold text-slate-300">Your Signature to {{ negotiationMode === 'counter' ? 'Counter' : 'Accept' }} <span class="text-red-400">*</span></label>
+                 <div class="flex items-center gap-2">
+                   <button @click="signatureMethod = 'draw'" :class="signatureMethod === 'draw' ? 'text-indigo-400' : 'text-slate-500'" class="text-xs font-medium transition-colors">Draw</button>
+                   <span class="text-slate-600">|</span>
+                   <button @click="signatureMethod = 'upload'" :class="signatureMethod === 'upload' ? 'text-indigo-400' : 'text-slate-500'" class="text-xs font-medium transition-colors">Upload</button>
+                 </div>
               </div>
-              <div class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
-                <canvas ref="reactivationSignaturePad" width="600" height="200" class="w-full h-[150px] sm:h-[200px] touch-none cursor-crosshair"
-                  @mousedown="startReactivationDrawing" @mousemove="drawReactivation" @mouseup="stopReactivationDrawing" @mouseleave="stopReactivationDrawing"
-                  @touchstart.prevent="startReactivationDrawingTouch" @touchmove.prevent="drawReactivationTouch" @touchend.prevent="stopReactivationDrawing"></canvas>
-                <div v-if="!hasReactivationSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here to Reactivate</span>
+
+              <div v-if="signatureMethod === 'draw'" class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
+                <div class="flex justify-end p-1 bg-slate-100 border-b border-slate-300">
+                  <button @click="clearSignature" class="text-[10px] sm:text-xs text-red-500 font-bold uppercase tracking-wider px-2">Clear</button>
+                </div>
+                <canvas ref="signaturePad" width="600" height="150" class="w-full h-[150px] touch-none cursor-crosshair"
+                  @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
+                  @touchstart.prevent="startDrawingTouch" @touchmove.prevent="drawTouch" @touchend.prevent="stopDrawing"></canvas>
+                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center pt-6">
+                  <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here</span>
+                </div>
+              </div>
+
+              <div v-else class="border border-dashed border-slate-600 rounded-xl bg-slate-900/50 p-6 flex flex-col items-center justify-center relative min-h-[150px]">
+                <input type="file" accept="image/png, image/jpeg" @change="handleSignatureUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div v-if="!uploadedSignature" class="text-center text-slate-400">
+                  <svg class="w-8 h-8 mx-auto mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  <span class="text-sm font-medium">Click to upload signature</span>
+                </div>
+                <div v-else class="flex flex-col items-center">
+                  <img :src="uploadedSignature" class="max-h-[100px] object-contain mb-2" />
+                  <span class="text-xs text-indigo-400">Click to change</span>
                 </div>
               </div>
             </div>
 
-            <label class="flex items-start gap-3 sm:gap-4 p-4 rounded-xl border border-slate-700/50 bg-slate-800/20 cursor-pointer group hover:bg-slate-800/40 transition-colors">
-              <div class="relative flex items-center justify-center shrink-0 mt-0.5">
-                 <input type="checkbox" v-model="reactivationAgreedToTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-500 rounded bg-slate-900 checked:bg-emerald-500 checked:border-emerald-500 transition-colors cursor-pointer" />
-                 <svg class="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                 </svg>
-              </div>
-              <span class="text-sm text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors">
-                I hereby affix my signature and agree to the partnership terms to request reactivation. This document will be sent to the distributor for final execution.
+            <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-700/50 bg-slate-800/20 cursor-pointer group">
+              <input type="checkbox" v-model="agreedToTerms" class="mt-0.5 w-4 h-4 rounded bg-slate-900 border-slate-500 checked:bg-indigo-500" />
+              <span class="text-sm text-slate-300 leading-relaxed group-hover:text-slate-200">
+                I verify my signature to {{ negotiationMode === 'counter' ? 'propose a new date' : 'finalize this contract' }}.
               </span>
             </label>
           </div>
         </div>
 
         <div class="px-5 sm:px-8 py-4 sm:py-5 border-t border-slate-800 bg-slate-900/95 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 shrink-0 rounded-b-2xl">
-          <button @click="closeReactivationModal" :disabled="isSubmittingReactivation" class="w-full sm:w-auto px-6 py-2.5 sm:py-3 text-slate-300 bg-transparent hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+          <button @click="closeNegotiationModal" :disabled="isSubmitting" class="w-full sm:w-auto px-6 py-2.5 text-slate-300 bg-transparent hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
             Cancel
           </button>
-          <button @click="submitReactivation" :disabled="!isFormValidReactivation || isSubmittingReactivation"
+          
+          <button v-if="negotiationMode === 'view'" @click="negotiationMode = 'counter'" class="w-full sm:w-auto px-6 py-2.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 rounded-xl text-sm font-semibold transition-colors">
+            Counter Proposal
+          </button>
+          
+          <button v-if="negotiationMode === 'counter'" @click="submitCounter" :disabled="!isFormValid || isSubmitting" class="w-full sm:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 flex justify-center gap-2">
+            Send Counter
+          </button>
+
+          <button v-if="negotiationMode === 'view'" @click="submitAccept" :disabled="!isFormValid || isSubmitting" class="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 flex justify-center gap-2">
+            Accept & Finalize
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Renewal Modal -->
+    <div v-if="showRenewalModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeRenewalModal">
+      <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
+        
+        <div class="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-900/95 rounded-t-2xl z-10 sticky top-0">
+          <div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Contract Renewal
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Proposing renewal with <span class="font-semibold text-emerald-400">{{ selectedDistributor?.name }}</span></p>
+          </div>
+          <button @click="closeRenewalModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="p-5 sm:p-8 overflow-y-auto custom-scrollbar flex-1 relative">
+          <div class="space-y-6 sm:space-y-8">
+            <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 sm:p-5 rounded-xl flex items-start gap-4">
+               <svg class="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+               <p class="text-sm text-slate-300 leading-relaxed">This will request a contract renewal. The distributor will review your proposed end date and may accept or counter-propose.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">New Proposed End Date <span class="text-red-400">*</span></label>
+                <input type="date" v-model="proposedDate" :min="minAllowedDate" class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-inner" />
+                <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Contracts must be at least 1 month in duration.</p>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">Message (Optional)</label>
+                <textarea v-model="requestMessage" rows="3" placeholder="Briefly explain your intent to renew..."
+                  class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-inner resize-none"></textarea>
+              </div>
+            </div>
+
+            <div>
+               <label class="block text-sm font-semibold text-slate-300 mb-2">Terms and Conditions</label>
+               <div class="bg-slate-950 border border-slate-700 p-4 sm:p-5 rounded-xl text-sm text-slate-400 h-40 sm:h-48 overflow-y-auto custom-scrollbar shadow-inner leading-relaxed">
+                  <h4 class="font-bold text-slate-200 mb-2">1. Authorization & Access</h4>
+                  <p class="mb-4">The Service Provider is authorized to access the Distributor's wholesale catalog, view pricing, and submit procurement requests upon final approval of this digital agreement.</p>
+                  
+                  <h4 class="font-bold text-slate-200 mb-2">2. Procurement Standards</h4>
+                  <p class="mb-4">All materials procured are subject to the Distributor's standard quality assurance protocols. Pricing tiers are exclusive and confidential.</p>
+
+                  <h4 class="font-bold text-slate-200 mb-2">3. Digital Signature Binding</h4>
+                  <p>By affixing your digital signature below, you certify that you are an authorized representative of your entity and agree to enter into a legally binding commercial partnership.</p>
+               </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                 <label class="block text-sm font-semibold text-slate-300">Your Signature <span class="text-red-400">*</span></label>
+                 <div class="flex items-center gap-2">
+                   <button @click="signatureMethod = 'draw'" :class="signatureMethod === 'draw' ? 'text-emerald-400' : 'text-slate-500'" class="text-xs font-medium transition-colors">Draw</button>
+                   <span class="text-slate-600">|</span>
+                   <button @click="signatureMethod = 'upload'" :class="signatureMethod === 'upload' ? 'text-emerald-400' : 'text-slate-500'" class="text-xs font-medium transition-colors">Upload</button>
+                 </div>
+              </div>
+
+              <div v-if="signatureMethod === 'draw'" class="border border-slate-700 rounded-xl bg-white overflow-hidden relative shadow-inner">
+                <div class="flex justify-end p-1 bg-slate-100 border-b border-slate-300">
+                  <button @click="clearSignature" class="text-[10px] sm:text-xs text-red-500 font-bold uppercase tracking-wider px-2">Clear</button>
+                </div>
+                <canvas ref="signaturePad" width="600" height="150" class="w-full h-[150px] touch-none cursor-crosshair"
+                  @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
+                  @touchstart.prevent="startDrawingTouch" @touchmove.prevent="drawTouch" @touchend.prevent="stopDrawing"></canvas>
+                <div v-if="!hasSignature" class="absolute inset-0 pointer-events-none flex items-center justify-center pt-6">
+                  <span class="text-slate-300 text-lg font-medium tracking-widest uppercase">Sign Here to Renew</span>
+                </div>
+              </div>
+
+              <div v-else class="border border-dashed border-slate-600 rounded-xl bg-slate-900/50 p-6 flex flex-col items-center justify-center relative min-h-[150px]">
+                <input type="file" accept="image/png, image/jpeg" @change="handleSignatureUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <div v-if="!uploadedSignature" class="text-center text-slate-400">
+                  <svg class="w-8 h-8 mx-auto mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  <span class="text-sm font-medium">Click to upload signature (PNG/JPG)</span>
+                </div>
+                <div v-else class="flex flex-col items-center">
+                  <img :src="uploadedSignature" class="max-h-[100px] object-contain mb-2" />
+                  <span class="text-xs text-emerald-400">Click to change</span>
+                </div>
+              </div>
+            </div>
+
+            <label class="flex items-start gap-3 sm:gap-4 p-4 rounded-xl border border-slate-700/50 bg-slate-800/20 cursor-pointer group hover:bg-slate-800/40 transition-colors">
+              <div class="relative flex items-center justify-center shrink-0 mt-0.5">
+                 <input type="checkbox" v-model="agreedToTerms" class="peer appearance-none w-5 h-5 border-2 border-slate-500 rounded bg-slate-900 checked:bg-emerald-500 checked:border-emerald-500 transition-colors cursor-pointer" />
+                 <svg class="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                 </svg>
+              </div>
+              <span class="text-sm text-slate-300 leading-relaxed group-hover:text-slate-200 transition-colors">
+                I hereby affix my signature and agree to the partnership terms to request renewal.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="px-5 sm:px-8 py-4 sm:py-5 border-t border-slate-800 bg-slate-900/95 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 shrink-0 rounded-b-2xl">
+          <button @click="closeRenewalModal" :disabled="isSubmitting" class="w-full sm:w-auto px-6 py-2.5 sm:py-3 text-slate-300 bg-transparent hover:bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+            Cancel
+          </button>
+          <button @click="submitRenewal" :disabled="!isFormValid || isSubmitting"
             class="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <svg v-if="isSubmittingReactivation" class="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-if="isSubmitting" class="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span v-if="isSubmittingReactivation">Submitting...</span>
-            <span v-else>Send Reactivation Request</span>
+            <span v-if="isSubmitting">Submitting...</span>
+            <span v-else>Send Renewal Request</span>
           </button>
         </div>
       </div>
@@ -569,58 +542,37 @@ export default {
       currentUserId: null,
       echoInitialized: false,
 
-      // Partnership Request Modal State
+      // Modals State
       showModal: false,
+      showNegotiationModal: false,
+      showRenewalModal: false,
       selectedDistributor: null,
+      
+      // Form Data
+      proposedDate: '',
       requestMessage: '',
       agreedToTerms: false,
       isSubmitting: false,
+      negotiationMode: 'view',
+
+      // Signature State
+      signatureMethod: 'draw', // 'draw' or 'upload'
       hasSignature: false,
+      uploadedSignature: null,
       isDrawing: false,
       ctx: null,
-
-      // Termination Review Modal State (Distributor Initiated)
-      showTerminationModal: false,
-      selectedTermination: null,
-      agreedToTermination: false,
-      isSubmittingTermination: false,
-      hasTermSignature: false,
-      isTermDrawing: false,
-      termCtx: null,
-
-      // SP Initiated Termination Modal State
-      showSpInitiatedModal: false,
-      selectedSpTermination: null,
-      spTerminationMessage: '',
-      spTerminationAgreedToTerms: false,
-      isSubmittingSpTermination: false,
-      hasSpTermSignature: false,
-      isSpTermDrawing: false,
-      spTermCtx: null,
-
-      // Reactivation Modal State
-      showReactivationModal: false,
-      selectedReactivation: null,
-      reactivationMessage: '',
-      isSubmittingReactivation: false,
-      reactivationAgreedToTerms: false,
-      hasReactivationSignature: false,
-      isReactivationDrawing: false,
-      reactivationCtx: null,
     };
   },
   computed: {
-    pendingCount() { return this.distributors.filter(d => d.status === 'pending').length; },
-    connectedCount() { return this.distributors.filter(d => d.status === 'active' || d.status === 'pending_termination').length; },
-    disconnectedCount() { return this.distributors.filter(d => d.status === 'disconnected').length; },
+    negotiatingCount() { return this.distributors.filter(d => d.status === 'pending' || d.status === 'negotiating').length; },
     filteredDistributors() {
       let filtered = this.distributors;
       if (this.activeTab === 'Connected') {
-        filtered = filtered.filter(d => d.status === 'active' || d.status === 'pending_termination');
-      } else if (this.activeTab === 'Pending') {
-        filtered = filtered.filter(d => d.status === 'pending');
-      } else if (this.activeTab === 'Disconnected') {
-        filtered = filtered.filter(d => d.status === 'disconnected');
+        filtered = filtered.filter(d => d.status === 'active');
+      } else if (this.activeTab === 'Negotiating') {
+        filtered = filtered.filter(d => d.status === 'pending' || d.status === 'negotiating');
+      } else if (this.activeTab === 'Expired') {
+        filtered = filtered.filter(d => d.status === 'expired');
       }
       
       if (this.searchQuery) {
@@ -633,14 +585,35 @@ export default {
       }
       return filtered;
     },
-    isFormValid() { return this.agreedToTerms && this.hasSignature; },
-    isFormValidReactivation() { return this.reactivationAgreedToTerms && this.hasReactivationSignature; },
-    isFormValidSpTermination() { return this.spTerminationAgreedToTerms && this.hasSpTermSignature; }
+    minAllowedDate() {
+      const min = new Date();
+      min.setMonth(min.getMonth() + 1);
+      return min.toISOString().split('T')[0];
+    },
+    isSignatureValid() {
+      return this.signatureMethod === 'draw' ? this.hasSignature : !!this.uploadedSignature;
+    },
+    isFormValid() {
+      const isDateValid = this.negotiationMode === 'view' && this.showNegotiationModal ? true : (this.proposedDate && this.proposedDate >= this.minAllowedDate);
+      return this.agreedToTerms && this.isSignatureValid && isDateValid;
+    }
   },
   created() { this.fetchDistributors(); },
   methods: {
+    formatDate(dateString) {
+      if(!dateString) return 'Not Set';
+      return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    },
+    isNearExpiry(dateString) {
+      if(!dateString) return false;
+      const diffTime = new Date(dateString) - new Date();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= 30 && diffTime > 0;
+    },
     goToShop(distributorId) {
       this.$router.push('/serviceProvider/shop/' + distributorId);
+    },
+    goToProducts(distributorId) {
+      this.$router.push({ name: 'sp_distributor_products', params: { id: distributorId } });
     },
     
     async fetchDistributors() {
@@ -648,21 +621,8 @@ export default {
       try {
         const response = await api.get('/service-provider/distributors');
         if (response.data.success) {
-          this.distributors = response.data.data.map(dist => ({
-             id: dist.id,
-             partnership_id: dist.partnership_id,
-             name: dist.name,
-             location: dist.location,
-             specialties: dist.specialties,
-             status: dist.status,
-             agreement_url: dist.agreement_url,
-             termination_url: dist.termination_url,
-             distributor_termination_signed_at: dist.distributor_termination_signed_at,
-             sp_termination_signed_at: dist.sp_termination_signed_at
-          }));
+          this.distributors = response.data.data;
           this.currentUserId = response.data.current_user_id;
-
-          // Initialize WebSockets securely after fetching user data
           this.initializeEchoListener();
         }
       } catch (error) {
@@ -673,11 +633,9 @@ export default {
     },
 
     initializeEchoListener() {
-        // USE IMPORTED 'echo' HERE instead of window.Echo
         if (!this.echoInitialized && this.currentUserId && echo) {
             echo.private(`partnership.user.${this.currentUserId}`)
                 .listen('.PartnershipStatusUpdated', (e) => {
-                    // Update data seamlessly
                     this.fetchDistributorsSilently();
                     toast.info('Network Update', {
                         description: 'A distributor has updated your partnership status.'
@@ -691,39 +649,70 @@ export default {
       try {
         const response = await api.get('/service-provider/distributors');
         if (response.data.success) {
-          this.distributors = response.data.data.map(dist => ({
-             id: dist.id,
-             partnership_id: dist.partnership_id,
-             name: dist.name,
-             location: dist.location,
-             specialties: dist.specialties,
-             status: dist.status,
-             agreement_url: dist.agreement_url,
-             termination_url: dist.termination_url,
-             distributor_termination_signed_at: dist.distributor_termination_signed_at,
-             sp_termination_signed_at: dist.sp_termination_signed_at
-          }));
+          this.distributors = response.data.data;
         }
       } catch (error) {
          console.error('Silent refresh failed');
       }
     },
 
-    // --- Partnership Request Logic ---
+    // --- Modal Resets ---
+    resetForm() {
+      this.requestMessage = '';
+      this.agreedToTerms = false;
+      this.hasSignature = false;
+      this.uploadedSignature = null;
+      this.proposedDate = this.minAllowedDate;
+      if(this.ctx && this.$refs.signaturePad) {
+          this.ctx.clearRect(0,0, this.$refs.signaturePad.width, this.$refs.signaturePad.height);
+          this.ctx.beginPath();
+      }
+    },
+
+    // --- Request Partnership Logic ---
     openModal(distributor) {
       this.selectedDistributor = distributor;
       this.showModal = true;
       document.body.style.overflow = 'hidden';
-      this.$nextTick(() => { this.initSignaturePad(); });
+      this.resetForm();
+      this.$nextTick(() => { if(this.signatureMethod === 'draw') this.initSignaturePad(); });
     },
     closeModal() {
       this.showModal = false;
       this.selectedDistributor = null;
-      this.requestMessage = '';
-      this.agreedToTerms = false;
-      this.hasSignature = false;
       document.body.style.overflow = '';
     },
+
+    // --- Negotiation Logic ---
+    openNegotiationModal(distributor) {
+      this.selectedDistributor = distributor;
+      this.negotiationMode = 'view';
+      this.showNegotiationModal = true;
+      document.body.style.overflow = 'hidden';
+      this.resetForm();
+      this.$nextTick(() => { if(this.signatureMethod === 'draw') this.initSignaturePad(); });
+    },
+    closeNegotiationModal() {
+      this.showNegotiationModal = false;
+      this.selectedDistributor = null;
+      document.body.style.overflow = '';
+    },
+
+    // --- Renewal Logic ---
+    openRenewalModal(distributor) {
+      this.selectedDistributor = distributor;
+      this.showRenewalModal = true;
+      document.body.style.overflow = 'hidden';
+      this.resetForm();
+      this.$nextTick(() => { if(this.signatureMethod === 'draw') this.initSignaturePad(); });
+    },
+    closeRenewalModal() {
+      this.showRenewalModal = false;
+      this.selectedDistributor = null;
+      document.body.style.overflow = '';
+    },
+
+    // --- Signature Logic ---
     initSignaturePad() {
       const canvas = this.$refs.signaturePad;
       if (!canvas) return;
@@ -735,7 +724,7 @@ export default {
     },
     startDrawing(e) { this.isDrawing = true; this.hasSignature = true; this.draw(e); },
     draw(e) {
-      if (!this.isDrawing) return;
+      if (!this.isDrawing || !this.ctx) return;
       const rect = this.$refs.signaturePad.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -744,7 +733,7 @@ export default {
       this.ctx.beginPath();
       this.ctx.moveTo(x, y);
     },
-    stopDrawing() { this.isDrawing = false; this.ctx.beginPath(); },
+    stopDrawing() { this.isDrawing = false; if(this.ctx) this.ctx.beginPath(); },
     startDrawingTouch(e) {
       const touch = e.touches[0];
       const rect = this.$refs.signaturePad.getBoundingClientRect();
@@ -754,7 +743,7 @@ export default {
       this.ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
     },
     drawTouch(e) {
-      if (!this.isDrawing) return;
+      if (!this.isDrawing || !this.ctx) return;
       const touch = e.touches[0];
       const rect = this.$refs.signaturePad.getBoundingClientRect();
       this.ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
@@ -769,362 +758,126 @@ export default {
       this.hasSignature = false;
       this.ctx.beginPath();
     },
+    handleSignatureUpload(event) {
+      const file = event.target.files[0];
+      if (file && (file.type === 'image/png' || file.type === 'image/jpeg')) {
+        const reader = new FileReader();
+        reader.onload = (e) => { this.uploadedSignature = e.target.result; };
+        reader.readAsDataURL(file);
+      } else {
+        toast.error("Invalid file format. Please upload PNG or JPG.");
+      }
+    },
+    getFinalSignature() {
+      return this.signatureMethod === 'draw' ? this.$refs.signaturePad.toDataURL('image/png') : this.uploadedSignature;
+    },
+
     downloadAgreement(distributor) {
        if(distributor.agreement_url) {
           window.open(distributor.agreement_url, '_blank');
        }
     },
-    downloadTermination(distributor) {
-       if(distributor.termination_url) {
-          window.open(distributor.termination_url, '_blank');
-       }
-    },
+
+    // --- Submissions ---
     async submitRequest() {
       if (!this.isFormValid) return;
       this.isSubmitting = true;
-      
-      const signatureBase64 = this.$refs.signaturePad.toDataURL('image/png');
 
       try {
         const response = await api.post('/service-provider/distributors/request', {
           distributor_id: this.selectedDistributor.id,
           request_message: this.requestMessage,
-          signature: signatureBase64
+          proposed_end_date: this.proposedDate,
+          signature: this.getFinalSignature()
         });
 
         if (response.data.success) {
-          const index = this.distributors.findIndex(d => d.id === this.selectedDistributor.id);
-          if (index !== -1) this.distributors[index].status = 'pending';
-          
-          toast.success('Partnership Proposal Sent', {
-            description: `Official request and signed agreement successfully submitted to ${this.selectedDistributor.name}.`,
-            duration: 4000,
-          });
+          toast.success('Partnership Proposal Sent', { description: `Official request successfully submitted to ${this.selectedDistributor.name}.` });
           this.closeModal();
+          this.fetchDistributorsSilently();
         }
       } catch (error) {
-        toast.error('Submission Failed', {
-          description: error.response?.data?.message || 'There was an issue processing your agreement. Please try again.',
-          duration: 4000,
-        });
+        toast.error('Submission Failed', { description: error.response?.data?.message || 'There was an issue processing your request.' });
       } finally {
         this.isSubmitting = false;
       }
     },
 
-    // --- Reactivation Logic ---
-    openReactivationModal(distributor) {
-      this.selectedReactivation = distributor;
-      this.showReactivationModal = true;
-      document.body.style.overflow = 'hidden';
-      this.$nextTick(() => { this.initReactivationSignaturePad(); });
-    },
-    closeReactivationModal() {
-      this.showReactivationModal = false;
-      this.selectedReactivation = null;
-      this.reactivationMessage = '';
-      this.reactivationAgreedToTerms = false;
-      this.hasReactivationSignature = false;
-      document.body.style.overflow = '';
-    },
-    initReactivationSignaturePad() {
-      const canvas = this.$refs.reactivationSignaturePad;
-      if (!canvas) return;
-      this.reactivationCtx = canvas.getContext('2d');
-      this.reactivationCtx.lineWidth = 2.5;
-      this.reactivationCtx.lineCap = 'round';
-      this.reactivationCtx.strokeStyle = '#000000';
-      this.clearReactivationSignature();
-    },
-    startReactivationDrawing(e) { this.isReactivationDrawing = true; this.hasReactivationSignature = true; this.drawReactivation(e); },
-    drawReactivation(e) {
-      if (!this.isReactivationDrawing) return;
-      const rect = this.$refs.reactivationSignaturePad.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      this.reactivationCtx.lineTo(x, y);
-      this.reactivationCtx.stroke();
-      this.reactivationCtx.beginPath();
-      this.reactivationCtx.moveTo(x, y);
-    },
-    stopReactivationDrawing() { this.isReactivationDrawing = false; this.reactivationCtx.beginPath(); },
-    startReactivationDrawingTouch(e) {
-      const touch = e.touches[0];
-      const rect = this.$refs.reactivationSignaturePad.getBoundingClientRect();
-      this.isReactivationDrawing = true;
-      this.hasReactivationSignature = true;
-      this.reactivationCtx.beginPath();
-      this.reactivationCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    drawReactivationTouch(e) {
-      if (!this.isReactivationDrawing) return;
-      const touch = e.touches[0];
-      const rect = this.$refs.reactivationSignaturePad.getBoundingClientRect();
-      this.reactivationCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-      this.reactivationCtx.stroke();
-      this.reactivationCtx.beginPath();
-      this.reactivationCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    clearReactivationSignature() {
-      const canvas = this.$refs.reactivationSignaturePad;
-      if(!canvas || !this.reactivationCtx) return;
-      this.reactivationCtx.clearRect(0, 0, canvas.width, canvas.height);
-      this.hasReactivationSignature = false;
-      this.reactivationCtx.beginPath();
-    },
-    async submitReactivation() {
-      if (!this.isFormValidReactivation || !this.selectedReactivation) return;
-      this.isSubmittingReactivation = true;
-
-      const signatureBase64 = this.$refs.reactivationSignaturePad.toDataURL('image/png');
+    async submitCounter() {
+      if (!this.isFormValid) return;
+      this.isSubmitting = true;
 
       try {
-        const response = await api.post(`/service-provider/distributors/${this.selectedReactivation.partnership_id}/request-reactivation`, {
-          message: this.reactivationMessage,
-          signature: signatureBase64
+        const response = await api.post(`/service-provider/distributors/${this.selectedDistributor.partnership_id}/counter-proposal`, {
+          proposed_end_date: this.proposedDate,
+          signature: this.getFinalSignature()
         });
 
         if (response.data.success) {
-          const index = this.distributors.findIndex(d => d.partnership_id === this.selectedReactivation.partnership_id);
-          if (index !== -1) {
-            this.distributors[index].status = 'pending';
-            this.distributors[index].termination_url = null;
-          }
-
-          toast.success('Reactivation Requested', {
-            description: `A signed request to restore the partnership has been sent to ${this.selectedReactivation.name}.`,
-            duration: 4000,
-          });
-          
-          this.activeTab = 'Pending';
-          this.closeReactivationModal();
+          toast.success('Counter-proposal Sent', { description: 'Your proposed date has been sent to the distributor.' });
+          this.closeNegotiationModal();
+          this.fetchDistributorsSilently();
         }
       } catch (error) {
-        toast.error('Reactivation Failed', {
-          description: error.response?.data?.message || 'There was an issue sending your request. Please try again.',
-          duration: 4000,
-        });
+        toast.error('Counter Failed', { description: error.response?.data?.message || 'There was an issue sending your counter-proposal.' });
       } finally {
-        this.isSubmittingReactivation = false;
+        this.isSubmitting = false;
       }
     },
 
-    // --- Termination Review Logic (Distributor Initiated) ---
-    openTerminationReviewModal(distributor) {
-      this.selectedTermination = distributor;
-      this.showTerminationModal = true;
-      document.body.style.overflow = 'hidden';
-      this.$nextTick(() => { this.initTermSignaturePad(); });
-    },
-    closeTerminationModal() {
-      this.showTerminationModal = false;
-      this.selectedTermination = null;
-      this.agreedToTermination = false;
-      this.hasTermSignature = false;
-      document.body.style.overflow = '';
-    },
-    initTermSignaturePad() {
-      const canvas = this.$refs.termSignaturePad;
-      if (!canvas) return;
-      this.termCtx = canvas.getContext('2d');
-      this.termCtx.lineWidth = 2.5;
-      this.termCtx.lineCap = 'round';
-      this.termCtx.strokeStyle = '#000000';
-      this.clearTerminationSignature();
-    },
-    startTermDrawing(e) { this.isTermDrawing = true; this.hasTermSignature = true; this.drawTerm(e); },
-    drawTerm(e) {
-      if (!this.isTermDrawing) return;
-      const rect = this.$refs.termSignaturePad.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      this.termCtx.lineTo(x, y);
-      this.termCtx.stroke();
-      this.termCtx.beginPath();
-      this.termCtx.moveTo(x, y);
-    },
-    stopTermDrawing() { this.isTermDrawing = false; this.termCtx.beginPath(); },
-    startTermDrawingTouch(e) {
-      const touch = e.touches[0];
-      const rect = this.$refs.termSignaturePad.getBoundingClientRect();
-      this.isTermDrawing = true;
-      this.hasTermSignature = true;
-      this.termCtx.beginPath();
-      this.termCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    drawTermTouch(e) {
-      if (!this.isTermDrawing) return;
-      const touch = e.touches[0];
-      const rect = this.$refs.termSignaturePad.getBoundingClientRect();
-      this.termCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-      this.termCtx.stroke();
-      this.termCtx.beginPath();
-      this.termCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    clearTerminationSignature() {
-      const canvas = this.$refs.termSignaturePad;
-      if(!canvas || !this.termCtx) return;
-      this.termCtx.clearRect(0, 0, canvas.width, canvas.height);
-      this.hasTermSignature = false;
-      this.termCtx.beginPath();
-    },
-    async submitApproveTermination() {
-      if (!this.agreedToTermination || !this.hasTermSignature) return;
-      this.isSubmittingTermination = true;
-      
-      const signatureBase64 = this.$refs.termSignaturePad.toDataURL('image/png');
+    async submitAccept() {
+      if (!this.isFormValid) return;
+      this.isSubmitting = true;
 
       try {
-        const response = await api.post(`/service-provider/distributors/${this.selectedTermination.partnership_id}/approve-termination`, {
-          signature: signatureBase64
+        const response = await api.post(`/service-provider/distributors/${this.selectedDistributor.partnership_id}/accept-proposal`, {
+          signature: this.getFinalSignature()
         });
 
         if (response.data.success) {
-          const index = this.distributors.findIndex(d => d.partnership_id === this.selectedTermination.partnership_id);
-          if (index !== -1) {
-             this.distributors[index].status = 'disconnected';
-             this.distributors[index].termination_url = response.data.termination_url;
-          }
-          
-          toast.success('Termination Approved', {
-            description: `The partnership with ${this.selectedTermination.name} has been officially terminated.`,
-            duration: 4000,
-          });
-          this.closeTerminationModal();
+          toast.success('Contract Finalized', { description: 'The partnership contract is now active.' });
+          this.closeNegotiationModal();
+          this.fetchDistributorsSilently();
         }
       } catch (error) {
-        toast.error('Approval Failed', {
-          description: error.response?.data?.message || 'There was an issue processing the termination. Please try again.',
-          duration: 4000,
-        });
+        toast.error('Acceptance Failed', { description: error.response?.data?.message || 'There was an issue finalizing the contract.' });
       } finally {
-        this.isSubmittingTermination = false;
-      }
-    },
-    async submitDeclineTermination() {
-      this.isSubmittingTermination = true;
-      try {
-        const response = await api.post(`/service-provider/distributors/${this.selectedTermination.partnership_id}/decline-termination`);
-
-        if (response.data.success) {
-          const index = this.distributors.findIndex(d => d.partnership_id === this.selectedTermination.partnership_id);
-          if (index !== -1) this.distributors[index].status = 'active';
-          
-          toast.success('Termination Declined', {
-            description: `The partnership with ${this.selectedTermination.name} remains active.`,
-            duration: 4000,
-          });
-          this.closeTerminationModal();
-        }
-      } catch (error) {
-        toast.error('Decline Failed', {
-          description: error.response?.data?.message || 'There was an issue declining the termination. Please try again.',
-          duration: 4000,
-        });
-      } finally {
-        this.isSubmittingTermination = false;
+        this.isSubmitting = false;
       }
     },
 
-    // --- SP Initiated Termination Logic ---
-    openSpInitiatedTerminationModal(distributor) {
-      this.selectedSpTermination = distributor;
-      this.showSpInitiatedModal = true;
-      document.body.style.overflow = 'hidden';
-      this.$nextTick(() => { this.initSpTermSignaturePad(); });
-    },
-    closeSpInitiatedTerminationModal() {
-      this.showSpInitiatedModal = false;
-      this.selectedSpTermination = null;
-      this.spTerminationMessage = '';
-      this.spTerminationAgreedToTerms = false;
-      this.hasSpTermSignature = false;
-      document.body.style.overflow = '';
-    },
-    initSpTermSignaturePad() {
-      const canvas = this.$refs.spTermSignaturePad;
-      if (!canvas) return;
-      this.spTermCtx = canvas.getContext('2d');
-      this.spTermCtx.lineWidth = 2.5;
-      this.spTermCtx.lineCap = 'round';
-      this.spTermCtx.strokeStyle = '#000000';
-      this.clearSpTermSignature();
-    },
-    startSpTermDrawing(e) { this.isSpTermDrawing = true; this.hasSpTermSignature = true; this.drawSpTerm(e); },
-    drawSpTerm(e) {
-      if (!this.isSpTermDrawing) return;
-      const rect = this.$refs.spTermSignaturePad.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      this.spTermCtx.lineTo(x, y);
-      this.spTermCtx.stroke();
-      this.spTermCtx.beginPath();
-      this.spTermCtx.moveTo(x, y);
-    },
-    stopSpTermDrawing() { this.isSpTermDrawing = false; this.spTermCtx.beginPath(); },
-    startSpTermDrawingTouch(e) {
-      const touch = e.touches[0];
-      const rect = this.$refs.spTermSignaturePad.getBoundingClientRect();
-      this.isSpTermDrawing = true;
-      this.hasSpTermSignature = true;
-      this.spTermCtx.beginPath();
-      this.spTermCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    drawSpTermTouch(e) {
-      if (!this.isSpTermDrawing) return;
-      const touch = e.touches[0];
-      const rect = this.$refs.spTermSignaturePad.getBoundingClientRect();
-      this.spTermCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-      this.spTermCtx.stroke();
-      this.spTermCtx.beginPath();
-      this.spTermCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    },
-    clearSpTermSignature() {
-      const canvas = this.$refs.spTermSignaturePad;
-      if(!canvas || !this.spTermCtx) return;
-      this.spTermCtx.clearRect(0, 0, canvas.width, canvas.height);
-      this.hasSpTermSignature = false;
-      this.spTermCtx.beginPath();
-    },
-    async submitSpInitiatedTermination() {
-      if (!this.isFormValidSpTermination || !this.selectedSpTermination) return;
-      this.isSubmittingSpTermination = true;
-
-      const signatureBase64 = this.$refs.spTermSignaturePad.toDataURL('image/png');
+    async submitRenewal() {
+      if (!this.isFormValid) return;
+      this.isSubmitting = true;
 
       try {
-        const response = await api.post(`/service-provider/distributors/${this.selectedSpTermination.partnership_id}/request-termination`, {
-          message: this.spTerminationMessage,
-          signature: signatureBase64
+        const response = await api.post(`/service-provider/distributors/${this.selectedDistributor.partnership_id}/renew-contract`, {
+          message: this.requestMessage,
+          proposed_end_date: this.proposedDate,
+          signature: this.getFinalSignature()
         });
 
         if (response.data.success) {
-          const index = this.distributors.findIndex(d => d.partnership_id === this.selectedSpTermination.partnership_id);
-          if (index !== -1) {
-            this.distributors[index].status = 'pending_termination';
-            this.distributors[index].sp_termination_signed_at = response.data.signed_at; // to reflect UI logic
-          }
-
-          toast.success('Termination Requested', {
-            description: `A formal request to terminate the partnership has been sent to ${this.selectedSpTermination.name}.`,
-            duration: 4000,
-          });
-          
-          this.closeSpInitiatedTerminationModal();
+          toast.success('Renewal Requested', { description: `A signed request to renew the partnership has been sent.` });
+          this.closeRenewalModal();
+          this.fetchDistributorsSilently();
         }
       } catch (error) {
-        toast.error('Termination Failed', {
-          description: error.response?.data?.message || 'There was an issue sending your termination request. Please try again.',
-          duration: 4000,
-        });
+        toast.error('Renewal Failed', { description: error.response?.data?.message || 'There was an issue sending your request.' });
       } finally {
-        this.isSubmittingSpTermination = false;
+        this.isSubmitting = false;
       }
-    },
+    }
+  },
+  watch: {
+    signatureMethod(val) {
+      if (val === 'draw') {
+        this.$nextTick(() => this.initSignaturePad());
+      }
+    }
   },
   beforeUnmount() { 
       document.body.style.overflow = ''; 
-      // USE IMPORTED 'echo' HERE
       if (this.currentUserId && echo) {
           echo.leave(`partnership.user.${this.currentUserId}`);
       }

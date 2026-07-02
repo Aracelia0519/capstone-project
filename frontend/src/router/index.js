@@ -52,6 +52,7 @@ import SpShop from '@/views/serviceProvider/SpShop.vue'
 import SpCart from '@/views/serviceProvider/SpCart.vue'
 import SpProductDetails from '@/views/serviceProvider/SpProductDetails.vue'
 import SpInventory from '@/views/serviceProvider/SpInventory.vue'
+import SpDistributorProducts from '@/views/serviceProvider/SpDistributorProducts.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -729,6 +730,7 @@ const routes = [
       { path: 'cart', name: 'sp_cart', component: SpCart },
       { path: 'ProductDetails/:id', name: 'sp_product_details', component: SpProductDetails },
       { path: 'inventory', name: 'sp_inventory', component: SpInventory },
+      { path: 'distributor-products/:id', name: 'sp_distributor_products', component: SpDistributorProducts },
     ]
   },
   {

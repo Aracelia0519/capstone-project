@@ -351,6 +351,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/distributors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'index']);
         Route::post('/distributors/request', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestPartnership']);
 
+        Route::post('/distributors/{id}/counter-proposal', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'counterProposal']);
+        Route::post('/distributors/{id}/accept-proposal', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'acceptProposal']);
+        Route::post('/distributors/{id}/renew-contract', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'renewContract']);
+
         Route::post('/distributors/{id}/approve-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'approveTermination']);
         Route::post('/distributors/{id}/decline-termination', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'declineTermination']);
 
@@ -835,6 +839,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'reject']);
+
+            Route::post('/{id}/counter', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'counter']);
 
             Route::get('/{id}/termination-raw', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'getTerminationRaw']);
             Route::post('/{id}/terminate', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'terminate']);
