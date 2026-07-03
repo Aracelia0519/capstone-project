@@ -66,6 +66,7 @@ class ServiceProviderDistributorController extends Controller
                         'proposed_end_date' => $partnership ? $partnership->proposed_end_date : null,
                         'last_proposed_by' => $partnership ? ($partnership->last_proposed_by ?? 'service_provider') : null,
                         'agreement_url' => ($partnership && $partnership->agreement_path) ? asset('storage/' . $partnership->agreement_path) : null,
+                        'terms' => $partnership ? $partnership->terms : null,
                     ];
                 });
 
@@ -108,6 +109,8 @@ class ServiceProviderDistributorController extends Controller
                 'request_message' => 'nullable|string|max:1000',
                 'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d'),
                 'signature' => 'required|string',
+                'terms' => 'nullable|array',
+                'terms.*' => 'string|max:500',
             ], [
                 'proposed_end_date.after_or_equal' => 'Contract must be at least 1 month in duration.'
             ]);
@@ -135,6 +138,7 @@ class ServiceProviderDistributorController extends Controller
                     'last_proposed_by' => 'service_provider',
                     'sp_signature_path' => $signaturePath,
                     'sp_signed_at' => now(),
+                    'terms' => $request->terms ? json_encode($request->terms) : null,
                 ]
             );
 
@@ -147,14 +151,16 @@ class ServiceProviderDistributorController extends Controller
     }
 
     /**
-     * SP Counters a Distributor's proposed date
+     * SP Counters a Distributor's proposed date and can modify terms
      */
     public function counterProposal(Request $request, $id): JsonResponse
     {
         try {
             $request->validate([
                 'signature' => 'required|string',
-                'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d')
+                'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d'),
+                'terms' => 'nullable|array',
+                'terms.*' => 'string|max:500',
             ], [
                 'proposed_end_date.after_or_equal' => 'Contract must be at least 1 month in duration.'
             ]);
@@ -172,6 +178,7 @@ class ServiceProviderDistributorController extends Controller
                 'last_proposed_by' => 'service_provider',
                 'sp_signature_path' => $signaturePath,
                 'sp_signed_at' => now(),
+                'terms' => $request->terms ? json_encode($request->terms) : null,
             ]);
 
             event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'contract_countered'));
@@ -203,6 +210,18 @@ class ServiceProviderDistributorController extends Controller
             $distName = $distributor->distributorRequirement->company_name ?? 'Authorized Distributor';
             $dateStr = now()->format('F j, Y');
             $endDateStr = Carbon::parse($partnership->proposed_end_date)->format('F j, Y');
+
+            $terms = $partnership->terms ? json_decode($partnership->terms, true) : [];
+            $termsHtml = '';
+            if (!empty($terms)) {
+                $termsHtml = '<h3>Agreed Terms and Conditions</h3><ul>';
+                foreach ($terms as $term) {
+                    $termsHtml .= '<li>' . htmlspecialchars($term) . '</li>';
+                }
+                $termsHtml .= '</ul>';
+            } else {
+                $termsHtml = '<p>No additional terms.</p>';
+            }
 
             $spSigUrl = 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($signaturePath));
             $distSigUrl = $partnership->distributor_signature_path ? 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($partnership->distributor_signature_path)) : '';
@@ -244,11 +263,12 @@ class ServiceProviderDistributorController extends Controller
                 </div>
                 
                 <div class='terms'>
-                    <h3>Terms and Conditions</h3>
+                    <h3>Standard Terms</h3>
                     <p><strong>1. Authorization of Access:</strong> By executing this document, the Distributor authorizes the Service Provider to access the wholesale catalog, view pricing tiers, and submit procurement requests through the platform.</p>
                     <p><strong>2. Procurement and Pricing:</strong> The Service Provider shall be eligible to procure materials under established partner-tier pricing. The Distributor reserves the exclusive right to modify pricing tiers and stock availability.</p>
                     <p><strong>3. Compliance and Representation:</strong> The Service Provider agrees to maintain all necessary local business licenses and industry certifications.</p>
                     <p><strong>4. Confidentiality:</strong> Both parties mutually agree to hold in strict confidence any sensitive business intelligence shared during this partnership.</p>
+                    {$termsHtml}
                 </div>
                 
                 <div class='signatures'>
@@ -303,7 +323,9 @@ class ServiceProviderDistributorController extends Controller
             $request->validate([
                 'signature' => 'required|string',
                 'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d'),
-                'message' => 'nullable|string|max:1000'
+                'message' => 'nullable|string|max:1000',
+                'terms' => 'nullable|array',
+                'terms.*' => 'string|max:500',
             ], [
                 'proposed_end_date.after_or_equal' => 'Contracts must be at least 1 month in duration.'
             ]);
@@ -325,6 +347,7 @@ class ServiceProviderDistributorController extends Controller
                 'sp_signed_at' => now(),
                 'distributor_signature_path' => null,
                 'distributor_signed_at' => null,
+                'terms' => $request->terms ? json_encode($request->terms) : null,
             ]);
 
             event(new PartnershipStatusUpdated($partnership->distributor_id, $user->id, 'reactivation_requested'));

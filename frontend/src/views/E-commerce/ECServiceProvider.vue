@@ -134,6 +134,24 @@
                <p class="text-slate-300 text-lg"><strong class="text-white">{{ formatDate(selectedRequest.proposed_end_date) }}</strong></p>
             </div>
 
+            <!-- Terms Section with editing capabilities -->
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium leading-none text-slate-200">Terms & Conditions</h4>
+              <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+                <div v-if="editableTerms.length === 0" class="text-sm text-slate-400 italic">No terms added yet.</div>
+                <div v-else>
+                  <div v-for="(term, index) in editableTerms" :key="index" class="flex items-center gap-2 mb-2">
+                    <span class="flex-1 text-sm text-slate-300">{{ term }}</span>
+                    <button @click="removeTerm(index)" type="button" class="text-red-400 hover:text-red-300 text-xs" title="Remove term">✕</button>
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-2">
+                  <input v-model="newTermInput" placeholder="Add new term..." class="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <button @click="addTerm" type="button" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold">Add</button>
+                </div>
+              </div>
+            </div>
+
             <div v-if="negotiationMode === 'counter'">
               <label class="block text-sm font-semibold text-slate-300 mb-2">Counter Proposal End Date <span class="text-red-400">*</span></label>
               <input type="date" v-model="counterDate" :min="minAllowedDate" class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -307,6 +325,10 @@ const counterDate = ref('')
 const documentUrlToView = ref('')
 const docLoading = ref(true)
 
+// Terms
+const editableTerms = ref([])
+const newTermInput = ref('')
+
 const signatureMethod = ref('draw')
 const signaturePad = ref(null)
 const isDrawing = ref(false)
@@ -386,6 +408,18 @@ const initializeEcho = () => {
 onMounted(() => { fetchData() })
 onBeforeUnmount(() => { if (currentUserId.value && echo) echo.leave(`partnership.user.${currentUserId.value}`) })
 
+// Term methods
+const addTerm = () => {
+  const trimmed = newTermInput.value.trim();
+  if (trimmed) {
+    editableTerms.value.push(trimmed);
+    newTermInput.value = '';
+  }
+};
+const removeTerm = (index) => {
+  editableTerms.value.splice(index, 1);
+};
+
 const openViewDialog = (req) => {
   selectedRequest.value = req
   negotiationMode.value = 'view'
@@ -393,6 +427,9 @@ const openViewDialog = (req) => {
   hasSignature.value = false
   uploadedSignature.value = null
   counterDate.value = minAllowedDate.value
+  // Populate editableTerms from request (already array)
+  editableTerms.value = Array.isArray(req.terms) ? [...req.terms] : []
+  newTermInput.value = ''
   showViewDialog.value = true
   nextTick(() => { if(signatureMethod.value === 'draw') initSignaturePad() })
 }
@@ -457,7 +494,9 @@ const submitAccept = async () => {
   isProcessing.value = true
 
   try {
-    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/approve`, { signature: getFinalSignature() })
+    const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/approve`, { 
+      signature: getFinalSignature() 
+    })
     if (response.data.success) {
       toast.success('Contract Finalized', { description: 'The partnership is now officially active.' })
       closeViewDialog()
@@ -472,7 +511,9 @@ const submitCounter = async () => {
 
   try {
     const response = await api.post(`/operation-distributor/service-provider-requests/${selectedRequest.value.id}/counter`, { 
-      signature: getFinalSignature(), proposed_end_date: counterDate.value 
+      signature: getFinalSignature(), 
+      proposed_end_date: counterDate.value,
+      terms: editableTerms.value 
     })
     if (response.data.success) {
       toast.success('Counter Proposal Sent', { description: 'Sent back to the service provider for review.' })

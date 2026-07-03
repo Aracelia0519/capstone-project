@@ -76,6 +76,8 @@ class ServiceProviderRequestController extends Controller
                         $status = 'expired';
                     }
 
+                    $terms = $req->terms ? json_decode($req->terms, true) : [];
+
                     return [
                         'id' => $req->id,
                         'provider_name' => $sp ? $sp->full_name : 'Unknown',
@@ -89,6 +91,7 @@ class ServiceProviderRequestController extends Controller
                         'contract_end_date' => $req->contract_end_date,
                         'last_proposed_by' => $req->last_proposed_by ?? 'service_provider',
                         'agreement_url' => $req->agreement_path ? asset('storage/' . $req->agreement_path) : null,
+                        'terms' => $terms,
                     ];
                 });
 
@@ -109,7 +112,7 @@ class ServiceProviderRequestController extends Controller
     }
 
     /**
-     * OP Counters SP's proposed date
+     * OP Counters SP's proposed date and can modify terms (add/remove)
      */
     public function counter(Request $request, $id): JsonResponse
     {
@@ -119,7 +122,9 @@ class ServiceProviderRequestController extends Controller
 
             $request->validate([
                 'signature' => 'required|string',
-                'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d')
+                'proposed_end_date' => 'required|date|after_or_equal:' . now()->addDays(28)->format('Y-m-d'),
+                'terms' => 'nullable|array',
+                'terms.*' => 'string|max:500',
             ]);
             
             $distId = $this->getDistributorId($user);
@@ -132,6 +137,7 @@ class ServiceProviderRequestController extends Controller
                 'last_proposed_by' => 'distributor',
                 'distributor_signature_path' => $signaturePath,
                 'distributor_signed_at' => now(),
+                'terms' => $request->terms ? json_encode($request->terms) : null,
             ]);
 
             event(new PartnershipStatusUpdated($distId, $req->service_provider_id, 'contract_countered'));
@@ -164,6 +170,18 @@ class ServiceProviderRequestController extends Controller
             $dateStr = Carbon::now()->format('F j, Y');
             $endDateStr = Carbon::parse($req->proposed_end_date)->format('F j, Y');
 
+            $terms = $req->terms ? json_decode($req->terms, true) : [];
+            $termsHtml = '';
+            if (!empty($terms)) {
+                $termsHtml = '<h3>Agreed Terms and Conditions</h3><ul>';
+                foreach ($terms as $term) {
+                    $termsHtml .= '<li>' . htmlspecialchars($term) . '</li>';
+                }
+                $termsHtml .= '</ul>';
+            } else {
+                $termsHtml = '<p>No additional terms.</p>';
+            }
+
             $spSigStr = $req->sp_signature_path && Storage::disk('public')->exists($req->sp_signature_path) ? 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($req->sp_signature_path)) : '';
             $distSigStr = 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($signaturePath));
 
@@ -179,9 +197,10 @@ class ServiceProviderRequestController extends Controller
                     <p><strong>Distributor:</strong> {$distName}</p>
                     <p><strong>Service Provider:</strong> {$spName}</p>
                 </div>
-                <h3>Terms and Conditions</h3>
+                <h3>Standard Terms and Conditions</h3>
                 <p><strong>1. Authorization of Access:</strong> Distributor authorizes Service Provider to access wholesale catalog and partner-tier pricing.</p>
                 <p><strong>2. Procurement and Pricing:</strong> Procurement subject to Distributor's quality assurance. Pricing is exclusive.</p>
+                {$termsHtml}
                 <div style='display: flex; justify-content: space-between; margin-top: 50px;'>
                     <div style='width: 45%;'><p><strong>Service Provider</strong></p><div class='sig-line'><img src='{$spSigStr}'/></div><p>Signed by: {$spName}</p><p>Date: " . ($req->sp_signed_at ? Carbon::parse($req->sp_signed_at)->format('F j, Y') : 'Unknown') . "</p></div>
                     <div style='width: 45%;'><p><strong>Distributor</strong></p><div class='sig-line'><img src='{$distSigStr}'/></div><p>Signed by: {$authorizedName}</p><p>Date: {$dateStr}</p></div>

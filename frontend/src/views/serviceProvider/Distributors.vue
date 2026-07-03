@@ -136,7 +136,6 @@
           </div>
 
           <div class="px-6 sm:px-8 py-4 sm:py-5 bg-slate-900/50 border-t border-slate-800/80 mt-auto">
-            <!-- View Products button (always visible) -->
             <button @click="goToProducts(distributor.id)"
               class="w-full mb-2 py-2 sm:py-2.5 px-4 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:border-indigo-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
               <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
@@ -218,6 +217,21 @@
                 <label class="block text-sm font-semibold text-slate-300 mb-2">Introductory Message (Optional)</label>
                 <textarea v-model="requestMessage" rows="3" placeholder="Briefly introduce your business and expected procurement volume..."
                   class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner resize-none"></textarea>
+              </div>
+
+              <!-- New Terms & Conditions -->
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
+                <div class="space-y-2">
+                  <div v-for="(term, index) in terms" :key="index" class="flex items-center gap-2">
+                    <span class="flex-1 text-sm text-slate-200 bg-slate-800 p-2 rounded">{{ term }}</span>
+                    <button @click="removeTerm(index)" type="button" class="text-red-400 hover:text-red-300">✕</button>
+                  </div>
+                  <div class="flex gap-2">
+                    <input v-model="newTerm" placeholder="Add a term..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <button @click="addTerm" type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold">Add</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -325,6 +339,21 @@
               <label class="block text-sm font-semibold text-slate-300 mb-2">Counter Proposal End Date <span class="text-red-400">*</span></label>
               <input type="date" v-model="proposedDate" :min="minAllowedDate" class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner" />
               <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Contracts must be at least 1 month in duration.</p>
+            </div>
+
+            <!-- Terms editing in negotiation -->
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
+              <div class="space-y-2">
+                <div v-for="(term, index) in terms" :key="index" class="flex items-center gap-2">
+                  <span class="flex-1 text-sm text-slate-200 bg-slate-800 p-2 rounded">{{ term }}</span>
+                  <button @click="removeTerm(index)" type="button" class="text-red-400 hover:text-red-300">✕</button>
+                </div>
+                <div class="flex gap-2">
+                  <input v-model="newTerm" placeholder="Add a term..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <button @click="addTerm" type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold">Add</button>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -441,6 +470,21 @@
                 <textarea v-model="requestMessage" rows="3" placeholder="Briefly explain your intent to renew..."
                   class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-inner resize-none"></textarea>
               </div>
+
+              <!-- Terms for renewal -->
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
+                <div class="space-y-2">
+                  <div v-for="(term, index) in terms" :key="index" class="flex items-center gap-2">
+                    <span class="flex-1 text-sm text-slate-200 bg-slate-800 p-2 rounded">{{ term }}</span>
+                    <button @click="removeTerm(index)" type="button" class="text-red-400 hover:text-red-300">✕</button>
+                  </div>
+                  <div class="flex gap-2">
+                    <input v-model="newTerm" placeholder="Add a term..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                    <button @click="addTerm" type="button" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold">Add</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -542,25 +586,25 @@ export default {
       currentUserId: null,
       echoInitialized: false,
 
-      // Modals State
       showModal: false,
       showNegotiationModal: false,
       showRenewalModal: false,
       selectedDistributor: null,
       
-      // Form Data
       proposedDate: '',
       requestMessage: '',
       agreedToTerms: false,
       isSubmitting: false,
       negotiationMode: 'view',
 
-      // Signature State
-      signatureMethod: 'draw', // 'draw' or 'upload'
+      signatureMethod: 'draw',
       hasSignature: false,
       uploadedSignature: null,
       isDrawing: false,
       ctx: null,
+
+      terms: [],
+      newTerm: '',
     };
   },
   computed: {
@@ -656,6 +700,33 @@ export default {
       }
     },
 
+    // --- Term methods ---
+    addTerm() {
+      if (this.newTerm.trim()) {
+        this.terms.push(this.newTerm.trim());
+        this.newTerm = '';
+      }
+    },
+    removeTerm(index) {
+      this.terms.splice(index, 1);
+    },
+
+    // --- Helper to get terms from distributor (ensures array) ---
+    getTermsFromDistributor(distributor) {
+      let termsData = distributor.terms;
+      if (typeof termsData === 'string') {
+        try {
+          termsData = JSON.parse(termsData);
+        } catch(e) {
+          termsData = [];
+        }
+      }
+      if (Array.isArray(termsData)) {
+        return [...termsData];
+      }
+      return [];
+    },
+
     // --- Modal Resets ---
     resetForm() {
       this.requestMessage = '';
@@ -663,6 +734,8 @@ export default {
       this.hasSignature = false;
       this.uploadedSignature = null;
       this.proposedDate = this.minAllowedDate;
+      this.terms = [];
+      this.newTerm = '';
       if(this.ctx && this.$refs.signaturePad) {
           this.ctx.clearRect(0,0, this.$refs.signaturePad.width, this.$refs.signaturePad.height);
           this.ctx.beginPath();
@@ -684,12 +757,24 @@ export default {
     },
 
     // --- Negotiation Logic ---
-    openNegotiationModal(distributor) {
-      this.selectedDistributor = distributor;
+    async openNegotiationModal(distributor) {
+      // Fetch fresh data to ensure we have the latest terms from the distributor
+      await this.fetchDistributorsSilently();
+      
+      // Find the updated distributor in the list
+      const updatedDistributor = this.distributors.find(d => d.id === distributor.id);
+      if (updatedDistributor) {
+        this.selectedDistributor = updatedDistributor;
+      } else {
+        this.selectedDistributor = distributor;
+      }
+
       this.negotiationMode = 'view';
       this.showNegotiationModal = true;
       document.body.style.overflow = 'hidden';
       this.resetForm();
+      // Populate terms from distributor's existing terms
+      this.terms = this.getTermsFromDistributor(this.selectedDistributor);
       this.$nextTick(() => { if(this.signatureMethod === 'draw') this.initSignaturePad(); });
     },
     closeNegotiationModal() {
@@ -699,11 +784,22 @@ export default {
     },
 
     // --- Renewal Logic ---
-    openRenewalModal(distributor) {
-      this.selectedDistributor = distributor;
+    async openRenewalModal(distributor) {
+      // Fetch fresh data to ensure we have the latest terms
+      await this.fetchDistributorsSilently();
+      
+      const updatedDistributor = this.distributors.find(d => d.id === distributor.id);
+      if (updatedDistributor) {
+        this.selectedDistributor = updatedDistributor;
+      } else {
+        this.selectedDistributor = distributor;
+      }
+
       this.showRenewalModal = true;
       document.body.style.overflow = 'hidden';
       this.resetForm();
+      // Populate terms from existing partnership
+      this.terms = this.getTermsFromDistributor(this.selectedDistributor);
       this.$nextTick(() => { if(this.signatureMethod === 'draw') this.initSignaturePad(); });
     },
     closeRenewalModal() {
@@ -788,7 +884,8 @@ export default {
           distributor_id: this.selectedDistributor.id,
           request_message: this.requestMessage,
           proposed_end_date: this.proposedDate,
-          signature: this.getFinalSignature()
+          signature: this.getFinalSignature(),
+          terms: this.terms
         });
 
         if (response.data.success) {
@@ -810,11 +907,12 @@ export default {
       try {
         const response = await api.post(`/service-provider/distributors/${this.selectedDistributor.partnership_id}/counter-proposal`, {
           proposed_end_date: this.proposedDate,
-          signature: this.getFinalSignature()
+          signature: this.getFinalSignature(),
+          terms: this.terms
         });
 
         if (response.data.success) {
-          toast.success('Counter-proposal Sent', { description: 'Your proposed date has been sent to the distributor.' });
+          toast.success('Counter-proposal Sent', { description: 'Your proposed date and terms have been sent to the distributor.' });
           this.closeNegotiationModal();
           this.fetchDistributorsSilently();
         }
@@ -854,7 +952,8 @@ export default {
         const response = await api.post(`/service-provider/distributors/${this.selectedDistributor.partnership_id}/renew-contract`, {
           message: this.requestMessage,
           proposed_end_date: this.proposedDate,
-          signature: this.getFinalSignature()
+          signature: this.getFinalSignature(),
+          terms: this.terms
         });
 
         if (response.data.success) {

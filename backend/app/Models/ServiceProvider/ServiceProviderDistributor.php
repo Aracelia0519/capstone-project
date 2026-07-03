@@ -2,14 +2,11 @@
 
 namespace App\Models\ServiceProvider;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 
 class ServiceProviderDistributor extends Model
 {
-    use HasFactory;
-
     protected $table = 'service_provider_distributors';
 
     protected $fillable = [
@@ -24,28 +21,31 @@ class ServiceProviderDistributor extends Model
         'sp_signature_path',
         'distributor_signed_at',
         'distributor_signature_path',
+        'termination_path',
+        'distributor_termination_signed_at',
+        'distributor_termination_signature_path',
+        'sp_termination_signed_at',
+        'sp_termination_signature_path',
         'contract_end_date',
         'proposed_end_date',
         'last_proposed_by',
+        'terms',
     ];
 
     protected $casts = [
-        'approved_at' => 'datetime',
+        'terms' => 'array',
         'sp_signed_at' => 'datetime',
         'distributor_signed_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'contract_end_date' => 'date',
+        'proposed_end_date' => 'date',
     ];
 
-    /**
-     * Get the service provider who initiated the request.
-     */
     public function serviceProvider()
     {
         return $this->belongsTo(User::class, 'service_provider_id');
     }
 
-    /**
-     * Get the distributor receiving the request.
-     */
     public function distributor()
     {
         return $this->belongsTo(User::class, 'distributor_id');
