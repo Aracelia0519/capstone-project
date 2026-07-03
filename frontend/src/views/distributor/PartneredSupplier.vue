@@ -255,7 +255,7 @@
 
           <div v-if="selectedSupplier.status === 'pending_supplier'" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
              <h4 class="text-sm font-bold text-blue-900 flex items-center gap-2 mb-2">
-                 <Calendar class="h-4 w-4" /> Contract Duration Negotiation
+                 <Calendar class="h-4 w-4" /> Contract Duration & Terms Negotiation
              </h4>
              <div class="text-sm text-blue-800 flex flex-col gap-2">
                  <div>
@@ -266,19 +266,26 @@
                     <span v-else class="text-amber-600">Not set</span>
                  </div>
                  
-                 <div v-if="selectedSupplier.last_proposed_by === 'distributor'">
-                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">Awaiting Supplier to accept & sign.</span>
+                 <div class="mt-2" v-if="parseTerms(selectedSupplier.negotiated_terms).length > 0">
+                    <strong>Current Negotiated Terms:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                        <li v-for="(t, i) in parseTerms(selectedSupplier.negotiated_terms)" :key="i">{{ t }}</li>
+                    </ul>
+                 </div>
+
+                 <div class="mt-2" v-if="selectedSupplier.last_proposed_by === 'distributor'">
+                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">Awaiting Supplier to review and sign.</span>
                  </div>
                  <div v-else-if="selectedSupplier.last_proposed_by === 'supplier'">
-                    <span class="text-xs font-semibold">The supplier proposed this new end date.</span>
+                    <span class="text-xs font-semibold">The supplier proposed these changes.</span>
                     <div class="flex gap-2 mt-2">
-                        <Button size="sm" class="bg-blue-600 text-white" @click="acceptProposedDate" :disabled="isProcessing">Accept Date</Button>
-                        <Button size="sm" variant="outline" class="bg-white" @click="showProposeDateDialog = true">Propose Another</Button>
+                        <Button size="sm" class="bg-blue-600 text-white" @click="acceptProposedDate" :disabled="isProcessing">Accept Changes</Button>
+                        <Button size="sm" variant="outline" class="bg-white" @click="openProposeChanges">Counter Propose</Button>
                     </div>
                  </div>
                  
                  <div v-if="!selectedSupplier.proposed_end_date && !selectedSupplier.contract_end_date" class="mt-2">
-                     <Button size="sm" variant="outline" class="bg-white" @click="showProposeDateDialog = true">Propose Date</Button>
+                     <Button size="sm" variant="outline" class="bg-white" @click="openProposeChanges">Propose Changes</Button>
                  </div>
              </div>
           </div>
@@ -410,20 +417,39 @@
       </DialogContent>
     </Dialog>
 
-    <Dialog :open="showProposeDateDialog" @update:open="showProposeDateDialog = $event">
-      <DialogContent>
+    <Dialog :open="showProposeChangesDialog" @update:open="showProposeChangesDialog = $event">
+      <DialogContent class="sm:max-w-[500px]">
           <DialogHeader>
-              <DialogTitle>Propose New Contract Date</DialogTitle>
-              <DialogDescription>Select a new end date for this partnership. The supplier will need to review it.</DialogDescription>
+              <DialogTitle>Propose Changes</DialogTitle>
+              <DialogDescription>Select a new end date or modify terms for this partnership.</DialogDescription>
           </DialogHeader>
-          <div class="py-4">
-              <label class="text-sm font-semibold mb-2 block">New End Date</label>
-              <Input type="date" v-model="proposedDate" />
-              <p class="text-xs text-slate-500 mt-2">Date must be at least 1 month from today.</p>
+          <div class="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div>
+                  <label class="text-sm font-semibold mb-2 block">New End Date</label>
+                  <Input type="date" v-model="proposedDate" />
+                  <p class="text-xs text-slate-500 mt-2">Date must be at least 1 month from today.</p>
+              </div>
+
+              <div class="border-t pt-4">
+                  <label class="text-sm font-semibold mb-2 block">Terms & Conditions</label>
+                  <div class="space-y-2 mb-3">
+                      <div v-for="(term, index) in terms" :key="index" class="flex justify-between items-start bg-slate-50 p-2 border border-slate-200 rounded-md text-sm shadow-sm">
+                          <span class="text-slate-700 flex-1 pr-2 leading-tight">{{ term }}</span>
+                          <Button type="button" variant="ghost" size="icon" class="h-6 w-6 text-red-500 hover:bg-red-50 shrink-0" @click="removeTerm(index)">
+                              <X class="h-4 w-4" />
+                          </Button>
+                      </div>
+                      <div v-if="terms.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 border rounded-md">No additional terms present.</div>
+                  </div>
+                  <div class="flex gap-2">
+                      <Input v-model="newTerm" placeholder="E.g., Require standard QA testing..." class="flex-1 text-sm h-9" @keyup.enter="addTerm" />
+                      <Button type="button" @click="addTerm" class="bg-indigo-600 text-white hover:bg-indigo-700 h-9 px-3 shrink-0">Add</Button>
+                  </div>
+              </div>
           </div>
-          <div class="flex justify-end gap-2">
-              <Button variant="outline" @click="showProposeDateDialog = false">Cancel</Button>
-              <Button class="bg-blue-600 text-white" :disabled="!isDateValid(proposedDate) || isProcessing" @click="submitProposeDate">
+          <div class="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" @click="showProposeChangesDialog = false">Cancel</Button>
+              <Button class="bg-indigo-600 text-white" :disabled="!isDateValid(proposedDate) || isProcessing" @click="submitProposeChanges">
                   <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Send Proposal
               </Button>
           </div>
@@ -482,8 +508,10 @@ const selectedSupplier = ref(null)
 const currentDistributorId = ref(null) 
 
 const isProcessing = ref(false)
-const showProposeDateDialog = ref(false)
+const showProposeChangesDialog = ref(false)
 const proposedDate = ref('')
+const terms = ref([])
+const newTerm = ref('')
 
 const showRenewDialog = ref(false)
 const renewDate = ref('')
@@ -498,6 +526,36 @@ const isSending = ref(false)
 const chatScrollContainer = ref(null)
 
 const showAgreementDialog = ref(false)
+
+const parseTerms = (termsStr) => {
+    if (!termsStr) return [];
+    if (Array.isArray(termsStr)) return termsStr;
+    try {
+        let parsed = JSON.parse(termsStr);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed); // catch potential double stringification
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+const addTerm = () => {
+    if (newTerm.value.trim()) {
+        terms.value.push(newTerm.value.trim());
+        newTerm.value = '';
+    }
+}
+const removeTerm = (index) => {
+    terms.value.splice(index, 1);
+}
+
+const openProposeChanges = () => {
+    proposedDate.value = selectedSupplier.value?.proposed_end_date || selectedSupplier.value?.contract_end_date || '';
+    // Use parseTerms to safely map array
+    terms.value = [...parseTerms(selectedSupplier.value?.negotiated_terms)];
+    newTerm.value = '';
+    showProposeChangesDialog.value = true;
+}
 
 const isDateValid = (dateStr) => {
     if (!dateStr) return false;
@@ -533,7 +591,8 @@ const setupWebsocket = (distributorId) => {
                   agreement_url: req.agreement_url,
                   contract_end_date: req.contract_end_date,
                   proposed_end_date: req.proposed_end_date,
-                  last_proposed_by: req.last_proposed_by
+                  last_proposed_by: req.last_proposed_by,
+                  negotiated_terms: req.negotiated_terms
                 })
                 if (selectedSupplier.value && selectedSupplier.value.supplier_user_id === req.supplier_id) { selectedSupplier.value = { ...supplier }; }
             } else { fetchSuppliers(); }
@@ -610,14 +669,17 @@ const openDetails = (supplier) => { selectedSupplier.value = supplier; isSheetOp
 const refreshData = () => { fetchSuppliers() }
 const resetFilters = () => { searchQuery.value = ''; statusFilter.value = 'all' }
 
-const submitProposeDate = async () => {
+const submitProposeChanges = async () => {
     if (!selectedSupplier.value || !isDateValid(proposedDate.value)) return;
     isProcessing.value = true;
     try {
-        const res = await api.post(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/propose-date`, { proposed_date: proposedDate.value });
+        const res = await api.post(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/propose-date`, { 
+            proposed_date: proposedDate.value,
+            negotiated_terms: terms.value
+        });
         if (res.data.success) {
-            showProposeDateDialog.value = false;
-            toast.success('Proposal Sent', { description: 'The supplier will review your proposed date.' });
+            showProposeChangesDialog.value = false;
+            toast.success('Proposal Sent', { description: 'The supplier will review your proposed changes.' });
             fetchSuppliers();
         }
     } catch (err) { toast.error('Action Failed') } finally { isProcessing.value = false; }
@@ -629,7 +691,7 @@ const acceptProposedDate = async () => {
     try {
         const res = await api.post(`/distributor/partnered-suppliers/${selectedSupplier.value.id}/accept-proposed-date`);
         if (res.data.success) {
-            toast.success('Date Accepted', { description: 'The supplier will now be prompted to sign the finalized agreement.' });
+            toast.success('Changes Accepted', { description: 'The supplier will now be prompted to sign the finalized agreement.' });
             fetchSuppliers();
         }
     } catch (err) { toast.error('Action Failed') } finally { isProcessing.value = false; }

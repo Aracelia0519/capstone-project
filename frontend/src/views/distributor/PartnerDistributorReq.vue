@@ -107,6 +107,7 @@
               <TableCell>
                 <p class="text-sm text-slate-600 line-clamp-1 max-w-[250px]" :title="req.request_message">
                   {{ req.request_message || 'No message provided' }}
+                  <span v-if="parseTerms(req.negotiated_terms).length" class="text-indigo-500 font-semibold ml-1"> (+{{ parseTerms(req.negotiated_terms).length }} terms)</span>
                 </p>
               </TableCell>
 
@@ -226,63 +227,90 @@
     </AlertDialog>
 
     <Dialog :open="showSignatureDialog" @update:open="showSignatureDialog = $event">
-      <DialogContent class="w-[95vw] max-w-7xl h-[95vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
-        <DialogHeader class="p-4 sm:p-6 border-b bg-white shrink-0">
+      <!-- FIXED: Bypassing Shadcn max-width using raw styles -->
+      <DialogContent style="max-width: 85vw; width: 85vw;" class="h-[95vh] flex flex-col p-0 overflow-hidden bg-slate-50 sm:rounded-xl shadow-2xl">
+        <DialogHeader class="p-4 sm:p-6 border-b bg-white shrink-0 shadow-sm z-10">
           <DialogTitle class="flex items-center gap-2 text-xl sm:text-2xl text-slate-800">
             <FileText class="h-6 w-6 text-indigo-600" />
-            Set Duration & Sign Agreement - {{ selectedRequest?.supplier?.supplier_requirements?.company_name || selectedRequest?.supplier?.first_name }}
+            Set Duration & Terms - {{ selectedRequest?.supplier?.supplier_requirements?.company_name || selectedRequest?.supplier?.first_name }}
           </DialogTitle>
         </DialogHeader>
         
-        <div class="flex-1 overflow-hidden p-4 sm:p-6 relative bg-slate-100 flex gap-6 min-h-[200px]">
+        <div class="flex-1 overflow-hidden p-4 sm:p-6 relative bg-slate-200 flex gap-6 min-h-[200px] z-0">
             <iframe 
               v-if="selectedRequest?.agreement_url" 
               :src="selectedRequest.agreement_url" 
-              class="w-full h-full bg-white rounded-lg shadow-sm border border-slate-200"
+              class="w-full h-full bg-white rounded-lg shadow-md border border-slate-300"
             ></iframe>
-            <div v-else class="flex flex-col w-full h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-200 shadow-sm">
+            <div v-else class="flex flex-col w-full h-full items-center justify-center text-slate-500 bg-white rounded-lg border border-slate-300 shadow-md">
                 <FileX class="h-12 w-12 text-slate-300 mb-2" />
                 <p>No digital agreement document was found for this request.</p>
             </div>
         </div>
 
-        <div class="p-4 sm:p-6 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] overflow-x-hidden overflow-y-auto max-h-[50vh]">
-            <div class="flex flex-col md:flex-row gap-6 sm:gap-8 w-full mx-auto">
-                <div class="w-full md:w-1/3">
-                    <label class="text-sm sm:text-base font-semibold text-slate-700 flex items-center gap-2 mb-2 sm:mb-3">
-                        <Calendar class="h-5 w-5 text-indigo-600" />
-                        Contract End Date
-                    </label>
-                    <Input type="date" v-model="contractEndDate" class="w-full text-base sm:text-lg p-2 sm:p-3 h-auto" />
-                    <p v-if="!isDateValid && contractEndDate" class="text-xs text-red-500 mt-1">
-                        Contract must last at least 1 month from today.
-                    </p>
-                    <p class="text-xs sm:text-sm text-slate-500 mt-2 sm:mt-3">
-                        Set an expiration date for this partnership. The supplier can negotiate this date.
-                    </p>
+        <div class="p-6 sm:p-8 border-t bg-white shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] overflow-x-hidden overflow-y-auto max-h-[60vh] z-10">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 w-full max-w-[1600px] mx-auto">
+                
+                <!-- Left Column: Date & Terms -->
+                <div class="flex flex-col gap-6">
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <label class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2 mb-3">
+                            <Calendar class="h-5 w-5 text-indigo-600" />
+                            Contract End Date
+                        </label>
+                        <Input type="date" v-model="contractEndDate" class="w-full text-base sm:text-lg p-3 h-auto bg-white border-slate-300 focus:ring-indigo-500" />
+                        <p v-if="!isDateValid && contractEndDate" class="text-xs text-red-500 mt-2 font-semibold">
+                            Contract must last at least 1 month from today.
+                        </p>
+                        <p class="text-sm text-slate-500 mt-2">
+                            Set an expiration date for this partnership. The supplier can negotiate this date.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col">
+                        <label class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2 mb-4">
+                            <FileText class="h-5 w-5 text-indigo-600" />
+                            Terms & Conditions
+                        </label>
+                        <div class="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 flex-1">
+                            <div v-for="(term, index) in terms" :key="index" class="flex justify-between items-start bg-white p-3 border border-slate-200 rounded-lg text-sm shadow-sm">
+                                <span class="text-slate-700 flex-1 pr-3 leading-relaxed">{{ term }}</span>
+                                <Button type="button" variant="ghost" size="icon" class="h-8 w-8 text-red-500 hover:bg-red-50 shrink-0 rounded-full" @click="removeTerm(index)">
+                                    <X class="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div v-if="terms.length === 0" class="text-sm text-slate-400 italic p-6 text-center bg-white border border-dashed border-slate-300 rounded-lg">No additional terms added.</div>
+                        </div>
+                        <div class="flex gap-2 mt-auto pt-2">
+                            <Input v-model="newTerm" placeholder="E.g., Payment must be settled within 30 days..." class="flex-1 text-sm h-11 bg-white border-slate-300 focus:ring-indigo-500" @keyup.enter="addTerm" />
+                            <Button type="button" @click="addTerm" class="bg-indigo-600 text-white hover:bg-indigo-700 h-11 px-5 shrink-0 shadow-sm font-semibold">Add Term</Button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="w-full md:w-2/3">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 sm:mb-3">
-                        <label class="text-sm sm:text-base font-semibold text-slate-700 flex items-center gap-2">
+                <!-- Right Column: Signature Pad -->
+                <div class="flex flex-col bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm h-full">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                        <label class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
                             <PenTool class="h-5 w-5 text-indigo-600" />
                             Draw or Upload Signature
                         </label>
-                        <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
                             <input type="file" ref="signatureFileInput" accept="image/*" class="hidden" @change="handleSignatureUpload" />
-                            <Button variant="ghost" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 shrink-0" @click="signatureFileInput.click()">
-                                <Upload class="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Upload Image
+                            <Button variant="ghost" size="sm" class="h-8 text-xs sm:text-sm text-indigo-600 font-medium hover:text-indigo-700 hover:bg-indigo-50 shrink-0" @click="signatureFileInput.click()">
+                                <Upload class="h-4 w-4 mr-1.5" /> Upload Image
                             </Button>
-                            <Button variant="ghost" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm text-slate-500 hover:text-red-600 shrink-0" @click="clearSignature">
+                            <div class="w-px h-4 bg-slate-200"></div>
+                            <Button variant="ghost" size="sm" class="h-8 text-xs sm:text-sm text-slate-600 font-medium hover:text-red-600 hover:bg-red-50 shrink-0" @click="clearSignature">
                                 Clear Pad
                             </Button>
                         </div>
                     </div>
                     
-                    <div class="border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 overflow-hidden relative w-full h-[180px] sm:h-[220px]" ref="canvasContainer">
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden relative w-full flex-1 min-h-[250px] shadow-inner" ref="canvasContainer">
                         <canvas 
                             ref="signatureCanvas" 
-                            class="w-full h-full cursor-crosshair touch-none bg-white block"
+                            class="w-full h-full cursor-crosshair touch-none block"
                             @mousedown="startDrawing"
                             @mousemove="draw"
                             @mouseup="stopDrawing"
@@ -292,22 +320,24 @@
                             @touchend.prevent="stopDrawing"
                         ></canvas>
                         
-                        <div v-if="!hasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
-                            <span class="text-slate-400 font-medium select-none text-base sm:text-lg">Sign Here or Upload Image</span>
+                        <div v-if="!hasDrawn" class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-50 bg-slate-50/50">
+                            <span class="text-slate-500 font-bold select-none text-lg border-2 border-slate-200 px-8 py-4 rounded-2xl bg-white shadow-sm">Sign Here or Upload</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-4 sm:mt-6 w-full mx-auto">
-                <Button variant="outline" class="bg-white border-slate-200 text-slate-700 px-6 w-full sm:w-auto" @click="showSignatureDialog = false">Cancel</Button>
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-end items-center gap-4 mt-8 pt-6 border-t border-slate-200 w-full max-w-[1600px] mx-auto">
+                <Button variant="outline" size="lg" class="bg-white border-slate-300 text-slate-700 font-semibold px-8 w-full sm:w-auto shadow-sm hover:bg-slate-50" @click="showSignatureDialog = false">Cancel</Button>
                 <Button 
+                  size="lg"
                   :disabled="!hasDrawn || !isDateValid || signing" 
                   @click="submitApprove" 
-                  class="bg-indigo-600 text-white hover:bg-indigo-700 min-w-[200px] px-6 w-full sm:w-auto"
+                  class="bg-indigo-600 text-white font-bold hover:bg-indigo-700 min-w-[240px] px-8 w-full sm:w-auto shadow-md"
                 >
-                    <Loader2 v-if="signing" class="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    {{ signing ? 'Approving...' : 'Sign & Submit to Supplier' }}
+                    <Loader2 v-if="signing" class="mr-2 h-5 w-5 animate-spin" />
+                    {{ signing ? 'Approving & Submitting...' : 'Sign & Submit to Supplier' }}
                 </Button>
             </div>
         </div>
@@ -325,7 +355,7 @@ import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
   Building2, Clock, CheckCircle2, XCircle, AlertCircle, Phone, Mail, Calendar,
-  RefreshCw, Search, PenTool, FileText, FileX, Loader2, Package, Upload
+  RefreshCw, Search, PenTool, FileText, FileX, Loader2, Package, Upload, X
 } from 'lucide-vue-next'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -361,6 +391,30 @@ let ctx = null
 let isDrawing = false
 
 const contractEndDate = ref('')
+const terms = ref([])
+const newTerm = ref('')
+
+const parseTerms = (termsStr) => {
+    if (!termsStr) return [];
+    if (Array.isArray(termsStr)) return termsStr;
+    try {
+        let parsed = JSON.parse(termsStr);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed); // catch potential double stringification
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+const addTerm = () => {
+    if (newTerm.value.trim()) {
+        terms.value.push(newTerm.value.trim());
+        newTerm.value = '';
+    }
+}
+const removeTerm = (index) => {
+    terms.value.splice(index, 1);
+}
 
 const isDateValid = computed(() => {
     if (!contractEndDate.value) return false;
@@ -460,6 +514,8 @@ watch(showSignatureDialog, async (newVal) => {
   if (newVal) {
     hasDrawn.value = false;
     contractEndDate.value = '';
+    terms.value = [];
+    newTerm.value = '';
     await nextTick();
     setTimeout(initCanvas, 50); 
   }
@@ -506,12 +562,13 @@ const submitApprove = async () => {
   try {
     const response = await api.post(`/distributor/partner-requests/${selectedRequest.value.id}/approve`, {
       signature_image: signatureBase64,
-      contract_end_date: contractEndDate.value
+      contract_end_date: contractEndDate.value,
+      negotiated_terms: terms.value
     })
     
     if (response.data.success) {
       requests.value = requests.value.filter(req => req.id !== selectedRequest.value.id)
-      toast.success('Partnership Approved & Forwarded', { description: 'The agreement and duration have been sent to the supplier.' })
+      toast.success('Partnership Approved & Forwarded', { description: 'The agreement, terms, and duration have been sent to the supplier.' })
       showSignatureDialog.value = false
       selectedRequest.value = null
     }

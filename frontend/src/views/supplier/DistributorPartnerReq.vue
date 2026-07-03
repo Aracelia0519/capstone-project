@@ -153,6 +153,7 @@
               <TableCell>
                 <p class="text-sm text-slate-600 line-clamp-1 max-w-[250px]" :title="req.request_message">
                   {{ req.request_message || 'Standard agreement.' }}
+                  <span v-if="parseTerms(req.negotiated_terms).length" class="text-blue-500 font-semibold ml-1"> (+{{ parseTerms(req.negotiated_terms).length }} terms)</span>
                 </p>
               </TableCell>
 
@@ -194,7 +195,7 @@
           </div>
         </div>
 
-        <div class="p-6 space-y-4" v-if="selectedRequest">
+        <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto" v-if="selectedRequest">
           <div>
             <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Distributor Profile</h4>
             <div class="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
@@ -223,7 +224,7 @@
 
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
              <h4 class="text-sm font-bold text-blue-900 flex items-center gap-2 mb-2">
-                 <Calendar class="h-4 w-4" /> Contract Duration Negotiation
+                 <Calendar class="h-4 w-4" /> Contract Duration & Terms
              </h4>
              <div class="text-sm text-blue-800 flex flex-col gap-2">
                  <div>
@@ -234,19 +235,26 @@
                     <span v-else class="text-amber-600">Not set</span>
                  </div>
                  
-                 <div v-if="!selectedRequest.proposed_end_date && !selectedRequest.contract_end_date">
+                 <div class="mt-2" v-if="parseTerms(selectedRequest.negotiated_terms).length > 0">
+                    <strong>Current Negotiated Terms:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-1">
+                        <li v-for="(t, i) in parseTerms(selectedRequest.negotiated_terms)" :key="i">{{ t }}</li>
+                    </ul>
+                 </div>
+
+                 <div class="mt-2" v-if="!selectedRequest.proposed_end_date && !selectedRequest.contract_end_date">
                     <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">No end date set. Please propose one.</span>
                  </div>
                  <div v-else-if="selectedRequest.last_proposed_by === 'supplier'">
-                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">Awaiting Distributor to review your proposed date.</span>
+                    <span class="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded">Awaiting Distributor to review your proposed changes.</span>
                  </div>
                  <div v-else class="text-xs">
-                    Please accept the current date and sign, or propose a new duration.
+                    Please accept the current date and terms to sign, or propose a counter-offer.
                  </div>
                  
-                 <div class="mt-2" v-if="selectedRequest.last_proposed_by !== 'supplier'">
-                    <Button variant="outline" size="sm" class="bg-white" @click="showProposeDateDialog = true">
-                        Propose <span v-if="selectedRequest.contract_end_date || selectedRequest.proposed_end_date">New </span>Date
+                 <div class="mt-3" v-if="selectedRequest.last_proposed_by !== 'supplier'">
+                    <Button variant="outline" size="sm" class="bg-white border-blue-300 text-blue-700" @click="openProposeChanges">
+                        <FileText class="h-4 w-4 mr-1"/> Propose Changes to Terms / Date
                     </Button>
                  </div>
              </div>
@@ -268,21 +276,40 @@
       </DialogContent>
     </Dialog>
 
-    <Dialog :open="showProposeDateDialog" @update:open="showProposeDateDialog = $event">
-      <DialogContent>
+    <Dialog :open="showProposeChangesDialog" @update:open="showProposeChangesDialog = $event">
+      <DialogContent class="sm:max-w-[500px]">
           <DialogHeader>
-              <DialogTitle>Propose New Contract Date</DialogTitle>
-              <DialogDescription>Select a new end date for this partnership. The distributor will need to accept it.</DialogDescription>
+              <DialogTitle>Propose Changes</DialogTitle>
+              <DialogDescription>Modify the contract end date or add/remove terms. The distributor will need to accept this counter-offer.</DialogDescription>
           </DialogHeader>
-          <div class="py-4">
-              <label class="text-sm font-semibold mb-2 block">New End Date</label>
-              <Input type="date" v-model="proposedDate" />
-              <p class="text-xs text-slate-500 mt-2">Date must be at least 1 month from today.</p>
+          <div class="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div>
+                  <label class="text-sm font-semibold mb-2 block">New End Date</label>
+                  <Input type="date" v-model="proposedDate" />
+                  <p class="text-xs text-slate-500 mt-2">Date must be at least 1 month from today.</p>
+              </div>
+
+              <div class="border-t pt-4">
+                  <label class="text-sm font-semibold mb-2 block">Terms & Conditions</label>
+                  <div class="space-y-2 mb-3">
+                      <div v-for="(term, index) in terms" :key="index" class="flex justify-between items-start bg-slate-50 p-2 border border-slate-200 rounded-md text-sm shadow-sm">
+                          <span class="text-slate-700 flex-1 pr-2 leading-tight">{{ term }}</span>
+                          <Button type="button" variant="ghost" size="icon" class="h-6 w-6 text-red-500 hover:bg-red-50 shrink-0" @click="removeTerm(index)">
+                              <X class="h-4 w-4" />
+                          </Button>
+                      </div>
+                      <div v-if="terms.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 border rounded-md">No additional terms present.</div>
+                  </div>
+                  <div class="flex gap-2">
+                      <Input v-model="newTerm" placeholder="E.g., Require standard QA testing..." class="flex-1 text-sm h-9" @keyup.enter="addTerm" />
+                      <Button type="button" @click="addTerm" class="bg-blue-600 text-white hover:bg-blue-700 h-9 px-3 shrink-0">Add</Button>
+                  </div>
+              </div>
           </div>
-          <div class="flex justify-end gap-2">
-              <Button variant="outline" @click="showProposeDateDialog = false">Cancel</Button>
-              <Button class="bg-blue-600 text-white" :disabled="!isDateValid || isProcessing" @click="submitProposeDate">
-                  <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Send Proposal
+          <div class="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" @click="showProposeChangesDialog = false">Cancel</Button>
+              <Button class="bg-blue-600 text-white" :disabled="!isDateValid || isProcessing" @click="submitProposeChanges">
+                  <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" /> Send Counter-Offer
               </Button>
           </div>
       </DialogContent>
@@ -484,8 +511,10 @@ const selectedRequest = ref(null)
 const showViewDialog = ref(false)
 const showOfficialDocDialog = ref(false)
 
-const showProposeDateDialog = ref(false)
+const showProposeChangesDialog = ref(false)
 const proposedDate = ref('')
+const terms = ref([])
+const newTerm = ref('')
 
 const showChatPanel = ref(false)
 const chatMessages = ref([])
@@ -510,6 +539,36 @@ const signatureCanvas = ref(null)
 const canvasContainer = ref(null)
 let ctx = null
 let isDrawing = false
+
+const parseTerms = (termsStr) => {
+    if (!termsStr) return [];
+    if (Array.isArray(termsStr)) return termsStr;
+    try {
+        let parsed = JSON.parse(termsStr);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+const addTerm = () => {
+    if (newTerm.value.trim()) {
+        terms.value.push(newTerm.value.trim());
+        newTerm.value = '';
+    }
+}
+const removeTerm = (index) => {
+    terms.value.splice(index, 1);
+}
+
+const openProposeChanges = () => {
+    proposedDate.value = selectedRequest.value?.proposed_end_date || selectedRequest.value?.contract_end_date || '';
+    // Use parseTerms to safely initialize terms logic
+    terms.value = [...parseTerms(selectedRequest.value?.negotiated_terms)];
+    newTerm.value = '';
+    showProposeChangesDialog.value = true;
+}
 
 const isDateValid = computed(() => {
     if (!proposedDate.value) return false;
@@ -649,15 +708,18 @@ const filteredRequests = computed(() => {
 const viewRequest = (req) => { selectedRequest.value = req; showViewDialog.value = true }
 const viewOfficialDocument = (req) => { selectedRequest.value = req; showOfficialDocDialog.value = true }
 
-const submitProposeDate = async () => {
+const submitProposeChanges = async () => {
     if (!selectedRequest.value || !isDateValid.value) return;
     isProcessing.value = true;
     try {
-        const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/propose-date`, { proposed_date: proposedDate.value });
+        const res = await api.post(`/supplier/distributor-requests/${selectedRequest.value.id}/propose-date`, { 
+            proposed_date: proposedDate.value,
+            negotiated_terms: terms.value
+        });
         if (res.data.success) {
-            showProposeDateDialog.value = false;
+            showProposeChangesDialog.value = false;
             showViewDialog.value = false;
-            toast.success('Proposal Sent', { description: 'The distributor will review your proposed date.' });
+            toast.success('Counter-Offer Sent', { description: 'The distributor will review your proposed changes.' });
             fetchRequests();
         }
     } catch (err) { toast.error('Action Failed') } finally { isProcessing.value = false; }

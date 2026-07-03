@@ -34,6 +34,7 @@ class PartneredSupplierController extends Controller
         $payload['agreement_url'] = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
         $payload['distributor_signature_url'] = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
         $payload['supplier_signature_url'] = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
+        $payload['negotiated_terms'] = $req->negotiated_terms ? json_decode($req->negotiated_terms) : [];
 
         if ($req->distributor) {
             $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
@@ -132,6 +133,7 @@ class PartneredSupplierController extends Controller
                     'contract_end_date' => $distSupplier ? $distSupplier->contract_end_date : null,
                     'proposed_end_date' => $distSupplier ? $distSupplier->proposed_end_date : null,
                     'last_proposed_by' => $distSupplier ? $distSupplier->last_proposed_by : null,
+                    'negotiated_terms' => ($distSupplier && $distSupplier->negotiated_terms) ? json_decode($distSupplier->negotiated_terms) : [],
                 ];
             });
 
@@ -183,15 +185,30 @@ class PartneredSupplierController extends Controller
 
     public function proposeDate(Request $request, int $id)
     {
-        $request->validate(['proposed_date' => 'required|date|after:+1 month']);
+        // This endpoint was kept as /propose-date but now handles Date + Terms
+        $request->validate([
+            'proposed_date' => 'required|date|after:+1 month',
+            'negotiated_terms' => 'nullable|array'
+        ]);
 
         try {
+            // Check schema to gracefully add column if it hits here first
+            if (!Schema::hasColumn('distributor_suppliers', 'negotiated_terms')) {
+                Schema::table('distributor_suppliers', function ($table) {
+                    $table->json('negotiated_terms')->nullable();
+                });
+            }
+
             $partner = SupplierPartner::where('id', $id)->where('distributor_id', Auth::id())->firstOrFail();
             $distSupplier = DistributorSupplier::where('distributor_id', Auth::id())->where('supplier_id', $partner->supplier_id)->firstOrFail();
             
             $distSupplier->proposed_end_date = $request->proposed_date;
+            $distSupplier->negotiated_terms = json_encode($request->negotiated_terms ?? []);
             $distSupplier->last_proposed_by = 'distributor';
             $distSupplier->save();
+
+            // Inject the new date and terms into the agreement immediately so both can view it
+            $this->injectEndDateAndTermsIntoAgreement($distSupplier->agreement_path, $request->proposed_date, $request->negotiated_terms ?? []);
 
             broadcast(new PartnershipRequestUpdated($this->formatRequestForBroadcast(Auth::id(), $partner->supplier_id)))->toOthers();
 
@@ -212,12 +229,13 @@ class PartneredSupplierController extends Controller
             $distSupplier->last_proposed_by = 'distributor';
             $distSupplier->save();
 
-            // Inject the Contract End Date permanently into the HTML file
-            $this->injectEndDateIntoAgreement($distSupplier->agreement_path, $distSupplier->contract_end_date);
+            // Inject the Contract End Date & Terms permanently into the HTML file
+            $termsArray = $distSupplier->negotiated_terms ? json_decode($distSupplier->negotiated_terms, true) : [];
+            $this->injectEndDateAndTermsIntoAgreement($distSupplier->agreement_path, $distSupplier->contract_end_date, $termsArray);
 
             broadcast(new PartnershipRequestUpdated($this->formatRequestForBroadcast(Auth::id(), $partner->supplier_id)))->toOthers();
 
-            return response()->json(['success' => true, 'message' => 'Date accepted. Waiting for supplier signature.']);
+            return response()->json(['success' => true, 'message' => 'Date and terms accepted. Waiting for supplier signature.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed: ' . $e->getMessage()], 500);
         }
@@ -245,7 +263,8 @@ class PartneredSupplierController extends Controller
             $partner->save();
 
             // Inject the Contract End Date permanently into the HTML file
-            $this->injectEndDateIntoAgreement($distSupplier->agreement_path, $distSupplier->contract_end_date);
+            $termsArray = $distSupplier->negotiated_terms ? json_decode($distSupplier->negotiated_terms, true) : [];
+            $this->injectEndDateAndTermsIntoAgreement($distSupplier->agreement_path, $distSupplier->contract_end_date, $termsArray);
 
             broadcast(new PartnershipRequestUpdated($this->formatRequestForBroadcast(Auth::id(), $partner->supplier_id)))->toOthers();
 
@@ -297,26 +316,43 @@ class PartneredSupplierController extends Controller
     }
 
     /**
-     * Inject Contract End Date into the physical HTML document.
+     * Inject Contract End Date and Terms into the physical HTML document.
      */
-    private function injectEndDateIntoAgreement($agreementPath, $endDate) 
+    private function injectEndDateAndTermsIntoAgreement($agreementPath, $endDate, $termsArray) 
     {
-        if (!$agreementPath || !$endDate) return;
+        if (!$agreementPath) return;
         
         if (Storage::disk('public')->exists($agreementPath)) {
             $html = Storage::disk('public')->get($agreementPath);
-            $formattedDate = \Carbon\Carbon::parse($endDate)->format('F d, Y');
             
-            // Regex to remove old block if modifying an existing duration
-            $html = preg_replace('/<div id="contract-end-date-block".*?<\/div>/is', '', $html);
-            
-            $endDateHtml = "<div id='contract-end-date-block' style='margin-top: 30px; padding: 15px; background-color: #f8fafc; border-left: 4px solid #3b82f6; font-family: Arial, sans-serif; border-radius: 6px;'><p style='margin: 0; font-size: 16px; color: #1e293b;'><strong>Agreed Contract Expiration Date:</strong> {$formattedDate}</p></div>";
-            
-            if (strpos($html, '</body>') !== false) {
-                $html = str_replace('</body>', $endDateHtml . '</body>', $html);
-            } else {
-                $html .= $endDateHtml;
+            // Handle Date Block
+            if ($endDate) {
+                $formattedDate = \Carbon\Carbon::parse($endDate)->format('F d, Y');
+                $html = preg_replace('/<div id=[\'"]contract-end-date-block[\'"].*?<\/div>/is', '', $html);
+                $endDateHtml = "<div id='contract-end-date-block' style='margin-top: 30px; padding: 15px; background-color: #f8fafc; border-left: 4px solid #3b82f6; font-family: Arial, sans-serif; border-radius: 6px;'><p style='margin: 0; font-size: 16px; color: #1e293b;'><strong>Agreed Contract Expiration Date:</strong> {$formattedDate}</p></div>";
+                if (strpos($html, '</body>') !== false) {
+                    $html = str_replace('</body>', $endDateHtml . '</body>', $html);
+                } else {
+                    $html .= $endDateHtml;
+                }
             }
+            
+            // Handle Negotiated Terms Block
+            $html = preg_replace('/<div id=[\'"]negotiated-terms-block[\'"].*?<\/div>/is', '', $html);
+            if (!empty($termsArray)) {
+                $termsList = '';
+                foreach($termsArray as $term) {
+                    $termsList .= "<li style='margin-bottom: 8px;'>{$term}</li>";
+                }
+                $termsHtml = "<div id='negotiated-terms-block' style='margin-top: 20px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-family: Arial, sans-serif; border-radius: 6px;'><h3 style='margin-top: 0; color: #0f172a; font-size: 16px;'>Additional Terms & Conditions</h3><ul style='color: #334155; font-size: 14px; padding-left: 20px; margin-bottom: 0;'>{$termsList}</ul></div>";
+                
+                if (strpos($html, '</body>') !== false) {
+                    $html = str_replace('</body>', $termsHtml . '</body>', $html);
+                } else {
+                    $html .= $termsHtml;
+                }
+            }
+            
             Storage::disk('public')->put($agreementPath, $html);
         }
     }

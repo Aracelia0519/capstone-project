@@ -42,6 +42,11 @@ class DistributorRequestController extends Controller
         $payload['agreement_url'] = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
         $payload['distributor_signature_url'] = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
         $payload['supplier_signature_url'] = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
+        
+        $terms = $req->negotiated_terms;
+        if (is_string($terms)) { $terms = json_decode($terms, true); }
+        if (is_string($terms)) { $terms = json_decode($terms, true); }
+        $payload['negotiated_terms'] = is_array($terms) ? $terms : [];
 
         $distributorReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
         if ($distributorReq && isset($payload['distributor'])) {
@@ -70,6 +75,11 @@ class DistributorRequestController extends Controller
                     $req->agreement_url = $req->agreement_path ? url('storage/' . $req->agreement_path) : null;
                     $req->distributor_signature_url = $req->distributor_signature_path ? url('storage/' . $req->distributor_signature_path) : null;
                     $req->supplier_signature_url = $req->supplier_signature_path ? url('storage/' . $req->supplier_signature_path) : null;
+                    
+                    $terms = $req->negotiated_terms;
+                    if (is_string($terms)) { $terms = json_decode($terms, true); }
+                    if (is_string($terms)) { $terms = json_decode($terms, true); }
+                    $req->negotiated_terms = is_array($terms) ? $terms : [];
 
                     $distributorReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
                     if ($distributorReq && $req->distributor) {
@@ -92,9 +102,18 @@ class DistributorRequestController extends Controller
 
     public function proposeDate(Request $request, int $id)
     {
-        $request->validate(['proposed_date' => 'required|date|after:+1 month']);
+        $request->validate([
+            'proposed_date' => 'required|date|after:+1 month',
+            'negotiated_terms' => 'nullable|array'
+        ]);
 
         try {
+            if (!Schema::hasColumn('distributor_suppliers', 'negotiated_terms')) {
+                Schema::table('distributor_suppliers', function ($table) {
+                    $table->json('negotiated_terms')->nullable();
+                });
+            }
+
             $user = Auth::user();
             $supplierId = $this->resolveSupplierId($user);
 
@@ -104,12 +123,15 @@ class DistributorRequestController extends Controller
                 ->firstOrFail();
 
             $distRequest->proposed_end_date = $request->proposed_date;
+            $distRequest->negotiated_terms = json_encode($request->negotiated_terms ?? []);
             $distRequest->last_proposed_by = 'supplier';
             $distRequest->save();
 
+            $this->injectEndDateAndTermsIntoAgreement($distRequest->agreement_path, $request->proposed_date, $request->negotiated_terms ?? []);
+
             broadcast(new SupplierRequestUpdated($this->formatRequestForBroadcast($distRequest->id)))->toOthers();
 
-            return response()->json(['success' => true, 'message' => 'Date proposed.']);
+            return response()->json(['success' => true, 'message' => 'Changes proposed.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Proposal failed: ' . $e->getMessage()], 500);
         }
@@ -153,9 +175,12 @@ class DistributorRequestController extends Controller
             $distRequest->supplier_signature_path = $fileName;
             $distRequest->save();
 
-            if ($distRequest->contract_end_date) {
-                $this->injectEndDateIntoAgreement($distRequest->agreement_path, $distRequest->contract_end_date);
-            }
+            $terms = $distRequest->negotiated_terms;
+            if (is_string($terms)) { $terms = json_decode($terms, true); }
+            if (is_string($terms)) { $terms = json_decode($terms, true); }
+            $termsArray = is_array($terms) ? $terms : [];
+            
+            $this->injectEndDateAndTermsIntoAgreement($distRequest->agreement_path, $distRequest->contract_end_date, $termsArray);
 
             $supplierPartner = SupplierPartner::where('distributor_id', $distRequest->distributor_id)
                 ->where('supplier_id', $supplierId)
@@ -338,23 +363,39 @@ class DistributorRequestController extends Controller
         }
     }
 
-    private function injectEndDateIntoAgreement($agreementPath, $endDate) 
+    private function injectEndDateAndTermsIntoAgreement($agreementPath, $endDate, $termsArray) 
     {
-        if (!$agreementPath || !$endDate) return;
+        if (!$agreementPath) return;
         
         if (Storage::disk('public')->exists($agreementPath)) {
             $html = Storage::disk('public')->get($agreementPath);
-            $formattedDate = \Carbon\Carbon::parse($endDate)->format('F d, Y');
             
-            $html = preg_replace('/<div id=[\'"]contract-end-date-block[\'"].*?<\/div>/is', '', $html);
-            
-            $endDateHtml = "<div id='contract-end-date-block' style='margin-top: 30px; padding: 15px; background-color: #f8fafc; border-left: 4px solid #3b82f6; font-family: Arial, sans-serif; border-radius: 6px;'><p style='margin: 0; font-size: 16px; color: #1e293b;'><strong>Agreed Contract Expiration Date:</strong> {$formattedDate}</p></div>";
-            
-            if (strpos($html, '</body>') !== false) {
-                $html = str_replace('</body>', $endDateHtml . '</body>', $html);
-            } else {
-                $html .= $endDateHtml;
+            if ($endDate) {
+                $formattedDate = \Carbon\Carbon::parse($endDate)->format('F d, Y');
+                $html = preg_replace('/<div id=[\'"]contract-end-date-block[\'"].*?<\/div>/is', '', $html);
+                $endDateHtml = "<div id='contract-end-date-block' style='margin-top: 30px; padding: 15px; background-color: #f8fafc; border-left: 4px solid #3b82f6; font-family: Arial, sans-serif; border-radius: 6px;'><p style='margin: 0; font-size: 16px; color: #1e293b;'><strong>Agreed Contract Expiration Date:</strong> {$formattedDate}</p></div>";
+                if (strpos($html, '</body>') !== false) {
+                    $html = str_replace('</body>', $endDateHtml . '</body>', $html);
+                } else {
+                    $html .= $endDateHtml;
+                }
             }
+            
+            $html = preg_replace('/<div id=[\'"]negotiated-terms-block[\'"].*?<\/div>/is', '', $html);
+            if (!empty($termsArray)) {
+                $termsList = '';
+                foreach($termsArray as $term) {
+                    $termsList .= "<li style='margin-bottom: 8px;'>{$term}</li>";
+                }
+                $termsHtml = "<div id='negotiated-terms-block' style='margin-top: 20px; padding: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-family: Arial, sans-serif; border-radius: 6px;'><h3 style='margin-top: 0; color: #0f172a; font-size: 16px;'>Additional Terms & Conditions</h3><ul style='color: #334155; font-size: 14px; padding-left: 20px; margin-bottom: 0;'>{$termsList}</ul></div>";
+                
+                if (strpos($html, '</body>') !== false) {
+                    $html = str_replace('</body>', $termsHtml . '</body>', $html);
+                } else {
+                    $html .= $termsHtml;
+                }
+            }
+            
             Storage::disk('public')->put($agreementPath, $html);
         }
     }
