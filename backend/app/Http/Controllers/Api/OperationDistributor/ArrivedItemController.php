@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
 use App\Events\InventoryUpdated;
+use Carbon\Carbon;
 
 class ArrivedItemController extends Controller
 {
@@ -479,6 +480,13 @@ class ArrivedItemController extends Controller
 
             if (!$procurement) {
                 return response()->json(['message' => 'Item not found or already moved to inventory.'], 404);
+            }
+
+            // Contract Verification Check: 30 Days return policy limit
+            if (Carbon::parse($procurement->delivered_at)->diffInDays(now()) >= 30) {
+                return response()->json([
+                    'message' => 'This item cannot be returned as it has been 30 days or more since the delivery date. The return period has expired.'
+                ], 400);
             }
 
             if ($request->quantity_returned > $procurement->quantity) {

@@ -241,6 +241,17 @@ class ECommerceOrderController extends Controller
         $user = $request->user();
         $orderItem = ClientOrderItem::findOrFail($request->order_item_id);
 
+        $order = DB::table('client_orders')->where('id', $orderItem->order_id)->first();
+        if ($order && $order->status === 'delivered') {
+            $deliveredAt = \Carbon\Carbon::parse($order->updated_at);
+            if ($deliveredAt->diffInDays(now()) > 7) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Items cannot be returned after 7 days of delivery.'
+                ], 403);
+            }
+        }
+
         $path = $request->file('proof_image')->store('ec_returns', 'public');
 
         $returnReq = ClientReturnRequest::create([

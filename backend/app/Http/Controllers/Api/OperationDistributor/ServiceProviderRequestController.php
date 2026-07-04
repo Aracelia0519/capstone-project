@@ -200,6 +200,7 @@ class ServiceProviderRequestController extends Controller
                 <h3>Standard Terms and Conditions</h3>
                 <p><strong>1. Authorization of Access:</strong> Distributor authorizes Service Provider to access wholesale catalog and partner-tier pricing.</p>
                 <p><strong>2. Procurement and Pricing:</strong> Procurement subject to Distributor's quality assurance. Pricing is exclusive.</p>
+                <p><strong>3. Return Policy:</strong> Products procured are subject to a strictly enforced 15-day return window from the date of receipt. Once the 15-day period has elapsed, the products are considered final sale and cannot be returned.</p>
                 {$termsHtml}
                 <div style='display: flex; justify-content: space-between; margin-top: 50px;'>
                     <div style='width: 45%;'><p><strong>Service Provider</strong></p><div class='sig-line'><img src='{$spSigStr}'/></div><p>Signed by: {$spName}</p><p>Date: " . ($req->sp_signed_at ? Carbon::parse($req->sp_signed_at)->format('F j, Y') : 'Unknown') . "</p></div>

@@ -268,6 +268,7 @@ class ServiceProviderDistributorController extends Controller
                     <p><strong>2. Procurement and Pricing:</strong> The Service Provider shall be eligible to procure materials under established partner-tier pricing. The Distributor reserves the exclusive right to modify pricing tiers and stock availability.</p>
                     <p><strong>3. Compliance and Representation:</strong> The Service Provider agrees to maintain all necessary local business licenses and industry certifications.</p>
                     <p><strong>4. Confidentiality:</strong> Both parties mutually agree to hold in strict confidence any sensitive business intelligence shared during this partnership.</p>
+                    <p><strong>5. Return Policy:</strong> Products procured are subject to a strictly enforced 15-day return window from the date of receipt. Once the 15-day period has elapsed, the products are considered final sale and cannot be returned.</p>
                     {$termsHtml}
                 </div>
                 

@@ -105,6 +105,17 @@
              <p class="text-gray-600 leading-relaxed whitespace-pre-line text-[15px]">
                 {{ selectedProduct.description || 'Premium quality paint suitable for various applications. Long-lasting, durable, and excellent coverage.' }}
              </p>
+
+             <!-- 7-Day Return Policy Notice -->
+             <div class="mt-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+               <ShieldCheck class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+               <div>
+                 <h4 class="text-sm font-bold text-gray-900 mb-1">7-Day Return Policy</h4>
+                 <p class="text-xs text-gray-600 leading-relaxed">
+                   Items can be returned within 7 days of receipt. Once 7 days have passed, the item/s cannot be returned anymore.
+                 </p>
+               </div>
+             </div>
           </div>
 
           <div class="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm">

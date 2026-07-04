@@ -38,6 +38,16 @@ class SpOrderController extends Controller
             ->get();
 
         $orders->each(function ($order) use ($reviews) {
+            // Check if 15 days have passed since delivery
+            $isReturnExpired = false;
+            if ($order->status === 'delivered') {
+                $deliveryDate = \Carbon\Carbon::parse($order->updated_at);
+                if ($deliveryDate->diffInDays(\Carbon\Carbon::now()) > 15) {
+                    $isReturnExpired = true;
+                }
+            }
+            $order->is_return_expired = $isReturnExpired;
+
             $order->items->each(function ($item) use ($reviews, $order) {
                 $review = $reviews->where('sp_order_id', $order->id)->where('product_id', $item->product_id)->first();
                 $item->is_reviewed = $review ? true : false;
@@ -46,6 +56,8 @@ class SpOrderController extends Controller
 
                 $item->has_active_return = SpReturnRequest::where('order_item_id', $item->id)
                     ->whereNotIn('status', ['rejected', 'cancelled'])->exists();
+                    
+                $item->is_return_expired = $order->is_return_expired;
 
                 if ($item->product && $item->product->image_url) {
                     if (!filter_var($item->product->image_url, FILTER_VALIDATE_URL) && !str_starts_with($item->product->image_url, 'data:')) {
@@ -177,6 +189,15 @@ class SpOrderController extends Controller
 
         $user = $request->user();
         $orderItem = SpOrderItem::findOrFail($request->order_item_id);
+
+        // Security Validation: Block if 15 days have passed since delivery
+        $order = SpOrder::find($orderItem->sp_order_id);
+        if ($order && $order->status === 'delivered') {
+            $deliveryDate = \Carbon\Carbon::parse($order->updated_at);
+            if ($deliveryDate->diffInDays(\Carbon\Carbon::now()) > 15) {
+                return response()->json(['success' => false, 'message' => 'The 15-day return period has expired.'], 400);
+            }
+        }
 
         $path = $request->file('proof_image')->store('sp_returns', 'public');
 

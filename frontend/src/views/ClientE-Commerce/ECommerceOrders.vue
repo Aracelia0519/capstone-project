@@ -502,6 +502,15 @@ const downloadInvoice = () => {
   toast.info('Generating PDF invoice...')
 }
 
+const isReturnable = (order) => {
+  if (!order || !order.updated_at) return false;
+  const deliveryDate = new Date(order.updated_at);
+  const today = new Date();
+  const diffTime = today.getTime() - deliveryDate.getTime();
+  const diffDays = diffTime / (1000 * 3600 * 24);
+  return diffDays <= 7;
+}
+
 // --- Reviews Logic ---
 const openReviewModal = (orderId, item) => {
   if (!props.user) { isAuthAlertOpen.value = true; return }
@@ -630,6 +639,10 @@ const scrollToBottom = () => {
 
 const openReturnChat = async (item) => {
   if (!props.user) { isAuthAlertOpen.value = true; return }
+  if (!isReturnable(selectedOrder.value)) {
+    toast.error('Items cannot be returned after 7 days of delivery.')
+    return
+  }
   isDetailsModalOpen.value = false
 
   activeReturnItem.value = item
@@ -1173,9 +1186,12 @@ const submitTrackingInfo = async () => {
                             <p v-if="item.review_comment" class="text-sm text-gray-600 dark:text-gray-300 italic mt-1">"{{ item.review_comment }}"</p>
                           </div>
 
-                          <Button variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0 h-10 px-4">
+                          <Button v-if="isReturnable(selectedOrder)" variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0 h-10 px-4">
                             <RotateCcw class="w-4 h-4 mr-1.5" /> Return
                           </Button>
+                          <div v-else class="text-xs text-red-500 font-medium px-2 shrink-0 flex items-center justify-center text-center">
+                            Return period<br>expired
+                          </div>
                         </div>
                       </div>
                     </div>

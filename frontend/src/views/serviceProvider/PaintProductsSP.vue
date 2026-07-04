@@ -567,7 +567,7 @@ const submitInitialReturn = async () => {
       if (chatRes.data.success) { returnMessages.value = chatRes.data.messages || []; scrollToBottom() }
       fetchOrders(true)
     }
-  } catch (error) { toast.error('Failed to submit return request') } finally { isSubmittingReturn.value = false }
+  } catch (error) { toast.error(error.response?.data?.message || 'Failed to submit return request') } finally { isSubmittingReturn.value = false }
 }
 
 const sendChatMessage = async () => {
@@ -763,8 +763,8 @@ const submitTrackingInfo = async () => {
                   <Button variant="ghost" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
                     <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
                   </Button>
-                  <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
-                    <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                  <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory || (item.is_return_expired && !item.has_active_return)" :title="item.is_return_expired && !item.has_active_return ? 'Return period of 15 days has expired' : ''" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                    <RotateCcw class="w-4 h-4 mr-1.5" /> {{ item.is_return_expired && !item.has_active_return ? 'Return Expired' : 'Return' }}
                   </Button>
                 </div>
               </div>
@@ -799,8 +799,8 @@ const submitTrackingInfo = async () => {
                       <Button variant="ghost" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
                         <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
                       </Button>
-                      <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
-                        <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                      <Button variant="ghost" @click="openReturnChat(item)" :disabled="item.added_to_inventory || (item.is_return_expired && !item.has_active_return)" :title="item.is_return_expired && !item.has_active_return ? 'Return period of 15 days has expired' : ''" class="text-red-400 hover:text-red-300 hover:bg-slate-800/50 h-9 px-3 text-xs w-full sm:w-auto flex-1">
+                        <RotateCcw class="w-4 h-4 mr-1.5" /> {{ item.is_return_expired && !item.has_active_return ? 'Return Expired' : 'Return' }}
                       </Button>
                     </div>
                   </div>
@@ -1084,8 +1084,8 @@ const submitTrackingInfo = async () => {
                           <Package class="w-4 h-4 mr-1.5" /> {{ item.added_to_inventory ? 'In Inventory' : 'Add to Inventory' }}
                         </Button>
 
-                        <Button variant="outline" size="sm" @click="openReturnChat(item)" :disabled="item.added_to_inventory" class="text-red-400 border-red-900/50 hover:bg-red-900/30 bg-slate-900 shrink-0 h-10 px-4 w-full sm:w-auto sm:flex-1">
-                          <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                        <Button variant="outline" size="sm" @click="openReturnChat(item)" :disabled="item.added_to_inventory || (item.is_return_expired && !item.has_active_return)" :title="item.is_return_expired && !item.has_active_return ? 'Return period of 15 days has expired' : ''" class="text-red-400 border-red-900/50 hover:bg-red-900/30 bg-slate-900 shrink-0 h-10 px-4 w-full sm:w-auto sm:flex-1">
+                          <RotateCcw class="w-4 h-4 mr-1.5" /> {{ item.is_return_expired && !item.has_active_return ? 'Return Expired' : 'Return' }}
                         </Button>
                       </div>
                     </div>

@@ -378,7 +378,7 @@
 
                     <div>
                         <h5 class="font-semibold text-slate-300">5. Returns and Warranties</h5>
-                        <p class="mt-1">Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module.</p>
+                        <p class="mt-1">Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module. A strict 30-day return window applies to all procured products. If the 30 days have already ended, the products can no longer be returned or exchanged under any circumstances.</p>
                     </div>
 
                     <div>

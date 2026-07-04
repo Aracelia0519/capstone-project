@@ -171,7 +171,9 @@
                 <p class="mb-4">The Service Provider is authorized to access the Distributor's wholesale catalog, view pricing, and submit procurement requests upon final approval of this digital agreement.</p>
                 <h4 class="font-bold text-slate-200 mb-2">2. Procurement Standards</h4>
                 <p class="mb-4">All materials procured are subject to the Distributor's standard quality assurance protocols. Pricing tiers are exclusive and confidential.</p>
-                <h4 class="font-bold text-slate-200 mb-2">3. Digital Signature Binding</h4>
+                <h4 class="font-bold text-slate-200 mb-2">3. Return Policy</h4>
+                <p class="mb-4">Products procured are subject to a 15-day return window from the date of receipt. If the 15-day period has already ended, the products cannot be returned.</p>
+                <h4 class="font-bold text-slate-200 mb-2">4. Digital Signature Binding</h4>
                 <p>By affixing your digital signature below, you certify that you are an authorized representative of your entity and agree to enter into a legally binding commercial partnership.</p>
               </div>
             </div>

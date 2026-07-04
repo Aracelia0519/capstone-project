@@ -282,7 +282,7 @@ class PartnerSupplierController extends Controller
                         <p>For items shipped directly by the Supplier or its logistics personnel, the risk of loss, theft, or damage passes to the Distributor upon successful delivery and physical confirmation of receipt.</p>
 
                         <h2>5. Returns, Warranties, and Defective Goods</h2>
-                        <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module within the allowable timeframe.</p>
+                        <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module. A strict 30-day return window applies to all procured products, calculated from the date of receipt. If the 30-day period has already ended, the products can no longer be returned or exchanged under any circumstances.</p>
 
                         <h2>6. Confidentiality and Data Protection</h2>
                         <p>Both parties agree to rigorously maintain the confidentiality of proprietary business information encountered during this partnership.</p>
@@ -493,7 +493,7 @@ class PartnerSupplierController extends Controller
                     <p>For items shipped directly by the Supplier or its logistics personnel, the risk of loss, theft, or damage passes to the Distributor upon successful delivery and physical confirmation of receipt. The Distributor must conduct a preliminary inspection of all goods upon arrival.</p>
 
                     <h2>5. Returns, Warranties, and Defective Goods</h2>
-                    <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module within the allowable timeframe. The Supplier will review and approve valid return requests, subsequently offering replacements or refunds as appropriate.</p>
+                    <p>Any claims regarding defective, damaged, or incorrect products must be processed exclusively through the system's official Return Management module within the allowable timeframe. A strict 30-day return window applies to all products procured. If the 30 days have already ended, the products can no longer be returned or exchanged. The Supplier will review and approve valid return requests submitted within this timeframe, subsequently offering replacements or refunds as appropriate.</p>
 
                     <h2>6. Confidentiality and Data Protection</h2>
                     <p>Both parties agree to rigorously maintain the confidentiality of proprietary business information encountered during this partnership. This includes, but is not limited to, wholesale pricing models, trade secrets, customer demographics, sales volumes, and internal platform communications.</p>

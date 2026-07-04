@@ -185,7 +185,6 @@
       </div>
     </main>
 
-    <!-- Request Partnership Modal -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeModal">
       <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
@@ -219,7 +218,6 @@
                   class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm shadow-inner resize-none"></textarea>
               </div>
 
-              <!-- New Terms & Conditions -->
               <div class="sm:col-span-2">
                 <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
                 <div class="space-y-2">
@@ -244,7 +242,10 @@
                   <h4 class="font-bold text-slate-200 mb-2">2. Procurement Standards</h4>
                   <p class="mb-4">All materials procured are subject to the Distributor's standard quality assurance protocols. Pricing tiers are exclusive and confidential.</p>
 
-                  <h4 class="font-bold text-slate-200 mb-2">3. Digital Signature Binding</h4>
+                  <h4 class="font-bold text-slate-200 mb-2">3. Return Policy</h4>
+                  <p class="mb-4">Products procured are subject to a 15-day return window from the date of receipt. If the 15-day period has already ended, the products cannot be returned.</p>
+
+                  <h4 class="font-bold text-slate-200 mb-2">4. Digital Signature Binding</h4>
                   <p>By affixing your digital signature below, you certify that you are an authorized representative of your entity and agree to enter into a legally binding commercial partnership.</p>
                </div>
             </div>
@@ -314,7 +315,6 @@
       </div>
     </div>
 
-    <!-- Negotiation Modal -->
     <div v-if="showNegotiationModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeNegotiationModal">
       <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
@@ -341,7 +341,6 @@
               <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Contracts must be at least 1 month in duration.</p>
             </div>
 
-            <!-- Terms editing in negotiation -->
             <div class="sm:col-span-2">
               <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
               <div class="space-y-2">
@@ -365,7 +364,10 @@
                   <h4 class="font-bold text-slate-200 mb-2">2. Procurement Standards</h4>
                   <p class="mb-4">All materials procured are subject to the Distributor's standard quality assurance protocols. Pricing tiers are exclusive and confidential.</p>
 
-                  <h4 class="font-bold text-slate-200 mb-2">3. Digital Signature Binding</h4>
+                  <h4 class="font-bold text-slate-200 mb-2">3. Return Policy</h4>
+                  <p class="mb-4">Products procured are subject to a 15-day return window from the date of receipt. If the 15-day period has already ended, the products cannot be returned.</p>
+
+                  <h4 class="font-bold text-slate-200 mb-2">4. Digital Signature Binding</h4>
                   <p>By affixing your digital signature below, you certify that you are an authorized representative of your entity and agree to enter into a legally binding commercial partnership.</p>
                </div>
             </div>
@@ -434,7 +436,6 @@
       </div>
     </div>
 
-    <!-- Renewal Modal -->
     <div v-if="showRenewalModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeRenewalModal">
       <div class="relative bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         
@@ -471,7 +472,6 @@
                   class="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all text-sm shadow-inner resize-none"></textarea>
               </div>
 
-              <!-- Terms for renewal -->
               <div class="sm:col-span-2">
                 <label class="block text-sm font-semibold text-slate-300 mb-2">Additional Terms & Conditions</label>
                 <div class="space-y-2">
@@ -496,7 +496,10 @@
                   <h4 class="font-bold text-slate-200 mb-2">2. Procurement Standards</h4>
                   <p class="mb-4">All materials procured are subject to the Distributor's standard quality assurance protocols. Pricing tiers are exclusive and confidential.</p>
 
-                  <h4 class="font-bold text-slate-200 mb-2">3. Digital Signature Binding</h4>
+                  <h4 class="font-bold text-slate-200 mb-2">3. Return Policy</h4>
+                  <p class="mb-4">Products procured are subject to a 15-day return window from the date of receipt. If the 15-day period has already ended, the products cannot be returned.</p>
+
+                  <h4 class="font-bold text-slate-200 mb-2">4. Digital Signature Binding</h4>
                   <p>By affixing your digital signature below, you certify that you are an authorized representative of your entity and agree to enter into a legally binding commercial partnership.</p>
                </div>
             </div>

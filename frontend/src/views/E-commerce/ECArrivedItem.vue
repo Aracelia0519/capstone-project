@@ -467,14 +467,21 @@
 
         <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t border-gray-800 mt-4">
           <template v-if="!isViewingReturn">
-            <Button 
-              variant="outline" 
-              @click="requirePermission('manage', openReturnModal)"
-              class="border-red-900/50 text-red-400 hover:bg-red-900/30 hover:text-red-300 bg-transparent w-full sm:w-auto sm:mr-auto"
-            >
-              <AlertTriangle class="w-4 h-4 mr-2" />
-              Return Items
-            </Button>
+            <div class="flex flex-col w-full sm:w-auto sm:mr-auto">
+              <Button 
+                variant="outline" 
+                :disabled="!isReturnable"
+                @click="requirePermission('manage', openReturnModal)"
+                class="border-red-900/50 text-red-400 hover:bg-red-900/30 hover:text-red-300 bg-transparent w-full"
+                :class="!isReturnable ? 'opacity-50 cursor-not-allowed' : ''"
+              >
+                <AlertTriangle class="w-4 h-4 mr-2" />
+                Return Items
+              </Button>
+              <span v-if="!isReturnable" class="text-[10px] text-red-500/80 mt-1 text-center sm:text-left">
+                Return period (30 days) expired
+              </span>
+            </div>
 
             <Button 
               variant="ghost" 
@@ -682,6 +689,19 @@ const permissions = ref({
   can_view: false,
   can_manage: false,
   can_approve: false
+})
+
+// Check if return window is valid (30 Days)
+const isReturnable = computed(() => {
+  if (isViewingReturn.value || !selectedItem.value || !selectedItem.value.delivered_at) return false;
+  
+  const deliveryDate = new Date(selectedItem.value.delivered_at);
+  const now = new Date();
+  
+  const diffInMs = now.getTime() - deliveryDate.getTime();
+  const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+  
+  return diffInDays < 30;
 })
 
 // RBAC Action Interceptor
