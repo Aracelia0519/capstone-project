@@ -18,7 +18,7 @@ use App\Models\Supplier\SupplierRawMaterial;
 use App\Models\HR\Employee;
 use App\Models\Distributor\HRManager;
 use App\Models\Supplier\ProcurementFulfillment;
-use App\Events\ProcurementRequestCreated; // <--- ADDED WEBSOCKET EVENT IMPORT
+use App\Events\ProcurementRequestCreated;
 
 class ProcurementController extends Controller
 {
@@ -67,7 +67,7 @@ class ProcurementController extends Controller
                 if ($position) {
                     $access = DB::table('position_accessibilities')
                         ->where('position_id', $position->id)
-                        ->where('permission_key', 'ec_procurement') // Permission key for this module
+                        ->where('permission_key', 'ec_procurement')
                         ->first();
                         
                     if ($access) {
@@ -142,7 +142,6 @@ class ProcurementController extends Controller
             $perPage = $request->get('per_page', 15);
             $requests = $query->with(['requester', 'distributor', 'selectedSupplier'])->paginate($perPage);
 
-            // Fetch and append Supplier Fulfillment (Receipts/Proofs) safely
             $fulfillments = ProcurementFulfillment::whereIn('procurement_request_id', $requests->pluck('id'))->get()->keyBy('procurement_request_id');
             $requests->getCollection()->transform(function ($req) use ($fulfillments) {
                 $req->fulfillment = $fulfillments->get($req->id);
@@ -153,7 +152,7 @@ class ProcurementController extends Controller
                 'success' => true,
                 'data' => $requests,
                 'permissions' => $accessData['permissions'],
-                'distributor_id' => $accessData['distributor_id'], // <--- ADDED FOR WEBSOCKET CHANNEL SCOPING
+                'distributor_id' => $accessData['distributor_id'],
                 'message' => 'Procurement requests retrieved successfully'
             ]);
             
@@ -201,14 +200,13 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            $accessData = $this->checkAccess($user, 'can_manage'); // Changed to can_manage
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
 
             $distributorId = $accessData['distributor_id'];
 
-            // Fetch Current Business Budget
             $salesRecord = DB::table('distributor_overall_sales')
                 ->where('distributor_id', $distributorId)
                 ->first();
@@ -258,7 +256,7 @@ class ProcurementController extends Controller
                 'data' => [
                     'suppliers' => $suppliers,
                     'addresses' => $addresses,
-                    'available_budget' => $availableBudget // Sent to frontend for hidden real-time validation
+                    'available_budget' => $availableBudget
                 ],
                 'message' => 'Form options retrieved successfully'
             ]);
@@ -275,7 +273,7 @@ class ProcurementController extends Controller
     {
         try {
             $user = Auth::user();
-            $accessData = $this->checkAccess($user, 'can_manage'); // Changed to can_manage
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized to create requests'], 403);
             }
@@ -329,9 +327,6 @@ class ProcurementController extends Controller
                 $totalRequestedCost += ($material->price * $item['quantity']);
             }
 
-            // ==========================================
-            // STRICT BUDGET VERIFICATION ON BACKEND
-            // ==========================================
             $salesRecord = DB::table('distributor_overall_sales')
                 ->where('distributor_id', $distributorId)
                 ->first();
@@ -344,7 +339,6 @@ class ProcurementController extends Controller
                     'message' => 'Insufficient budget to complete this request. The total amount exceeds the allocated business funds.'
                 ], 400); 
             }
-            // ==========================================
 
             DB::beginTransaction();
             $createdRequests = [];
@@ -357,7 +351,8 @@ class ProcurementController extends Controller
                     'requester_id' => $user->id,
                     'distributor_id' => $distributorId,
                     'supplier_id' => $request->supplier_id,
-                    'product_id' => null, 
+                    // 🔥 FIX: store the supplier_raw_material id as product_id
+                    'product_id' => $material->id,   // <-- Changed from null
                     'request_code' => ProcurementRequest::generateRequestCode(),
                     'product_name' => $material->name,
                     'category' => $material->category,
@@ -380,9 +375,6 @@ class ProcurementController extends Controller
             
             DB::commit();
 
-            // ==========================================
-            // TRIGGER WEBSOCKET EVENT
-            // ==========================================
             event(new ProcurementRequestCreated($distributorId));
 
             return response()->json([
@@ -437,7 +429,7 @@ class ProcurementController extends Controller
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            $accessData = $this->checkAccess($user, 'can_manage'); // Changed to can_manage
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access'] || ($user->role !== 'admin' && $procurementRequest->distributor_id !== $accessData['distributor_id'])) {
                 return response()->json([
                     'success' => false,
@@ -483,7 +475,7 @@ class ProcurementController extends Controller
             $user = Auth::user();
             $procurementRequest = ProcurementRequest::findOrFail($id);
             
-            $accessData = $this->checkAccess($user, 'can_manage'); // Changed to can_manage
+            $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access'] || ($user->role !== 'admin' && $procurementRequest->distributor_id !== $accessData['distributor_id'])) {
                 return response()->json([
                     'success' => false,

@@ -8,6 +8,8 @@ use App\Models\OperationDistributor\ProcurementRequest;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\OperationDistributor\InventoryLog;
 use App\Models\OperationDistributor\ProcurementReturn;
+use App\Models\Supplier\SupplierRawMaterial; // <-- added
+use App\Models\Distributor\Product as DistributorProduct; // <-- optional alias
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\HR\Employee;
@@ -62,7 +64,7 @@ class ArrivedItemController extends Controller
                 if ($position) {
                     $access = DB::table('position_accessibilities')
                         ->where('position_id', $position->id)
-                        ->where('permission_key', 'ec_arrived_item') // Precise permission key
+                        ->where('permission_key', 'ec_arrived_item')
                         ->first();
                         
                     if ($access) {
@@ -130,7 +132,6 @@ class ArrivedItemController extends Controller
 
             $distributorId = $accessData['distributor_id'];
 
-            // Fetch requests that are 'delivered' and NOT YET moved to inventory
             $query = ProcurementRequest::where('status', 'delivered')
                 ->where('moved_to_inventory', false);
 
@@ -140,15 +141,12 @@ class ArrivedItemController extends Controller
 
             $arrivedItems = $query->orderBy('delivered_at', 'desc')->get();
 
-            // Fetch arrival proofs safely and map product
             $arrivedItems->map(function ($item) {
-                // Determine Proof Path
                 $delivery = DB::table('supplier_deliveries')
                     ->where('procurement_request_id', $item->id)
                     ->first();
                 $item->arrival_proof_path = $delivery ? $delivery->arrival_proof_path : null;
 
-                // Decode raw material details safely to an object/array
                 if (is_string($item->raw_material_details)) {
                     $item->raw_material_details = json_decode($item->raw_material_details, true);
                 }
@@ -191,20 +189,16 @@ class ArrivedItemController extends Controller
 
             $returns = $query->orderBy('created_at', 'desc')->get();
 
-            // Safely map and decode raw material details
             $formattedReturns = $returns->map(function ($ret) {
                 if ($ret->procurementRequest && is_string($ret->procurementRequest->raw_material_details)) {
                     $ret->procurementRequest->raw_material_details = json_decode($ret->procurementRequest->raw_material_details, true);
                 }
                 
-                // Get the latest delivery associated with this procurement request
-                // Since the original was already delivered, the latest delivery is the replacement
                 $latestDelivery = DB::table('supplier_deliveries')
                     ->where('procurement_request_id', $ret->procurement_request_id)
                     ->orderBy('created_at', 'desc')
                     ->first();
                 
-                // Return everything needed including the NEW replacement paths!
                 return [
                     'id' => $ret->id,
                     'procurement_request_id' => $ret->procurement_request_id,
@@ -217,7 +211,7 @@ class ArrivedItemController extends Controller
                     'proof_image_path' => $ret->proof_image_path,
                     'replacement_receipt_path' => $ret->replacement_receipt_path,
                     'replacement_proof_path' => $ret->replacement_proof_path,
-                    'replacement_arrival_proof_path' => $latestDelivery ? $latestDelivery->arrival_proof_path : null, // Fetch Arrival Proof
+                    'replacement_arrival_proof_path' => $latestDelivery ? $latestDelivery->arrival_proof_path : null,
                     'created_at' => $ret->created_at
                 ];
             });
@@ -241,7 +235,6 @@ class ArrivedItemController extends Controller
     {
         try {
             $user = Auth::user();
-            // Requires MANAGE level to adjust warehouse operational inventory
             $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json(['message' => 'Unauthorized to move items to inventory'], 403);
@@ -264,79 +257,39 @@ class ArrivedItemController extends Controller
 
             DB::beginTransaction();
 
-            // 1. Try to map to an existing Product or create a connection
-            $productId = $procurement->product_id;
-            
-            if (!$productId && $procurement->raw_material_details) {
-                $details = is_string($procurement->raw_material_details) 
-                           ? json_decode($procurement->raw_material_details, true) 
-                           : $procurement->raw_material_details;
-                
-                // Extremely simple mapping: Try to find a product with the exact same name/sku
-                $existingProduct = \App\Models\Distributor\Product::where('distributor_id', $distributorId)
-                    ->where(function($q) use ($details, $procurement) {
-                        if (isset($details['sku_code'])) {
-                            $q->where('sku_code', $details['sku_code']);
-                        } else {
-                            $q->where('name', $procurement->product_name);
-                        }
-                    })->first();
+            // Resolve or create a distributor product ID
+            $distributorProductId = $this->resolveDistributorProductId($procurement, $distributorId);
 
-                if ($existingProduct) {
-                    $productId = $existingProduct->id;
-                } else {
-                    // Create a new product entry in EC master catalog
-                    $newProduct = \App\Models\Distributor\Product::create([
-                        'distributor_id' => $distributorId,
-                        'name' => $procurement->product_name,
-                        'description' => $details['description'] ?? 'Procured Item',
-                        'category' => $procurement->category,
-                        'type' => $details['type'] ?? 'Standard',
-                        'size' => $details['size'] ?? 'Standard',
-                        'color_code' => $details['color_code'] ?? null,
-                        'sku_code' => $details['sku_code'] ?? null,
-                        'price' => $procurement->unit_price, // Fallback price
-                        'image_url' => $details['image_url'] ?? null,
-                        'is_active' => true
-                    ]);
-                    $productId = $newProduct->id;
-                }
-
-                // Attach the resolved product_id back to the procurement record
-                $procurement->product_id = $productId;
+            if (!$distributorProductId) {
+                throw new \Exception('Could not map to a distributor product.');
             }
 
-            // 2. Mark the request as moved
+            // Mark request as moved
             $procurement->moved_to_inventory = true;
             $procurement->save();
 
-            // 3. Add to the separate DistributorInventory table
-            if ($productId) {
-                // Fetch existing inventory record, or create a new one with 0 quantity
-                $inventory = DistributorInventory::firstOrCreate(
-                    [
-                        'distributor_id' => $distributorId,
-                        'product_id' => $productId
-                    ],
-                    ['quantity' => 0]
-                );
-
-                // Increment the quantity
-                $inventory->quantity += $procurement->quantity;
-                $inventory->save();
-
-                // 4. Create Audit Log
-                InventoryLog::create([
+            // Update inventory
+            $inventory = DistributorInventory::firstOrCreate(
+                [
                     'distributor_id' => $distributorId,
-                    'product_id' => $productId,
-                    'procurement_request_id' => $procurement->id,
-                    'quantity_added' => $procurement->quantity,
-                ]);
-            }
+                    'product_id' => $distributorProductId
+                ],
+                ['quantity' => 0]
+            );
+
+            $inventory->quantity += $procurement->quantity;
+            $inventory->save();
+
+            // Audit log
+            InventoryLog::create([
+                'distributor_id' => $distributorId,
+                'product_id' => $distributorProductId,
+                'procurement_request_id' => $procurement->id,
+                'quantity_added' => $procurement->quantity,
+            ]);
 
             DB::commit();
 
-            // Broadcast changes to the Inventory module
             event(new InventoryUpdated($distributorId));
 
             return response()->json(['message' => 'Successfully moved to inventory.']);
@@ -354,7 +307,6 @@ class ArrivedItemController extends Controller
     {
         try {
             $user = Auth::user();
-            // Requires MANAGE level to adjust warehouse operational inventory
             $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json(['message' => 'Unauthorized to move items to inventory'], 403);
@@ -378,70 +330,41 @@ class ArrivedItemController extends Controller
             DB::beginTransaction();
 
             $procurement = $returnReq->procurementRequest;
-            $productId = $procurement->product_id;
-            
-            // Map product just in case it doesn't exist
-            if (!$productId && $procurement->raw_material_details) {
-                $details = is_string($procurement->raw_material_details) 
-                           ? json_decode($procurement->raw_material_details, true) 
-                           : $procurement->raw_material_details;
-                
-                $existingProduct = \App\Models\Distributor\Product::where('distributor_id', $distributorId)
-                    ->where(function($q) use ($details, $procurement) {
-                        if (isset($details['sku_code'])) {
-                            $q->where('sku_code', $details['sku_code']);
-                        } else {
-                            $q->where('name', $procurement->product_name);
-                        }
-                    })->first();
 
-                if ($existingProduct) {
-                    $productId = $existingProduct->id;
-                } else {
-                    $newProduct = \App\Models\Distributor\Product::create([
-                        'distributor_id' => $distributorId,
-                        'name' => $procurement->product_name,
-                        'description' => $details['description'] ?? 'Procured Item',
-                        'category' => $procurement->category,
-                        'type' => $details['type'] ?? 'Standard',
-                        'size' => $details['size'] ?? 'Standard',
-                        'color_code' => $details['color_code'] ?? null,
-                        'sku_code' => $details['sku_code'] ?? null,
-                        'price' => $procurement->unit_price,
-                        'image_url' => $details['image_url'] ?? null,
-                        'is_active' => true
-                    ]);
-                    $productId = $newProduct->id;
-                }
-                $procurement->product_id = $productId;
-                $procurement->save();
+            // Resolve or create a distributor product ID
+            $distributorProductId = $this->resolveDistributorProductId($procurement, $distributorId);
+
+            if (!$distributorProductId) {
+                throw new \Exception('Could not map to a distributor product for replacement.');
             }
 
-            // Increment Inventory
-            if ($productId) {
-                $inventory = DistributorInventory::firstOrCreate(
-                    ['distributor_id' => $distributorId, 'product_id' => $productId],
-                    ['quantity' => 0]
-                );
-                $inventory->quantity += $returnReq->quantity_returned;
-                $inventory->save();
-
-                InventoryLog::create([
+            // Update inventory
+            $inventory = DistributorInventory::firstOrCreate(
+                [
                     'distributor_id' => $distributorId,
-                    'product_id' => $productId,
-                    'procurement_request_id' => $procurement->id,
-                    'quantity_added' => $returnReq->quantity_returned,
-                    'notes' => 'Received from Supplier Replacement'
-                ]);
-            }
+                    'product_id' => $distributorProductId
+                ],
+                ['quantity' => 0]
+            );
 
-            // Mark return as fully completed
+            $inventory->quantity += $returnReq->quantity_returned;
+            $inventory->save();
+
+            // Audit log
+            InventoryLog::create([
+                'distributor_id' => $distributorId,
+                'product_id' => $distributorProductId,
+                'procurement_request_id' => $procurement->id,
+                'quantity_added' => $returnReq->quantity_returned,
+                'notes' => 'Received from Supplier Replacement'
+            ]);
+
+            // Mark return as completed
             $returnReq->status = 'completed';
             $returnReq->save();
 
             DB::commit();
 
-            // Broadcast changes to the Inventory module
             event(new InventoryUpdated($distributorId));
 
             return response()->json(['message' => 'Successfully moved replacement to inventory.']);
@@ -453,13 +376,130 @@ class ArrivedItemController extends Controller
     }
 
     /**
+     * Resolve a distributor product ID from procurement data
+     *
+     * @param ProcurementRequest $procurement
+     * @param int $distributorId
+     * @return int|null
+     */
+    private function resolveDistributorProductId($procurement, $distributorId)
+    {
+        // If product_id is already a distributor product ID, use it directly
+        if ($procurement->product_id) {
+            $existingDistributorProduct = DistributorProduct::find($procurement->product_id);
+            if ($existingDistributorProduct) {
+                return $procurement->product_id;
+            }
+        }
+
+        // Treat product_id as supplier raw material ID if it exists
+        $supplierMaterial = null;
+        if ($procurement->product_id) {
+            $supplierMaterial = SupplierRawMaterial::find($procurement->product_id);
+        }
+
+        // If no supplier material found, fallback to raw_material_details
+        if (!$supplierMaterial && $procurement->raw_material_details) {
+            $details = is_string($procurement->raw_material_details)
+                ? json_decode($procurement->raw_material_details, true)
+                : $procurement->raw_material_details;
+
+            // Try to find an existing distributor product by name/sku from details
+            $existingProduct = DistributorProduct::where('distributor_id', $distributorId)
+                ->where(function($q) use ($details, $procurement) {
+                    if (!empty($details['sku_code'])) {
+                        $q->where('sku_code', $details['sku_code']);
+                    } else {
+                        $q->where('name', $procurement->product_name);
+                    }
+                })->first();
+
+            if ($existingProduct) {
+                return $existingProduct->id;
+            }
+
+            // Create a new distributor product from details
+            $newProduct = DistributorProduct::create([
+                'distributor_id' => $distributorId,
+                'name' => $procurement->product_name,
+                'description' => $details['description'] ?? 'Procured Item',
+                'category' => $procurement->category,
+                'type' => $details['type'] ?? 'Standard',
+                'size' => $details['size'] ?? 'Standard',
+                'color_code' => $details['color_code'] ?? null,
+                'sku_code' => $details['sku_code'] ?? null,
+                'price' => $procurement->unit_price,
+                'image_url' => $details['image_url'] ?? null,
+                'is_active' => true
+            ]);
+
+            return $newProduct->id;
+        }
+
+        // If we have a supplier material, use its details
+        if ($supplierMaterial) {
+            // Find or create distributor product using supplier material data
+            $existingProduct = DistributorProduct::where('distributor_id', $distributorId)
+                ->where(function($q) use ($supplierMaterial) {
+                    if ($supplierMaterial->sku_code) {
+                        $q->where('sku_code', $supplierMaterial->sku_code);
+                    } else {
+                        $q->where('name', $supplierMaterial->name);
+                    }
+                })->first();
+
+            if ($existingProduct) {
+                return $existingProduct->id;
+            }
+
+            // Create new distributor product from supplier material
+            $newProduct = DistributorProduct::create([
+                'distributor_id' => $distributorId,
+                'name' => $supplierMaterial->name,
+                'description' => $supplierMaterial->description ?? 'Procured Item',
+                'category' => $supplierMaterial->category,
+                'type' => $supplierMaterial->type,
+                'size' => $supplierMaterial->size,
+                'color_code' => $supplierMaterial->color_code,
+                'sku_code' => $supplierMaterial->sku_code,
+                'price' => $supplierMaterial->price,
+                'image_url' => $supplierMaterial->image_url,
+                'is_active' => true
+            ]);
+
+            return $newProduct->id;
+        }
+
+        // Fallback: try to find by product_name only
+        $existing = DistributorProduct::where('distributor_id', $distributorId)
+            ->where('name', $procurement->product_name)
+            ->first();
+
+        if ($existing) {
+            return $existing->id;
+        }
+
+        // Last resort: create a basic product
+        $fallbackProduct = DistributorProduct::create([
+            'distributor_id' => $distributorId,
+            'name' => $procurement->product_name,
+            'category' => $procurement->category ?? 'Uncategorized',
+            'type' => 'Standard',
+            'size' => 'Standard',
+            'price' => $procurement->unit_price ?? 0,
+            'is_active' => true
+        ]);
+
+        return $fallbackProduct->id;
+    }
+
+    /**
      * Process a return for an arrived item
      */
     public function returnItem(Request $request, $id)
     {
         try {
             $user = Auth::user();
-            // Requires MANAGE level to process operational returns
             $accessData = $this->checkAccess($user, 'can_manage');
             if (!$accessData['has_access']) {
                 return response()->json(['message' => 'Unauthorized to process returns'], 403);
@@ -482,7 +522,6 @@ class ArrivedItemController extends Controller
                 return response()->json(['message' => 'Item not found or already moved to inventory.'], 404);
             }
 
-            // Contract Verification Check: 30 Days return policy limit
             if (Carbon::parse($procurement->delivered_at)->diffInDays(now()) >= 30) {
                 return response()->json([
                     'message' => 'This item cannot be returned as it has been 30 days or more since the delivery date. The return period has expired.'
@@ -497,7 +536,6 @@ class ArrivedItemController extends Controller
 
             $imagePath = $request->file('proof_image')->store('operation-distributor/returns', 'public');
 
-            // Log the return
             $returnRecord = ProcurementReturn::create([
                 'procurement_request_id' => $procurement->id,
                 'distributor_id' => $distributorId,
@@ -508,10 +546,8 @@ class ArrivedItemController extends Controller
                 'status' => 'pending'
             ]);
 
-            // Deduct the returned quantity from the procurement request so only accepted items are moved to inventory
             $procurement->quantity -= $request->quantity_returned;
 
-            // If everything is returned, hide it from the arrived items screen by acting like it was "moved" (processed)
             if ($procurement->quantity == 0) {
                 $procurement->status = 'returned';
                 $procurement->moved_to_inventory = true; 

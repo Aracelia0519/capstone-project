@@ -25,13 +25,13 @@
           
           <div class="hidden lg:flex items-center gap-6 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
             <div class="flex flex-col items-center">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Items</span>
-              <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Groups</span>
+              <span class="text-lg font-bold text-slate-800">{{ groupedProducts.length }}</span>
             </div>
             <Separator orientation="vertical" class="h-8 bg-slate-200" />
             <div class="flex flex-col items-center">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Categories</span>
-              <span class="text-lg font-bold text-slate-800">{{ uniqueCategories }}</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Variants</span>
+              <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
             </div>
           </div>
         </div>
@@ -175,7 +175,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
             Available Materials 
-            <Badge variant="secondary" class="ml-1">{{ filteredProducts.length }}</Badge>
+            <Badge variant="secondary" class="ml-1">{{ groupedProducts.length }} groups</Badge>
           </h2>
           <div class="flex items-center gap-2">
             <span class="text-sm text-slate-500 whitespace-nowrap">Sort by:</span>
@@ -197,97 +197,111 @@
             <Loader2 class="w-8 h-8 animate-spin text-blue-600" />
         </div>
 
-        <div v-else-if="filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div v-else-if="groupedProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div 
-            v-for="product in sortedProducts" 
-            :key="product.id"
+            v-for="group in sortedGroups" 
+            :key="group.key"
             class="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden"
           >
             <div class="relative aspect-[4/3] overflow-hidden bg-slate-100">
               <img 
-                v-if="product.image_url" 
-                :src="getFullImageUrl(product.image_url)" 
-                :alt="product.name"
+                v-if="group.representativeImage" 
+                :src="getFullImageUrl(group.representativeImage)" 
+                :alt="group.name"
                 @error="handleImageError"
                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               >
               <div 
                 v-else 
                 class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105"
-                :style="{ backgroundColor: product.color_code ? `${product.color_code}20` : '#f1f5f9' }"
+                :style="{ backgroundColor: group.representativeColor ? `${group.representativeColor}20` : '#f1f5f9' }"
               >
                 <div 
                   class="w-16 h-16 rounded-lg flex items-center justify-center shadow-inner border"
-                  :style="{ backgroundColor: product.color_code || '#cbd5e1' }"
+                  :style="{ backgroundColor: group.representativeColor || '#cbd5e1' }"
                 >
                   <Package class="w-8 h-8 text-white/80 drop-shadow-md" />
                 </div>
               </div>
               
               <div class="absolute top-3 left-3 flex flex-col gap-2">
-                <Badge :class="getCategoryBadgeClass(product.category)" class="shadow-sm border-none">
-                  {{ getCategoryShortName(product.category) }}
+                <Badge :class="getCategoryBadgeClass(group.category)" class="shadow-sm border-none">
+                  {{ getCategoryShortName(group.category) }}
+                </Badge>
+                <Badge variant="secondary" class="shadow-sm border-none bg-black/50 text-white hover:bg-black/60">
+                  {{ group.variants.length }} variants
                 </Badge>
               </div>
 
-              <div 
-                v-if="product.color_code" 
-                class="absolute bottom-3 right-3 w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                :style="{ backgroundColor: product.color_code }"
-                :title="product.color_code"
-              ></div>
+              <div class="absolute bottom-3 right-3 flex gap-1">
+                <span class="bg-black/50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                  {{ group.variants.length }} sizes
+                </span>
+              </div>
             </div>
             
             <div class="p-4 flex-1 flex flex-col">
               <div class="flex justify-between items-start mb-1">
-                <h3 class="font-bold text-slate-800 line-clamp-1 text-base group-hover:text-blue-600 transition-colors">{{ product.name }}</h3>
-                <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">₱{{ formatPrice(product.price) }}</span>
+                <h3 class="font-bold text-slate-800 line-clamp-1 text-base group-hover:text-blue-600 transition-colors">{{ group.name }}</h3>
+                <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">
+                  ₱{{ formatPrice(group.minPrice) }} 
+                  <span v-if="group.minPrice !== group.maxPrice"> - ₱{{ formatPrice(group.maxPrice) }}</span>
+                </span>
               </div>
               
               <div class="flex items-center gap-2 mb-3 text-xs text-slate-500">
-                <span class="bg-slate-100 px-2 py-0.5 rounded">{{ product.type }}</span>
+                <span class="bg-slate-100 px-2 py-0.5 rounded">{{ group.type }}</span>
                 <span>•</span>
-                <span>{{ product.size }}</span>
+                <span>{{ group.category }}</span>
               </div>
               
-              <p v-if="product.description" class="text-sm text-slate-600 line-clamp-2 mb-4 h-10">
-                {{ truncateDescription(product.description) }}
+              <p v-if="group.description" class="text-sm text-slate-600 line-clamp-2 mb-4 h-10">
+                {{ truncateDescription(group.description) }}
               </p>
-              
-              <div class="grid grid-cols-1 gap-y-1.5 bg-slate-50 p-3 rounded-lg text-xs mb-4">
-                <div v-if="product.sku_code" class="flex justify-between items-center">
-                  <span class="text-slate-500">SKU:</span>
-                  <span class="font-medium text-slate-700 font-mono">{{ product.sku_code }}</span>
-                </div>
-                <div v-if="product.min_order || product.max_order" class="flex justify-between items-center mt-1">
-                  <span class="text-slate-500">Order Limits:</span>
-                  <span class="font-medium text-slate-700">
-                    Min: {{ product.min_order || 1 }} 
-                    <span v-if="product.max_order">| Max: {{ product.max_order }}</span>
-                  </span>
-                </div>
-              </div>
               
               <div class="mt-auto flex gap-2 pt-2 border-t border-slate-100">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600"
-                  @click="editProduct(product)"
+                  class="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  @click="addVariant(group.variants[0])"
                 >
-                  <Pencil class="w-3.5 h-3.5 mr-2" />
-                  Edit
+                  <Plus class="w-3.5 h-3.5 mr-1" />
+                  Variant
                 </Button>
-                
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  class="flex-1 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                  @click="deleteProduct(product.id)"
+                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600"
+                  @click="toggleGroupExpand(group.key)"
                 >
-                  <Trash2 class="w-3.5 h-3.5 mr-2" />
-                  Delete
+                  <ChevronDown class="w-3.5 h-3.5 mr-1" :class="{'rotate-180': expandedGroups.includes(group.key)}" />
+                  Variants
                 </Button>
+              </div>
+
+              <!-- Expanded Variants List -->
+              <div v-if="expandedGroups.includes(group.key)" class="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                <div 
+                  v-for="variant in group.variants" 
+                  :key="variant.id"
+                  class="flex items-center justify-between bg-slate-50 p-2 rounded-lg text-sm"
+                >
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="font-mono text-xs text-slate-500">{{ variant.size }}</span>
+                    <span class="text-slate-700 truncate">{{ variant.sku_code || 'No SKU' }}</span>
+                    <span v-if="variant.color_code" class="w-3 h-3 rounded-full border border-slate-300 shrink-0" :style="{ backgroundColor: variant.color_code }"></span>
+                    <span class="font-bold text-blue-600 ml-auto">₱{{ formatPrice(variant.price) }}</span>
+                  </div>
+                  <div class="flex gap-1 ml-2">
+                    <Button variant="ghost" size="icon" class="h-7 w-7" @click="editProduct(variant)">
+                      <Pencil class="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" class="h-7 w-7 text-red-500 hover:text-red-700" @click="deleteProduct(variant.id)">
+                      <Trash2 class="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -304,15 +318,17 @@
       </div>
     </main>
 
+    <!-- Add/Edit Modal (unchanged) -->
     <Dialog :open="showAddModal" @update:open="closeModal">
       <DialogContent class="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
         <DialogHeader class="p-6 pb-2">
           <DialogTitle class="flex items-center gap-2 text-xl">
             <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
-              <PackagePlus v-if="!isEditing" class="w-5 h-5" />
+              <PackagePlus v-if="!isEditing && !isVariant" class="w-5 h-5" />
+              <CopyPlus v-else-if="isVariant" class="w-5 h-5" />
               <Pencil v-else class="w-5 h-5" />
             </div>
-            {{ isEditing ? 'Edit Material' : 'Add New Material' }}
+            {{ modalTitle }}
           </DialogTitle>
         </DialogHeader>
         
@@ -359,7 +375,11 @@
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="category" class="text-slate-700">Category <span class="text-red-500">*</span></Label>
-                  <Select v-model="newProduct.category" @update:modelValue="onCategoryChange">
+                  <Select 
+                    v-model="newProduct.category" 
+                    @update:modelValue="onCategoryChange"
+                    :disabled="isVariant"
+                  >
                     <SelectTrigger id="category" :class="{'border-red-300': !newProduct.category && showValidation}">
                       <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
@@ -376,7 +396,10 @@
 
                 <div class="space-y-2">
                   <Label for="type" class="text-slate-700">Type <span class="text-red-500">*</span></Label>
-                  <Select v-model="newProduct.type" :disabled="!newProduct.category">
+                  <Select 
+                    v-model="newProduct.type" 
+                    :disabled="!newProduct.category || isVariant"
+                  >
                     <SelectTrigger id="type" :class="{'border-red-300': !newProduct.type && showValidation}">
                       <SelectValue placeholder="Select Type" />
                     </SelectTrigger>
@@ -396,6 +419,7 @@
                   v-model="newProduct.name" 
                   placeholder="e.g. Premium Interior Latex" 
                   :class="{'border-red-300': !newProduct.name && showValidation}"
+                  :disabled="isVariant"
                 />
               </div>
 
@@ -473,7 +497,6 @@
                   />
                 </div>
               </div>
-
 
               <div class="space-y-2">
                 <Label for="description" class="text-slate-700">Description</Label>
@@ -563,7 +586,7 @@
               <div class="p-4 rounded-lg bg-blue-50 border border-blue-100">
                 <p class="text-sm text-blue-800 text-center">
                   Almost done! Please verify the information above before clicking 
-                  <strong>{{ isEditing ? 'Update Material' : 'Add Material' }}</strong>.
+                  <strong>{{ isEditing ? 'Update Material' : (isVariant ? 'Add Variant' : 'Add Material') }}</strong>.
                 </p>
               </div>
             </div>
@@ -598,7 +621,7 @@
             class="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
           >
             <Loader2 v-if="isSubmitting" class="w-4 h-4 mr-2 animate-spin" />
-            {{ isEditing ? 'Update Material' : 'Add Material' }}
+            {{ isEditing ? 'Update Material' : (isVariant ? 'Add Variant' : 'Add Material') }}
           </Button>
         </div>
       </DialogContent>
@@ -654,12 +677,11 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import { toast } from 'vue-sonner';
-// Use your custom axios instance
 import api from '@/utils/axios';
 import { 
   Package2, Search, Filter, Settings, Package, Pencil, Trash2, 
   SearchX, PackagePlus, Check, ChevronLeft, ChevronRight, 
-  Loader2, UploadCloud, X, Info, ClipboardCheck 
+  Loader2, UploadCloud, X, Info, ClipboardCheck, Plus, CopyPlus, ChevronDown
 } from 'lucide-vue-next';
 
 // Shadcn Components
@@ -684,11 +706,13 @@ const selectedColor = ref('');
 const sortOption = ref('newest');
 const products = ref([]);
 const isLoading = ref(false);
+const expandedGroups = ref([]); // store group keys that are expanded
 
 const showAddModal = ref(false);
 const showMobileFilters = ref(false);
 const isEditing = ref(false);
 const editingId = ref(null);
+const isVariant = ref(false);
 const isSubmitting = ref(false);
 const currentStep = ref(1);
 const showValidation = ref(false);
@@ -810,45 +834,111 @@ const allSizes = computed(() => {
   return [...new Set(all)].sort();
 });
 
-const filteredProducts = computed(() => {
-  let res = products.value;
-  
+// Grouping logic
+const groupedProducts = computed(() => {
+  const map = new Map();
+  products.value.forEach(p => {
+    const key = `${p.name}|${p.category}|${p.type}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        name: p.name,
+        category: p.category,
+        type: p.type,
+        description: p.description || '',
+        variants: [],
+        representativeImage: p.image_url || null,
+        representativeColor: p.color_code || null,
+        minPrice: Infinity,
+        maxPrice: -Infinity,
+      });
+    }
+    const group = map.get(key);
+    group.variants.push(p);
+    // Update price range
+    const price = parseFloat(p.price) || 0;
+    if (price < group.minPrice) group.minPrice = price;
+    if (price > group.maxPrice) group.maxPrice = price;
+    // Update representative image if not set
+    if (!group.representativeImage && p.image_url) group.representativeImage = p.image_url;
+    if (!group.representativeColor && p.color_code) group.representativeColor = p.color_code;
+    // Keep description from first variant (or longest?)
+    if (!group.description && p.description) group.description = p.description;
+  });
+  // Convert to array and compute counts
+  const groups = Array.from(map.values()).map(g => {
+    if (g.minPrice === Infinity) g.minPrice = 0;
+    if (g.maxPrice === -Infinity) g.maxPrice = 0;
+    return g;
+  });
+  return groups;
+});
+
+// Filtered groups based on search and filters
+const filteredGroups = computed(() => {
+  let groups = groupedProducts.value;
+
+  // Search query
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
-    res = res.filter(p => 
-      p.name?.toLowerCase().includes(q) || 
-      p.type?.toLowerCase().includes(q) || 
-      p.sku_code?.toLowerCase().includes(q)
+    groups = groups.filter(g => 
+      g.name.toLowerCase().includes(q) ||
+      g.type.toLowerCase().includes(q) ||
+      g.variants.some(v => v.sku_code?.toLowerCase().includes(q))
     );
   }
 
+  // Category filter
   if (selectedCategories.value.length) {
-    res = res.filter(p => selectedCategories.value.includes(p.category));
+    groups = groups.filter(g => selectedCategories.value.includes(g.category));
   }
 
+  // Type filter
   if (selectedType.value && selectedType.value !== 'all') {
-    res = res.filter(p => p.type === selectedType.value);
+    groups = groups.filter(g => g.type === selectedType.value);
   }
 
+  // Size filter
   if (selectedSizes.value.length) {
-    res = res.filter(p => selectedSizes.value.includes(p.size));
+    groups = groups.filter(g => 
+      g.variants.some(v => selectedSizes.value.includes(v.size))
+    );
   }
 
+  // Color filter
   if (selectedColor.value) {
-    res = res.filter(p => p.color_code?.toLowerCase() === selectedColor.value.toLowerCase());
+    groups = groups.filter(g =>
+      g.variants.some(v => v.color_code?.toLowerCase() === selectedColor.value.toLowerCase())
+    );
   }
 
-  return res;
+  return groups;
 });
 
-const sortedProducts = computed(() => {
-  const res = [...filteredProducts.value];
+// Sorted groups
+const sortedGroups = computed(() => {
+  const res = [...filteredGroups.value];
   if (sortOption.value === 'name') return res.sort((a,b) => a.name.localeCompare(b.name));
-  if (sortOption.value === 'price_low') return res.sort((a,b) => (a.price || 0) - (b.price || 0));
-  if (sortOption.value === 'price_high') return res.sort((a,b) => (b.price || 0) - (a.price || 0));
-  return res.sort((a,b) => (b.id || 0) - (a.id || 0));
+  if (sortOption.value === 'price_low') return res.sort((a,b) => a.minPrice - b.minPrice);
+  if (sortOption.value === 'price_high') return res.sort((a,b) => b.maxPrice - a.maxPrice);
+  // newest: sort by highest id among variants
+  return res.sort((a,b) => {
+    const maxA = Math.max(...a.variants.map(v => v.id || 0));
+    const maxB = Math.max(...b.variants.map(v => v.id || 0));
+    return maxB - maxA;
+  });
 });
 
+// Update category counts based on filtered products (not groups)
+const updateCategoryCounts = () => {
+  categories.value.forEach(c => {
+    c.count = products.value.filter(p => p.category === c.value).length;
+  });
+};
+
+// ... existing computed: filteredTypes, sizeOptions, showColorField, hasColorCategorySelected, modalTitle ...
+
+// Reuse existing computed
 const filteredTypes = computed(() => {
   return productTypes[newProduct.category] || [];
 });
@@ -875,7 +965,13 @@ const hasColorCategorySelected = computed(() => {
   return selectedCategories.value.some(c => ['Interior Paints', 'Exterior Paints', 'Specialty Paints', 'Spray Paints'].includes(c));
 });
 
-// Logic
+const modalTitle = computed(() => {
+  if (isVariant.value) return `Add Variant of "${newProduct.name}"`;
+  if (isEditing.value) return 'Edit Material';
+  return 'Add New Material';
+});
+
+// Methods
 const loadProducts = async () => {
   isLoading.value = true;
   try {
@@ -888,12 +984,6 @@ const loadProducts = async () => {
   } finally {
     isLoading.value = false;
   }
-};
-
-const updateCategoryCounts = () => {
-  categories.value.forEach(c => {
-    c.count = products.value.filter(p => p.category === c.value).length;
-  });
 };
 
 const handleCategoryCheck = (checked, value) => {
@@ -920,10 +1010,19 @@ const clearFilters = () => {
   searchQuery.value = '';
 };
 
+const toggleGroupExpand = (key) => {
+  if (expandedGroups.value.includes(key)) {
+    expandedGroups.value = expandedGroups.value.filter(k => k !== key);
+  } else {
+    expandedGroups.value.push(key);
+  }
+};
+
 // Wizard / Modal Logic
 const openAddModal = () => {
   resetForm();
   isEditing.value = false;
+  isVariant.value = false;
   showAddModal.value = true;
 };
 
@@ -944,6 +1043,30 @@ const resetForm = () => {
   currentStep.value = 1;
   showValidation.value = false;
   if (fileInput.value) fileInput.value.value = '';
+};
+
+const addVariant = (product) => {
+  Object.assign(newProduct, {
+    category: product.category,
+    type: product.type,
+    name: product.name,
+    sku_code: '',
+    size: '',
+    color_code: '',
+    price: '',
+    min_order: product.min_order || '',
+    max_order: product.max_order || '',
+    description: product.description || '',
+    image_url: ''
+  });
+  imagePreview.value = '';
+  uploadedImage.value = null;
+  isEditing.value = false;
+  isVariant.value = true;
+  editingId.value = null;
+  currentStep.value = 1;
+  showValidation.value = false;
+  showAddModal.value = true;
 };
 
 const onCategoryChange = () => {
@@ -1019,21 +1142,17 @@ const handleSubmit = async () => {
   try {
     const formData = new FormData();
     
-    // Append all string/number fields
     Object.keys(newProduct).forEach(key => {
       if (newProduct[key] !== null && newProduct[key] !== '' && key !== 'image_url') {
         formData.append(key, newProduct[key]);
       }
     });
 
-    // Append file if it exists
     if (uploadedImage.value) {
       formData.append('image', uploadedImage.value);
     }
 
     if (isEditing.value) {
-      // NOTE: Removed `formData.append('_method', 'PUT')` so it hits Route::post() in api.php 
-      // without throwing a 405 Method Not Allowed error.
       await api.post(`/supplier/raw-materials/${editingId.value}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -1042,7 +1161,7 @@ const handleSubmit = async () => {
       await api.post('/supplier/raw-materials', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      toast.success('Material added successfully');
+      toast.success(isVariant.value ? 'Variant added successfully' : 'Material added successfully');
     }
     
     await loadProducts();
@@ -1058,6 +1177,7 @@ const handleSubmit = async () => {
 const editProduct = (product) => {
   Object.assign(newProduct, product);
   isEditing.value = true;
+  isVariant.value = false;
   editingId.value = product.id;
   imagePreview.value = product.image_url ? getFullImageUrl(product.image_url) : '';
   currentStep.value = 1;
@@ -1078,11 +1198,10 @@ const deleteProduct = async (id) => {
 };
 
 // Helpers
-// Using Laravel storage URL format
 const getFullImageUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    return `http://localhost:8000/storage/${path}`; // Ensuring the exact base matches your local environment optionally, otherwise fallback to '/storage/${path}'
+    return `http://localhost:8000/storage/${path}`;
 }; 
 const handleImageError = (e) => e.target.style.display = 'none';
 
@@ -1148,7 +1267,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Custom Scrollbar for filter lists */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
