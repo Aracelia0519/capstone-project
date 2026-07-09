@@ -18,15 +18,16 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         
         <div class="space-y-4">
-          <div class="aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center relative shadow-2xl shadow-black/20" :style="product.image_url ? {} : { backgroundColor: product.color }">
-            <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="w-full h-full object-cover" />
+          <div class="aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center relative shadow-2xl shadow-black/20" :style="selectedVariant?.image_url ? {} : { backgroundColor: product.color }">
+            <img v-if="selectedVariant?.image_url" :src="selectedVariant.image_url" :alt="product.name" class="w-full h-full object-cover" />
+            <img v-else-if="product.image_url" :src="product.image_url" :alt="product.name" class="w-full h-full object-cover" />
             <div v-else class="w-48 h-48 rounded-full border-4 border-slate-800 shadow-lg" :style="{ backgroundColor: product.color }"></div>
             
             <div class="absolute top-4 left-4 flex flex-col gap-2 z-10">
-              <Badge :class="['border-0 shadow-sm backdrop-blur-md bg-slate-900/80', product.stock > 10 ? 'text-emerald-400' : (product.stock > 0 ? 'text-amber-400' : 'text-red-400 font-bold')]">
-                {{ product.stock > 10 ? 'In Stock' : (product.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
+              <Badge :class="['border-0 shadow-sm backdrop-blur-md bg-slate-900/80', selectedVariant?.stock > 10 ? 'text-emerald-400' : (selectedVariant?.stock > 0 ? 'text-amber-400' : 'text-red-400 font-bold')]">
+                {{ selectedVariant?.stock > 10 ? 'In Stock' : (selectedVariant?.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
               </Badge>
-              <Badge v-if="product.promotion" class="border-0 shadow-sm backdrop-blur-md bg-rose-500/90 text-white font-bold">
+              <Badge v-if="selectedVariant?.promotion" class="border-0 shadow-sm backdrop-blur-md bg-rose-500/90 text-white font-bold">
                 Promo Active
               </Badge>
             </div>
@@ -54,13 +55,62 @@
             </div>
           </div>
 
+          <!-- Variant Selection: Group by Size, then Colors -->
+          <div v-if="groupedVariants && Object.keys(groupedVariants).length > 0" class="mb-6">
+            <!-- Size selection -->
+            <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Size</Label>
+            <div class="flex flex-wrap gap-2 mb-4">
+              <button
+                v-for="(variants, size) in groupedVariants"
+                :key="size"
+                @click="selectSize(size)"
+                :class="[
+                  'px-4 py-2 rounded-xl border transition-all text-sm font-medium',
+                  selectedSize === size
+                    ? 'border-indigo-500 bg-indigo-500/20 text-white'
+                    : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                ]"
+              >
+                {{ size || 'N/A' }}
+              </button>
+            </div>
+
+            <!-- Color selection for selected size -->
+            <div v-if="selectedSize && groupedVariants[selectedSize] && groupedVariants[selectedSize].length > 0">
+              <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Color</Label>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  v-for="variant in groupedVariants[selectedSize]"
+                  :key="variant.id"
+                  @click="selectVariant(variant)"
+                  :class="[
+                    'w-12 h-12 rounded-full border-2 transition-all flex items-center justify-center',
+                    selectedVariant && selectedVariant.id === variant.id
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/50'
+                      : 'border-slate-600 hover:border-slate-400',
+                    variant.stock <= 0 ? 'opacity-40 cursor-not-allowed' : ''
+                  ]"
+                  :style="{ backgroundColor: variant.color || '#ffffff' }"
+                  :disabled="variant.stock <= 0"
+                  :title="`${variant.color || 'No color'} (${variant.stock} left)`"
+                >
+                  <span v-if="!variant.color" class="text-xs text-slate-400">—</span>
+                  <span v-else-if="variant.stock <= 0" class="text-xs text-white">✕</span>
+                </button>
+              </div>
+              <p v-if="selectedVariant" class="text-xs text-slate-400 mt-2">
+                {{ selectedVariant.stock > 0 ? `${selectedVariant.stock} units available` : 'Out of stock' }}
+              </p>
+            </div>
+          </div>
+
           <div class="mb-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-sm">
             <div class="flex items-end gap-3 mb-2">
-              <span class="text-4xl font-black text-indigo-400 tracking-tight">₱{{ formatCurrency(product.price) }}</span>
+              <span class="text-4xl font-black text-indigo-400 tracking-tight">₱{{ formatCurrency(selectedVariant?.price || product.price) }}</span>
               <span class="text-slate-500 font-medium pb-1">/ unit</span>
             </div>
-            <div v-if="product.promotion && product.original_price > product.price" class="flex items-center gap-3 mt-1">
-              <span class="text-lg text-slate-500 line-through decoration-slate-600 decoration-2">₱{{ formatCurrency(product.original_price) }}</span>
+            <div v-if="selectedVariant?.promotion && selectedVariant?.original_price > selectedVariant?.price" class="flex items-center gap-3 mt-1">
+              <span class="text-lg text-slate-500 line-through decoration-slate-600 decoration-2">₱{{ formatCurrency(selectedVariant?.original_price) }}</span>
               <Badge class="bg-rose-500/10 text-rose-400 border-rose-500/20 font-bold px-2 py-0.5">
                 Discount Applied
               </Badge>
@@ -79,8 +129,8 @@
             <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
               <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Color Code</p>
               <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded-full border border-slate-600" :style="{ backgroundColor: product.color }"></div>
-                <p class="font-semibold text-white uppercase">{{ product.color }}</p>
+                <div class="w-4 h-4 rounded-full border border-slate-600" :style="{ backgroundColor: selectedVariant?.color || product.color }"></div>
+                <p class="font-semibold text-white uppercase">{{ selectedVariant?.color || product.color || 'N/A' }}</p>
               </div>
             </div>
             <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
@@ -93,17 +143,18 @@
           </div>
 
           <div class="flex gap-4 mt-auto pt-6 border-t border-slate-800">
-            <Button @click="openCartModal" :disabled="product.stock <= 0" variant="outline" class="flex-1 h-14 rounded-2xl border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white font-bold text-base transition-all">
+            <Button @click="openCartModal" :disabled="!selectedVariant || selectedVariant.stock <= 0" variant="outline" class="flex-1 h-14 rounded-2xl border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white font-bold text-base transition-all">
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
               Add to Cart
             </Button>
-            <Button @click="openOrderModal" :disabled="product.stock <= 0" class="flex-[2] h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base shadow-xl shadow-indigo-500/20 border-0 transition-all">
-              {{ product.stock <= 0 ? 'Out of Stock' : 'Order Now' }}
+            <Button @click="openOrderModal" :disabled="!selectedVariant || selectedVariant.stock <= 0" class="flex-[2] h-14 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base shadow-xl shadow-indigo-500/20 border-0 transition-all">
+              {{ !selectedVariant || selectedVariant.stock <= 0 ? 'Out of Stock' : 'Order Now' }}
             </Button>
           </div>
         </div>
       </div>
 
+      <!-- Reviews (unchanged) -->
       <div class="mt-16 border-t border-slate-800 pt-10">
         <div class="flex gap-8 border-b border-slate-800 mb-8">
           <button @click="activeTab = 'reviews'" :class="['pb-4 text-lg font-bold border-b-2 transition-all', activeTab === 'reviews' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300']">
@@ -158,6 +209,7 @@
       </div>
     </div>
 
+    <!-- Cart Modal -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" @click="closeModals">
@@ -171,12 +223,13 @@
             
             <div class="p-6">
               <div class="flex items-center gap-5 mb-8 bg-slate-800 rounded-2xl p-4 border border-slate-700">
-                <div class="w-20 h-20 rounded-xl bg-slate-900 shadow-sm overflow-hidden flex-shrink-0" :style="product?.image_url ? {} : { backgroundColor: product?.color }">
-                  <img v-if="product?.image_url" :src="product?.image_url" class="w-full h-full object-cover" />
+                <div class="w-20 h-20 rounded-xl bg-slate-900 shadow-sm overflow-hidden flex-shrink-0" :style="selectedVariant?.image_url ? {} : { backgroundColor: product?.color }">
+                  <img v-if="selectedVariant?.image_url" :src="selectedVariant.image_url" class="w-full h-full object-cover" />
+                  <img v-else-if="product?.image_url" :src="product.image_url" class="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h3 class="font-bold text-white text-lg leading-tight mb-1">{{ product?.name }}</h3>
-                  <p class="text-indigo-400 font-black text-xl">₱{{ formatCurrency(product?.price) }}</p>
+                  <p class="text-indigo-400 font-black text-xl">₱{{ formatCurrency(selectedVariant?.price || product?.price) }}</p>
                 </div>
               </div>
 
@@ -185,13 +238,13 @@
                 <div class="flex items-center p-1 bg-slate-800 border border-slate-700 rounded-2xl w-max overflow-hidden shadow-inner">
                   <button @click="decrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="orderQuantity <= 1">-</button>
                   <div class="w-16 font-bold text-lg text-center text-white">{{ orderQuantity }}</div>
-                  <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="orderQuantity >= product?.stock">+</button>
+                  <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="!selectedVariant || orderQuantity >= selectedVariant.stock">+</button>
                 </div>
               </div>
             </div>
 
             <div class="p-6 pt-2 bg-slate-900 flex gap-3">
-              <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-12 border-slate-700 text-slate-300 font-bold hover:bg-slate-800">Cancel</Button>
+              <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl border-slate-700 text-slate-300 font-bold hover:bg-slate-800">Cancel</Button>
               <Button @click="handleCartSubmit" class="flex-1 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg border-0" :disabled="isProcessing">
                 {{ isProcessing ? 'Adding...' : 'Confirm' }}
               </Button>
@@ -201,6 +254,7 @@
       </transition>
     </Teleport>
 
+    <!-- Order Modal -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isOrderModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" @click="closeModals">
@@ -214,12 +268,13 @@
             
             <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar">
                <div class="flex items-center gap-4 mb-8 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-sm">
-                  <div class="w-16 h-16 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700" :style="product?.image_url ? {} : { backgroundColor: product?.color }">
-                    <img v-if="product?.image_url" :src="product?.image_url" class="w-full h-full object-cover" />
+                  <div class="w-16 h-16 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700" :style="selectedVariant?.image_url ? {} : { backgroundColor: product?.color }">
+                    <img v-if="selectedVariant?.image_url" :src="selectedVariant.image_url" class="w-full h-full object-cover" />
+                    <img v-else-if="product?.image_url" :src="product.image_url" class="w-full h-full object-cover" />
                   </div>
                   <div class="flex-1">
                     <h3 class="font-bold text-white text-lg">{{ product?.name }}</h3>
-                    <p class="text-indigo-400 font-black">₱{{ formatCurrency(product?.price) }}</p>
+                    <p class="text-indigo-400 font-black">₱{{ formatCurrency(selectedVariant?.price || product?.price) }}</p>
                   </div>
                 </div>
 
@@ -228,15 +283,13 @@
                     <div class="flex items-center p-1 bg-slate-800 border border-slate-700 rounded-2xl w-max overflow-hidden shadow-inner">
                       <button @click="decrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="orderQuantity <= 1">-</button>
                       <div class="w-12 font-bold text-center text-white">{{ orderQuantity }}</div>
-                      <button @click="incrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="orderQuantity >= product?.stock">+</button>
+                      <button @click="incrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-white font-bold" :disabled="!selectedVariant || orderQuantity >= selectedVariant.stock">+</button>
                     </div>
                 </div>
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Payment Method</Label>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    
-
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!product?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
                       <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!product?.distributor_gcash_enabled" />
                       <div class="flex items-center justify-between w-full">
@@ -290,7 +343,7 @@
                   <div class="space-y-3 relative z-10">
                     <div class="flex justify-between text-sm text-slate-300 font-medium">
                       <span>Subtotal ({{ orderQuantity }} items)</span>
-                      <span>₱{{ formatCurrency(product?.price * orderQuantity) }}</span>
+                      <span>₱{{ formatCurrency((selectedVariant?.price || product?.price) * orderQuantity) }}</span>
                     </div>
                     <div class="flex justify-between text-sm text-slate-300 font-medium">
                       <span>Estimated Shipping</span>
@@ -304,16 +357,16 @@
                     <div class="pt-3 border-t border-slate-800/80 space-y-1">
                       <div class="flex justify-between text-xs text-slate-400">
                         <span>VATable Sales</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales((product?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales(((selectedVariant?.price || product?.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                       </div>
                       <div class="flex justify-between text-xs text-slate-400">
                         <span>VAT Amount (12%)</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount((product?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount(((selectedVariant?.price || product?.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                       </div>
                     </div>
                     <div class="flex justify-between items-end pt-3 border-t border-slate-700">
                       <span class="text-sm font-medium text-slate-300">Grand Total</span>
-                      <span class="text-3xl font-black text-white">₱{{ formatCurrency((product?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
+                      <span class="text-3xl font-black text-white">₱{{ formatCurrency(((selectedVariant?.price || product?.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
                     </div>
                   </div>
                 </div>
@@ -333,7 +386,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
@@ -346,6 +399,8 @@ const router = useRouter()
 const productId = route.params.id
 
 const product = ref(null)
+const selectedVariant = ref(null)
+const selectedSize = ref(null)
 const isLoading = ref(true)
 const isProcessing = ref(false)
 
@@ -365,12 +420,32 @@ const formatCurrency = (value) => Number(value || 0).toLocaleString('en-PH', { m
 const getVatableSales = (total) => total / 1.12
 const getVatAmount = (total) => total - getVatableSales(total)
 
+// Group variants by size
+const groupedVariants = computed(() => {
+  if (!product.value || !product.value.variants) return {}
+  const groups = {}
+  product.value.variants.forEach(v => {
+    const size = v.size || 'N/A'
+    if (!groups[size]) groups[size] = []
+    groups[size].push(v)
+  })
+  return groups
+})
+
 const fetchProductDetails = async () => {
   isLoading.value = true
   try {
     const res = await api.get(`/service-provider/shop/product/${productId}`)
     if (res.data.success) {
       product.value = res.data.data
+      // Set default: first size with available variants, first color in that size
+      const sizes = Object.keys(groupedVariants.value)
+      if (sizes.length > 0) {
+        const firstSize = sizes[0]
+        selectedSize.value = firstSize
+        const firstAvailable = groupedVariants.value[firstSize].find(v => v.stock > 0) || groupedVariants.value[firstSize][0]
+        selectedVariant.value = firstAvailable || null
+      }
     } else {
       toast.error('Product not found')
       router.back()
@@ -381,6 +456,22 @@ const fetchProductDetails = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const selectSize = (size) => {
+  selectedSize.value = size
+  // Auto-select first available variant in this size, or first if none available
+  const variants = groupedVariants.value[size] || []
+  const available = variants.find(v => v.stock > 0)
+  selectedVariant.value = available || variants[0] || null
+  orderQuantity.value = 1
+  if (isOrderModalOpen.value) calculateLiveShipping()
+}
+
+const selectVariant = (variant) => {
+  selectedVariant.value = variant
+  orderQuantity.value = 1
+  if (isOrderModalOpen.value) calculateLiveShipping()
 }
 
 const openCartModal = () => { isCartModalOpen.value = true }
@@ -396,7 +487,7 @@ const closeModals = () => {
 }
 
 const incrementQuantity = () => {
-  if (orderQuantity.value < product.value.stock) orderQuantity.value++
+  if (selectedVariant.value && orderQuantity.value < selectedVariant.value.stock) orderQuantity.value++
 }
 const decrementQuantity = () => {
   if (orderQuantity.value > 1) orderQuantity.value--
@@ -407,7 +498,7 @@ watch(orderQuantity, () => {
 })
 
 const calculateLiveShipping = () => {
-  if (!product.value) return
+  if (!product.value || !selectedVariant.value) return
   clearTimeout(shippingCalcTimeout)
   isCalculatingShipping.value = true
 
@@ -418,7 +509,7 @@ const calculateLiveShipping = () => {
         distributor_lat: product.value.distributor_lat,
         distributor_lng: product.value.distributor_lng,
         quantity: orderQuantity.value,
-        total_amount: product.value.price * orderQuantity.value
+        total_amount: selectedVariant.value.price * orderQuantity.value
       })
       if (res.data.success) {
         shippingFeeEst.value = res.data.data.calculated_shipping_fee
@@ -432,10 +523,14 @@ const calculateLiveShipping = () => {
 }
 
 const handleCartSubmit = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   isProcessing.value = true
   try {
     const res = await api.post('/service-provider/shop/cart', {
-      product_id: product.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: product.value.distributor_id,
       quantity: orderQuantity.value
     })
@@ -451,10 +546,14 @@ const handleCartSubmit = async () => {
 }
 
 const handleOrderSubmit = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   isProcessing.value = true
   try {
     const payload = {
-      product_id: product.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: product.value.distributor_id,
       quantity: orderQuantity.value,
       distributor_lat: product.value.distributor_lat,

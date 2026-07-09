@@ -39,6 +39,7 @@ Route::prefix('auth')->group(function () {
 
 // Public E-Commerce Client Routes - Shop
 Route::prefix('client/shop')->group(function () {
+    Route::get('/product/{id}', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProduct']);
     Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
     Route::get('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'index']); // Public so guests don't get 401
 });

@@ -170,16 +170,6 @@
                 ]">
                   {{ product.stock > 10 ? 'In Stock' : (product.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
                 </Badge>
-
-                <Badge v-if="product.promotion && product.promotion.type === 'free_shipping'" class="border-0 shadow-sm backdrop-blur-md bg-indigo-500/90 text-white font-bold">
-                  Free Shipping
-                </Badge>
-                <Badge v-else-if="product.promotion && product.promotion.type === 'percentage_discount'" class="border-0 shadow-sm backdrop-blur-md bg-rose-500/90 text-white font-bold">
-                  -{{ product.promotion.discount_value }}% OFF
-                </Badge>
-                <Badge v-else-if="product.promotion && (product.promotion.type === 'fixed_discount' || product.promotion.type === 'fixed_amount')" class="border-0 shadow-sm backdrop-blur-md bg-rose-500/90 text-white font-bold">
-                  ₱{{ product.promotion.discount_value }} OFF
-                </Badge>
               </div>
             </div>
 
@@ -192,11 +182,16 @@
 
               <div class="mt-4 flex justify-between items-end">
                 <div>
-                  <div v-if="product.promotion && product.original_price > product.price" class="text-xs text-slate-500 line-through mb-0.5">
-                    ₱{{ formatCurrency(product.original_price) }}
+                  <div v-if="product.price_range" class="text-xs text-slate-400">
+                    ₱{{ formatCurrency(product.price_min) }} – ₱{{ formatCurrency(product.price_max) }}
                   </div>
-                  <span :class="['text-2xl font-black tracking-tight', product.stock <= 0 ? 'text-slate-500' : 'text-white']">₱{{ formatCurrency(product.price) }}</span>
-                  <span class="text-xs text-slate-500 font-medium ml-1">/unit</span>
+                  <div v-else>
+                    <div v-if="product.original_price_range" class="text-xs text-slate-500 line-through mb-0.5">
+                      ₱{{ formatCurrency(product.original_price_min) }} – ₱{{ formatCurrency(product.original_price_max) }}
+                    </div>
+                    <span :class="['text-2xl font-black tracking-tight', product.stock <= 0 ? 'text-slate-500' : 'text-white']">₱{{ formatCurrency(product.price) }}</span>
+                    <span class="text-xs text-slate-500 font-medium ml-1">/unit</span>
+                  </div>
                 </div>
                 
                 <div @click.stop="openReviewsModal(product)" class="flex items-center bg-slate-900/50 px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors border border-transparent hover:border-slate-700">
@@ -213,6 +208,9 @@
               <div class="flex justify-between items-center w-full">
                 <span :class="['text-xs font-medium', product.stock <= 0 ? 'text-red-400 font-bold' : 'text-slate-400']">
                   {{ product.stock > 0 ? `${product.stock} units left` : '0 units left' }}
+                </span>
+                <span v-if="product.variants && product.variants.length > 1" class="text-xs text-indigo-400 font-semibold">
+                  {{ product.variants.length }} variants
                 </span>
               </div>
               
@@ -264,6 +262,7 @@
       </div>
     </div>
 
+    <!-- DSS Modal (unchanged) -->
     <Teleport to="body">
       <Dialog :open="showDssModal" @update:open="(val) => !val && (showDssModal = false)">
         <DialogContent class="bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/50 p-0 z-[10001]">
@@ -281,7 +280,6 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
-
           <div class="px-6 py-6 overflow-y-auto flex-1 custom-scrollbar bg-slate-900/50">
              <div v-if="dssRecommendations.topRated.length === 0 && dssRecommendations.trending.length === 0" class="text-center py-16">
                 <div class="w-20 h-20 mx-auto mb-4 bg-slate-800 rounded-full flex items-center justify-center text-slate-600 shadow-sm border border-slate-700">
@@ -290,7 +288,6 @@
                 <h3 class="text-xl font-bold text-white mb-2">Needs More Data</h3>
                 <p class="text-slate-400 max-w-sm mx-auto">We need a few more customer reviews to accurately predict trends and generate smart recommendations.</p>
              </div>
-
              <div v-if="dssRecommendations.topRated.length > 0" class="mb-10">
                 <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
                    <svg class="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
@@ -318,7 +315,6 @@
                    </Card>
                 </div>
              </div>
-
              <div v-if="dssRecommendations.trending.length > 0">
                 <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
@@ -346,18 +342,17 @@
                    </Card>
                 </div>
              </div>
-
           </div>
         </DialogContent>
       </Dialog>
     </Teleport>
 
+    <!-- Reviews Modal (unchanged) -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isReviewsModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click="closeModals">
           <transition enter-active-class="transition duration-300 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
             <div v-if="isReviewsModalOpen" @click.stop class="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-700">
-              
               <div class="px-6 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10">
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">
                   Customer Reviews
@@ -367,9 +362,7 @@
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
-              
               <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar bg-slate-900/50">
-                
                 <div class="flex items-center gap-5 mb-8 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-sm">
                   <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-slate-700 shadow-sm" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
                     <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
@@ -382,14 +375,12 @@
                     </div>
                   </div>
                 </div>
-
                 <div v-if="!selectedProduct?.reviews || selectedProduct.reviews.length === 0" class="text-center py-12">
                   <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-700">
                     <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                   </div>
                   <p class="text-slate-400 font-medium">There are no reviews for this product yet.</p>
                 </div>
-
                 <div v-else class="space-y-4">
                   <div v-for="review in selectedProduct.reviews" :key="review.id" class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-sm">
                     <div class="flex justify-between items-start mb-3">
@@ -406,11 +397,9 @@
                       </div>
                       <span class="text-xs text-slate-500 font-medium">{{ review.date }}</span>
                     </div>
-                    
                     <p v-if="review.comment" class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words mt-2">
                       {{ review.comment }}
                     </p>
-
                     <div v-if="review.response" class="mt-4 bg-slate-900/50 rounded-xl p-3.5 border border-slate-700/50">
                       <div class="flex items-center text-xs font-bold text-indigo-400 mb-1.5 uppercase tracking-wider">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
@@ -428,6 +417,7 @@
       </transition>
     </Teleport>
 
+    <!-- Cart Modal (with variant selection) -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click="closeModals">
@@ -439,16 +429,42 @@
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
-              
               <div class="p-6">
-                <div class="flex items-center gap-5 mb-8 bg-slate-800 rounded-2xl p-4 border border-slate-700">
+                <div class="flex items-center gap-5 mb-6 bg-slate-800 rounded-2xl p-4 border border-slate-700">
                   <div class="w-20 h-20 rounded-xl bg-slate-900 shadow-sm overflow-hidden flex-shrink-0 border border-slate-700" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
                     <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h3 class="font-bold text-white text-lg leading-tight mb-1">{{ selectedProduct?.name }}</h3>
-                    <p class="text-indigo-400 font-black text-xl">₱{{ formatCurrency(selectedProduct?.price) }}</p>
-                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-slate-500 line-through">₱{{ formatCurrency(selectedProduct?.original_price) }}</p>
+                    <p class="text-indigo-400 font-black text-xl">₱{{ formatCurrency(selectedVariant ? selectedVariant.price : selectedProduct?.price) }}</p>
+                    <p v-if="selectedVariant?.promotion && selectedVariant?.original_price > selectedVariant?.price" class="text-sm text-slate-500 line-through">₱{{ formatCurrency(selectedVariant?.original_price) }}</p>
+                  </div>
+                </div>
+
+                <!-- Variant Selection -->
+                <div v-if="selectedProduct?.variants && selectedProduct.variants.length > 1" class="mb-4">
+                  <Label class="text-sm font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Variant</Label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button
+                      v-for="variant in selectedProduct.variants"
+                      :key="variant.id"
+                      @click="selectedVariant = variant; orderQuantity = 1;"
+                      :class="[
+                        'p-2 rounded-xl border transition-all text-sm',
+                        selectedVariant && selectedVariant.id === variant.id
+                          ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                          : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      ]"
+                      :disabled="variant.stock <= 0"
+                    >
+                      <div class="flex flex-col items-center">
+                        <span class="font-semibold">{{ variant.size || 'N/A' }}</span>
+                        <span class="text-xs text-slate-400" :style="{ color: variant.color }">{{ variant.color || '' }}</span>
+                        <span class="text-xs mt-1" :class="variant.stock > 0 ? 'text-emerald-400' : 'text-red-400'">
+                          {{ variant.stock > 0 ? `${variant.stock} left` : 'Out of stock' }}
+                        </span>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
@@ -457,17 +473,17 @@
                   <div class="flex items-center p-1 bg-slate-800 border border-slate-700 rounded-2xl w-max overflow-hidden shadow-inner">
                     <button @click="decrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold text-lg" :disabled="orderQuantity <= 1" :class="orderQuantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''">-</button>
                     <div class="w-16 font-bold text-lg text-center text-white">{{ orderQuantity }}</div>
-                    <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold text-lg" :disabled="orderQuantity >= selectedProduct?.stock" :class="orderQuantity >= selectedProduct?.stock ? 'opacity-50 cursor-not-allowed text-red-400' : ''">+</button>
+                    <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold text-lg" :disabled="!selectedVariant || orderQuantity >= selectedVariant.stock" :class="!selectedVariant || orderQuantity >= selectedVariant.stock ? 'opacity-50 cursor-not-allowed text-red-400' : ''">+</button>
                   </div>
-                  <p :class="['text-xs font-medium mt-3', orderQuantity >= selectedProduct?.stock ? 'text-red-400' : 'text-slate-500']">
-                    {{ orderQuantity >= selectedProduct?.stock ? 'Maximum available stock reached' : `${selectedProduct?.stock} items available in inventory` }}
+                  <p :class="['text-xs font-medium mt-3', orderQuantity >= (selectedVariant?.stock || 0) ? 'text-red-400' : 'text-slate-500']">
+                    {{ orderQuantity >= (selectedVariant?.stock || 0) ? 'Maximum available stock reached' : `${selectedVariant?.stock || 0} items available` }}
                   </p>
                 </div>
               </div>
 
               <div class="p-6 pt-2 bg-slate-900 flex gap-3">
                 <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-12 border-slate-700 text-slate-300 font-bold hover:bg-slate-800 hover:text-white">Cancel</Button>
-                <Button @click="handleCartSubmit" class="flex-1 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 border-0">
+                <Button @click="handleCartSubmit" :disabled="!selectedVariant || selectedVariant.stock <= 0" class="flex-1 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 border-0">
                   Proceed
                 </Button>
               </div>
@@ -477,6 +493,7 @@
       </transition>
     </Teleport>
 
+    <!-- Order Modal (with variant selection) -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isOrderModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click="closeModals">
@@ -488,7 +505,6 @@
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
               </div>
-              
               <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar">
                 <div class="flex items-center gap-4 mb-8 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-sm">
                   <div class="w-16 h-16 rounded-xl bg-slate-900 overflow-hidden flex-shrink-0 border border-slate-700 shadow-sm" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
@@ -496,8 +512,35 @@
                   </div>
                   <div class="flex-1">
                     <h3 class="font-bold text-white text-lg">{{ selectedProduct?.name }}</h3>
-                    <p class="text-indigo-400 font-black">₱{{ formatCurrency(selectedProduct?.price) }}</p>
-                    <p v-if="selectedProduct?.promotion && selectedProduct?.original_price > selectedProduct?.price" class="text-sm text-slate-500 line-through">₱{{ formatCurrency(selectedProduct?.original_price) }}</p>
+                    <p class="text-indigo-400 font-black">₱{{ formatCurrency(selectedVariant ? selectedVariant.price : selectedProduct?.price) }}</p>
+                    <p v-if="selectedVariant?.promotion && selectedVariant?.original_price > selectedVariant?.price" class="text-sm text-slate-500 line-through">₱{{ formatCurrency(selectedVariant?.original_price) }}</p>
+                  </div>
+                </div>
+
+                <!-- Variant Selection -->
+                <div v-if="selectedProduct?.variants && selectedProduct.variants.length > 1" class="mb-6">
+                  <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Variant</Label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button
+                      v-for="variant in selectedProduct.variants"
+                      :key="variant.id"
+                      @click="selectedVariant = variant; orderQuantity = 1; calculateLiveShipping()"
+                      :class="[
+                        'p-2 rounded-xl border transition-all text-sm',
+                        selectedVariant && selectedVariant.id === variant.id
+                          ? 'border-indigo-500 bg-indigo-500/10 text-white'
+                          : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      ]"
+                      :disabled="variant.stock <= 0"
+                    >
+                      <div class="flex flex-col items-center">
+                        <span class="font-semibold">{{ variant.size || 'N/A' }}</span>
+                        <span class="text-xs text-slate-400" :style="{ color: variant.color }">{{ variant.color || '' }}</span>
+                        <span class="text-xs mt-1" :class="variant.stock > 0 ? 'text-emerald-400' : 'text-red-400'">
+                          {{ variant.stock > 0 ? `${variant.stock} left` : 'Out of stock' }}
+                        </span>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
@@ -506,17 +549,16 @@
                     <div class="flex items-center p-1 bg-slate-800 border border-slate-700 rounded-2xl w-max overflow-hidden shadow-inner">
                       <button @click="decrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold" :disabled="orderQuantity <= 1" :class="orderQuantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''">-</button>
                       <div class="w-12 font-bold text-center text-white">{{ orderQuantity }}</div>
-                      <button @click="incrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold" :disabled="orderQuantity >= selectedProduct?.stock" :class="orderQuantity >= selectedProduct?.stock ? 'opacity-50 cursor-not-allowed text-red-400' : ''">+</button>
+                      <button @click="incrementQuantity" class="w-10 h-10 flex items-center justify-center bg-slate-700 rounded-xl hover:bg-slate-600 text-slate-200 transition-colors font-bold" :disabled="!selectedVariant || orderQuantity >= selectedVariant.stock" :class="!selectedVariant || orderQuantity >= selectedVariant.stock ? 'opacity-50 cursor-not-allowed text-red-400' : ''">+</button>
                     </div>
-                    <p :class="['text-xs font-medium mt-2', orderQuantity >= selectedProduct?.stock ? 'text-red-400' : 'text-slate-500']">
-                      {{ orderQuantity >= selectedProduct?.stock ? 'Max stock reached' : `${selectedProduct?.stock} units available` }}
+                    <p :class="['text-xs font-medium mt-2', orderQuantity >= (selectedVariant?.stock || 0) ? 'text-red-400' : 'text-slate-500']">
+                      {{ orderQuantity >= (selectedVariant?.stock || 0) ? 'Max stock reached' : `${selectedVariant?.stock || 0} units available` }}
                     </p>
                 </div>
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Payment Method</Label>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all duration-200" :class="paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm' : 'border-slate-700 hover:border-slate-600 bg-slate-800'">
                       <input type="radio" v-model="paymentMethod" value="cod" class="hidden" />
                       <div class="flex items-center justify-between w-full">
@@ -531,9 +573,9 @@
                     </label>
 
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !selectedProduct?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 bg-slate-800 cursor-pointer')
+                        !selectedVariant || !selectedProduct?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 bg-slate-800 cursor-pointer')
                       ]">
-                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!selectedProduct?.distributor_gcash_enabled" />
+                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!selectedVariant || !selectedProduct?.distributor_gcash_enabled" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white flex items-center gap-2">
                           <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
@@ -549,9 +591,9 @@
                     </label>
 
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !selectedProduct?.distributor_pickup_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 bg-slate-800 cursor-pointer')
+                        !selectedVariant || !selectedProduct?.distributor_pickup_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 bg-slate-800 cursor-pointer')
                       ]">
-                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!selectedProduct?.distributor_pickup_enabled" />
+                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!selectedVariant || !selectedProduct?.distributor_pickup_enabled" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white flex items-center gap-2">
                           <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
@@ -565,7 +607,6 @@
                         Unavailable
                       </div>
                     </label>
-
                   </div>
                 </div>
 
@@ -610,7 +651,7 @@
                   <div class="space-y-3 relative z-10">
                     <div class="flex justify-between text-sm text-slate-300 font-medium">
                       <span>Subtotal ({{ orderQuantity }} items)</span>
-                      <span>₱{{ formatCurrency(selectedProduct?.price * orderQuantity) }}</span>
+                      <span>₱{{ formatCurrency((selectedVariant?.price || 0) * orderQuantity) }}</span>
                     </div>
                     <div class="flex justify-between text-sm text-slate-300 font-medium">
                       <span>Estimated Shipping</span>
@@ -631,19 +672,19 @@
                     <div class="pt-3 border-t border-slate-800/80 space-y-1">
                       <div class="flex justify-between text-xs text-slate-400">
                         <span>VATable Sales</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales(((selectedVariant?.price || 0) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                       <div class="flex justify-between text-xs text-slate-400">
                         <span>VAT Amount (12%)</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount(((selectedVariant?.price || 0) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                     </div>
 
                     <div class="flex justify-between items-end pt-3 border-t border-slate-700">
                       <span class="text-sm font-medium text-slate-300">Grand Total</span>
-                      <span class="text-3xl font-black text-white">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
+                      <span class="text-3xl font-black text-white">₱{{ formatCurrency(((selectedVariant?.price || 0) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
                     </div>
                   </div>
                 </div>
@@ -651,7 +692,7 @@
 
               <div class="p-6 bg-slate-900 border-t border-slate-800 flex gap-3 z-10">
                 <Button variant="outline" @click="closeModals" class="flex-1 rounded-xl h-14 border-slate-700 text-slate-300 font-bold hover:bg-slate-800 hover:text-white text-base">Cancel</Button>
-                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up')" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base shadow-lg shadow-indigo-600/20 border-0 transition-all">
+                <Button @click="handleOrderSubmit" :disabled="isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up') || !selectedVariant || selectedVariant.stock <= 0" class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-base shadow-lg shadow-indigo-600/20 border-0 transition-all">
                   Review Order
                 </Button>
               </div>
@@ -661,6 +702,7 @@
       </transition>
     </Teleport>
 
+    <!-- Alert Dialogs (unchanged) -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartAlertOpen || isOrderAlertOpen" class="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md pointer-events-none"></div>
@@ -671,7 +713,7 @@
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold text-white">Add to Cart</AlertDialogTitle>
             <AlertDialogDescription class="text-slate-400 font-medium text-base mt-2">
-              Are you sure you want to add <strong class="text-white">{{ orderQuantity }}x {{ selectedProduct?.name }}</strong> to your cart?
+              Are you sure you want to add <strong class="text-white">{{ orderQuantity }}x {{ selectedVariant?.name || selectedProduct?.name }}</strong> to your cart?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
@@ -695,7 +737,7 @@
             <AlertDialogDescription class="text-slate-400 font-medium text-base mt-3 leading-relaxed">
               You are placing an order for <strong class="text-white">{{ orderQuantity }} items</strong>.
               <br/><br/>
-              The total amount is <strong class="text-white text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</strong>. 
+              The total amount is <strong class="text-white text-lg">₱{{ formatCurrency(((selectedVariant?.price || 0) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</strong>. 
               <br/>
               <span v-if="paymentMethod === 'gcash'" class="text-indigo-400 text-sm font-semibold mt-2 block">
                 You will be redirected to complete your GCash payment securely.
@@ -748,6 +790,7 @@ const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
 const showDssModal = ref(false)
 const selectedProduct = ref(null)
+const selectedVariant = ref(null) // selected variant object
 
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
@@ -817,6 +860,9 @@ const openCartModal = (product) => {
     return;
   }
   selectedProduct.value = product
+  // Select first available variant by default
+  const firstAvailable = product.variants?.find(v => v.stock > 0)
+  selectedVariant.value = firstAvailable || null
   orderQuantity.value = 1
   isCartModalOpen.value = true
 }
@@ -827,6 +873,8 @@ const openOrderModal = (product) => {
     return;
   }
   selectedProduct.value = product
+  const firstAvailable = product.variants?.find(v => v.stock > 0)
+  selectedVariant.value = firstAvailable || null
   orderQuantity.value = 1
   addressMode.value = 'default'
   customAddress.value = ''
@@ -835,9 +883,9 @@ const openOrderModal = (product) => {
   calculateLiveShipping()
 }
 
-watch(selectedProduct, (newProd) => {
-  if (newProd && !newProd.distributor_gcash_enabled && paymentMethod.value === 'gcash') {
-    paymentMethod.value = 'cod'
+watch(selectedVariant, (newVariant) => {
+  if (newVariant && isOrderModalOpen.value) {
+    calculateLiveShipping()
   }
 })
 
@@ -852,6 +900,7 @@ const closeModals = () => {
   isReviewsModalOpen.value = false
   setTimeout(() => {
     selectedProduct.value = null
+    selectedVariant.value = null
   }, 300)
 }
 
@@ -864,9 +913,9 @@ const handleOrderSubmit = () => {
 }
 
 const incrementQuantity = () => {
-  if (selectedProduct.value && orderQuantity.value < selectedProduct.value.stock) {
+  if (selectedVariant.value && orderQuantity.value < selectedVariant.value.stock) {
     orderQuantity.value++
-  } else if (selectedProduct.value && orderQuantity.value >= selectedProduct.value.stock) {
+  } else if (selectedVariant.value && orderQuantity.value >= selectedVariant.value.stock) {
     toast.warning('Maximum available stock reached');
   }
 }
@@ -883,7 +932,7 @@ watch(orderQuantity, () => {
 })
 
 const calculateLiveShipping = () => {
-  if (!selectedProduct.value) return
+  if (!selectedVariant.value) return
   
   clearTimeout(shippingCalcTimeout)
   isCalculatingShipping.value = true
@@ -895,7 +944,7 @@ const calculateLiveShipping = () => {
         distributor_lat: selectedProduct.value.distributor_lat,
         distributor_lng: selectedProduct.value.distributor_lng,
         quantity: orderQuantity.value,
-        total_amount: selectedProduct.value.price * orderQuantity.value
+        total_amount: selectedVariant.value.price * orderQuantity.value
       })
       if (response.data.success) {
         shippingFeeEst.value = response.data.data.calculated_shipping_fee
@@ -910,16 +959,20 @@ const calculateLiveShipping = () => {
 }
 
 const confirmAddToCart = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   try {
     isProcessing.value = true
     const response = await api.post('/service-provider/shop/cart', {
-      product_id: selectedProduct.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: selectedProduct.value.distributor_id,
       quantity: orderQuantity.value
     })
 
     if (response.data.success) {
-      toast.success(`${orderQuantity.value}x ${selectedProduct.value.name} added to cart!`)
+      toast.success(`${orderQuantity.value}x ${selectedVariant.value.name} added to cart!`)
       isCartAlertOpen.value = false 
       closeModals() 
     }
@@ -1009,11 +1062,15 @@ const downloadReceipt = (receiptData) => {
 }
 
 const confirmOrderNow = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   try {
     isProcessing.value = true
     
     const payload = {
-      product_id: selectedProduct.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: selectedProduct.value.distributor_id,
       quantity: orderQuantity.value,
       distributor_lat: selectedProduct.value.distributor_lat,
@@ -1119,7 +1176,7 @@ const filteredProducts = computed(() => {
     filtered = filtered.filter(p => p.type && p.type.toLowerCase().includes('exterior'))
   }
   if (activeFilters.value.includes('low-price')) {
-    filtered = filtered.filter(p => p.price < 1500)
+    filtered = filtered.filter(p => (p.price_min || p.price) < 1500)
   }
   if (activeFilters.value.includes('eco')) {
     filtered = filtered.filter(p => p.brand === 'EcoPaint')
@@ -1135,23 +1192,24 @@ const filteredProducts = computed(() => {
     filtered = filtered.filter(p => p.finish === selectedFinish.value)
   }
   if (selectedPrice.value && selectedPrice.value !== 'all_prices_reset') {
+    const priceToCheck = (p) => p.price_min ?? p.price
     if (selectedPrice.value === 'Under ₱1,000') {
-      filtered = filtered.filter(p => p.price < 1000)
+      filtered = filtered.filter(p => priceToCheck(p) < 1000)
     } else if (selectedPrice.value === '₱1,000 - ₱2,000') {
-      filtered = filtered.filter(p => p.price >= 1000 && p.price <= 2000)
+      filtered = filtered.filter(p => priceToCheck(p) >= 1000 && priceToCheck(p) <= 2000)
     } else if (selectedPrice.value === '₱2,000 - ₱3,000') {
-      filtered = filtered.filter(p => p.price >= 2000 && p.price <= 3000)
+      filtered = filtered.filter(p => priceToCheck(p) >= 2000 && priceToCheck(p) <= 3000)
     } else if (selectedPrice.value === 'Over ₱3,000') {
-      filtered = filtered.filter(p => p.price > 3000)
+      filtered = filtered.filter(p => priceToCheck(p) > 3000)
     }
   }
 
   if (sortBy.value === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name))
   } else if (sortBy.value === 'price-low') {
-    filtered.sort((a, b) => a.price - b.price)
+    filtered.sort((a, b) => (a.price_min ?? a.price) - (b.price_min ?? b.price))
   } else if (sortBy.value === 'price-high') {
-    filtered.sort((a, b) => b.price - a.price)
+    filtered.sort((a, b) => (b.price_min ?? b.price) - (a.price_min ?? a.price))
   }
 
   return filtered

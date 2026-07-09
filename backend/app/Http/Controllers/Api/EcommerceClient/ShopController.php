@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache; 
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-use App\Events\Ecommerce\OrderPlaced; // <--- NEW EVENT IMPORTED
+use App\Events\Ecommerce\OrderPlaced;
 
 class ShopController extends Controller
 {
@@ -37,7 +37,6 @@ class ShopController extends Controller
             ->whereRaw('used_count < usage_limit')
             ->get();
 
-        // Pull all published reviews and fetch Service Provider User Info
         $allPublishedReviews = ProductReview::with('client')
             ->where('status', 'published') 
             ->get();
@@ -52,66 +51,72 @@ class ShopController extends Controller
             $paymentSettings = DB::table('distributor_payment_settings')->get()->keyBy('distributor_id');
         }
 
-        $products = [];
-
+        // Group products by (category, type, name)
+        $grouped = [];
         foreach ($inventories as $productId => $items) {
-            $totalQuantity = $items->sum('quantity');
+            $firstItem = $items->first();
+            $productModel = $firstItem->product;
+            if (!$productModel || !$productModel->is_active) continue;
+
+            $key = $productModel->category . '|' . $productModel->type . '|' . $productModel->name;
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'product_ids' => [],
+                    'items' => collect(),
+                    'distributor_id' => $firstItem->distributor_id,
+                    'distributor_name' => null,
+                    'distributor_lat' => null,
+                    'distributor_lng' => null,
+                    'distributor_gcash_enabled' => false,
+                    'distributor_pickup_enabled' => false,
+                    'category' => $productModel->category,
+                    'type' => $productModel->type,
+                    'name' => $productModel->name,
+                    'brand' => 'Distributor Brand',
+                    'color' => null,
+                    'image_url' => null,
+                ];
+            }
+            $grouped[$key]['product_ids'][] = $productId;
+            $grouped[$key]['items'] = $grouped[$key]['items']->merge($items);
+        }
+
+        $products = [];
+        foreach ($grouped as $key => $group) {
+            $productIds = $group['product_ids'];
+            $items = $group['items'];
             $firstItem = $items->first();
             $productModel = $firstItem->product;
 
-            if (!$productModel || !$productModel->is_active) {
-                continue;
-            }
-
             $distAddress = DB::table('distributor_addresses')
                 ->join('distributor_requirements', 'distributor_addresses.distributor_requirements_id', '=', 'distributor_requirements.id')
-                ->where('distributor_requirements.user_id', $firstItem->distributor_id)
+                ->where('distributor_requirements.user_id', $group['distributor_id'])
                 ->select('latitude', 'longitude')
                 ->first();
             
             $distributorInfo = DB::table('distributor_requirements')
-                ->where('user_id', $firstItem->distributor_id)->first();
+                ->where('user_id', $group['distributor_id'])->first();
 
             $distributorName = 'Distributor';
             if ($distributorInfo) {
                 $distributorName = $distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor';
             }
 
-            $originalPrice = (float) $productModel->price;
-            $discountedPrice = $originalPrice;
-            $promoData = null;
+            $distSettings = $paymentSettings->get($group['distributor_id']);
+            $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
+            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
 
-            if ($promotions->isNotEmpty()) {
-                $productPromo = $promotions->where('distributor_id', $firstItem->distributor_id)
-                    ->filter(function($promo) use ($productModel) {
-                        return $promo->product_id == $productModel->id || is_null($promo->product_id);
-                    })->first();
-
-                if ($productPromo) {
-                    $promoData = [
-                        'id' => $productPromo->id,
-                        'name' => $productPromo->name,
-                        'type' => $productPromo->type,
-                        'discount_value' => (float) $productPromo->discount_value,
-                    ];
-
-                    if ($productPromo->type === 'percentage_discount') {
-                        $discountedPrice = $originalPrice - ($originalPrice * ((float)$productPromo->discount_value / 100));
-                    } elseif ($productPromo->type === 'fixed_discount' || $productPromo->type === 'fixed_amount') {
-                        $discountedPrice = max(0, $originalPrice - (float)$productPromo->discount_value);
-                    }
-                }
+            // Aggregate reviews across all product_ids
+            $allReviews = collect();
+            foreach ($productIds as $pid) {
+                $revs = $publishedReviews->get($pid, collect());
+                $allReviews = $allReviews->merge($revs);
             }
-
-            $productReviews = $publishedReviews->get($productModel->id, collect());
-            $avgRating = $productReviews->avg('rating') ? round($productReviews->avg('rating'), 1) : 0;
-            $reviewCount = $productReviews->count();
-            
-            // Identify if the reviewer is a Client or Service Provider
-            $formattedReviews = $productReviews->map(function($rev) use ($spUsersAll) {
+            $avgRating = $allReviews->avg('rating') ? round($allReviews->avg('rating'), 1) : 0;
+            $reviewCount = $allReviews->count();
+            $formattedReviews = $allReviews->map(function($rev) use ($spUsersAll) {
                 $clientName = 'Customer';
                 $reviewerType = 'Customer';
-
                 if ($rev->service_provider_id && isset($spUsersAll[$rev->service_provider_id])) {
                     $sp = $spUsersAll[$rev->service_provider_id];
                     $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
@@ -121,12 +126,11 @@ class ShopController extends Controller
                     $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
                     if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
                 }
-
                 return [
                     'id' => $rev->id,
                     'client' => $clientName,
                     'clientInitials' => strtoupper(substr($clientName, 0, 1)),
-                    'reviewerType' => $reviewerType, 
+                    'reviewerType' => $reviewerType,
                     'rating' => (int)$rev->rating,
                     'comment' => $rev->comment,
                     'response' => $rev->response,
@@ -135,32 +139,107 @@ class ShopController extends Controller
                 ];
             })->values()->toArray();
 
-            $distSettings = $paymentSettings->get($firstItem->distributor_id);
-            $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
-            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
+            // Build variants
+            $variants = [];
+            $totalStock = 0;
+            $minOriginal = PHP_FLOAT_MAX;
+            $maxOriginal = 0;
+            $minDiscounted = PHP_FLOAT_MAX;
+            $maxDiscounted = 0;
+            $firstVariantImage = null;
+
+            foreach ($productIds as $pid) {
+                $invItems = $inventories[$pid] ?? collect();
+                $prod = $invItems->first()->product ?? null;
+                if (!$prod) continue;
+
+                $qty = $invItems->sum('quantity');
+                $totalStock += $qty;
+
+                $originalPrice = (float) $prod->price;
+                if ($originalPrice < $minOriginal) $minOriginal = $originalPrice;
+                if ($originalPrice > $maxOriginal) $maxOriginal = $originalPrice;
+
+                $discountedPrice = $originalPrice;
+                $promoData = null;
+
+                $promo = $promotions->filter(function($p) use ($prod, $group) {
+                    return ($p->product_id == $prod->id || is_null($p->product_id)) && 
+                           $p->distributor_id == $group['distributor_id'];
+                })->first();
+
+                if ($promo) {
+                    $promoData = [
+                        'id' => $promo->id,
+                        'name' => $promo->name,
+                        'type' => $promo->type,
+                        'discount_value' => (float) $promo->discount_value,
+                    ];
+                    if ($promo->type === 'percentage_discount') {
+                        $discountedPrice = $originalPrice - ($originalPrice * ((float)$promo->discount_value / 100));
+                    } elseif ($promo->type === 'fixed_discount' || $promo->type === 'fixed_amount') {
+                        $discountedPrice = max(0, $originalPrice - (float)$promo->discount_value);
+                    }
+                }
+
+                if ($discountedPrice < $minDiscounted) $minDiscounted = $discountedPrice;
+                if ($discountedPrice > $maxDiscounted) $maxDiscounted = $discountedPrice;
+
+                if (!$firstVariantImage && $prod->image_url) {
+                    $firstVariantImage = $prod->image_url;
+                }
+
+                $variants[] = [
+                    'id' => $prod->id,
+                    'name' => $prod->name,
+                    'size' => $prod->size ?? null,
+                    'color' => $prod->color_code ?? null,
+                    'original_price' => round($originalPrice, 2),
+                    'price' => round($discountedPrice, 2),
+                    'promotion' => $promoData,
+                    'stock' => $qty,
+                    'image_url' => $prod->image_url ? asset('storage/' . ltrim($prod->image_url, '/')) : null,
+                    'is_active' => $prod->is_active,
+                ];
+            }
+
+            // Use min price as main price, show range if different
+            $displayPrice = round($minDiscounted, 2);
+            $displayOriginal = round($minOriginal, 2);
+            $priceRange = ($minDiscounted != $maxDiscounted) ? true : false;
+            $originalRange = ($minOriginal != $maxOriginal) ? true : false;
+
+            $imageUrl = $firstVariantImage ? asset('storage/' . ltrim($firstVariantImage, '/')) : null;
 
             $products[] = [
-                'id' => $productModel->id,
-                'distributor_id' => $firstItem->distributor_id,
+                'id' => $productIds[0], // first product id as group identifier
+                'distributor_id' => $group['distributor_id'],
                 'distributor_name' => $distributorName,
-                'name' => $productModel->name,
-                'brand' => 'Distributor Brand', 
-                'type' => $productModel->type,
-                'category' => $productModel->category,
-                'finish' => 'Standard', 
-                'original_price' => round($originalPrice, 2),
-                'price' => round($discountedPrice, 2),
-                'promotion' => $promoData,
-                'stock' => $totalQuantity, 
+                'name' => $group['name'],
+                'brand' => $group['brand'],
+                'type' => $group['type'],
+                'category' => $group['category'],
+                'finish' => 'Standard',
+                'original_price' => $displayOriginal,
+                'original_price_min' => round($minOriginal, 2),
+                'original_price_max' => round($maxOriginal, 2),
+                'price' => $displayPrice,
+                'price_min' => round($minDiscounted, 2),
+                'price_max' => round($maxDiscounted, 2),
+                'price_range' => $priceRange,
+                'original_price_range' => $originalRange,
+                'promotion' => null, // promotions handled per variant
+                'stock' => $totalStock,
                 'rating' => $avgRating,
                 'review_count' => $reviewCount,
                 'reviews' => $formattedReviews,
-                'color' => $productModel->color_code ?? '#ffffff',
-                'image_url' => $productModel->image_url ? asset('storage/' . ltrim($productModel->image_url, '/')) : null,
+                'color' => null,
+                'image_url' => $imageUrl,
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
                 'distributor_gcash_enabled' => $gcashEnabled,
                 'distributor_pickup_enabled' => $pickupEnabled,
+                'variants' => $variants,
             ];
         }
 
@@ -169,6 +248,212 @@ class ShopController extends Controller
             'data' => $products
         ]);
     }
+
+    public function getProduct($productId)
+    {
+        // Find the base product to get its category, type, name
+        $baseProduct = Product::find($productId);
+        if (!$baseProduct) {
+            return response()->json(['success' => false, 'message' => 'Product not found'], 404);
+        }
+
+        // Find all products with same category, type, name
+        $similarProducts = Product::where('category', $baseProduct->category)
+            ->where('type', $baseProduct->type)
+            ->where('name', $baseProduct->name)
+            ->where('is_active', true)
+            ->get();
+
+        $productIds = $similarProducts->pluck('id')->toArray();
+
+        // Fetch inventories for these products
+        $inventories = DistributorInventory::with(['product'])
+            ->whereIn('product_id', $productIds)
+            ->where('ecommerce_status', 'deployed')
+            ->get()
+            ->groupBy('product_id');
+
+        if ($inventories->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Product not found or not deployed'], 404);
+        }
+
+        $firstItem = $inventories->first()->first();
+        $distributorId = $firstItem->distributor_id;
+
+        // Build combined data similar to getProducts for a single group
+        $totalStock = 0;
+        $minOriginal = PHP_FLOAT_MAX;
+        $maxOriginal = 0;
+        $minDiscounted = PHP_FLOAT_MAX;
+        $maxDiscounted = 0;
+        $variants = [];
+        $firstVariantImage = null;
+
+        $currentDate = now()->toDateString();
+        $promotions = DB::table('crm_promotions')
+            ->where('distributor_id', $distributorId)
+            ->whereIn('status', ['approved', 'active', 'pending'])
+            ->whereDate('start_date', '<=', $currentDate)
+            ->whereDate('end_date', '>=', $currentDate)
+            ->whereRaw('used_count < usage_limit')
+            ->get();
+
+        foreach ($productIds as $pid) {
+            $invItems = $inventories[$pid] ?? collect();
+            if ($invItems->isEmpty()) continue;
+            $prod = $invItems->first()->product;
+            if (!$prod) continue;
+
+            $qty = $invItems->sum('quantity');
+            $totalStock += $qty;
+
+            $originalPrice = (float) $prod->price;
+            if ($originalPrice < $minOriginal) $minOriginal = $originalPrice;
+            if ($originalPrice > $maxOriginal) $maxOriginal = $originalPrice;
+
+            $discountedPrice = $originalPrice;
+            $promoData = null;
+
+            $promo = $promotions->filter(function($p) use ($prod) {
+                return ($p->product_id == $prod->id || is_null($p->product_id));
+            })->first();
+
+            if ($promo) {
+                $promoData = [
+                    'id' => $promo->id,
+                    'name' => $promo->name,
+                    'type' => $promo->type,
+                    'discount_value' => (float) $promo->discount_value,
+                ];
+                if ($promo->type === 'percentage_discount') {
+                    $discountedPrice = $originalPrice - ($originalPrice * ((float)$promo->discount_value / 100));
+                } elseif ($promo->type === 'fixed_discount' || $promo->type === 'fixed_amount') {
+                    $discountedPrice = max(0, $originalPrice - (float)$promo->discount_value);
+                }
+            }
+
+            if ($discountedPrice < $minDiscounted) $minDiscounted = $discountedPrice;
+            if ($discountedPrice > $maxDiscounted) $maxDiscounted = $discountedPrice;
+
+            if (!$firstVariantImage && $prod->image_url) {
+                $firstVariantImage = $prod->image_url;
+            }
+
+            $variants[] = [
+                'id' => $prod->id,
+                'name' => $prod->name,
+                'size' => $prod->size ?? null,
+                'color' => $prod->color_code ?? null,
+                'original_price' => round($originalPrice, 2),
+                'price' => round($discountedPrice, 2),
+                'promotion' => $promoData,
+                'stock' => $qty,
+                'image_url' => $prod->image_url ? asset('storage/' . ltrim($prod->image_url, '/')) : null,
+                'is_active' => $prod->is_active,
+            ];
+        }
+
+        if (empty($variants)) {
+            return response()->json(['success' => false, 'message' => 'No active variants found'], 404);
+        }
+
+        // Reviews aggregation
+        $allReviews = ProductReview::with('client')
+            ->whereIn('product_id', $productIds)
+            ->where('status', 'published')
+            ->get();
+
+        $spIds = $allReviews->pluck('service_provider_id')->filter()->unique();
+        $spUsers = \App\Models\User::whereIn('id', $spIds)->get()->keyBy('id');
+
+        $avgRating = $allReviews->avg('rating') ? round($allReviews->avg('rating'), 1) : 0;
+        $reviewCount = $allReviews->count();
+        $formattedReviews = $allReviews->map(function($rev) use ($spUsers) {
+            $clientName = 'Customer';
+            $reviewerType = 'Customer';
+            if ($rev->service_provider_id && isset($spUsers[$rev->service_provider_id])) {
+                $sp = $spUsers[$rev->service_provider_id];
+                $clientName = trim(($sp->first_name ?? '') . ' ' . ($sp->last_name ?? ''));
+                if (empty($clientName)) $clientName = $sp->name ?? 'Service Provider';
+                $reviewerType = 'Service Provider';
+            } elseif ($rev->client) {
+                $clientName = trim(($rev->client->first_name ?? '') . ' ' . ($rev->client->last_name ?? ''));
+                if (empty($clientName)) $clientName = $rev->client->name ?? 'Customer';
+            }
+            return [
+                'id' => $rev->id,
+                'client' => $clientName,
+                'clientInitials' => strtoupper(substr($clientName, 0, 1)),
+                'reviewerType' => $reviewerType,
+                'rating' => (int)$rev->rating,
+                'comment' => $rev->comment,
+                'response' => $rev->response,
+                'response_date' => $rev->response_date ? \Carbon\Carbon::parse($rev->response_date)->format('M d, Y') : null,
+                'date' => \Carbon\Carbon::parse($rev->created_at)->format('M d, Y')
+            ];
+        })->values()->toArray();
+
+        // Distributor info
+        $distAddress = DB::table('distributor_addresses')
+            ->join('distributor_requirements', 'distributor_addresses.distributor_requirements_id', '=', 'distributor_requirements.id')
+            ->where('distributor_requirements.user_id', $distributorId)
+            ->select('latitude', 'longitude')
+            ->first();
+            
+        $distributorInfo = DB::table('distributor_requirements')
+            ->where('user_id', $distributorId)->first();
+        $distributorName = $distributorInfo ? ($distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor') : 'Distributor';
+
+        $paymentSettings = null;
+        if (Schema::hasTable('distributor_payment_settings')) {
+            $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
+        }
+
+        $displayPrice = round($minDiscounted, 2);
+        $displayOriginal = round($minOriginal, 2);
+        $priceRange = ($minDiscounted != $maxDiscounted);
+        $originalRange = ($minOriginal != $maxOriginal);
+
+        $imageUrl = $firstVariantImage ? asset('storage/' . ltrim($firstVariantImage, '/')) : null;
+
+        $productData = [
+            'id' => $productId,
+            'distributor_id' => $distributorId,
+            'distributor_name' => $distributorName,
+            'name' => $baseProduct->name,
+            'brand' => 'Distributor Brand',
+            'type' => $baseProduct->type,
+            'category' => $baseProduct->category,
+            'original_price' => $displayOriginal,
+            'original_price_min' => round($minOriginal, 2),
+            'original_price_max' => round($maxOriginal, 2),
+            'price' => $displayPrice,
+            'price_min' => round($minDiscounted, 2),
+            'price_max' => round($maxDiscounted, 2),
+            'price_range' => $priceRange,
+            'original_price_range' => $originalRange,
+            'promotion' => null,
+            'stock' => $totalStock,
+            'rating' => $avgRating,
+            'review_count' => $reviewCount,
+            'reviews' => $formattedReviews,
+            'color' => null,
+            'image_url' => $imageUrl,
+            'distributor_lat' => $distAddress->latitude ?? null,
+            'distributor_lng' => $distAddress->longitude ?? null,
+            'distributor_gcash_enabled' => $paymentSettings ? (bool)$paymentSettings->is_gcash_enabled : false,
+            'distributor_pickup_enabled' => $paymentSettings ? (bool)$paymentSettings->is_pickup_enabled : false,
+            'variants' => $variants,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $productData
+        ]);
+    }
+
+    // ----- The rest of the methods (addToCart, orderNow, verifyGcashPayment, calculateShipping, calculateDistance) remain exactly as they were -----
+    // They are not modified because they already work with specific product_id.
 
     public function addToCart(Request $request)
     {
@@ -477,7 +762,6 @@ class ShopController extends Controller
 
             DB::commit();
 
-            // BROADCAST: Notify the Operational Distributor
             event(new OrderPlaced($request->distributor_id));
 
             return response()->json([
@@ -694,7 +978,6 @@ class ShopController extends Controller
             DB::commit();
             Storage::disk('local')->delete($filePath);
 
-            // BROADCAST: Notify all corresponding distributors involved in this multi-item GCash checkout
             $distributorIds = collect($cacheData['items'])->pluck('distributor_id')->unique();
             foreach ($distributorIds as $dId) {
                 event(new OrderPlaced($dId));

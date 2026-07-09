@@ -25,7 +25,7 @@
           
           <div class="hidden lg:flex items-center gap-6 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
             <div class="flex flex-col items-center">
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Products</span>
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Variants</span>
               <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
             </div>
             <Separator orientation="vertical" class="h-8 bg-slate-200" />
@@ -149,7 +149,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
             Available Products 
-            <Badge variant="secondary" class="ml-1">{{ filteredProducts.length }}</Badge>
+            <Badge variant="secondary" class="ml-1">{{ sortedGroups.length }} Groups ({{ filteredProducts.length }} Variants)</Badge>
           </h2>
           <div class="flex items-center gap-3">
             <Button 
@@ -176,89 +176,110 @@
           </div>
         </div>
         
-        <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div v-if="sortedGroups.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           <div 
-            v-for="product in sortedProducts" 
-            :key="product.id"
+            v-for="group in sortedGroups" 
+            :key="group.id"
             class="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden"
           >
             <div class="relative aspect-[4/3] overflow-hidden bg-slate-100">
               <img 
-                v-if="product.image_url" 
-                :src="getFullImageUrl(product.image_url)" 
-                :alt="product.name"
+                v-if="group.image_url" 
+                :src="getFullImageUrl(group.image_url)" 
+                :alt="group.name"
                 @error="handleImageError"
                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               >
               <div 
                 v-else 
                 class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-105"
-                :style="{ backgroundColor: product.color_code ? `${product.color_code}20` : '#f1f5f9' }"
+                :style="{ backgroundColor: group.color_code ? `${group.color_code}20` : '#f1f5f9' }"
               >
                 <div 
                   class="w-16 h-16 rounded-lg flex items-center justify-center"
-                  :style="{ backgroundColor: product.color_code || '#cbd5e1' }"
+                  :style="{ backgroundColor: group.color_code || '#cbd5e1' }"
                 >
                   <Package class="w-8 h-8 text-white/80" />
                 </div>
               </div>
               
               <div class="absolute top-3 left-3 flex flex-col gap-2">
-                <Badge :class="getCategoryBadgeClass(product.category)" class="shadow-sm border-none">
-                  {{ getCategoryShortName(product.category) }}
+                <Badge :class="getCategoryBadgeClass(group.category)" class="shadow-sm border-none">
+                  {{ getCategoryShortName(group.category) }}
                 </Badge>
               </div>
-
-              <div 
-                v-if="product.color_code" 
-                class="absolute bottom-3 right-3 w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                :style="{ backgroundColor: product.color_code }"
-                :title="product.color_code"
-              ></div>
             </div>
             
             <div class="p-4 flex-1 flex flex-col">
               <div class="flex justify-between items-start mb-1">
-                <h3 class="font-bold text-slate-800 line-clamp-1 text-base group-hover:text-blue-600 transition-colors">{{ product.name }}</h3>
-                <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">₱{{ formatPrice(product.price) }}</span>
+                <h3 class="font-bold text-slate-800 line-clamp-1 text-base group-hover:text-blue-600 transition-colors" :title="group.name">
+                  {{ group.name }}
+                </h3>
+                <span class="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm whitespace-nowrap">
+                  <template v-if="group.minPrice === group.maxPrice">₱{{ formatPrice(group.minPrice) }}</template>
+                  <template v-else>₱{{ formatPrice(group.minPrice) }} - {{ formatPrice(group.maxPrice) }}</template>
+                </span>
               </div>
               
               <div class="flex items-center gap-2 mb-3 text-xs text-slate-500">
-                <span class="bg-slate-100 px-2 py-0.5 rounded">{{ product.type }}</span>
-                <span>•</span>
-                <span>{{ product.size }}</span>
+                <span class="bg-slate-100 px-2 py-0.5 rounded">{{ group.type }}</span>
               </div>
               
-              <p v-if="product.description" class="text-sm text-slate-600 line-clamp-2 mb-4 h-10">
-                {{ truncateDescription(product.description) }}
+              <p v-if="group.description" class="text-sm text-slate-600 line-clamp-2 mb-4 h-10">
+                {{ truncateDescription(group.description) }}
               </p>
               
-              <div class="grid grid-cols-1 gap-y-1.5 bg-slate-50 p-3 rounded-lg text-xs mb-4">
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-500">Ref Stock:</span>
-                  <span class="font-medium text-slate-700">{{ product.min_stock_level }} - {{ product.max_stock_level }}</span>
-                </div>
-                <div v-if="product.cost" class="flex justify-between items-center">
-                  <span class="text-slate-500">Cost:</span>
-                  <span class="font-medium text-slate-700">₱{{ formatPrice(product.cost) }}</span>
-                </div>
-                <div v-if="product.sku_code" class="flex justify-between items-center">
-                  <span class="text-slate-500">SKU:</span>
-                  <span class="font-medium text-slate-700 font-mono">{{ product.sku_code }}</span>
+              <!-- Compact Variants Dropdown List -->
+              <div class="mt-auto pt-4 border-t border-slate-100">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <Label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Select Variant</Label>
+                    <Badge variant="outline" class="text-[10px] h-5">{{ group.variants.length }} options</Badge>
+                  </div>
+                  
+                  <Select v-model="selectedGroupVariants[group.id]">
+                    <SelectTrigger class="h-9 w-full bg-slate-50">
+                      <SelectValue placeholder="Select variant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="variant in group.variants" :key="variant.id" :value="variant.id.toString()">
+                        {{ variant.size }} <template v-if="variant.color_code"> • {{ variant.color_code }}</template>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <!-- Active Selected Variant Details -->
+                  <div v-if="selectedGroupVariants[group.id]" class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 transition-all">
+                    <template v-for="variant in group.variants" :key="variant.id">
+                      <div v-if="variant.id.toString() === selectedGroupVariants[group.id]" class="flex flex-col gap-2">
+                        <div class="flex justify-between items-start">
+                          <div class="flex items-center gap-2">
+                            <div v-if="variant.color_code" class="w-4 h-4 rounded-full border border-slate-300 shadow-sm" :style="{ backgroundColor: variant.color_code }" :title="variant.color_code"></div>
+                            <span class="font-bold text-slate-800">₱{{ formatPrice(variant.price) }}</span>
+                          </div>
+                          <span v-if="variant.sku_code" class="font-mono text-[10px] text-slate-500 mt-0.5 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">SKU: {{ variant.sku_code }}</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-xs text-slate-500 mt-1">
+                          <span class="flex items-center gap-1">
+                            <Package class="w-3 h-3 text-slate-400" />
+                            Stock: {{ variant.min_stock_level }} - {{ variant.max_stock_level }}
+                          </span>
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            class="h-6 px-3 text-[10px] uppercase tracking-wider font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                            @click="editProduct(variant)"
+                          >
+                            <Pencil class="w-3 h-3 mr-1.5" /> Edit
+                          </Button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </div>
-              
-              <div class="mt-auto flex gap-2 pt-2 border-t border-slate-100">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  class="flex-1 w-full border-slate-200 hover:bg-slate-50 hover:text-blue-600"
-                  @click="editProduct(product)"
-                >
-                  <Pencil class="w-3.5 h-3.5 mr-2" />
-                  Edit
-                </Button>
-              </div>
+
             </div>
           </div>
         </div>
@@ -274,6 +295,7 @@
       </div>
     </main>
 
+    <!-- Modals -->
     <Dialog :open="showAddModal" @update:open="closeModal">
       <DialogContent class="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
         <DialogHeader class="p-6 pb-2">
@@ -281,7 +303,7 @@
             <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
               <Pencil class="w-5 h-5" />
             </div>
-            Edit Product
+            Edit Product Variant
           </DialogTitle>
         </DialogHeader>
         
@@ -622,7 +644,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue';
+import { ref, computed, onMounted, reactive, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import { 
   Package2, Search, Filter, Settings, Package, Pencil, Trash2, 
@@ -652,6 +674,7 @@ const selectedSizes = ref([]);
 const selectedColor = ref('');
 const sortOption = ref('newest');
 const products = ref([]);
+const selectedGroupVariants = ref({}); // Track selected variant id per group
 
 const showAddModal = ref(false);
 const showMobileFilters = ref(false);
@@ -810,12 +833,64 @@ const filteredProducts = computed(() => {
   return res;
 });
 
-const sortedProducts = computed(() => {
-  const res = [...filteredProducts.value];
+// Group products to create Variants
+const groupedProducts = computed(() => {
+  const groups = {};
+
+  filteredProducts.value.forEach(p => {
+    // Unique key generator based on traits that determine identical visual parent items
+    const key = `${p.category}|${p.type}|${p.name}`;
+    
+    if (!groups[key]) {
+      groups[key] = {
+        id: key,
+        name: p.name,
+        category: p.category,
+        type: p.type,
+        description: p.description,
+        image_url: p.image_url,
+        color_code: p.color_code,
+        variants: [],
+        minPrice: Number(p.price) || 0,
+        maxPrice: Number(p.price) || 0,
+        maxId: p.id // Retains ID of the newest product variant created 
+      };
+    }
+
+    groups[key].variants.push(p);
+
+    const price = Number(p.price) || 0;
+    if (price < groups[key].minPrice) groups[key].minPrice = price;
+    if (price > groups[key].maxPrice) groups[key].maxPrice = price;
+    if (p.id > groups[key].maxId) groups[key].maxId = p.id;
+  });
+
+  return Object.values(groups);
+});
+
+// Watcher to automatically assign default variant option selection to new groups
+watch(groupedProducts, (newGroups) => {
+  newGroups.forEach(g => {
+    if (g.variants.length > 0) {
+      if (!selectedGroupVariants.value[g.id]) {
+        selectedGroupVariants.value[g.id] = g.variants[0].id.toString();
+      } else {
+        const variantExists = g.variants.find(v => v.id.toString() === selectedGroupVariants.value[g.id]);
+        if (!variantExists) {
+          selectedGroupVariants.value[g.id] = g.variants[0].id.toString();
+        }
+      }
+    }
+  });
+}, { immediate: true, deep: true });
+
+// Final Sorting of the product groups 
+const sortedGroups = computed(() => {
+  const res = [...groupedProducts.value];
   if (sortOption.value === 'name') return res.sort((a,b) => a.name.localeCompare(b.name));
-  if (sortOption.value === 'price_low') return res.sort((a,b) => (a.price || 0) - (b.price || 0));
-  if (sortOption.value === 'price_high') return res.sort((a,b) => (b.price || 0) - (a.price || 0));
-  return res.sort((a,b) => (b.id || 0) - (a.id || 0));
+  if (sortOption.value === 'price_low') return res.sort((a,b) => a.minPrice - b.minPrice);
+  if (sortOption.value === 'price_high') return res.sort((a,b) => b.maxPrice - a.maxPrice);
+  return res.sort((a,b) => b.maxId - a.maxId);
 });
 
 const filteredTypes = computed(() => {
@@ -862,6 +937,7 @@ const loadProducts = async () => {
 const loadSampleData = () => {
   products.value = [
     { id: 1, name: 'Premium Latex Paint - White', category: 'Interior Paints', type: 'Latex / Acrylic', sku_code: 'PLP-WH-001', size: '4 Liters', color_code: '#FFFFFF', price: 1250.00, cost: 850.00, min_stock_level: 10, max_stock_level: 100, description: 'High-quality interior latex paint, perfect for walls and ceilings.' },
+    { id: 101, name: 'Premium Latex Paint - White', category: 'Interior Paints', type: 'Latex / Acrylic', sku_code: 'PLP-WH-002', size: '16 Liters', color_code: '#FFFFFF', price: 4500.00, cost: 3000.00, min_stock_level: 5, max_stock_level: 50, description: 'High-quality interior latex paint, perfect for walls and ceilings.' },
     { id: 2, name: 'Weather-Resistant Exterior', category: 'Exterior Paints', type: 'Weather-resistant', sku_code: 'WREP-BL-001', size: '20 Liters', color_code: '#0000FF', price: 3200.00, cost: 2200.00, min_stock_level: 5, max_stock_level: 50, description: 'Professional-grade waterproof coating for roofs and walls.' },
     { id: 3, name: 'Professional Paint Brush Set', category: 'Application Tools', type: 'Paint Brushes', sku_code: 'PBS-001', size: 'Set of 5', price: 450.00, cost: 250.00, min_stock_level: 20, max_stock_level: 200, description: 'Set of 5 professional paint brushes.' },
     { id: 4, name: 'Paint Thinner', category: 'Solvents & Thinners', type: 'Paint thinner', sku_code: 'PT-001', size: '1 Liter', price: 150.00, cost: 80.00, min_stock_level: 30, max_stock_level: 300, description: 'High-quality paint thinner.' }
@@ -979,8 +1055,6 @@ const removeImage = () => {
 };
 
 // CRUD Operations
-// ProductAvailable.vue (inside the <script setup>)
-
 const handleSubmit = async () => {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
@@ -998,8 +1072,6 @@ const handleSubmit = async () => {
     }
     
     if (isEditing.value) {
-      // FIX: Append _method = PUT and send as a POST request
-      // Laravel cannot read multipart/form-data via standard PUT requests
       formData.append('_method', 'PUT');
 
       const response = await api.post(`/distributor/products/${editingId.value}`, formData, {

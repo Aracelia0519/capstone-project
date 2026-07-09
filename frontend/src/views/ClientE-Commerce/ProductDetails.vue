@@ -42,51 +42,26 @@
         <div class="lg:col-span-7 space-y-8">
           
           <div class="bg-white rounded-3xl p-2 border border-gray-100 shadow-sm overflow-hidden">
-            <div class="relative h-[300px] md:h-[450px] w-full rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center group/slider" :style="selectedProduct.image_url || (selectedProduct.image_paths && selectedProduct.image_paths.length) ? {} : { backgroundColor: selectedProduct.color }">
+            <div class="relative h-[300px] md:h-[450px] w-full rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center group/slider" :style="selectedVariant?.image_url ? {} : { backgroundColor: selectedVariant?.color || '#f1f5f9' }">
               
-              <div v-if="selectedProduct.image_paths && selectedProduct.image_paths.length > 0" class="w-full h-full">
-                <img 
-                  :src="getImageUrl(selectedProduct.image_paths[currentImageIndex])" 
-                  alt="Product Image" 
-                  class="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
-                  @error="handleImageError"
-                />
-                
-                <div v-if="selectedProduct.image_paths.length > 1" class="absolute inset-0 flex items-center justify-between px-4 opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300">
-                  <button @click.stop="prevImage" class="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center shadow-lg transition-colors">
-                    <ChevronLeft class="w-6 h-6" />
-                  </button>
-                  <button @click.stop="nextImage" class="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center shadow-lg transition-colors">
-                    <ChevronRight class="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-              
-              <img v-else-if="selectedProduct.image_url" :src="selectedProduct.image_url" alt="Product Image" class="object-cover w-full h-full transition-transform duration-500 hover:scale-105" />
-              
-              <div v-else class="w-40 h-40 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: selectedProduct.color }"></div>
+              <img 
+                v-if="selectedVariant?.image_url" 
+                :src="selectedVariant.image_url" 
+                alt="Product Image" 
+                class="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
+                @error="handleImageError"
+              />
+              <div v-else class="w-40 h-40 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: selectedVariant?.color || '#cbd5e1' }"></div>
               
               <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
                 <Badge :class="[
                   'border-0 shadow-sm backdrop-blur-md bg-white/90 text-sm px-3 py-1 font-semibold',
-                  selectedProduct.stock > 10 ? 'text-green-700' : 
-                  (selectedProduct.stock > 0 ? 'text-amber-600' : 'text-red-600 bg-red-50/90 font-bold')
+                  selectedVariant?.stock > 10 ? 'text-green-700' : 
+                  (selectedVariant?.stock > 0 ? 'text-amber-600' : 'text-red-600 bg-red-50/90 font-bold')
                 ]">
-                  {{ selectedProduct.stock > 10 ? 'In Stock' : (selectedProduct.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
+                  {{ selectedVariant?.stock > 10 ? 'In Stock' : (selectedVariant?.stock > 0 ? 'Low Stock' : 'Out of Stock') }}
                 </Badge>
               </div>
-            </div>
-
-            <div v-if="selectedProduct.image_paths && selectedProduct.image_paths.length > 1" class="flex gap-2 mt-2 overflow-x-auto hide-scrollbar p-1">
-               <button 
-                  v-for="(img, index) in selectedProduct.image_paths" 
-                  :key="index"
-                  @click="currentImageIndex = index"
-                  class="w-20 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all duration-200"
-                  :class="currentImageIndex === index ? 'border-blue-500 shadow-md scale-100' : 'border-transparent opacity-60 hover:opacity-100 scale-95'"
-               >
-                  <img :src="getImageUrl(img)" class="w-full h-full object-cover" />
-               </button>
             </div>
           </div>
 
@@ -99,14 +74,22 @@
              <div class="grid grid-cols-2 gap-4 mb-4 bg-gray-50 p-4 rounded-xl">
                  <div><span class="text-xs text-gray-500 uppercase font-bold block mb-1">Brand</span><span class="font-medium">{{ selectedProduct.distributor_name || selectedProduct.brand }}</span></div>
                  <div><span class="text-xs text-gray-500 uppercase font-bold block mb-1">Type</span><span class="font-medium">{{ selectedProduct.type }}</span></div>
-                 <div><span class="text-xs text-gray-500 uppercase font-bold block mb-1">Stock Available</span><span class="font-medium" :class="selectedProduct.stock <= 0 ? 'text-red-500' : ''">{{ selectedProduct.stock }} Units</span></div>
+                 <div><span class="text-xs text-gray-500 uppercase font-bold block mb-1">Stock Available</span><span class="font-medium" :class="selectedVariant?.stock <= 0 ? 'text-red-500' : ''">{{ selectedVariant?.stock || 0 }} Units</span></div>
+                 <div v-if="selectedVariant?.size"><span class="text-xs text-gray-500 uppercase font-bold block mb-1">Size</span><span class="font-medium">{{ selectedVariant.size }}</span></div>
+                 
+                 <div v-if="selectedVariant?.color">
+                    <span class="text-xs text-gray-500 uppercase font-bold block mb-1">Color</span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full border border-gray-300 shadow-sm shrink-0" :style="{ backgroundColor: selectedVariant.color }"></div>
+                        <span class="font-mono text-sm font-medium">{{ selectedVariant.color }}</span>
+                    </div>
+                 </div>
              </div>
 
              <p class="text-gray-600 leading-relaxed whitespace-pre-line text-[15px]">
                 {{ selectedProduct.description || 'Premium quality paint suitable for various applications. Long-lasting, durable, and excellent coverage.' }}
              </p>
 
-             <!-- 7-Day Return Policy Notice -->
              <div class="mt-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
                <ShieldCheck class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                <div>
@@ -181,6 +164,14 @@
                     <Star class="w-4 h-4 fill-amber-500 mr-1" />
                     <span class="font-bold">{{ selectedProduct.rating > 0 ? selectedProduct.rating : 'New' }}</span>
                   </div>
+                  <Badge variant="outline" class="text-xs font-medium text-gray-500 flex items-center gap-1.5 w-max">
+                    <span>{{ selectedVariant?.size || 'Standard' }}</span>
+                    <template v-if="selectedVariant?.color">
+                      <span class="text-gray-300">•</span>
+                      <span class="w-3 h-3 rounded-full border border-gray-300 shadow-sm shrink-0 inline-block" :style="{ backgroundColor: selectedVariant.color }" :title="selectedVariant.color"></span>
+                      <span class="font-mono">{{ selectedVariant.color }}</span>
+                    </template>
+                  </Badge>
                </div>
             </div>
 
@@ -188,30 +179,81 @@
                <div>
                   <p class="text-xs font-bold text-blue-600/70 uppercase tracking-wider mb-1">Price per unit</p>
                   <div class="flex items-baseline text-blue-600">
-                      <span class="text-3xl font-black tracking-tight">₱{{ formatCurrency(selectedProduct.price) }}</span>
+                      <span class="text-3xl font-black tracking-tight">₱{{ formatCurrency(selectedVariant?.price || selectedProduct.price) }}</span>
                   </div>
-                  <div v-if="selectedProduct.promotion && selectedProduct.original_price > selectedProduct.price" class="text-sm text-gray-400 line-through mt-0.5">
-                    ₱{{ formatCurrency(selectedProduct.original_price) }}
+                  <div v-if="selectedVariant?.promotion && selectedVariant?.original_price > selectedVariant?.price" class="text-sm text-gray-400 line-through mt-0.5">
+                    ₱{{ formatCurrency(selectedVariant.original_price) }}
                   </div>
                </div>
                
-               <div class="mt-2 sm:mt-0" v-if="selectedProduct.promotion">
-                  <Badge v-if="selectedProduct.promotion.type === 'free_shipping'" class="border-0 shadow-sm bg-blue-600 text-white font-bold">Free Shipping</Badge>
-                  <Badge v-else-if="selectedProduct.promotion.type === 'percentage_discount'" class="border-0 shadow-sm bg-red-600 text-white font-bold">-{{ selectedProduct.promotion.discount_value }}% OFF</Badge>
-                  <Badge v-else-if="(selectedProduct.promotion.type === 'fixed_discount' || selectedProduct.promotion.type === 'fixed_amount')" class="border-0 shadow-sm bg-red-600 text-white font-bold">₱{{ selectedProduct.promotion.discount_value }} OFF</Badge>
+               <div class="mt-2 sm:mt-0" v-if="selectedVariant?.promotion">
+                  <Badge v-if="selectedVariant.promotion.type === 'free_shipping'" class="border-0 shadow-sm bg-blue-600 text-white font-bold">Free Shipping</Badge>
+                  <Badge v-else-if="selectedVariant.promotion.type === 'percentage_discount'" class="border-0 shadow-sm bg-red-600 text-white font-bold">-{{ selectedVariant.promotion.discount_value }}% OFF</Badge>
+                  <Badge v-else-if="(selectedVariant.promotion.type === 'fixed_discount' || selectedVariant.promotion.type === 'fixed_amount')" class="border-0 shadow-sm bg-red-600 text-white font-bold">₱{{ selectedVariant.promotion.discount_value }} OFF</Badge>
                </div>
             </div>
 
             <div class="space-y-6">
+                <!-- Size & Color Selection (Grouped Variants) -->
+                <div v-if="groupedVariants && Object.keys(groupedVariants).length > 0">
+                    <!-- Size Selection -->
+                    <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Select Size</Label>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                      <button
+                        v-for="(variants, size) in groupedVariants"
+                        :key="size"
+                        @click="selectSize(size)"
+                        :class="[
+                          'px-4 py-2 rounded-xl border transition-all text-sm font-medium',
+                          selectedSize === size
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        ]"
+                      >
+                        {{ size || 'N/A' }}
+                      </button>
+                    </div>
+
+                    <!-- Color Selection for selected size -->
+                    <div v-if="selectedSize && groupedVariants[selectedSize] && groupedVariants[selectedSize].length > 0">
+                      <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Select Color</Label>
+                      <div class="flex flex-wrap gap-3">
+                        <button
+                          v-for="variant in groupedVariants[selectedSize]"
+                          :key="variant.id"
+                          @click="selectVariant(variant)"
+                          :class="[
+                            'w-12 h-12 rounded-full border-2 transition-all flex items-center justify-center',
+                            selectedVariant && selectedVariant.id === variant.id
+                              ? 'border-blue-500 ring-2 ring-blue-500/50'
+                              : 'border-gray-300 hover:border-blue-400',
+                            variant.stock <= 0 ? 'opacity-40 cursor-not-allowed' : ''
+                          ]"
+                          :style="{ backgroundColor: variant.color || '#ffffff' }"
+                          :disabled="variant.stock <= 0"
+                          :title="`${variant.color || 'No color'} (${variant.stock} left)`"
+                        >
+                          <span v-if="!variant.color" class="text-xs text-gray-400">—</span>
+                          <span v-else-if="variant.stock <= 0" class="text-xs text-white">✕</span>
+                        </button>
+                      </div>
+                      <p v-if="selectedVariant" class="text-xs text-gray-500 mt-2">
+                        {{ selectedVariant.stock > 0 ? `${selectedVariant.stock} units available` : 'Out of stock' }}
+                      </p>
+                    </div>
+                </div>
+
+                <!-- Quantity -->
                 <div>
                     <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Quantity</Label>
                     <div class="flex items-center p-1 bg-gray-50 border border-gray-200 rounded-xl w-max overflow-hidden shadow-inner">
                       <button @click="decrementQuantity" class="w-12 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-50 text-gray-600 transition-colors font-bold text-lg" :disabled="orderQuantity <= 1" :class="orderQuantity <= 1 ? 'opacity-50 cursor-not-allowed' : ''">-</button>
                       <div class="w-16 font-bold text-center text-gray-900">{{ orderQuantity }}</div>
-                      <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-50 text-gray-600 transition-colors font-bold text-lg" :disabled="orderQuantity >= selectedProduct?.stock" :class="orderQuantity >= selectedProduct?.stock ? 'opacity-50 cursor-not-allowed text-red-500' : ''">+</button>
+                      <button @click="incrementQuantity" class="w-12 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm hover:bg-gray-50 text-gray-600 transition-colors font-bold text-lg" :disabled="!selectedVariant || orderQuantity >= selectedVariant.stock" :class="!selectedVariant || orderQuantity >= selectedVariant.stock ? 'opacity-50 cursor-not-allowed text-red-500' : ''">+</button>
                     </div>
                 </div>
 
+                <!-- Payment Method -->
                 <div>
                   <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -241,6 +283,7 @@
                   </div>
                 </div>
 
+                <!-- Delivery Address -->
                 <div v-if="paymentMethod !== 'pick-up'">
                   <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Delivery Address</Label>
                   <div class="space-y-3">
@@ -273,13 +316,14 @@
                   </div>
                 </div>
 
+                <!-- Order Summary -->
                 <div class="bg-gray-900 p-5 rounded-2xl text-white shadow-lg relative overflow-hidden mt-6">
                   <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                   <h4 class="font-bold text-gray-200 mb-4 border-b border-gray-700/50 pb-3 text-sm uppercase tracking-wider">Order Summary</h4>
                   <div class="space-y-3 relative z-10">
                     <div class="flex justify-between text-sm text-gray-300 font-medium">
                       <span>Subtotal ({{ orderQuantity }} items)</span>
-                      <span>₱{{ formatCurrency(selectedProduct?.price * orderQuantity) }}</span>
+                      <span>₱{{ formatCurrency((selectedVariant?.price || selectedProduct.price) * orderQuantity) }}</span>
                     </div>
                     <div class="flex justify-between text-sm text-gray-300 font-medium">
                       <span>Estimated Shipping</span>
@@ -294,35 +338,36 @@
                     <div class="pt-3 border-t border-gray-700/50 space-y-1">
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>VATable Sales</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>VAT Amount (12%)</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                     </div>
 
                     <div class="flex justify-between items-end pt-3 border-t border-gray-600">
                       <span class="text-sm font-medium text-gray-300">Grand Total</span>
-                      <span class="text-3xl font-black text-white">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
+                      <span class="text-3xl font-black text-white">₱{{ formatCurrency(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
                     </div>
                   </div>
                 </div>
 
+                <!-- Action Buttons -->
                 <div class="flex gap-3 pt-2">
                     <Button 
                        variant="outline" 
                        @click="handleCartSubmit" 
-                       :disabled="selectedProduct.stock <= 0" 
+                       :disabled="!selectedVariant || selectedVariant.stock <= 0" 
                        class="flex-1 rounded-xl h-14 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 text-base"
                     >
                        Add to Cart
                     </Button>
                     <Button 
                        @click="handleOrderSubmit" 
-                       :disabled="selectedProduct.stock <= 0 || isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up')" 
+                       :disabled="!selectedVariant || selectedVariant.stock <= 0 || isCalculatingShipping || (addressMode === 'custom' && !customAddress.trim() && paymentMethod !== 'pick-up')" 
                        class="flex-[2] rounded-xl h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 border-0 transition-all"
                     >
                        Checkout Now
@@ -335,6 +380,7 @@
       </div>
     </div>
 
+    <!-- OTHER PRODUCTS CAROUSEL WITH GROUPS -->
     <div v-if="otherProducts.length > 0" class="container mx-auto px-4 mt-16 pt-10 border-t border-gray-200">
       <div class="flex items-center justify-between mb-8">
          <h2 class="text-2xl font-black text-gray-900 tracking-tight">Other Products Available</h2>
@@ -348,17 +394,19 @@
             @click="router.push(`/ECommerceClient/ProductDetails/${product.id}`)"
             class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
           >
-            <div class="h-40 relative overflow-hidden bg-gray-50 flex items-center justify-center shrink-0" :style="product.image_url ? {} : { backgroundColor: product.color }">
+            <div class="h-40 relative overflow-hidden bg-gray-50 flex items-center justify-center shrink-0" :style="product.image_url ? {} : { backgroundColor: product.color || '#f1f5f9' }">
               <img 
                  v-if="product.image_url"
                  :src="product.image_url" 
                  class="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
               />
-              <div v-else class="w-20 h-20 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: product.color }"></div>
+              <div v-else class="w-20 h-20 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: product.color || '#cbd5e1' }"></div>
               
               <Badge class="absolute top-2 left-2 border-0 shadow-sm bg-white/90 text-gray-800 font-bold text-xs py-0.5 backdrop-blur-md">
                   {{ product.stock > 0 ? 'In Stock' : 'Out of Stock' }}
               </Badge>
+
+              <div v-if="product.color" class="absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-white shadow-md" :style="{ backgroundColor: product.color }" :title="product.color"></div>
             </div>
             <CardContent class="p-4">
                <p class="text-[10px] font-bold tracking-wider text-blue-600 uppercase mb-1">{{ product.distributor_name || product.brand }}</p>
@@ -375,6 +423,7 @@
       </div>
     </div>
 
+    <!-- Alert Dialogs -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartAlertOpen || isOrderAlertOpen || isAuthAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
@@ -405,7 +454,7 @@
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold">Add to Cart</AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-2">
-              Are you sure you want to add <strong class="text-gray-900">{{ orderQuantity }}x {{ selectedProduct?.name }}</strong> to your cart?
+              Are you sure you want to add <strong class="text-gray-900">{{ orderQuantity }}x {{ selectedVariant?.name || selectedProduct?.name }}</strong> to your cart?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
@@ -426,9 +475,17 @@
               Confirm {{ paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up' }} Order
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1">
+                 <span>Variant: {{ selectedVariant?.size || 'Standard' }}</span>
+                 <template v-if="selectedVariant?.color">
+                     <span class="text-gray-300">•</span>
+                     <span class="w-3 h-3 rounded-full border border-gray-300 shadow-sm shrink-0 inline-block" :style="{ backgroundColor: selectedVariant.color }"></span>
+                     <span class="font-mono">{{ selectedVariant.color }}</span>
+                 </template>
+              </div>
               You are placing an order for <strong class="text-gray-900">{{ orderQuantity }} items</strong>.
               <br/><br/>
-              The total amount is <strong class="text-gray-900 text-lg">₱{{ formatCurrency((selectedProduct?.price * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</strong>. 
+              The total amount is <strong class="text-gray-900 text-lg">₱{{ formatCurrency(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</strong>. 
               <br/>
               <span v-if="paymentMethod === 'gcash'" class="text-blue-600 text-sm font-semibold mt-2 block">
                 You will be redirected to complete your GCash payment securely.
@@ -452,7 +509,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, defineProps, watch } from 'vue' 
+import { ref, onMounted, computed, watch } from 'vue' 
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
@@ -506,6 +563,8 @@ const router = useRouter()
 
 const isLoading = ref(true)
 const selectedProduct = ref(null)
+const selectedVariant = ref(null)
+const selectedSize = ref(null)
 const otherProducts = ref([])
 const currentImageIndex = ref(0)
 const isProcessing = ref(false)
@@ -524,7 +583,19 @@ const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
-// FIX: Robust Dynamic Image URL Generator
+// Group variants by size
+const groupedVariants = computed(() => {
+  if (!selectedProduct.value || !selectedProduct.value.variants) return {}
+  const groups = {}
+  selectedProduct.value.variants.forEach(v => {
+    const size = v.size || 'N/A'
+    if (!groups[size]) groups[size] = []
+    groups[size].push(v)
+  })
+  return groups
+})
+
+// Robust Dynamic Image URL Generator
 const getImageUrl = (path) => {
   if (!path) return '';
   const baseUrl = import.meta.env.VITE_API_URL 
@@ -557,83 +628,88 @@ const getVatAmount = (total) => {
   return total - getVatableSales(total);
 }
 
-// Fetch main product details and the list of other products
-const fetchPageData = async (id) => {
+// Fetch product details (single product with variants)
+const fetchProductDetails = async (id) => {
   try {
     isLoading.value = true
-    currentImageIndex.value = 0
-    
-    // We fetch all products to find the current one and populate "Others"
-    const response = await api.get('/client/shop/products')
-    
+    const response = await api.get(`/client/shop/product/${id}`)
     if (response.data.success) {
-      const allProducts = response.data.data
-      
-      // Find the specific product by route ID
-      selectedProduct.value = allProducts.find(p => p.id == id) || null
-      
-      if (selectedProduct.value) {
-         // Default states
-         orderQuantity.value = 1;
-         paymentMethod.value = 'gcash';
-         addressMode.value = 'default';
-         customAddress.value = '';
-         
-         // Filter out the current product to show "Other Products"
-         otherProducts.value = allProducts.filter(p => p.id != id).slice(0, 8) 
-         calculateLiveShipping();
+      selectedProduct.value = response.data.data
+      // Set default variant: first size, first available variant
+      const sizes = Object.keys(groupedVariants.value)
+      if (sizes.length > 0) {
+        const firstSize = sizes[0]
+        selectedSize.value = firstSize
+        const firstAvailable = groupedVariants.value[firstSize].find(v => v.stock > 0) || groupedVariants.value[firstSize][0]
+        selectedVariant.value = firstAvailable || null
       }
+      orderQuantity.value = 1
+      paymentMethod.value = 'gcash'
+      addressMode.value = 'default'
+      customAddress.value = ''
+      calculateLiveShipping()
+    } else {
+      selectedProduct.value = null
     }
   } catch (error) {
     toast.error('Failed to load product details')
-    console.error('Error fetching products:', error)
+    console.error('Error fetching product:', error)
   } finally {
     isLoading.value = false
   }
 }
 
-// Image Navigation
-const nextImage = () => {
-  if (selectedProduct.value && selectedProduct.value.image_paths && selectedProduct.value.image_paths.length > 1) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % selectedProduct.value.image_paths.length
+// Fetch other products for carousel
+const fetchOtherProducts = async () => {
+  try {
+    const response = await api.get('/client/shop/products')
+    if (response.data.success) {
+      const allProducts = response.data.data
+      // Exclude current product group (by name, type, category)
+      if (selectedProduct.value) {
+        const currentName = selectedProduct.value.name
+        const currentType = selectedProduct.value.type
+        const currentCategory = selectedProduct.value.category
+        const filtered = allProducts.filter(p => 
+          !(p.name === currentName && p.type === currentType && p.category === currentCategory)
+        )
+        // Group by distributor and name to avoid duplicates
+        const groups = {}
+        filtered.forEach(p => {
+          const key = `${p.distributor_id}|${p.category}|${p.type}|${p.name}`
+          if (!groups[key]) groups[key] = p
+        })
+        otherProducts.value = Object.values(groups).slice(0, 8)
+      } else {
+        otherProducts.value = allProducts.slice(0, 8)
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching other products:', error)
   }
 }
 
-const prevImage = () => {
-  if (selectedProduct.value && selectedProduct.value.image_paths && selectedProduct.value.image_paths.length > 1) {
-    currentImageIndex.value = currentImageIndex.value === 0 
-      ? selectedProduct.value.image_paths.length - 1 
-      : currentImageIndex.value - 1
-  }
+// Size and Variant Selection
+const selectSize = (size) => {
+  selectedSize.value = size
+  const variants = groupedVariants.value[size] || []
+  const available = variants.find(v => v.stock > 0)
+  selectedVariant.value = available || variants[0] || null
+  orderQuantity.value = 1
+  calculateLiveShipping()
 }
 
-// Logic interactions
-watch(selectedProduct, (newProd) => {
-  if (newProd && !newProd.distributor_gcash_enabled && paymentMethod.value === 'gcash') {
-    paymentMethod.value = 'pick-up'
-  }
-})
-
-const handleCartSubmit = () => {
-  if (!props.user) {
-    isAuthAlertOpen.value = true;
-    return;
-  }
-  isCartAlertOpen.value = true
+const selectVariant = (variant) => {
+  selectedVariant.value = variant
+  orderQuantity.value = 1
+  calculateLiveShipping()
 }
 
-const handleOrderSubmit = () => {
-  if (!props.user) {
-    isAuthAlertOpen.value = true;
-    return;
-  }
-  isOrderAlertOpen.value = true
-}
-
+// Quantity
 const incrementQuantity = () => {
-  if (selectedProduct.value && orderQuantity.value < selectedProduct.value.stock) {
+  if (selectedVariant.value && orderQuantity.value < selectedVariant.value.stock) {
     orderQuantity.value++
-  } else if (selectedProduct.value && orderQuantity.value >= selectedProduct.value.stock) {
+  } else if (selectedVariant.value && orderQuantity.value >= selectedVariant.value.stock) {
     toast.warning('Maximum available stock reached');
   }
 }
@@ -648,7 +724,7 @@ watch(orderQuantity, () => {
 })
 
 const calculateLiveShipping = () => {
-  if (!selectedProduct.value) return
+  if (!selectedVariant.value) return
   
   clearTimeout(shippingCalcTimeout)
   isCalculatingShipping.value = true
@@ -657,9 +733,9 @@ const calculateLiveShipping = () => {
     try {
       const response = await api.post('/client/shop/shipping-fee', {
         cart_items: [{
-          product_id: selectedProduct.value.id,
+          product_id: selectedVariant.value.id,
           distributor_id: selectedProduct.value.distributor_id,
-          price: selectedProduct.value.price,
+          price: selectedVariant.value.price,
           quantity: orderQuantity.value,
           distributor_lat: selectedProduct.value.distributor_lat,
           distributor_lng: selectedProduct.value.distributor_lng
@@ -677,17 +753,38 @@ const calculateLiveShipping = () => {
   }, 500)
 }
 
+// Cart and Order Handlers
+const handleCartSubmit = () => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+  isCartAlertOpen.value = true
+}
+
+const handleOrderSubmit = () => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true;
+    return;
+  }
+  isOrderAlertOpen.value = true
+}
+
 const confirmAddToCart = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   try {
     isProcessing.value = true
     const response = await api.post('/client/shop/cart', {
-      product_id: selectedProduct.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: selectedProduct.value.distributor_id,
       quantity: orderQuantity.value
     })
 
     if (response.data.success) {
-      toast.success(`${orderQuantity.value}x ${selectedProduct.value.name} added to cart!`)
+      toast.success(`${orderQuantity.value}x ${selectedVariant.value.name} added to cart!`)
       isCartAlertOpen.value = false 
     }
   } catch (error) {
@@ -776,11 +873,15 @@ const downloadReceipt = (receiptData) => {
 }
 
 const confirmOrderNow = async () => {
+  if (!selectedVariant.value) {
+    toast.error('Please select a variant.')
+    return
+  }
   try {
     isProcessing.value = true
     
     const payload = {
-      product_id: selectedProduct.value.id,
+      product_id: selectedVariant.value.id,
       distributor_id: selectedProduct.value.distributor_id,
       quantity: orderQuantity.value,
       distributor_lat: selectedProduct.value.distributor_lat,
@@ -834,7 +935,7 @@ const verifyGcashPayment = async (orderNumber) => {
         downloadReceipt(response.data.receipt_data)
       }
       
-      router.replace({ query: {} }) // Strip the params from the URL
+      router.replace({ query: {} })
       
       setTimeout(() => {
            router.push('/ECommerceClient/EccommerceOrders')
@@ -844,16 +945,15 @@ const verifyGcashPayment = async (orderNumber) => {
     toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'The payment session could not be verified or was already processed.' })
     router.replace({ query: {} })
   } finally {
-    fetchPageData(route.params.id)
+    fetchProductDetails(route.params.id)
   }
 }
 
-// Re-fetch if they click a product from the "Other Products" carousel
+// Watcher for route param change
 watch(() => route.params.id, (newId) => {
   if (newId) {
-    // Scroll to top when changing services
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    fetchPageData(newId);
+    fetchProductDetails(newId);
   }
 })
 
@@ -861,7 +961,7 @@ onMounted(() => {
   if (route.query.order_number) { 
     verifyGcashPayment(route.query.order_number) 
   } else if (route.params.id) {
-    fetchPageData(route.params.id)
+    fetchProductDetails(route.params.id)
   }
 })
 </script>
