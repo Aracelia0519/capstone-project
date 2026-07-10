@@ -27,6 +27,7 @@ class Product extends Model
         'description',
         'image_url',
         'is_active',
+        'weight',
     ];
 
     protected $casts = [

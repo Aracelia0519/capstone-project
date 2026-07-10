@@ -257,6 +257,9 @@ class ArrivedItemController extends Controller
 
             DB::beginTransaction();
 
+            // Explicitly set all existing distributor products without a weight to 5.00
+            DistributorProduct::whereNull('weight')->update(['weight' => 5.00]);
+
             // Resolve or create a distributor product ID
             $distributorProductId = $this->resolveDistributorProductId($procurement, $distributorId);
 
@@ -328,6 +331,9 @@ class ArrivedItemController extends Controller
             }
 
             DB::beginTransaction();
+
+            // Explicitly set all existing distributor products without a weight to 5.00
+            DistributorProduct::whereNull('weight')->update(['weight' => 5.00]);
 
             $procurement = $returnReq->procurementRequest;
 
@@ -430,6 +436,7 @@ class ArrivedItemController extends Controller
                 'sku_code' => $details['sku_code'] ?? null,
                 'price' => $procurement->unit_price,
                 'image_url' => $details['image_url'] ?? null,
+                'weight' => $details['weight'] ?? 5.00,
                 'is_active' => true
             ]);
 
@@ -464,6 +471,7 @@ class ArrivedItemController extends Controller
                 'sku_code' => $supplierMaterial->sku_code,
                 'price' => $supplierMaterial->price,
                 'image_url' => $supplierMaterial->image_url,
+                'weight' => $supplierMaterial->weight ?? 5.00,
                 'is_active' => true
             ]);
 
@@ -487,6 +495,7 @@ class ArrivedItemController extends Controller
             'type' => 'Standard',
             'size' => 'Standard',
             'price' => $procurement->unit_price ?? 0,
+            'weight' => 5.00,
             'is_active' => true
         ]);
 

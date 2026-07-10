@@ -155,6 +155,7 @@
                       <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                         <span v-if="item.product?.sku_code || item.raw_material_details?.sku_code">SKU: {{ item.product?.sku_code || item.raw_material_details?.sku_code }}</span>
                         <span v-if="item.product?.size || item.raw_material_details?.size">• Size: {{ item.product?.size || item.raw_material_details?.size }}</span>
+                        <span v-if="item.product?.weight || item.raw_material_details?.weight || item.weight">• W: {{ item.product?.weight || item.raw_material_details?.weight || item.weight }}</span>
                         <span v-if="item.product?.type || item.raw_material_details?.type">• {{ item.product?.type || item.raw_material_details?.type }}</span>
                       </div>
                     </div>
@@ -326,6 +327,13 @@
                   <p class="font-medium text-gray-200 break-words">
                     <template v-if="!isViewingReturn">{{ selectedItem.category }}</template>
                     <template v-else>{{ selectedItem.procurement_request?.category }}</template>
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Weight</p>
+                  <p class="font-medium text-gray-200 break-words">
+                    <template v-if="!isViewingReturn">{{ selectedItem.product?.weight || selectedItem.raw_material_details?.weight || selectedItem.weight || '5.00' }}</template>
+                    <template v-else>{{ selectedItem.procurement_request?.product?.weight || selectedItem.procurement_request?.raw_material_details?.weight || selectedItem.procurement_request?.weight || '5.00' }}</template>
                   </p>
                 </div>
               </div>
