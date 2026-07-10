@@ -756,6 +756,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('shipments')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'index']);
             Route::post('/{id}/ship', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'ship']);
+
+            Route::post('/{id}/ready', [\App\Http\Controllers\Api\Supplier\SupplierShipmentController::class, 'markReady']);
         });
 
         Route::prefix('raw-materials')->group(function () {

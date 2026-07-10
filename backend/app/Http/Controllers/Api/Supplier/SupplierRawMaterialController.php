@@ -17,6 +17,14 @@ class SupplierRawMaterialController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
             
+        // Ensure any existing records without a weight default to 10kg
+        $materials->transform(function ($material) {
+            if (is_null($material->weight)) {
+                $material->weight = 10.00;
+            }
+            return $material;
+        });
+            
         return response()->json($materials);
     }
 
@@ -28,6 +36,7 @@ class SupplierRawMaterialController extends Controller
             'name' => 'required|string',
             'sku_code' => 'nullable|string',
             'size' => 'required|string',
+            'weight' => 'required|numeric|min:0',
             'color_code' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'min_order' => 'nullable|integer|min:1',
@@ -61,6 +70,7 @@ class SupplierRawMaterialController extends Controller
             'name' => 'required|string',
             'sku_code' => 'nullable|string',
             'size' => 'required|string',
+            'weight' => 'required|numeric|min:0',
             'color_code' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',

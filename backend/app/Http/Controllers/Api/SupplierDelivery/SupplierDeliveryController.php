@@ -33,7 +33,6 @@ class SupplierDeliveryController extends Controller
         $supplierReq = DB::table('supplier_requirements')->where('user_id', $personnel->supplier_id)->first();
         
         if ($supplierReq) {
-            // Using typical naming conventions; adjust if your address table is named differently
             $suppAddr = DB::table('supplier_addresses')->where('supplier_requirements_id', $supplierReq->id)->first() 
                      ?? DB::table('supplier_addresses')->where('supplier_id', $personnel->supplier_id)->first();
             
@@ -54,7 +53,6 @@ class SupplierDeliveryController extends Controller
                 $longitude = null;
                 $fullAddress = $req->delivery_address ?? 'Unknown Address';
 
-                // Resolve the distributor's address dynamically
                 if ($req && $req->distributor_id) {
                     $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
                     if ($distReq) {
@@ -67,7 +65,6 @@ class SupplierDeliveryController extends Controller
                     }
                 }
 
-                // Detect if this is a replacement delivery by checking active returns or notes
                 $isReplacement = false;
                 if ($req) {
                     $hasActiveReturn = DB::table('procurement_returns')
@@ -77,6 +74,15 @@ class SupplierDeliveryController extends Controller
                     
                     if ($hasActiveReturn || str_contains($d->notes ?? '', '[REPLACEMENT DELIVERY]')) {
                         $isReplacement = true;
+                    }
+                }
+
+                // Resolve Vehicle Details attached to delivery (Uses Safe Dynamic Naming Check)
+                $vehicleName = 'Unknown Delivery Truck';
+                if ($d->vehicle_id) {
+                    $veh = DB::table('supplier_vehicles')->where('id', $d->vehicle_id)->first();
+                    if ($veh) {
+                        $vehicleName = $veh->vehicle_name ?? $veh->vehicle_type ?? $veh->plate_number ?? $veh->model ?? $veh->make ?? $veh->name ?? ('Vehicle #' . $veh->id);
                     }
                 }
 
@@ -91,11 +97,11 @@ class SupplierDeliveryController extends Controller
                     'supplierLongitude' => $supplierLongitude,
                     'itemCount' => $req ? $req->quantity : 0,
                     'productName' => $req ? $req->product_name : 'Unknown Product',
-                    // Bypass COD terms if it's a replacement
                     'paymentTerms' => $isReplacement ? 'NON-COD' : ($req ? strtoupper($req->payment_terms) : 'NON-COD'),
-                    // Zero out the amount to collect if it's a replacement
                     'totalAmount' => $isReplacement ? 0 : ($req ? $req->total_cost : 0),
                     'status' => $d->status,
+                    'is_ready_to_go' => (bool)$d->is_ready_to_go,
+                    'vehicleName' => $vehicleName,
                     'notes' => $d->notes ?? ($req ? $req->instructions : ''),
                     'timestamp' => $d->delivered_at ? date('M d, Y h:i A', strtotime($d->delivered_at)) : null,
                     'arrivalProof' => $d->arrival_proof_path ? asset($d->arrival_proof_path) : null,
@@ -113,13 +119,15 @@ class SupplierDeliveryController extends Controller
     {
         $delivery = SupplierDelivery::findOrFail($id);
         
-        // Use 'in_transit' to satisfy the ENUM constraint on supplier_deliveries table
+        if (!$delivery->is_ready_to_go) {
+            return response()->json(['message' => 'Supplier has not signaled ready for departure. Loading may not be finished.'], 400);
+        }
+
         $delivery->status = 'in_transit'; 
         $delivery->save();
 
         if ($delivery->procurement_request_id) {
             
-            // Check if there is an active return for this procurement request
             $activeReturn = DB::table('procurement_returns')
                 ->where('procurement_request_id', $delivery->procurement_request_id)
                 ->whereNotIn('status', ['completed', 'rejected'])
@@ -127,7 +135,6 @@ class SupplierDeliveryController extends Controller
                 ->first();
 
             if ($activeReturn) {
-                // Update return table status to out_for_delivery specifically
                 DB::table('procurement_returns')
                     ->where('id', $activeReturn->id)
                     ->update([
@@ -135,15 +142,16 @@ class SupplierDeliveryController extends Controller
                         'updated_at' => now()
                     ]);
             } else {
-                // Standard delivery update
                 $req = ProcurementRequest::find($delivery->procurement_request_id);
                 if ($req) {
                     $req->status = 'in_transit'; 
+                    if (!$req->shipped_at) {
+                        $req->shipped_at = now();
+                    }
                     $req->save();
                 }
             }
 
-            // Fire events for real-time updates
             $req = ProcurementRequest::find($delivery->procurement_request_id);
             if ($req) {
                 event(new ProcurementRequestUpdated($req->distributor_id));
@@ -162,7 +170,6 @@ class SupplierDeliveryController extends Controller
         $delivery = SupplierDelivery::findOrFail($id);
         $req = ProcurementRequest::find($delivery->procurement_request_id);
         
-        // Determine if replacement to skip COD logic
         $activeReturn = DB::table('procurement_returns')
             ->where('procurement_request_id', $delivery->procurement_request_id)
             ->whereNotIn('status', ['completed', 'rejected'])
@@ -184,18 +191,14 @@ class SupplierDeliveryController extends Controller
 
         $request->validate($rules);
 
-        // Fetch bypass flag
         $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
 
-        // Optional Backend Coordinate Verification (Bypassed if true)
         if (!$bypassLocation && $req && $req->distributor_id) {
             $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
             if ($distReq) {
                 $address = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
-                
                 if ($address && $address->latitude && $address->longitude) {
                     $distance = $this->calculateDistance($request->latitude, $request->longitude, $address->latitude, $address->longitude);
-                    
                     if ($distance > 500) {
                         return response()->json(['message' => 'You are too far from the destination to complete the delivery.'], 400);
                     }
@@ -206,7 +209,6 @@ class SupplierDeliveryController extends Controller
         DB::beginTransaction();
 
         try {
-            // Upload the arrival proof image
             if ($request->hasFile('proof_image')) {
                 $file = $request->file('proof_image');
                 $filename = 'arrival_proof_' . $delivery->id . '_' . time() . '.' . $file->getClientOriginalExtension();
@@ -214,7 +216,6 @@ class SupplierDeliveryController extends Controller
                 $delivery->arrival_proof_path = 'storage/' . $path;
             }
 
-            // Upload the payment proof if COD
             if ($isCOD && $request->hasFile('payment_image')) {
                 $file = $request->file('payment_image');
                 $filename = 'payment_rcvd_' . $delivery->id . '_' . time() . '.' . $file->getClientOriginalExtension();
@@ -222,14 +223,11 @@ class SupplierDeliveryController extends Controller
                 $delivery->payment_received_proof_path = 'storage/' . $path;
             }
 
-            // If COD, delivery man is now 'remitting'. If not, they are 'completed'.
             $delivery->status = $isCOD ? 'remitting' : 'completed';
             $delivery->delivered_at = now();
             $delivery->save();
 
-            // Update respective core tables
             if ($activeReturn) {
-                // Finalize return process delivery specifically
                 DB::table('procurement_returns')
                     ->where('id', $activeReturn->id)
                     ->update([
@@ -237,7 +235,6 @@ class SupplierDeliveryController extends Controller
                         'updated_at' => now()
                     ]);
             } else {
-                // Finalize standard procurement delivery
                 if ($req) {
                     $req->status = 'delivered';
                     $req->delivered_at = now();
@@ -247,7 +244,6 @@ class SupplierDeliveryController extends Controller
 
             DB::commit();
 
-            // Fire events for real-time updates
             if ($req) {
                 event(new ProcurementRequestUpdated($req->distributor_id));
                 event(new SupplierOrderUpdated($req->supplier_id));
@@ -280,12 +276,10 @@ class SupplierDeliveryController extends Controller
 
         $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
 
-        // Validate proximity to supplier
         $user = $request->user();
         $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
         $supplierReq = DB::table('supplier_requirements')->where('user_id', $personnel->supplier_id)->first();
         
-        // Distance validation (Bypassed if true)
         if (!$bypassLocation && $supplierReq) {
             $suppAddr = DB::table('supplier_addresses')->where('supplier_requirements_id', $supplierReq->id)->first()
                      ?? DB::table('supplier_addresses')->where('supplier_id', $personnel->supplier_id)->first();
@@ -313,7 +307,6 @@ class SupplierDeliveryController extends Controller
 
             DB::commit();
 
-            // Fire events for real-time updates
             $req = ProcurementRequest::find($delivery->procurement_request_id);
             if ($req) {
                 event(new ProcurementRequestUpdated($req->distributor_id));
@@ -339,7 +332,6 @@ class SupplierDeliveryController extends Controller
 
         $delivery = SupplierDelivery::findOrFail($id);
 
-        // Fetch the user to retrieve the personnel's name
         $user = $request->user();
         $personnel = DB::table('supplier_personnels')->where('user_id', $user->id)->first();
         $personnelName = $personnel ? trim($personnel->first_name . ' ' . $personnel->last_name) : 'Unknown Delivery Personnel';
@@ -351,17 +343,14 @@ class SupplierDeliveryController extends Controller
             
             if ($req) {
                 $req->status = 'prepared';
-                // Prepend the personnel's name to the rejection reason
                 $req->rejection_reason = "Rejected by {$personnelName}: " . $request->reason;
                 $req->save();
             }
 
-            // Remove the delivery assignment
             $delivery->delete();
 
             DB::commit();
 
-            // Fire events for real-time updates
             if ($req) {
                 event(new ProcurementRequestUpdated($req->distributor_id));
                 event(new SupplierOrderUpdated($req->supplier_id));

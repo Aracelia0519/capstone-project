@@ -18,6 +18,7 @@ class SupplierRawMaterial extends Model
         'name',
         'sku_code',
         'size',
+        'weight',
         'color_code',
         'price',
         'min_order',   // Added min_order

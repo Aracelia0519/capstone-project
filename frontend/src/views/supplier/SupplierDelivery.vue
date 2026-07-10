@@ -17,23 +17,9 @@ L.Icon.Default.mergeOptions({
 })
 
 import { 
-  MapPin, 
-  AlertTriangle, 
-  Navigation, 
-  CheckCircle2, 
-  Truck, 
-  Package, 
-  Phone, 
-  Image as ImageIcon,
-  X,
-  Loader2,
-  Banknote,
-  UploadCloud,
-  Menu,
-  Info,
-  Ban,
-  Unlock,
-  Lock
+  MapPin, AlertTriangle, Navigation, CheckCircle2, Truck, Package, 
+  X, Loader2, Banknote, UploadCloud, Menu, Info, Ban, Unlock, Lock,
+  Hourglass, ShieldAlert
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -92,7 +78,7 @@ let leafletMap = null
 let userMarker = null
 let routeLine = null 
 let watchId = null
-let lastRoutedPosition = null // Prevent spamming the OSRM API
+let lastRoutedPosition = null 
 const targetMarkers = []
 
 // --- Computed ---
@@ -122,18 +108,10 @@ const activeTargetLng = computed(() => {
 // Calculate distance in meters
 const distanceToActive = computed(() => {
   if (!activeDelivery.value || !currentPosition.value) return null
-  
   const targetLat = activeTargetLat.value
   const targetLng = activeTargetLng.value
-  
   if (!targetLat || !targetLng) return null
-
-  return calculateDistance(
-    currentPosition.value.lat, 
-    currentPosition.value.lng, 
-    targetLat, 
-    targetLng
-  )
+  return calculateDistance(currentPosition.value.lat, currentPosition.value.lng, targetLat, targetLng)
 })
 
 const isWithinRange = computed(() => {
@@ -141,14 +119,12 @@ const isWithinRange = computed(() => {
   return distanceToActive.value <= 500 
 })
 
-// Haversine formula (returns meters)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3 
   const p1 = lat1 * Math.PI/180
   const p2 = lat2 * Math.PI/180
   const dp = (lat2-lat1) * Math.PI/180
   const dl = (lon2-lon1) * Math.PI/180
-
   const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
   return R * c 
@@ -190,23 +166,15 @@ const initMap = () => {
   updateMapMarkers()
 }
 
-// Dynamically draws the road route from driver to destination using OSRM
 const drawRoute = async (force = false) => {
   if (!leafletMap) return
-  
   if (!activeDeliveryId.value || !currentPosition.value || !activeTargetLat.value || !activeTargetLng.value) {
-    if (routeLine) {
-      leafletMap.removeLayer(routeLine)
-      routeLine = null
-    }
+    if (routeLine) { leafletMap.removeLayer(routeLine); routeLine = null }
     return
   }
 
   if (!force && lastRoutedPosition) {
-    const distMoved = calculateDistance(
-      currentPosition.value.lat, currentPosition.value.lng,
-      lastRoutedPosition.lat, lastRoutedPosition.lng
-    )
+    const distMoved = calculateDistance(currentPosition.value.lat, currentPosition.value.lng, lastRoutedPosition.lat, lastRoutedPosition.lng)
     if (distMoved < 20) return 
   }
 
@@ -225,19 +193,9 @@ const drawRoute = async (force = false) => {
     const data = await response.json()
 
     if (data.code === 'Ok' && data.routes.length > 0) {
-      if (routeLine) {
-        leafletMap.removeLayer(routeLine)
-      }
-      
+      if (routeLine) leafletMap.removeLayer(routeLine)
       const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]])
-      
-      routeLine = L.polyline(coords, {
-        color: color,
-        weight: 5,
-        opacity: 0.8,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(leafletMap)
+      routeLine = L.polyline(coords, { color: color, weight: 5, opacity: 0.8, lineCap: 'round', lineJoin: 'round' }).addTo(leafletMap)
     } else {
       drawFallbackRoute(color)
     }
@@ -250,18 +208,8 @@ const drawRoute = async (force = false) => {
 const drawFallbackRoute = (color) => {
   if (routeLine) leafletMap.removeLayer(routeLine)
   routeLine = L.polyline(
-    [
-      [currentPosition.value.lat, currentPosition.value.lng],
-      [activeTargetLat.value, activeTargetLng.value]
-    ], 
-    {
-      color: color,
-      weight: 4,
-      dashArray: '10, 10',
-      opacity: 0.8,
-      lineCap: 'round',
-      lineJoin: 'round'
-    }
+    [[currentPosition.value.lat, currentPosition.value.lng], [activeTargetLat.value, activeTargetLng.value]], 
+    { color: color, weight: 4, dashArray: '10, 10', opacity: 0.8, lineCap: 'round', lineJoin: 'round' }
   ).addTo(leafletMap)
 }
 
@@ -282,7 +230,6 @@ const updateMapMarkers = () => {
 
     if (tLat && tLng) {
       const isTarget = activeDeliveryId.value === delivery.id
-      
       let iconColor = 'bg-red-500'
       if (delivery.status === 'remitting') iconColor = 'bg-purple-500'
       if (isTarget) iconColor = 'bg-green-500'
@@ -301,21 +248,17 @@ const updateMapMarkers = () => {
   })
 }
 
-// --- Watchers / Trackers ---
 const startTracking = () => {
   let isFirstLoad = true
-
   watchId = navigator.geolocation.watchPosition(
     (position) => {
       const newPos = { lat: position.coords.latitude, lng: position.coords.longitude }
       currentPosition.value = newPos
-      
       if (!leafletMap) {
         initMap()
       } else if (userMarker) {
         userMarker.setLatLng([newPos.lat, newPos.lng])
         drawRoute(false) 
-        
         if (isFirstLoad && !activeDeliveryId.value) {
           leafletMap.setView([newPos.lat, newPos.lng], 15)
           isFirstLoad = false
@@ -323,24 +266,18 @@ const startTracking = () => {
       }
     },
     (error) => console.error("Tracking error:", error),
-    { 
-      enableHighAccuracy: true, 
-      maximumAge: 10000, 
-      timeout: 5000 
-    }
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
   )
 }
 
 const requestLocation = () => {
   isLoading.value = true
   locationError.value = ''
-  
   if (!navigator.geolocation) {
     locationError.value = "Geolocation is not supported by your browser."
     isLoading.value = false
     return
   }
-
   navigator.geolocation.getCurrentPosition(
     (position) => {
       locationGranted.value = true
@@ -356,17 +293,13 @@ const requestLocation = () => {
   )
 }
 
-// --- API Calls & Dialog Logic ---
-
 const triggerConfirm = (title, description, actionCallback) => {
   alertDialogConfig.value = { title, description, action: actionCallback }
   isAlertDialogOpen.value = true
 }
 
 const executeConfirmAction = () => {
-  if (alertDialogConfig.value.action) {
-    alertDialogConfig.value.action()
-  }
+  if (alertDialogConfig.value.action) alertDialogConfig.value.action()
   isAlertDialogOpen.value = false
 }
 
@@ -384,6 +317,12 @@ const fetchDeliveries = async () => {
 }
 
 const startDelivery = async (id) => {
+  const delivery = deliveries.value.find(d => d.id === id);
+  if (!delivery.is_ready_to_go) {
+      toast.error('Supplier staging process not ready! You cannot depart yet.');
+      return;
+  }
+
   triggerConfirm(
     'Start Delivery Trip',
     'Are you sure you want to start this delivery trip?',
@@ -395,7 +334,7 @@ const startDelivery = async (id) => {
         await fetchDeliveries()
         focusDelivery(id)
       } catch (error) {
-        toast.error('Failed to start delivery')
+        toast.error(error.response?.data?.message || 'Failed to start delivery')
       } finally {
         isProcessing.value = false
       }
@@ -525,7 +464,6 @@ const submitReject = async () => {
   )
 }
 
-// --- Helpers ---
 const focusDelivery = (id) => {
   activeDeliveryId.value = id
   isDrawerOpen.value = true 
@@ -542,10 +480,7 @@ const focusDelivery = (id) => {
 
     if (leafletMap && tLat && tLng) {
       if (currentPosition.value) {
-        const bounds = L.latLngBounds(
-          [currentPosition.value.lat, currentPosition.value.lng],
-          [tLat, tLng]
-        )
+        const bounds = L.latLngBounds([currentPosition.value.lat, currentPosition.value.lng], [tLat, tLng])
         leafletMap.fitBounds(bounds, { padding: [50, 50] })
       } else {
         leafletMap.setView([tLat, tLng], 15)
@@ -569,11 +504,8 @@ const clearActiveDelivery = () => {
   }
 }
 
-const toggleDrawer = () => {
-  isDrawerOpen.value = !isDrawerOpen.value
-}
+const toggleDrawer = () => { isDrawerOpen.value = !isDrawerOpen.value }
 
-// --- File Handlers ---
 const handleProofUpload = (event) => {
   const target = event.target
   if (target.files && target.files[0]) {
@@ -610,9 +542,7 @@ const removeRemittance = () => {
   if (remittanceProofPreview.value) { URL.revokeObjectURL(remittanceProofPreview.value); remittanceProofPreview.value = null }
 }
 
-onMounted(() => {
-  requestLocation()
-})
+onMounted(() => { requestLocation() })
 
 onUnmounted(() => {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId)
@@ -627,9 +557,7 @@ onUnmounted(() => {
       <AlertDialogContent class="bg-gray-900 border-gray-800 text-white shadow-2xl">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-xl font-bold text-gray-100">{{ alertDialogConfig.title }}</AlertDialogTitle>
-          <AlertDialogDescription class="text-gray-400">
-            {{ alertDialogConfig.description }}
-          </AlertDialogDescription>
+          <AlertDialogDescription class="text-gray-400">{{ alertDialogConfig.description }}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="isAlertDialogOpen = false" class="bg-transparent border-gray-700 text-white hover:bg-gray-800 transition-colors">Cancel</AlertDialogCancel>
@@ -671,9 +599,7 @@ onUnmounted(() => {
     <div id="delivery-map" class="absolute inset-0 z-0"></div>
     
     <div v-if="locationGranted" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
-      
       <div class="p-4 md:p-6 pt-24 md:pt-6 flex justify-between items-start w-full">
-        
         <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
           <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2 w-max">
             <div class="relative flex h-2.5 w-2.5 shrink-0">
@@ -701,42 +627,22 @@ onUnmounted(() => {
         </div>
         
         <div class="pointer-events-auto flex flex-col gap-2 items-end">
-          
-          <Button 
-            @click="bypassLocation = !bypassLocation" 
-            size="sm" 
-            :variant="bypassLocation ? 'destructive' : 'outline'" 
-            class="bg-gray-900/90 backdrop-blur-md shadow-xl rounded-full px-3 mb-2 transition-all"
-            :class="bypassLocation ? 'border-red-500 text-white hover:bg-red-600' : 'border-gray-700 text-gray-400 hover:bg-gray-800'"
-          >
+          <Button @click="bypassLocation = !bypassLocation" size="sm" :variant="bypassLocation ? 'destructive' : 'outline'" class="bg-gray-900/90 backdrop-blur-md shadow-xl rounded-full px-3 mb-2 transition-all" :class="bypassLocation ? 'border-red-500 text-white hover:bg-red-600' : 'border-gray-700 text-gray-400 hover:bg-gray-800'">
             <Unlock class="w-4 h-4 mr-1.5" v-if="bypassLocation" />
             <Lock class="w-4 h-4 mr-1.5" v-else />
             {{ bypassLocation ? 'Bypass ON' : 'Bypass OFF' }}
           </Button>
-
-          <Button 
-            @click="toggleDrawer" 
-            size="icon" 
-            variant="outline" 
-            class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full"
-          >
+          <Button @click="toggleDrawer" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full">
             <Menu v-if="!isDrawerOpen" class="w-6 h-6" />
             <X v-else class="w-6 h-6" />
           </Button>
         </div>
       </div>
 
-      <div 
-        class="bg-gray-900/95 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-transform duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] absolute bottom-0 left-0 right-0 z-20 h-[80vh] md:h-[65vh]"
-        :style="{ transform: isDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }"
-      >
+      <div class="bg-gray-900/95 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-transform duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] absolute bottom-0 left-0 right-0 z-20 h-[80vh] md:h-[65vh]" :style="{ transform: isDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }">
         <div class="pt-6 pb-2 px-4 flex justify-between items-center border-b border-gray-800 mx-4 md:mx-6 shrink-0">
-           <h2 class="text-lg font-bold text-white tracking-tight">
-              {{ activeDeliveryId ? 'Delivery Actions' : 'Assigned Routes' }}
-           </h2>
-           <Button variant="ghost" size="icon" @click="isDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8">
-             <X class="w-4 h-4" />
-           </Button>
+           <h2 class="text-lg font-bold text-white tracking-tight">{{ activeDeliveryId ? 'Delivery Actions' : 'Assigned Routes' }}</h2>
+           <Button variant="ghost" size="icon" @click="isDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8"><X class="w-4 h-4" /></Button>
         </div>
 
         <ScrollArea class="flex-1 min-h-0 px-4 md:px-6 py-4 w-full max-w-4xl mx-auto">
@@ -748,12 +654,7 @@ onUnmounted(() => {
               <p class="text-gray-500 text-sm mt-1">No active deliveries assigned at the moment.</p>
             </div>
 
-            <button
-              v-for="delivery in pendingDeliveries"
-              :key="delivery.id"
-              @click="focusDelivery(delivery.id)"
-              class="w-full text-left bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/50 rounded-2xl p-4 transition-all"
-            >
+            <button v-for="delivery in pendingDeliveries" :key="delivery.id" @click="focusDelivery(delivery.id)" class="w-full text-left bg-gray-800/40 border border-gray-700/50 hover:bg-gray-800 hover:border-blue-500/50 rounded-2xl p-4 transition-all">
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
                   <h3 class="font-bold text-gray-100 text-lg truncate">
@@ -770,9 +671,23 @@ onUnmounted(() => {
                   {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned') }}
                 </Badge>
               </div>
+              
+              <!-- Indicator Signal Warning Tag inside the List view -->
+              <div v-if="delivery.status === 'assigned'">
+                 <div v-if="!delivery.is_ready_to_go" class="flex items-center gap-1.5 px-3 py-1 mb-2 bg-amber-900/30 text-amber-400 rounded-md text-[11px] font-bold uppercase w-fit tracking-wider border border-amber-800/50">
+                   <Hourglass class="w-3.5 h-3.5" /> Loading - Wait for Ready Signal
+                 </div>
+                 <div v-else class="flex items-center gap-1.5 px-3 py-1 mb-2 bg-green-900/30 text-green-400 rounded-md text-[11px] font-bold uppercase w-fit tracking-wider border border-green-800/50">
+                   <ShieldAlert class="w-3.5 h-3.5" /> Ready for Departure
+                 </div>
+              </div>
+
               <p class="text-sm text-gray-400 mt-2 flex items-start gap-2">
                 <MapPin class="h-4 w-4 shrink-0 mt-0.5" :class="delivery.status === 'remitting' ? 'text-purple-400' : 'text-gray-500'" /> 
                 <span class="line-clamp-2">{{ delivery.status === 'remitting' ? 'Return collected funds to Supplier Base' : delivery.address }}</span>
+              </p>
+              <p class="text-xs text-gray-500 mt-1 flex items-start gap-2">
+                <Truck class="h-3.5 w-3.5 shrink-0" /> Assigned: {{ delivery.vehicleName }}
               </p>
             </button>
           </div>
@@ -781,9 +696,7 @@ onUnmounted(() => {
             
             <div class="flex justify-between items-start">
                <div>
-                  <h2 class="text-2xl font-black text-white leading-tight">
-                    {{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.customer }}
-                  </h2>
+                  <h2 class="text-2xl font-black text-white leading-tight">{{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.customer }}</h2>
                   <div class="flex items-center gap-2 mt-1">
                     <p class="text-sm text-gray-400 font-mono">{{ activeDelivery.code }}</p>
                     <Badge v-if="activeDelivery.isReplacement" class="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/30">Return Replacement</Badge>
@@ -795,14 +708,32 @@ onUnmounted(() => {
                </Badge>
             </div>
 
+            <!-- Wait vs Ready Alert Blocks Display Area for Active Deliveries -->
+            <div v-if="activeDelivery.status === 'assigned'">
+                <div v-if="!activeDelivery.is_ready_to_go" class="p-3.5 bg-amber-900/30 border border-amber-800/50 rounded-xl text-amber-300 text-sm flex items-start gap-3">
+                  <AlertCircle class="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
+                  <div class="leading-snug">
+                    <span class="font-bold text-amber-500 block mb-0.5">HOLD ON (LOADING STAGE)</span> 
+                    The supplier has not signaled "Ready to Go" yet. Cargo loading may not be finished. Do not depart.
+                  </div>
+                </div>
+                <div v-else class="p-3.5 bg-green-900/30 border border-green-800/50 rounded-xl text-green-300 text-sm flex items-start gap-3">
+                  <CheckCircle2 class="w-5 h-5 shrink-0 mt-0.5 text-green-500" />
+                  <div class="leading-snug">
+                    <span class="font-bold text-green-500 block mb-0.5">APPROVED FOR DEPARTURE</span> 
+                    Cargo payload checked and verified successfully. You are clear to start your delivery.
+                  </div>
+                </div>
+            </div>
+
             <div v-if="activeDelivery.status !== 'remitting'" class="grid grid-cols-2 gap-3">
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
                 <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Info class="h-3 w-3"/> Product Details</p>
                 <p class="text-sm font-medium text-gray-200 truncate" :title="activeDelivery.productName">{{ activeDelivery.productName }}</p>
               </div>
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
-                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Package class="h-3 w-3"/> Total Units</p>
-                <p class="text-sm font-medium text-gray-200">{{ activeDelivery.itemCount }} Items</p>
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Truck class="h-3 w-3"/> Assigned Truck</p>
+                <p class="text-sm font-medium text-gray-200 truncate" :title="activeDelivery.vehicleName">{{ activeDelivery.vehicleName }}</p>
               </div>
             </div>
 
@@ -826,7 +757,14 @@ onUnmounted(() => {
             </div>
 
             <div v-if="activeDelivery.status === 'assigned'" class="pt-4 space-y-3">
-                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-14 text-lg font-semibold shadow-lg shadow-blue-900/20" size="lg">
+                <!-- Enforces Ready signal logic directly on the UI Button interaction -->
+                <Button 
+                    @click="startDelivery(activeDelivery.id)" 
+                    :disabled="isProcessing || !activeDelivery.is_ready_to_go" 
+                    class="w-full text-white rounded-xl h-14 text-lg font-semibold shadow-lg transition-colors" 
+                    :class="activeDelivery.is_ready_to_go ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/20' : 'bg-gray-600 hover:bg-gray-600 opacity-50 cursor-not-allowed'"
+                    size="lg"
+                >
                     <Loader2 v-if="isProcessing && !showRejectForm" class="mr-2 h-5 w-5 animate-spin" />
                     <Navigation v-else class="mr-2 h-5 w-5" /> Start Trip
                 </Button>
@@ -855,7 +793,6 @@ onUnmounted(() => {
             </div>
 
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
-                
                 <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the destination to complete this delivery.</AlertDescription>
@@ -950,7 +887,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Hides default Leaflet UI controls for cleaner overlay */
 :deep(.leaflet-control-container) {
   display: none; 
 }

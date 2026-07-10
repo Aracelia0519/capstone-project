@@ -280,26 +280,31 @@
                 </Button>
               </div>
 
-              <!-- Expanded Variants List -->
               <div v-if="expandedGroups.includes(group.key)" class="mt-3 pt-3 border-t border-slate-200 space-y-2">
                 <div 
                   v-for="variant in group.variants" 
                   :key="variant.id"
-                  class="flex items-center justify-between bg-slate-50 p-2 rounded-lg text-sm"
+                  class="flex flex-col bg-slate-50 p-2 rounded-lg text-sm gap-1"
                 >
-                  <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <span class="font-mono text-xs text-slate-500">{{ variant.size }}</span>
-                    <span class="text-slate-700 truncate">{{ variant.sku_code || 'No SKU' }}</span>
-                    <span v-if="variant.color_code" class="w-3 h-3 rounded-full border border-slate-300 shrink-0" :style="{ backgroundColor: variant.color_code }"></span>
-                    <span class="font-bold text-blue-600 ml-auto">₱{{ formatPrice(variant.price) }}</span>
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <span class="font-mono text-xs text-slate-500">{{ variant.size }}</span>
+                      <span class="text-slate-700 truncate">{{ variant.sku_code || 'No SKU' }}</span>
+                      <span v-if="variant.color_code" class="w-3 h-3 rounded-full border border-slate-300 shrink-0" :style="{ backgroundColor: variant.color_code }"></span>
+                      <span class="font-bold text-blue-600 ml-auto">₱{{ formatPrice(variant.price) }}</span>
+                    </div>
+                    <div class="flex gap-1 ml-2">
+                      <Button variant="ghost" size="icon" class="h-7 w-7" @click="editProduct(variant)">
+                        <Pencil class="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" class="h-7 w-7 text-red-500 hover:text-red-700" @click="deleteProduct(variant.id)">
+                        <Trash2 class="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <div class="flex gap-1 ml-2">
-                    <Button variant="ghost" size="icon" class="h-7 w-7" @click="editProduct(variant)">
-                      <Pencil class="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" class="h-7 w-7 text-red-500 hover:text-red-700" @click="deleteProduct(variant.id)">
-                      <Trash2 class="w-3 h-3" />
-                    </Button>
+                  <div class="text-xs text-slate-500 flex items-center gap-1 pl-1">
+                    <span>Weight:</span>
+                    <span class="font-medium text-slate-700">{{ variant.weight || 10 }} kg</span>
                   </div>
                 </div>
               </div>
@@ -318,7 +323,6 @@
       </div>
     </main>
 
-    <!-- Add/Edit Modal (unchanged) -->
     <Dialog :open="showAddModal" @update:open="closeModal">
       <DialogContent class="sm:max-w-[600px] p-0 gap-0 overflow-hidden max-h-[90vh] flex flex-col">
         <DialogHeader class="p-6 pb-2">
@@ -423,13 +427,13 @@
                 />
               </div>
 
-              <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
+              <div class="grid grid-cols-3 gap-4">
+                <div class="space-y-2 col-span-1">
                   <Label for="sku" class="text-slate-700">SKU Code</Label>
                   <Input id="sku" v-model="newProduct.sku_code" placeholder="Optional" />
                 </div>
 
-                <div class="space-y-2">
+                <div class="space-y-2 col-span-1">
                   <Label for="size" class="text-slate-700">Size <span class="text-red-500">*</span></Label>
                   <Select v-model="newProduct.size">
                     <SelectTrigger id="size" :class="{'border-red-300': !newProduct.size && showValidation}">
@@ -442,6 +446,19 @@
                       <div v-else class="p-2 text-sm text-slate-500">Select category first</div>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div class="space-y-2 col-span-1">
+                  <Label for="weight" class="text-slate-700">Weight (kg) <span class="text-red-500">*</span></Label>
+                  <Input 
+                    id="weight" 
+                    type="number" 
+                    v-model="newProduct.weight" 
+                    placeholder="10" 
+                    min="0" 
+                    step="0.01"
+                    :class="{'border-red-300': !newProduct.weight && showValidation}" 
+                  />
                 </div>
               </div>
 
@@ -570,8 +587,10 @@
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Type</span> <span class="font-medium text-slate-800">{{ newProduct.type }}</span></div>
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Size</span> <span class="font-medium text-slate-800">{{ newProduct.size }}</span></div>
                    
+                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Weight</span> <span class="font-medium text-slate-800">{{ newProduct.weight }} kg</span></div>
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Selling Price</span> <span class="font-bold text-green-600">₱{{ formatPrice(newProduct.price) }}</span></div>
-                   <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Limits (Min/Max)</span> <span class="font-medium text-slate-800">{{ newProduct.min_order || 1 }} - {{ newProduct.max_order || 'No Max' }}</span></div>
+                   
+                   <div class="col-span-2"><span class="text-slate-500 block text-xs uppercase tracking-wide">Limits (Min/Max)</span> <span class="font-medium text-slate-800">{{ newProduct.min_order || 1 }} - {{ newProduct.max_order || 'No Max' }}</span></div>
 
                    <div v-if="newProduct.color_code" class="col-span-2">
                      <span class="text-slate-500 block text-xs uppercase tracking-wide mb-1">Color</span> 
@@ -736,6 +755,7 @@ const newProduct = reactive({
   name: '',
   sku_code: '',
   size: '',
+  weight: '',
   color_code: '',
   price: '',
   min_order: '',
@@ -936,8 +956,6 @@ const updateCategoryCounts = () => {
   });
 };
 
-// ... existing computed: filteredTypes, sizeOptions, showColorField, hasColorCategorySelected, modalTitle ...
-
 // Reuse existing computed
 const filteredTypes = computed(() => {
   return productTypes[newProduct.category] || [];
@@ -1006,7 +1024,7 @@ const clearFilters = () => {
   selectedCategories.value = [];
   selectedType.value = 'all';
   selectedSizes.value = [];
-  selectedColor.value = '';
+  selectedColor = '';
   searchQuery.value = '';
 };
 
@@ -1035,7 +1053,7 @@ const closeModal = (val) => {
 
 const resetForm = () => {
   Object.assign(newProduct, {
-    category: '', type: '', name: '', sku_code: '', size: '', 
+    category: '', type: '', name: '', sku_code: '', size: '', weight: '',
     color_code: '', price: '', min_order: '', max_order: '', description: '', image_url: ''
   });
   imagePreview.value = '';
@@ -1052,6 +1070,7 @@ const addVariant = (product) => {
     name: product.name,
     sku_code: '',
     size: '',
+    weight: '',
     color_code: '',
     price: '',
     min_order: product.min_order || '',
@@ -1077,7 +1096,7 @@ const onCategoryChange = () => {
 const validateStep = () => {
   showValidation.value = true;
   if (currentStep.value === 1) {
-    if (!newProduct.category || !newProduct.type || !newProduct.name || !newProduct.size) return false;
+    if (!newProduct.category || !newProduct.type || !newProduct.name || !newProduct.size || !newProduct.weight) return false;
   }
   if (currentStep.value === 2) {
     if (!newProduct.price || parseFloat(newProduct.price) <= 0) return false;
@@ -1176,6 +1195,10 @@ const handleSubmit = async () => {
 
 const editProduct = (product) => {
   Object.assign(newProduct, product);
+  // Default to 10 if editing old database records that have null weight values
+  if (newProduct.weight === null || newProduct.weight === '') {
+    newProduct.weight = 10;
+  }
   isEditing.value = true;
   isVariant.value = false;
   editingId.value = product.id;
@@ -1245,11 +1268,11 @@ const getCategoryShortName = (cat) => {
 const exportCatalog = () => {
   if (!products.value.length) return toast.warning('No materials to export');
   
-  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Color', 'Selling Price', 'Min Order', 'Max Order', 'Description'];
+  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Weight (kg)', 'Color', 'Selling Price', 'Min Order', 'Max Order', 'Description'];
   const csv = [
     headers.join(','),
     ...products.value.map(p => 
-      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}", "${p.color_code || ''}","${p.price}","${p.min_order || ''}","${p.max_order || ''}","${p.description || ''}"`
+      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}","${p.weight || 10}","${p.color_code || ''}","${p.price}","${p.min_order || ''}","${p.max_order || ''}","${p.description || ''}"`
     )
   ].join('\n');
   
