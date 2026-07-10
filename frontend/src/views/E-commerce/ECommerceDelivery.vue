@@ -40,7 +40,10 @@ import {
   Info,
   Ban,
   Unlock, 
-  Lock    
+  Lock,
+  Hourglass,      // <-- new import
+  ShieldAlert,    // <-- new import
+  AlertCircle     // <-- new import (used in template)
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -68,6 +71,7 @@ interface Delivery {
   total_amount: number
   payment_method: string
   items: DeliveryItem[]
+  is_ready_to_go: boolean   // <-- added
 }
 
 // --- State ---
@@ -413,6 +417,14 @@ const setupWebSocket = () => {
 }
 
 const startDelivery = async (id: number) => {
+  const delivery = deliveries.value.find(d => d.id === id);
+  if (!delivery) return;
+  
+  if (!delivery.is_ready_to_go) {
+    toast.error('Delivery not yet signaled as ready by the distributor.');
+    return;
+  }
+
   isProcessing.value = true
   try {
     await api.post(`/distributor-delivery/${id}/start`)
@@ -733,6 +745,7 @@ onUnmounted(() => {
 
         <ScrollArea class="flex-1 min-h-0 px-4 md:px-6 py-4 w-full max-w-4xl mx-auto">
           
+          <!-- List of pending deliveries -->
           <div v-if="!activeDeliveryId" class="space-y-3 pb-8">
             <div v-if="pendingDeliveries.length === 0" class="text-center py-12">
               <CheckCircle2 class="h-12 w-12 text-emerald-500/50 mx-auto mb-3" />
@@ -748,7 +761,7 @@ onUnmounted(() => {
             >
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
-                  <h3 class="font-bold text-gray-100 text-lg truncate flex items-center gap-2">
+                  <h3 class="font-bold text-gray-100 text-lg flex items-center gap-2">
                     {{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name }}
                     <Badge v-if="delivery.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
                   </h3>
@@ -762,6 +775,17 @@ onUnmounted(() => {
                   {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned') }}
                 </Badge>
               </div>
+
+              <!-- READY STATUS INDICATOR -->
+              <div v-if="delivery.status === 'assigned'">
+                <div v-if="!delivery.is_ready_to_go" class="flex items-center gap-1.5 px-3 py-1 mb-2 bg-amber-900/30 text-amber-400 rounded-md text-[11px] font-bold uppercase w-fit tracking-wider border border-amber-800/50">
+                  <Hourglass class="w-3.5 h-3.5" /> Awaiting Ready Signal
+                </div>
+                <div v-else class="flex items-center gap-1.5 px-3 py-1 mb-2 bg-green-900/30 text-green-400 rounded-md text-[11px] font-bold uppercase w-fit tracking-wider border border-green-800/50">
+                  <ShieldAlert class="w-3.5 h-3.5" /> Ready for Departure
+                </div>
+              </div>
+
               <p class="text-sm text-gray-400 mt-2 flex items-start gap-2">
                 <MapPin class="h-4 w-4 shrink-0 mt-0.5" :class="delivery.status === 'remitting' ? 'text-purple-400' : 'text-gray-500'" /> 
                 <span class="line-clamp-2">{{ delivery.status === 'remitting' ? 'Return collected funds to Distributor Base' : delivery.delivery_address }}</span>
@@ -769,6 +793,7 @@ onUnmounted(() => {
             </button>
           </div>
 
+          <!-- Active delivery panel -->
           <div v-else-if="activeDelivery" class="space-y-5 pb-8">
             
             <div class="flex justify-between items-start">
@@ -817,10 +842,33 @@ onUnmounted(() => {
                </div>
             </div>
 
+            <!-- Assigned delivery actions (Start / Reject) -->
             <div v-if="activeDelivery.status === 'assigned'" class="pt-4 space-y-3">
-                <Button @click="startDelivery(activeDelivery.id)" :disabled="isProcessing" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-14 text-lg font-semibold shadow-lg shadow-emerald-900/20" size="lg">
-                    <Loader2 v-if="isProcessing && !showRejectForm" class="mr-2 h-5 w-5 animate-spin" />
-                    <Navigation v-else class="mr-2 h-5 w-5" /> Start Trip
+                <!-- Waiting vs Ready status -->
+                <div v-if="!activeDelivery.is_ready_to_go" class="p-3 bg-amber-900/30 border border-amber-800/50 rounded-xl text-amber-300 text-sm flex items-start gap-3">
+                  <AlertCircle class="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
+                  <div class="leading-snug">
+                    <span class="font-bold text-amber-500 block mb-0.5">HOLD ON</span>
+                    The distributor has not signaled "Ready to Go" yet. Do not depart.
+                  </div>
+                </div>
+                <div v-else class="p-3 bg-green-900/30 border border-green-800/50 rounded-xl text-green-300 text-sm flex items-start gap-3">
+                  <CheckCircle2 class="w-5 h-5 shrink-0 mt-0.5 text-green-500" />
+                  <div class="leading-snug">
+                    <span class="font-bold text-green-500 block mb-0.5">APPROVED FOR DEPARTURE</span>
+                    You are cleared to start the delivery.
+                  </div>
+                </div>
+
+                <Button 
+                  @click="startDelivery(activeDelivery.id)" 
+                  :disabled="isProcessing || !activeDelivery.is_ready_to_go" 
+                  class="w-full text-white rounded-xl h-14 text-lg font-semibold shadow-lg transition-colors" 
+                  :class="activeDelivery.is_ready_to_go ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20' : 'bg-gray-600 hover:bg-gray-600 opacity-50 cursor-not-allowed'"
+                  size="lg"
+                >
+                  <Loader2 v-if="isProcessing && !showRejectForm" class="mr-2 h-5 w-5 animate-spin" />
+                  <Navigation v-else class="mr-2 h-5 w-5" /> Start Trip
                 </Button>
 
                 <div v-if="!showRejectForm">
@@ -846,6 +894,7 @@ onUnmounted(() => {
                 </div>
             </div>
 
+            <!-- In-transit actions (arrive) -->
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
                 
                 <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
@@ -899,6 +948,7 @@ onUnmounted(() => {
                 </Button>
             </div>
 
+            <!-- Remitting actions -->
             <div v-if="activeDelivery.status === 'remitting'" class="space-y-5 pt-2">
                 <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
                    <AlertTriangle class="h-5 w-5" />

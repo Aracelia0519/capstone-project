@@ -12,7 +12,7 @@ use App\Models\HR\Employee;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Events\Ecommerce\DeliveryUpdated; 
-use App\Events\Ecommerce\OrderUpdated; // <--- EVENT IMPORTED
+use App\Events\Ecommerce\OrderUpdated;
 
 class ECommerceDeliveryController extends Controller
 {
@@ -52,6 +52,7 @@ class ECommerceDeliveryController extends Controller
                 $paymentMethod = 'N/A';
                 $items = collect();
                 $orderType = 'client';
+                $isReadyToGo = (bool)$delivery->is_ready_to_go;
 
                 if ($delivery->order_id) {
                     $order = ClientOrder::with(['client.clientRequirement.address', 'items.product'])->find($delivery->order_id);
@@ -124,7 +125,8 @@ class ECommerceDeliveryController extends Controller
                     'distributor_lng' => $distLng,
                     'total_amount' => $totalAmount,
                     'payment_method' => $paymentMethod,
-                    'items' => $items
+                    'items' => $items,
+                    'is_ready_to_go' => $isReadyToGo,
                 ];
             });
 
@@ -140,16 +142,20 @@ class ECommerceDeliveryController extends Controller
     {
         $delivery = ECOrderDelivery::findOrFail($id);
         
+        if (!$delivery->is_ready_to_go) {
+            return response()->json(['message' => 'Delivery not yet signaled as ready to go by the distributor.'], 400);
+        }
+
         $delivery->update(['status' => 'in_transit']);
         
         if ($delivery->order_id) {
             DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'shipped']);
             $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
-            if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
+            if ($cOrder) event(new OrderUpdated($cOrder->client_id, null));
         } elseif ($delivery->sp_order_id) {
             DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'shipped']);
             $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
-            if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
+            if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id));
         }
 
         $user = $request->user();
@@ -240,11 +246,11 @@ class ECommerceDeliveryController extends Controller
             if ($delivery->order_id) {
                 DB::table('client_orders')->where('id', $delivery->order_id)->update(['status' => 'delivered']);
                 $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
-                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
+                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null));
             } elseif ($delivery->sp_order_id) {
                 DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update(['status' => 'delivered']);
                 $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
-                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
+                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id));
             }
 
             DB::commit();
@@ -398,14 +404,14 @@ class ECommerceDeliveryController extends Controller
                     'rejection_reason' => $reasonString
                 ]);
                 $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
-                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null)); // Notify Client
+                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null));
             } elseif ($delivery->sp_order_id) {
                 DB::table('sp_orders')->where('id', $delivery->sp_order_id)->update([
                     'status' => 'confirmed',
                     'rejection_reason' => $reasonString
                 ]);
                 $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
-                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id)); // Notify SP
+                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id));
             }
 
             $delivery->delete();

@@ -905,6 +905,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vehicles', [\App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'store']);
         Route::delete('/vehicles/{id}', [\App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'destroy']);
         Route::post('/vehicles/update/{id}', [App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'update']);
+        Route::post('/prepare-orders/{deliveryId}/ready', [App\Http\Controllers\Api\OperationDistributor\ECPrepareOrderController::class, 'markReady']);
 
     });
 
