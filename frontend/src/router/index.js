@@ -117,7 +117,8 @@ import ECPrepareOrder from '@/views/E-commerce/ECPrepareOrder.vue'
 import ECMessages from '@/views/E-commerce/ECMessages.vue'
 import ECPromoApproval from '@/views/E-commerce/ECPromoApproval.vue'
 import ECSupplierProducts from '@/views/E-commerce/ECSupplierProducts.vue'
-import DistributorSupplierProducts from '@/views/distributor/DistributorSupplierProducts.vue' // ADD THIS
+import DistributorSupplierProducts from '@/views/distributor/DistributorSupplierProducts.vue' 
+import ECVehicles from '@/views/E-commerce/ECVehicles.vue'
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
@@ -151,7 +152,7 @@ import AddPersonnel from '@/views/supplier/AddPersonnel.vue'
 import RoleActivation from '@/views/supplier/RoleActivation.vue'
 import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
 import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
-
+import SupplierVehicles from '@/views/supplier/SupplierVehicles.vue'
 
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
@@ -476,6 +477,11 @@ const routes = [
         path: 'ECPromoApproval',
         name: 'rbac_ECPromoApproval',
         component: ECPromoApproval
+      },
+      {
+        path: 'ECVehicles', 
+        name: 'rbac_ECVehicles',
+        component: ECVehicles
       }, 
       {
         path: 'PartnerSuppliers/:id/Products',
@@ -1043,6 +1049,11 @@ const routes = [
         component: ECPromoApproval
       },
       {
+        path: 'ECVehicles', 
+        name: 'ECVehicles',
+        component: ECVehicles
+      },
+      {
         path: 'PartnerSuppliers/:id/Products',
         name: 'ECSupplierProducts',
         component: ECSupplierProducts
@@ -1118,6 +1129,11 @@ const routes = [
         path: 'SupplierReturns',
         name: 'SupplierReturns',
         component: SupplierReturns
+      },
+      {
+        path: 'SupplierVehicles', 
+        name: 'SupplierVehicles',
+        component: SupplierVehicles
       }, 
     ]
   },

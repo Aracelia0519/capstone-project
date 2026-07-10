@@ -771,6 +771,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/role-activation', [\App\Http\Controllers\Api\PersonnelOfficer\RoleActivationController::class, 'index']);
             Route::post('/role-activation/{id}/activate', [\App\Http\Controllers\Api\PersonnelOfficer\RoleActivationController::class, 'activate']);
         });
+
+        Route::get('/vehicles', [App\Http\Controllers\Api\Supplier\SupplierVehiclesController::class, 'index']);
+        Route::post('/vehicles', [App\Http\Controllers\Api\Supplier\SupplierVehiclesController::class, 'store']);
+        Route::delete('/vehicles/{id}', [App\Http\Controllers\Api\Supplier\SupplierVehiclesController::class, 'destroy']);
+        Route::post('/vehicles/update/{id}', [App\Http\Controllers\Api\Supplier\SupplierVehiclesController::class, 'update']);
     });
 
     // Delivery Personnel Routing
@@ -894,6 +899,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECommerceReportController::class, 'getDashboardData']);
         });
 
+        Route::get('/vehicles', [\App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'index']);
+        Route::post('/vehicles', [\App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'store']);
+        Route::delete('/vehicles/{id}', [\App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'destroy']);
+        Route::post('/vehicles/update/{id}', [App\Http\Controllers\Api\OperationDistributor\ECVehiclesController::class, 'update']);
+
     });
 
     Route::prefix('crm')->group(function () {
@@ -907,5 +917,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/approve', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'approve']);
         Route::post('/{id}/reject', [App\Http\Controllers\Api\CRM\PromotionApprovalController::class, 'reject']);
     });
+    
     
 });

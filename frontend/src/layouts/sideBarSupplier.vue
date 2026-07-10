@@ -135,7 +135,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Truck, Factory,
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
   Loader2, ScrollText, Container, Handshake, ClipboardList, 
-  PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw  
+  PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw, Car  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -214,6 +214,13 @@ const navigation = [
         badge: 'pending',
         badgeColor: 'bg-purple-500/20 text-purple-300',
         requiresVerify: true
+      },
+      { 
+        name: 'Vehicles', 
+        path: '/supplier/SupplierVehicles', 
+        icon: Car,
+        color: 'text-amber-400', 
+        requiresVerify: true 
       }
     ]
   },
