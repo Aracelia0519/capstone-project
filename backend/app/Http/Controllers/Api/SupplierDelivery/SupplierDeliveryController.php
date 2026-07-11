@@ -52,16 +52,32 @@ class SupplierDeliveryController extends Controller
                 $latitude = null;
                 $longitude = null;
                 $fullAddress = $req->delivery_address ?? 'Unknown Address';
+                $distCompanyName = 'Unknown Distributor';
 
                 if ($req && $req->distributor_id) {
                     $distReq = DB::table('distributor_requirements')->where('user_id', $req->distributor_id)->first();
                     if ($distReq) {
+                        $distCompanyName = $distReq->company_name ?? 'Unknown Distributor';
                         $address = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
                         if ($address) {
                             $latitude = $address->latitude;
                             $longitude = $address->longitude;
                             $fullAddress = "{$address->block_address}, {$address->barangay}, {$address->city}, {$address->province}";
                         }
+                    }
+                }
+
+                // Fetch Requester (Operational Distributor) Details
+                $requesterName = 'Unknown';
+                $requesterPhone = 'N/A';
+                $requesterEmail = 'N/A';
+                
+                if ($req && $req->requester_id) {
+                    $requesterUser = DB::table('users')->where('id', $req->requester_id)->first();
+                    if ($requesterUser) {
+                        $requesterName = trim($requesterUser->first_name . ' ' . $requesterUser->last_name);
+                        $requesterPhone = $requesterUser->phone ?? 'N/A';
+                        $requesterEmail = $requesterUser->email ?? 'N/A';
                     }
                 }
 
@@ -89,7 +105,10 @@ class SupplierDeliveryController extends Controller
                 return [
                     'id' => $d->id,
                     'code' => $req ? $req->request_code : 'Unknown',
-                    'customer' => $req && $req->distributor ? $req->distributor->full_name : 'Unknown',
+                    'customer' => $distCompanyName, // Swapped to Business Name
+                    'requesterName' => $requesterName, // Added
+                    'requesterPhone' => $requesterPhone, // Added
+                    'requesterEmail' => $requesterEmail, // Added
                     'address' => $fullAddress,
                     'latitude' => $latitude,
                     'longitude' => $longitude,

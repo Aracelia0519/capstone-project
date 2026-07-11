@@ -46,6 +46,7 @@ class ECommerceDeliveryController extends Controller
                 $lng = null;
                 $clientName = 'Unknown';
                 $clientPhone = 'N/A';
+                $clientEmail = 'N/A';
                 $fullAddress = 'No Address Provided';
                 $orderNumber = 'N/A';
                 $totalAmount = 0;
@@ -61,6 +62,7 @@ class ECommerceDeliveryController extends Controller
                         $orderNumber = $order->order_number;
                         $clientName = $order->client->full_name ?? 'Unknown Client';
                         $clientPhone = $order->client->phone ?? 'N/A';
+                        $clientEmail = $order->client->email ?? 'N/A';
                         $fullAddress = $order->delivery_address;
                         $totalAmount = $order->grand_total;
                         $paymentMethod = $order->payment_method;
@@ -90,6 +92,7 @@ class ECommerceDeliveryController extends Controller
                         $spUser = DB::table('users')->where('id', $order->service_provider_id)->first();
                         $clientName = $spUser ? ($spUser->first_name . ' ' . $spUser->last_name) : 'Unknown Provider';
                         $clientPhone = $spUser->phone ?? 'N/A';
+                        $clientEmail = $spUser->email ?? 'N/A';
 
                         $items = $order->items->map(function ($item) {
                             return [
@@ -118,6 +121,7 @@ class ECommerceDeliveryController extends Controller
                     'status' => $delivery->status,
                     'client_name' => $clientName,
                     'client_phone' => $clientPhone,
+                    'client_email' => $clientEmail,
                     'delivery_address' => $fullAddress,
                     'target_lat' => $lat,
                     'target_lng' => $lng,

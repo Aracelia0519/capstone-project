@@ -41,9 +41,10 @@ import {
   Ban,
   Unlock, 
   Lock,
-  Hourglass,      // <-- new import
-  ShieldAlert,    // <-- new import
-  AlertCircle     // <-- new import (used in template)
+  Hourglass,
+  ShieldAlert,
+  AlertCircle,
+  Mail // <-- new import added
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -63,6 +64,7 @@ interface Delivery {
   status: string
   client_name: string
   client_phone: string
+  client_email: string // <-- added
   delivery_address: string
   target_lat: number | null
   target_lng: number | null
@@ -71,7 +73,7 @@ interface Delivery {
   total_amount: number
   payment_method: string
   items: DeliveryItem[]
-  is_ready_to_go: boolean   // <-- added
+  is_ready_to_go: boolean
 }
 
 // --- State ---
@@ -812,12 +814,17 @@ onUnmounted(() => {
                </Badge>
             </div>
 
+            <!-- Recipient Personal Information Grid -->
             <div v-if="activeDelivery.status !== 'remitting'" class="grid grid-cols-2 gap-3">
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
                 <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone class="h-3 w-3"/> Contact</p>
-                <p class="text-sm font-medium text-gray-200">{{ activeDelivery.client_phone }}</p>
+                <p class="text-sm font-medium text-gray-200 truncate">{{ activeDelivery.client_phone }}</p>
               </div>
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Mail class="h-3 w-3"/> Email</p>
+                <p class="text-sm font-medium text-gray-200 truncate" :title="activeDelivery.client_email">{{ activeDelivery.client_email }}</p>
+              </div>
+              <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50 col-span-2">
                 <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Package class="h-3 w-3"/> Items</p>
                 <p class="text-sm font-medium text-gray-200">{{ activeDelivery.items?.length || 0 }} Package(s)</p>
               </div>

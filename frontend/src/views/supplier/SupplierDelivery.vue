@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
 import { 
   MapPin, AlertTriangle, Navigation, CheckCircle2, Truck, Package, 
   X, Loader2, Banknote, UploadCloud, Menu, Info, Ban, Unlock, Lock,
-  Hourglass, ShieldAlert
+  Hourglass, ShieldAlert, User, Phone, Mail
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -727,8 +727,20 @@ onUnmounted(() => {
             </div>
 
             <div v-if="activeDelivery.status !== 'remitting'" class="grid grid-cols-2 gap-3">
+              <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50 col-span-2">
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><User class="h-3 w-3"/> Requested By (Op. Distributor)</p>
+                <p class="text-sm font-medium text-gray-200 truncate">{{ activeDelivery.requesterName }}</p>
+              </div>
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
-                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Info class="h-3 w-3"/> Product Details</p>
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone class="h-3 w-3"/> Contact</p>
+                <p class="text-sm font-medium text-gray-200 truncate">{{ activeDelivery.requesterPhone }}</p>
+              </div>
+              <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Mail class="h-3 w-3"/> Email</p>
+                <p class="text-sm font-medium text-gray-200 truncate" :title="activeDelivery.requesterEmail">{{ activeDelivery.requesterEmail }}</p>
+              </div>
+              <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
+                <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Info class="h-3 w-3"/> Product</p>
                 <p class="text-sm font-medium text-gray-200 truncate" :title="activeDelivery.productName">{{ activeDelivery.productName }}</p>
               </div>
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
