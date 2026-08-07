@@ -120,7 +120,7 @@ import { ref, onMounted, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, Box, Package, Palette, Wrench, 
-  FileText, ShieldCheck, Settings, LogOut, Loader2, ClipboardList
+  FileText, ShieldCheck, Settings, LogOut, Loader2, ClipboardList, AlertTriangle
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -147,22 +147,14 @@ const navigation = [
     items: [
       { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, color: 'text-blue-400', badge: 'Live' },
       { name: 'User Management', path: '/admin/UserManagement', icon: Users, color: 'text-indigo-400', badge: '4' },
-      { name: 'Paint Products', path: '/admin/PaintProducts', icon: Box, color: 'text-emerald-400' },
-      { name: 'Inventory', path: '/admin/Inventory', icon: Package, color: 'text-amber-400', badge: '12' }
-    ]
-  },
-  {
-    title: 'Customization',
-    items: [
-      { name: 'Color Config', path: '/admin/ColorCustomization', icon: Palette, color: 'text-purple-400', badge: 'New' },
-      { name: 'Service Requests', path: '/admin/ServiceRequest', icon: Wrench, color: 'text-teal-400' }
     ]
   },
   {
     title: 'System',
     items: [
       { name: 'Reports', path: '/admin/Reports', icon: FileText, color: 'text-pink-400' },
-      { name: 'Audit Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' }
+      { name: 'User Reports', path: '/admin/UserReports', icon: AlertTriangle, color: 'text-red-400' },
+      { name: 'Audit Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' },
     ]
   }
 ]

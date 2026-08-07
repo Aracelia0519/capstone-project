@@ -142,10 +142,18 @@
             <div class="mb-6">
                <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-tight mb-2">{{ selectedService.title }}</h1>
                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
-                 <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                    <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
-                    <span class="font-bold">{{ selectedService.provider_name }}</span>
+                 
+                 <!-- NEW: Adjusted Flex Layout to accommodate the 'View Profile' button -->
+                 <div class="flex flex-wrap items-center gap-3">
+                   <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                      <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
+                      <span class="font-bold">{{ selectedService.provider_name }}</span>
+                   </div>
+                   <Button @click="router.push(`/ECommerceClient/ProviderProfile/${selectedService.provider_id}`)" variant="outline" size="sm" class="h-8 text-xs font-bold text-blue-600 border-blue-200 hover:bg-blue-50 bg-white">
+                      View Profile
+                   </Button>
                  </div>
+
                  <div class="flex items-center bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 text-amber-600">
                     <Star class="w-4 h-4 fill-amber-500 mr-1" />
                     <span class="font-bold">{{ selectedService.average_rating > 0 ? selectedService.average_rating.toFixed(1) : 'New' }}</span>
@@ -180,6 +188,22 @@
             </h3>
 
             <div class="space-y-5">
+              
+              <div v-if="selectedService.price_type === 'Per Sqm'" class="bg-blue-50/40 p-4 rounded-xl border border-blue-100">
+                <Label class="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">Area Size (Square Meters)</Label>
+                <Input 
+                  v-model="bookingForm.sqm" 
+                  type="number" 
+                  min="1"
+                  placeholder="e.g. 50" 
+                  class="border-blue-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl shadow-sm h-11 bg-white mb-2"
+                />
+                <div class="flex justify-between items-center text-sm">
+                  <span class="font-medium text-gray-600">Calculated Estimate:</span>
+                  <span class="font-black text-blue-600 text-base">₱{{ formatCurrency(calculatedTotal) }}</span>
+                </div>
+              </div>
+
               <div>
                 <Label class="text-xs font-bold text-gray-700 uppercase tracking-wider block mb-2">Project Details</Label>
                 <Textarea 
@@ -342,6 +366,14 @@
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
               Are you sure you want to book <strong class="text-gray-800">{{ selectedService?.title }}</strong> for <strong class="text-gray-800">{{ formatDate(bookingForm.preferred_date) }} ({{ bookingForm.time_preference }})</strong>?
+              
+              <div v-if="selectedService?.price_type === 'Per Sqm' && bookingForm.sqm" class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <span class="block text-sm text-gray-600 mb-1">Estimated Project Total:</span>
+                <span class="font-bold text-blue-600 text-lg flex items-center justify-between">
+                    ₱{{ formatCurrency(calculatedTotal) }}
+                    <span class="text-xs text-gray-500 font-medium">({{ bookingForm.sqm }} sqm)</span>
+                </span>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
@@ -478,7 +510,8 @@ const bookingForm = ref({
   description: '',
   preferred_date: '',
   time_preference: '',
-  contact_number: ''
+  contact_number: '',
+  sqm: null // NEW: Square Meter Field
 })
 
 // Current Date for input min
@@ -486,6 +519,17 @@ const minDate = computed(() => {
   const today = new Date()
   today.setDate(today.getDate() + 1)
   return today.toISOString().split('T')[0]
+})
+
+// NEW: Dynamically compute total cost based on the Price Type
+const calculatedTotal = computed(() => {
+  if (!selectedService.value) return 0;
+  
+  if (selectedService.value.price_type === 'Per Sqm') {
+    return (bookingForm.value.sqm || 0) * selectedService.value.price;
+  }
+  
+  return selectedService.value.price;
 })
 
 // FIX: Robust Dynamic Image URL Generator
@@ -604,6 +648,12 @@ const confirmSubmission = () => {
      return;
   }
 
+  // Validate SQM if it's a Per SQM service
+  if (selectedService.value.price_type === 'Per Sqm' && (!bookingForm.value.sqm || bookingForm.value.sqm <= 0)) {
+     toast.error('Missing Information', { description: 'Please provide the estimated area size in square meters.' })
+     return
+  }
+
   if (!bookingForm.value.description || !bookingForm.value.preferred_date || !bookingForm.value.time_preference || !bookingForm.value.contact_number) {
     toast.error('Missing Information', { description: 'Please fill in all required fields.' })
     return
@@ -628,6 +678,7 @@ const submitServiceRequest = async () => {
     isSubmitting.value = true
     showConfirmDialog.value = false // Hide dialog immediately after confirming
     
+    // UPDATED PAYLOAD: Append the SQM and Calculated Total
     const payload = {
       service_offering_id: selectedService.value.id,
       provider_id: selectedService.value.provider_id,
@@ -635,7 +686,9 @@ const submitServiceRequest = async () => {
       preferred_date: bookingForm.value.preferred_date,
       time_preference: bookingForm.value.time_preference,
       contact_number: bookingForm.value.contact_number,
-      address: addressMode.value === 'custom' ? customAddress.value : 'default'
+      address: addressMode.value === 'custom' ? customAddress.value : 'default',
+      sqm: selectedService.value.price_type === 'Per Sqm' ? bookingForm.value.sqm : null,
+      calculated_total: selectedService.value.price_type === 'Per Sqm' ? calculatedTotal.value : null
     }
 
     const response = await api.post('/client/services/request', payload)
@@ -646,7 +699,7 @@ const submitServiceRequest = async () => {
       })
       
       // Reset form
-      bookingForm.value = { description: '', preferred_date: '', time_preference: '', contact_number: '' }
+      bookingForm.value = { description: '', preferred_date: '', time_preference: '', contact_number: '', sqm: null }
       
       // Redirect to bookings
       setTimeout(() => {

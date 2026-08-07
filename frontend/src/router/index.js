@@ -53,6 +53,7 @@ import SpCart from '@/views/serviceProvider/SpCart.vue'
 import SpProductDetails from '@/views/serviceProvider/SpProductDetails.vue'
 import SpInventory from '@/views/serviceProvider/SpInventory.vue'
 import SpDistributorProducts from '@/views/serviceProvider/SpDistributorProducts.vue'
+import PortfolioSetup from '@/views/serviceProvider/PortfolioSetup.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -129,6 +130,7 @@ import ClientECommerceOrders from '@/views/ClientE-Commerce/ECommerceOrders.vue'
 import ECommerceProfile from '@/views/ClientE-Commerce/ECommerceProfile.vue'
 import ServiceDetails from '@/views/ClientE-Commerce/ServiceDetails.vue'
 import ProductDetails from '@/views/ClientE-Commerce/ProductDetails.vue'
+import ProviderProfile from '@/views/ClientE-Commerce/ProviderProfile.vue'
 
 import EmployeeLayout from '@/layouts/EmployeeLayout.vue'
 import DashboardEmployee from '@/views/Employees/DashboardEmployee.vue'
@@ -732,6 +734,11 @@ const routes = [
         name: 'SPCRM',
         component: SPCRM
       },
+      {
+        path: 'PortfolioSetup',
+        name: 'PortfolioSetup',
+        component: PortfolioSetup
+      },
       { path: 'shop/:distributor_id', name: 'sp_shop', component: SpShop },
       { path: 'cart', name: 'sp_cart', component: SpCart },
       { path: 'ProductDetails/:id', name: 'sp_product_details', component: SpProductDetails },
@@ -1182,6 +1189,11 @@ const routes = [
         path: 'ProductDetails/:id', 
         name: 'ProductDetails',
         component: ProductDetails
+      },
+      {
+        path: 'ProviderProfile/:id', 
+        name: 'ProviderProfile',
+        component: ProviderProfile
       },
     ]
   },

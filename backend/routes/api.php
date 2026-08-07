@@ -49,6 +49,9 @@ Route::prefix('client/services')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\EcommerceClient\ClientServiceController::class, 'getServices']);
 });
 
+//Public route to fetch the provider portfolio
+Route::get('/client/provider-profile/{id}', [\App\Http\Controllers\Api\EcommerceClient\ProviderProfileController::class, 'show']);
+
 // Public E-Commerce Client Routes - Orders (Allows Guests to fetch safely)
 Route::get('/client/orders', [ECommerceOrderController::class, 'index']);
 
@@ -100,6 +103,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
+
+        // --- NEW: FETCH INTERACTED SERVICE PROVIDERS ---
+        Route::get('/interacted-providers', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'index']);
 
         // --- NEW CLIENT SUPPORT CHAT ROUTES ---
         Route::get('/support/messages', [\App\Http\Controllers\Api\SupportController::class, 'getClientMessages']);
@@ -223,6 +229,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'getSupportMessages']);
         Route::post('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'sendSupportMessage']);
+
+        Route::get('/portfolio', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderPortfolioController::class, 'show']);
+        Route::post('/portfolio', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderPortfolioController::class, 'store']);
 
         Route::prefix('orders')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SpOrderController::class, 'index']);

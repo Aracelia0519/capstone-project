@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router' // NEW: Added router for navigation
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import { 
@@ -10,7 +11,8 @@ import {
   Clock, 
   Briefcase,
   PaintRoller,
-  UploadCloud
+  UploadCloud,
+  Images // NEW: Added icon for portfolio
 } from 'lucide-vue-next'
 
 // Shadcn UI Components
@@ -47,6 +49,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 // --- State ---
+const router = useRouter() // NEW: Initialize router
 const services = ref([])
 const isLoading = ref(true)
 const isSubmitting = ref(false)
@@ -262,6 +265,11 @@ const proceedToggle = async () => {
   }
   toggleAlert.value.isOpen = false
 }
+
+// NEW: Navigate to Portfolio Setup
+const goToPortfolio = () => {
+  router.push('/ServiceProvider/PortfolioSetup') // Make sure this path exists in your Vue Router
+}
 </script>
 
 <template>
@@ -276,10 +284,18 @@ const proceedToggle = async () => {
         <p class="text-gray-400 mt-2 font-medium">Manage and publish the painting services you offer to clients.</p>
       </div>
       
-      <Button @click="openAddModal" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5">
-        <Plus class="w-5 h-5 mr-2" />
-        Post New Service
-      </Button>
+      <!-- NEW: Added flex container and Set-up Portfolio Button -->
+      <div class="flex flex-wrap items-center gap-3">
+        <Button @click="goToPortfolio" variant="outline" class="border-blue-500/50 bg-gray-900 text-blue-400 hover:bg-blue-600 hover:border-blue-600 hover:text-white font-bold px-6 py-6 rounded-xl shadow-lg transition-all hover:-translate-y-0.5">
+          <Images class="w-5 h-5 mr-2" />
+          Set-up Portfolio
+        </Button>
+
+        <Button @click="openAddModal" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-6 rounded-xl shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5">
+          <Plus class="w-5 h-5 mr-2" />
+          Post New Service
+        </Button>
+      </div>
     </div>
 
     <div v-if="isLoading" class="flex justify-center items-center py-20">

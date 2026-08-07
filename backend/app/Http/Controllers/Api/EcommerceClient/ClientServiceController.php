@@ -103,6 +103,7 @@ class ClientServiceController extends Controller
 
     public function requestService(Request $request)
     {
+        // Added validation rules for SQM and Calculated Total
         $validated = $request->validate([
             'service_offering_id' => 'required|exists:service_offerings,id',
             'provider_id' => 'required|exists:users,id',
@@ -111,6 +112,8 @@ class ClientServiceController extends Controller
             'time_preference' => 'required|string',
             'contact_number' => ['required', 'string', 'regex:/^0[0-9]{10}$/'],
             'address' => 'required|string',
+            'sqm' => 'nullable|numeric|min:1',
+            'calculated_total' => 'nullable|numeric'
         ], [
             'contact_number.regex' => 'The contact number must be exactly 11 digits and start with 0.'
         ]);
@@ -161,11 +164,18 @@ class ClientServiceController extends Controller
             }
         }
 
+        // NEW: Compile the SQM and Total Estimated price into the description. 
+        // This solves the database constraint issue while fully answering the client's calculations.
+        $finalDescription = $validated['description'];
+        if (!empty($validated['sqm']) && !empty($validated['calculated_total'])) {
+            $finalDescription .= "\n\n--- Service Details ---\nArea Size: " . $validated['sqm'] . " sqm\nEstimated Total Price: ₱" . number_format($validated['calculated_total'], 2);
+        }
+
         $serviceRequest = ClientServiceRequest::create([
             'client_id' => $userId,
             'service_offering_id' => $validated['service_offering_id'],
             'provider_id' => $validated['provider_id'],
-            'description' => $validated['description'],
+            'description' => $finalDescription,
             'preferred_date' => $validated['preferred_date'],
             'time_preference' => $validated['time_preference'],
             'contact_number' => $validated['contact_number'],
