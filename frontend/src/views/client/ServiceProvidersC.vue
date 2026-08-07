@@ -140,21 +140,36 @@
               </div>
             </div>
             
-            <Button 
-              variant="ghost" 
-              size="icon"
-              @click="toggleFavorite(provider.id)"
-              class="h-9 w-9 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 hover:text-amber-400 transition-colors group/fav"
-            >
-              <svg 
-                :class="['w-5 h-5', provider.favorite ? 'text-amber-400 fill-amber-400' : 'text-gray-400 group-hover/fav:text-amber-400']" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+            <div class="flex flex-col gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                @click="toggleFavorite(provider.id)"
+                class="h-9 w-9 rounded-lg bg-slate-700/50 hover:bg-slate-600/50 hover:text-amber-400 transition-colors group/fav"
+                title="Save Provider"
               >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </Button>
+                <svg 
+                  :class="['w-5 h-5', provider.favorite ? 'text-amber-400 fill-amber-400' : 'text-gray-400 group-hover/fav:text-amber-400']" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+              </Button>
+              
+              <!-- REPORT BUTTON -->
+              <Button 
+                variant="ghost" 
+                size="icon"
+                @click="openReportModal(provider)"
+                class="h-9 w-9 rounded-lg bg-slate-700/50 hover:bg-red-900/50 hover:text-red-400 text-gray-400 transition-colors"
+                title="Report Provider"
+              >
+                <Flag class="w-4 h-4" />
+              </Button>
+            </div>
+
           </div>
 
           <div class="space-y-3 mb-4">
@@ -289,7 +304,7 @@
           </svg>
         </div>
         <h3 class="text-2xl font-bold text-gray-400 mb-3">No Service Providers Found</h3>
-        <p class="text-gray-500 mb-6">You haven't interacted with any service providers yet, or none match your search.</p>
+        <p class="text-gray-500 mb-6">You haven't interacted with any service providers yet, or none match your search/filter.</p>
         <Button 
           @click="resetFilters"
           class="px-6 py-6 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-lg hover:from-teal-600 hover:to-emerald-700 transition-all duration-300 font-medium inline-flex items-center gap-2 border-0"
@@ -301,6 +316,82 @@
         </Button>
       </div>
     </template>
+
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="isReportModalOpen = $event">
+      <DialogContent class="sm:max-w-md bg-slate-900 border-slate-800 text-white rounded-2xl shadow-2xl">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-500">
+            <Flag class="w-5 h-5" /> Report Provider
+          </DialogTitle>
+          <DialogDescription class="text-gray-400">
+            Submit a formal report regarding <span class="text-white font-bold">{{ selectedProviderForReport?.name }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          
+          <div class="space-y-2">
+            <Label class="text-gray-300">Reason for Report</Label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-slate-800 border-slate-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="Scam / Fraud">Scam / Fraud</SelectItem>
+                <SelectItem value="Inappropriate Behavior">Inappropriate Behavior</SelectItem>
+                <SelectItem value="Poor Service Quality">Poor Service Quality</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Detailed Description</Label>
+            <Textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about what happened..."
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500 placeholder:text-gray-500 min-h-[100px] resize-none"
+              required
+            ></Textarea>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Date of Incident</Label>
+            <Input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Evidence <span class="text-gray-500 text-xs">(Optional, max 5MB)</span></Label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-slate-800 border-slate-700 text-gray-300 file:bg-slate-700 file:text-white file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-red-500"
+            />
+          </div>
+
+          <p class="text-xs text-gray-500 text-center mt-2">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-6">
+            <Button type="button" variant="outline" @click="isReportModalOpen = false" class="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -312,8 +403,14 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
+import { Flag } from 'lucide-vue-next'
 
 export default {
   name: 'ServiceProviders',
@@ -324,6 +421,10 @@ export default {
     Badge,
     Avatar, AvatarFallback, AvatarImage,
     Skeleton,
+    Textarea, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Label,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    Flag,
+    
     // Icon Components preserved
     AllProvidersIcon: {
       template: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +451,18 @@ export default {
         { id: 'all', label: 'All Providers', icon: 'AllProvidersIcon' },
         { id: 'saved', label: 'Saved Providers', icon: 'SavedIcon' }
       ],
-      providers: [] // Empty base array, updated via API
+      providers: [], 
+
+      // Report State
+      isReportModalOpen: false,
+      selectedProviderForReport: null,
+      isSubmittingReport: false,
+      reportForm: {
+        reason: '',
+        description: '',
+        incident_date: '',
+      },
+      reportEvidenceFile: null
     }
   },
   computed: {
@@ -413,16 +525,89 @@ export default {
       return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
     },
     
-    toggleFavorite(providerId) {
+    async toggleFavorite(providerId) {
       const provider = this.providers.find(p => p.id === providerId)
-      if (provider) {
-        provider.favorite = !provider.favorite
-        this.showToast(
-          provider.favorite ? 'Added to Favorites' : 'Removed from Favorites',
-          `${provider.name} ${provider.favorite ? 'is now in your favorites' : 'was removed from favorites'}`
-        )
+      if (!provider) return
+
+      // Optimistic UI Update
+      const originalState = provider.favorite
+      provider.favorite = !provider.favorite
+
+      try {
+        const res = await api.post(`/client/providers/${providerId}/toggle-favorite`)
+        
+        if (res.data.success) {
+          provider.favorite = res.data.is_favorite // ensure sync
+          this.showToast(
+            provider.favorite ? 'Saved to Favorites' : 'Removed from Favorites',
+            `${provider.name} ${provider.favorite ? 'is now in your saved list' : 'was removed from your saved list'}`
+          )
+        } else {
+           // Revert on error
+           provider.favorite = originalState
+           this.showToast('Error', 'Failed to save provider')
+        }
+      } catch (error) {
+        // Revert on catch
+        provider.favorite = originalState
+        console.error(error)
+        this.showToast('Error', 'Failed to communicate with server')
       }
     },
+
+    // --- REPORTING LOGIC ---
+    openReportModal(provider) {
+      this.selectedProviderForReport = provider
+      this.reportForm = {
+        reason: '',
+        description: '',
+        incident_date: ''
+      }
+      this.reportEvidenceFile = null
+      this.isReportModalOpen = true
+    },
+
+    handleReportEvidence(event) {
+      if (event.target.files.length > 0) {
+        this.reportEvidenceFile = event.target.files[0]
+      }
+    },
+
+    async submitReport() {
+      if (!this.selectedProviderForReport) return
+      if (!this.reportForm.reason) {
+        toast.error('Missing Reason', { description: 'Please select a reason for your report.' })
+        return
+      }
+
+      this.isSubmittingReport = true
+      
+      const formData = new FormData()
+      formData.append('reason', this.reportForm.reason)
+      formData.append('description', this.reportForm.description)
+      formData.append('incident_date', this.reportForm.incident_date)
+      
+      if (this.reportEvidenceFile) {
+        formData.append('evidence', this.reportEvidenceFile)
+      }
+
+      try {
+        const res = await api.post(`/client/providers/${this.selectedProviderForReport.id}/report`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+
+        if (res.data.success) {
+          toast.success('Report Submitted', { description: 'The admin team will review this incident.' })
+          this.isReportModalOpen = false
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' })
+      } finally {
+        this.isSubmittingReport = false
+      }
+    },
+    // ----------------------
     
     contactProvider(provider) {
       // Redirects to chat list. Client can select provider inside ClientChat page.
@@ -439,14 +624,6 @@ export default {
          // Directs to specific transacted service details
          this.$router.push(`/ECommerceClient/ServiceDetails/${project.id}`)
       }
-    },
-    
-    toggleMapView() {
-      this.showMap = !this.showMap
-      this.showToast(
-        this.showMap ? 'Map View Enabled' : 'List View Enabled',
-        this.showMap ? 'Viewing providers on map' : 'Viewing providers in list'
-      )
     },
     
     showToast(message, detail) {
@@ -486,21 +663,6 @@ export default {
 }
 
 /* Animations */
-@keyframes slide-up {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
-}
-
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -556,15 +718,6 @@ export default {
   
   h1 {
     font-size: 1.75rem;
-  }
-  
-  .stats-summary {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .recent-projects-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

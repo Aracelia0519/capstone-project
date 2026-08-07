@@ -9,10 +9,12 @@ use App\Models\EcommerceClient\ClientOrderItem;
 use App\Models\EcommerceClient\ProductReview;
 use App\Models\EcommerceClient\ClientReturnRequest;
 use App\Models\EcommerceClient\ClientReturnMessage;
+use App\Models\UserReport; // <--- ADDED IMPORT
+use App\Models\User;       // <--- ADDED IMPORT
 use App\Events\ReturnMessageSent;
 use App\Events\Ecommerce\OrderPlaced; 
 use App\Events\Ecommerce\ReturnRequestUpdated;
-use App\Events\Ecommerce\ReviewUpdated; // <--- EVENT IMPORTED
+use App\Events\Ecommerce\ReviewUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -217,7 +219,6 @@ class ECommerceOrderController extends Controller
             ]
         );
 
-        // BROADCAST: Notify Operational Distributor that a review was added
         $distributorId = DB::table('distributor_products')->where('id', $request->product_id)->value('distributor_id');
         if ($distributorId) {
             event(new ReviewUpdated($distributorId));
@@ -381,5 +382,69 @@ class ECommerceOrderController extends Controller
         event(new ReturnRequestUpdated($returnReq->distributor_id));
 
         return response()->json(['success' => true, 'request' => $returnReq, 'message' => $msg]);
+    }
+
+    // --- NEW: Submit a Report Against a Distributor ---
+    public function submitReport(Request $request, $distributorId)
+    {
+        try {
+            $user = Auth::guard('sanctum')->user();
+            if (!$user || $user->role !== 'client') {
+                return response()->json(['message' => 'Unauthorized. Only clients can submit this report.'], 403);
+            }
+
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+                'description' => 'required|string',
+                'incident_date' => 'required|date',
+                'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120'
+            ]);
+
+            // Enforce limit: Maximum 3 reports per day for this client
+            $reportsToday = UserReport::where('reported_by_id', $user->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            if ($reportsToday >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have reached the maximum limit of 3 reports per day.'
+                ], 429);
+            }
+
+            $reportedUser = User::find($distributorId);
+            if (!$reportedUser || !in_array($reportedUser->role, ['distributor', 'operational_distributor'])) {
+                return response()->json(['success' => false, 'message' => 'Distributor not found.'], 404);
+            }
+
+            $evidencePath = null;
+            if ($request->hasFile('evidence')) {
+                $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+            }
+
+            UserReport::create([
+                'reported_user_id' => $reportedUser->id,
+                'reported_by_id' => $user->id,
+                'reporter_role' => 'client',
+                'reported_user_role' => 'distributor',
+                'reason' => $validated['reason'],
+                'description' => $validated['description'],
+                'incident_date' => $validated['incident_date'],
+                'evidence_path' => $evidencePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Report submitted successfully. Administrators will review the incident.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Failed to submit report', 
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

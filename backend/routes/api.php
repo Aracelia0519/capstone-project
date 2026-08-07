@@ -106,6 +106,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // --- NEW: FETCH INTERACTED SERVICE PROVIDERS ---
         Route::get('/interacted-providers', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'index']);
+        Route::post('/providers/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'toggleFavorite']);
+        Route::post('/providers/{id}/report', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'submitReport']);
 
         // --- NEW CLIENT SUPPORT CHAT ROUTES ---
         Route::get('/support/messages', [\App\Http\Controllers\Api\SupportController::class, 'getClientMessages']);
@@ -219,6 +221,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/items/{itemId}/return-chat', [ECommerceOrderController::class, 'getReturnChat']);
             Route::post('/returns/{id}/message', [ECommerceOrderController::class, 'sendReturnMessage']);
             Route::post('/returns/{id}/tracking', [ECommerceOrderController::class, 'submitReturnTracking']);
+
+            // --- Submit a Report Against a Distributor (Shop) ---
+            Route::post('/distributors/{distributorId}/report', [ECommerceOrderController::class, 'submitReport']);
         });
     });
 
@@ -226,6 +231,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
+
+        Route::get('/interacted-clients', [\App\Http\Controllers\Api\ServiceProvider\ClientListController::class, 'index']);
+        Route::post('/clients/{id}/report', [\App\Http\Controllers\Api\ServiceProvider\ClientListController::class, 'submitReport']);
 
         Route::get('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'getSupportMessages']);
         Route::post('/support/messages', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderRequirementController::class, 'sendSupportMessage']);
@@ -361,6 +369,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/distributors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'index']);
         Route::post('/distributors/request', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'requestPartnership']);
 
+        // --- NEW: Submit a Report Against a Distributor ---
+        Route::post('/distributors/{id}/report', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'submitReport']);
+
         Route::post('/distributors/{id}/counter-proposal', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'counterProposal']);
         Route::post('/distributors/{id}/accept-proposal', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'acceptProposal']);
         Route::post('/distributors/{id}/renew-contract', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderDistributorController::class, 'renewContract']);
@@ -383,6 +394,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('distributor')->group(function () {
 
         Route::get('/supplier-products/{id}', [\App\Http\Controllers\Api\Distributor\DistributorSupplierProductController::class, 'index']);
+
+        Route::post('/partnered-suppliers/{userId}/report', [\App\Http\Controllers\Api\Distributor\PartneredSupplierController::class, 'submitReport']);
 
         Route::get('/paint-inventory', [\App\Http\Controllers\Api\Distributor\PaintInventoryController::class, 'index']);
         Route::get('/orders-requests', [\App\Http\Controllers\Api\Distributor\OrderRequestController::class, 'index']);
@@ -532,6 +545,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // --- NEW ADMIN SUPPORT CHAT ROUTES ---
         Route::get('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'getAdminMessages']);
         Route::post('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'sendAdminMessage']);
+
+        // --- USER REPORTS MANAGEMENT FOR ADMIN ---
+        Route::prefix('reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'index']);
+            Route::get('/user/{id}', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'show']);
+            Route::put('/{id}/status', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'updateStatus']);
+        });
 
         Route::prefix('users')->group(function () {
             Route::get('/', [AdminUserController::class, 'index']);
@@ -740,6 +760,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::get('/{id}/chat', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'getChatMessages']);
             Route::post('/{id}/chat', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'sendChatMessage']);
+
+            // --- Submit a Report Against a Distributor ---
+            Route::post('/{userId}/report', [\App\Http\Controllers\Api\Supplier\DistributorRequestController::class, 'submitReport']);
         
         });
 
@@ -850,12 +873,16 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ReviewManagementController::class, 'index']);
             Route::put('/{id}/status', [ReviewManagementController::class, 'updateStatus']);
             Route::post('/{id}/respond', [ReviewManagementController::class, 'respond']);
+            Route::post('/{userId}/report', [ReviewManagementController::class, 'submitReport']);
         });
 
         Route::prefix('service-provider-requests')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'index']);
             Route::post('/{id}/approve', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'approve']);
             Route::post('/{id}/reject', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'reject']);
+
+            // --- NEW: Submit a Report Against a Service Provider ---
+            Route::post('/{provider_id}/report', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'submitReport']);
 
             Route::post('/{id}/counter', [\App\Http\Controllers\Api\OperationDistributor\ServiceProviderRequestController::class, 'counter']);
 

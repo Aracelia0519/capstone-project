@@ -13,6 +13,7 @@ import ServiceRequest from '@/views/admin/ServiceRequest.vue'
 import Reports from '@/views/admin/Reports.vue'
 import SystemSettings from '@/views/admin/SystemSettings.vue'
 import AuditLogs from '@/views/admin/AuditLogs.vue'
+import userReports from '@/views/admin/userReports.vue'
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
@@ -541,6 +542,11 @@ const routes = [
         path: 'auditLogs',
         name: 'auditLogs',
         component: AuditLogs
+      },
+      {
+        path: 'userReports',
+        name: 'userReports',
+        component: userReports
       },
     ]
   },

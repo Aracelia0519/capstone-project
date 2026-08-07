@@ -7,9 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\EcommerceClient\ProductReview;
+use App\Models\UserReport;
 use Carbon\Carbon;
-use App\Events\Ecommerce\ReviewUpdated; // <--- EVENT IMPORTED
-use App\Events\Ecommerce\OrderUpdated; // <--- EVENT IMPORTED
+use App\Events\Ecommerce\ReviewUpdated;
+use App\Events\Ecommerce\OrderUpdated;
 
 class ReviewManagementController extends Controller
 {
@@ -129,6 +130,7 @@ class ReviewManagementController extends Controller
 
             return [
                 'id' => $review->id,
+                'reviewer_id' => $review->client_id ?? $review->service_provider_id,
                 'client' => $clientName,
                 'clientInitials' => strtoupper(substr($clientName, 0, 1)),
                 'reviewerType' => $reviewerType, 
@@ -173,7 +175,6 @@ class ReviewManagementController extends Controller
         $review->status = $request->status;
         $review->save();
 
-        // Broadcast to other ODs
         event(new ReviewUpdated($distributorId));
 
         return response()->json(['success' => true, 'message' => 'Status updated successfully']);
@@ -202,10 +203,8 @@ class ReviewManagementController extends Controller
         $review->status = 'published'; 
         $review->save();
 
-        // Broadcast to other ODs
         event(new ReviewUpdated($distributorId));
 
-        // Broadcast to the specific Client/SP so their order page updates with the response
         if ($review->client_id) {
             event(new OrderUpdated($review->client_id, null));
         } elseif ($review->service_provider_id) {
@@ -213,5 +212,69 @@ class ReviewManagementController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Response saved successfully']);
+    }
+
+    public function submitReport(Request $request, $userId)
+    {
+        try {
+            $user = Auth::user();
+            if (!$this->checkRbacAccess($user, 'ec_reviews', 'can_view')) {
+                return response()->json(['message' => 'Access Denied.'], 403);
+            }
+
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+                'description' => 'required|string',
+                'incident_date' => 'required|date',
+                'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120'
+            ]);
+
+            $distId = $this->getDistributorId();
+
+            $reportsToday = UserReport::where('reported_by_id', $distId)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            if ($reportsToday >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your distributor account has reached the maximum limit of 3 reports per day.'
+                ], 429);
+            }
+
+            $reportedUser = \App\Models\User::find($userId);
+            if (!$reportedUser) {
+                return response()->json(['success' => false, 'message' => 'User not found.'], 404);
+            }
+
+            $evidencePath = null;
+            if ($request->hasFile('evidence')) {
+                $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+            }
+
+            UserReport::create([
+                'reported_user_id' => $reportedUser->id,
+                'reported_by_id' => $distId,
+                'reporter_role' => 'distributor',
+                'reported_user_role' => $reportedUser->role,
+                'reason' => $validated['reason'],
+                'description' => $validated['description'],
+                'incident_date' => $validated['incident_date'],
+                'evidence_path' => $evidencePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Report submitted successfully. Administrators will review the incident.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Failed to submit report', 
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -8,73 +8,16 @@
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </div>
             <span>Client Management</span>
-            <Badge class="bg-gradient-to-r from-blue-500 to-violet-500 border-0">CRM</Badge>
+            
           </h1>
-          <p class="text-slate-400 text-sm">Manage client relationships and service history</p>
+          <p class="text-slate-400 text-sm">Manage client relationships, reports, and transacted service history</p>
         </div>
         <div class="flex gap-4 items-center flex-wrap w-full md:w-auto">
-          <Dialog v-model:open="showAddClientModal">
-            <DialogTrigger as-child>
-              <Button class="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white border-0 shadow-lg shadow-blue-500/20" @click="resetForm(); editingClient = null">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                Add New Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>{{ editingClient ? 'Edit Client' : 'Add New Client' }}</DialogTitle>
-              </DialogHeader>
-              <form @submit.prevent="saveClient" class="grid gap-4 py-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="space-y-2">
-                    <Label>Full Name *</Label>
-                    <Input v-model="clientForm.name" required placeholder="Enter client name" class="bg-slate-950 border-slate-800" />
-                  </div>
-                  <div class="space-y-2">
-                    <Label>Email Address *</Label>
-                    <Input v-model="clientForm.email" type="email" required placeholder="client@example.com" class="bg-slate-950 border-slate-800" />
-                  </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                   <div class="space-y-2">
-                    <Label>Phone Number *</Label>
-                    <Input v-model="clientForm.phone" type="tel" required placeholder="+63 XXX XXX XXXX" class="bg-slate-950 border-slate-800" />
-                  </div>
-                  <div class="space-y-2">
-                    <Label>Status</Label>
-                    <RadioGroup v-model="clientForm.status" class="flex gap-4 mt-2">
-                      <div class="flex items-center space-x-2">
-                        <RadioGroupItem value="active" id="active" class="border-slate-600 text-blue-500" />
-                        <Label htmlFor="active">Active</Label>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <RadioGroupItem value="inactive" id="inactive" class="border-slate-600 text-blue-500" />
-                        <Label htmlFor="inactive">Inactive</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                </div>
-                <div class="space-y-2">
-                  <Label>Address</Label>
-                  <Textarea v-model="clientForm.address" placeholder="Enter client address" class="bg-slate-950 border-slate-800 min-h-[80px]" />
-                </div>
-                <div class="space-y-2">
-                  <Label>Notes</Label>
-                  <Textarea v-model="clientForm.notes" placeholder="Add notes..." class="bg-slate-950 border-slate-800 min-h-[100px]" />
-                </div>
-                <div class="flex justify-end gap-3 mt-4">
-                   <Button type="button" variant="outline" class="border-slate-700 hover:bg-slate-800" @click="closeModal">Cancel</Button>
-                   <Button type="submit" class="bg-gradient-to-r from-blue-600 to-violet-600 border-0">{{ editingClient ? 'Update Client' : 'Add Client' }}</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
           <div class="relative w-full md:w-[250px]">
             <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            <Input v-model="searchQuery" placeholder="Search clients..." class="pl-10 bg-slate-900 border-slate-800 focus:border-blue-500" />
+            <Input v-model="searchQuery" placeholder="Search clients..." class="pl-10 bg-slate-900 border-slate-800 text-white focus:border-blue-500" />
           </div>
         </div>
       </div>
@@ -91,10 +34,31 @@
             </div>
           </CardContent>
         </Card>
-        </div>
+      </div>
     </div>
 
-    <div class="m-6 md:m-8 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <!-- Skeletons Loader -->
+    <div v-if="loading" class="m-6 md:m-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card v-for="i in 6" :key="i" class="bg-slate-950 border-slate-800 p-6">
+        <div class="animate-pulse">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <Skeleton class="w-10 h-10 rounded-full bg-slate-800" />
+              <div class="space-y-2">
+                <Skeleton class="h-4 w-32 bg-slate-800 rounded" />
+                <Skeleton class="h-3 w-24 bg-slate-800 rounded" />
+              </div>
+            </div>
+          </div>
+          <div class="space-y-3 mb-6">
+            <Skeleton class="h-10 bg-slate-800 rounded-lg" />
+            <Skeleton class="h-10 bg-slate-800 rounded-lg" />
+          </div>
+        </div>
+      </Card>
+    </div>
+
+    <div v-else class="m-6 md:m-8 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
       <div class="p-5 border-b border-slate-800 flex justify-between items-center">
         <div class="font-semibold text-lg flex items-center text-slate-100">
            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
@@ -109,28 +73,23 @@
                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
           </div>
-          <Button variant="outline" class="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" @click="exportClients">
-             Export
-          </Button>
         </div>
       </div>
 
       <div v-if="viewMode === 'list'" class="overflow-x-auto">
         <Table>
-          <TableHeader class="bg-slate-950/50">
+          <TableHeader class="bg-slate-950/80">
             <TableRow class="border-slate-800 hover:bg-transparent">
-              <TableHead class="w-[50px]"><Checkbox :checked="selectAll" @update:checked="toggleSelectAll" class="border-slate-600 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600" /></TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Jobs</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead class="text-right">Actions</TableHead>
+              <TableHead class="text-slate-200 font-semibold">Client</TableHead>
+              <TableHead class="text-slate-200 font-semibold">Contact</TableHead>
+              <TableHead class="text-slate-200 font-semibold">Location</TableHead>
+              <TableHead class="text-slate-200 font-semibold">Transacted Services</TableHead>
+              <TableHead class="text-slate-200 font-semibold">Status</TableHead>
+              <TableHead class="text-right text-slate-200 font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-for="client in filteredClients" :key="client.id" class="border-slate-800 hover:bg-slate-800/30">
-              <TableCell><Checkbox :checked="selectedClients.includes(client.id)" @update:checked="(val) => { if(val) selectedClients.push(client.id); else selectedClients = selectedClients.filter(id => id !== client.id) }" class="border-slate-600" /></TableCell>
               <TableCell>
                 <div class="flex items-center gap-3">
                    <div class="relative">
@@ -148,7 +107,9 @@
               <TableCell class="text-slate-400">{{ client.phone }}</TableCell>
               <TableCell class="text-slate-400">{{ client.address }}</TableCell>
               <TableCell>
-                <Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 text-blue-400">{{ client.jobCount }} jobs</Badge>
+                <Badge variant="outline" class="border-blue-500/30 bg-blue-500/10 text-blue-400 cursor-pointer" @click="viewClientHistory(client)" title="Click to view history">
+                   {{ client.jobCount }} Services
+                </Badge>
               </TableCell>
               <TableCell>
                  <Badge :class="[client.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-slate-500/10 text-slate-400 hover:bg-slate-500/20']" variant="secondary">
@@ -157,9 +118,12 @@
               </TableCell>
               <TableCell class="text-right">
                 <div class="flex justify-end gap-2">
-                  <Button variant="ghost" size="icon" @click="viewClientHistory(client)" class="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></Button>
-                  <Button variant="ghost" size="icon" @click="editClient(client); showAddClientModal = true" class="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></Button>
-                  <Button variant="ghost" size="icon" @click="deleteClient(client.id)" class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></Button>
+                  <Button variant="ghost" size="icon" @click="viewClientHistory(client)" class="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800" title="View Services"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></Button>
+                  
+                  <!-- REPORT BUTTON -->
+                  <Button variant="ghost" size="icon" @click="openReportModal(client)" class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20" title="Report Client">
+                     <Flag class="w-4 h-4" />
+                  </Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -178,7 +142,6 @@
                       </Avatar>
                       <span :class="['absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-950', client.status === 'active' ? 'bg-emerald-500' : 'bg-slate-500']"></span>
                    </div>
-                   <Checkbox :checked="selectedClients.includes(client.id)" @update:checked="(val) => { if(val) selectedClients.push(client.id); else selectedClients = selectedClients.filter(id => id !== client.id) }" class="border-slate-600" />
                 </div>
                 <h3 class="font-medium text-slate-200">{{ client.name }}</h3>
                 <p class="text-sm text-slate-500 mb-4">{{ client.email }}</p>
@@ -187,14 +150,32 @@
                    <div class="flex items-center gap-2"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg> {{ client.address }}</div>
                 </div>
              </div>
+             
+             <!-- Transacted Services Preview -->
+             <div class="p-4 border-b border-slate-800" v-if="client.recentProjects && client.recentProjects.length > 0">
+               <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-bold">Services Transacted</p>
+               <div class="flex flex-wrap gap-1.5">
+                  <span v-for="(project, i) in client.recentProjects.slice(0, 3)" :key="i" class="text-xs bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/20">
+                     {{ project.name }}
+                  </span>
+                  <span v-if="client.recentProjects.length > 3" class="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded">
+                    +{{ client.recentProjects.length - 3 }} more
+                  </span>
+               </div>
+             </div>
+
              <div class="p-4 flex justify-between items-center bg-slate-900/50">
                 <div class="flex flex-col">
                    <span class="text-lg font-bold text-slate-200">{{ client.jobCount }}</span>
                    <span class="text-xs text-slate-500">Jobs</span>
                 </div>
                 <div class="flex gap-2">
+                   <!-- REPORT BUTTON FOR GRID -->
+                   <Button variant="secondary" size="sm" class="bg-red-900/20 text-red-500 hover:bg-red-900/40 hover:text-red-400" @click="openReportModal(client)">
+                      <Flag class="w-3 h-3 mr-1" /> Report
+                   </Button>
+
                    <Button variant="secondary" size="sm" class="bg-slate-800 text-slate-300 hover:text-white" @click="viewClientHistory(client)">History</Button>
-                   <Button variant="secondary" size="sm" class="bg-slate-800 text-slate-300 hover:text-white" @click="editClient(client); showAddClientModal = true">Edit</Button>
                 </div>
              </div>
           </CardContent>
@@ -206,11 +187,11 @@
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
          </div>
          <h3 class="text-lg font-medium text-slate-200 mb-2">No Clients Found</h3>
-         <p class="text-slate-400 mb-6">Try adjusting your search or add a new client to get started.</p>
-         <Button @click="showAddClientModal = true" class="bg-gradient-to-r from-blue-600 to-violet-600 border-0">Add New Client</Button>
+         <p class="text-slate-400 max-w-sm mx-auto">You haven't interacted with any clients yet, or no client matches your search criteria.</p>
       </div>
     </div>
 
+    <!-- CLIENT HISTORY MODAL -->
     <Dialog v-model:open="showHistoryModal">
       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[700px]">
         <DialogHeader>
@@ -243,54 +224,145 @@
                 </Card>
              </div>
              <div v-if="clientHistory.length === 0" class="text-center py-8 text-slate-500">
-                No service history available.
+                No formal service history available.
              </div>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="isReportModalOpen = $event">
+      <DialogContent class="sm:max-w-md bg-slate-900 border-slate-800 text-white rounded-2xl shadow-2xl">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-500">
+            <Flag class="w-5 h-5" /> Report Client
+          </DialogTitle>
+          <DialogDescription class="text-gray-400">
+            Submit a formal report regarding <span class="text-white font-bold">{{ selectedClientForReport?.name }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          
+          <div class="space-y-2">
+            <Label class="text-gray-300">Reason for Report</Label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-slate-800 border-slate-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="Scam / Fraud">Scam / Fraud</SelectItem>
+                <SelectItem value="Inappropriate Behavior">Inappropriate Behavior</SelectItem>
+                <SelectItem value="Unpaid Services">Unpaid Services</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Detailed Description</Label>
+            <Textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about what happened..."
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500 placeholder:text-gray-500 min-h-[100px] resize-none"
+              required
+            ></Textarea>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Date of Incident</Label>
+            <Input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-gray-300">Evidence <span class="text-gray-500 text-xs">(Optional, max 5MB)</span></Label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-slate-800 border-slate-700 text-gray-300 file:bg-slate-700 file:text-white file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-red-500"
+            />
+          </div>
+
+          <p class="text-xs text-gray-500 text-center">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-6">
+            <Button type="button" variant="outline" @click="isReportModalOpen = false" class="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Flag } from 'lucide-vue-next'
+import api from '@/utils/axios'
+import { toast } from 'vue-sonner'
 
-// Data
-const clients = ref([
-  { id: 1, name: 'John Michael Santos', email: 'john.santos@example.com', phone: '+63 912 345 6789', address: '123 Main St, Bacoor, Cavite', jobCount: 5, status: 'active', notes: 'Prefers eco-friendly paint options' },
-  { id: 2, name: 'Maria Cristina Garcia', email: 'maria.garcia@example.com', phone: '+63 917 890 1234', address: '456 Oak Ave, Imus, Cavite', jobCount: 3, status: 'active', notes: 'Commercial building owner' },
-  // ... rest of your dummy data ...
-  { id: 3, name: 'Robert Lim', email: 'robert.lim@example.com', phone: '+63 918 567 8901', address: '789 Pine Rd, Dasmariñas, Cavite', jobCount: 8, status: 'active', notes: 'Frequent customer, bulk orders' },
-  { id: 4, name: 'Sarah Tan', email: 'sarah.tan@example.com', phone: '+63 919 234 5678', address: '321 Elm St, Tagaytay, Cavite', jobCount: 2, status: 'inactive', notes: 'Moved to different province' },
-])
+// Data populated via API
+const clients = ref([])
+const loading = ref(true)
 
 const searchQuery = ref('')
 const viewMode = ref('list')
-const selectedClients = ref([])
-const selectAll = ref(false)
-const showAddClientModal = ref(false)
 const showHistoryModal = ref(false)
-const editingClient = ref(null)
 const selectedClient = ref(null)
 
-const clientForm = ref({ name: '', email: '', phone: '', address: '', status: 'active', notes: '' })
+// Report State Variables
+const isReportModalOpen = ref(false)
+const selectedClientForReport = ref(null)
+const isSubmittingReport = ref(false)
+const reportForm = ref({ reason: '', description: '', incident_date: '' })
+const reportEvidenceFile = ref(null)
 
-const clientHistory = ref([
-  { id: 1, service: 'Living Room Painting', date: '2024-01-15', color: '#4A90E2', colorName: 'Ocean Blue', status: 'completed', notes: 'Two coats applied, client satisfied with color matching' },
-  { id: 2, service: 'Bedroom Wall Repair & Painting', date: '2024-02-20', color: '#F5A623', colorName: 'Sunset Orange', status: 'completed', notes: 'Minor wall repair before painting' },
-  { id: 3, service: 'Kitchen Cabinets Refinishing', date: '2024-03-10', color: '#7ED321', colorName: 'Mint Green', status: 'in-progress', notes: 'Scheduled for second coat' }
-])
+// History dynamically populated
+const clientHistory = ref([])
+
+// Fetch Actual API Data
+const fetchClients = async () => {
+  loading.value = true
+  try {
+    const res = await api.get('/service-provider/interacted-clients')
+    if (res.data.success) {
+      clients.value = res.data.data
+    }
+  } catch (error) {
+    console.error("Failed to load clients:", error)
+    toast.error('Error', { description: 'Unable to load interacted clients.' })
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchClients()
+})
 
 const filteredClients = computed(() => {
   if (!searchQuery.value.trim()) return clients.value
@@ -303,60 +375,150 @@ const filteredClients = computed(() => {
   )
 })
 
-const toggleSelectAll = (checked) => {
-  selectAll.value = checked
-  selectedClients.value = checked ? clients.value.map(client => client.id) : []
-}
-
-const getInitials = (name) => name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
-
-const saveClient = () => {
-  if (editingClient.value) {
-    const index = clients.value.findIndex(c => c.id === editingClient.value.id)
-    if (index !== -1) clients.value[index] = { ...editingClient.value, ...clientForm.value }
-  } else {
-    clients.value.unshift({ id: clients.value.length + 1, ...clientForm.value, jobCount: 0 })
-  }
-  showAddClientModal.value = false
-  resetForm()
-}
-
-const editClient = (client) => {
-  editingClient.value = client
-  clientForm.value = { ...client }
-}
-
-const deleteClient = (id) => {
-  if (confirm('Are you sure you want to delete this client?')) {
-    clients.value = clients.value.filter(client => client.id !== id)
-    selectedClients.value = selectedClients.value.filter(clientId => clientId !== id)
-  }
-}
+const getInitials = (name) => name ? name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) : 'CL'
 
 const viewClientHistory = (client) => {
   selectedClient.value = client
+  
+  // Map API recentProjects to history structure
+  if (client.recentProjects && client.recentProjects.length > 0) {
+     clientHistory.value = client.recentProjects.map((proj, idx) => ({
+        id: proj.id || idx,
+        service: proj.name,
+        date: proj.date ? proj.date.split('T')[0] : new Date().toISOString().split('T')[0],
+        color: '#3B82F6', // Default blue identifier
+        colorName: 'Standard Package',
+        status: proj.status || 'completed',
+        notes: ''
+     }))
+  } else {
+     clientHistory.value = []
+  }
+  
   showHistoryModal.value = true
-}
-
-const exportClients = () => {
-  const blob = new Blob([JSON.stringify(filteredClients.value, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'clients-export.json'
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 
-const resetForm = () => {
-  clientForm.value = { name: '', email: '', phone: '', address: '', status: 'active', notes: '' }
-  editingClient.value = null
+// --- REPORTING LOGIC ---
+const openReportModal = (client) => {
+  selectedClientForReport.value = client
+  reportForm.value = { reason: '', description: '', incident_date: '' }
+  reportEvidenceFile.value = null
+  isReportModalOpen.value = true
 }
 
-const closeModal = () => {
-  showAddClientModal.value = false
-  resetForm()
+const handleReportEvidence = (event) => {
+  if (event.target.files.length > 0) {
+    reportEvidenceFile.value = event.target.files[0]
+  }
 }
+
+const submitReport = async () => {
+  if (!selectedClientForReport.value) return
+  if (!reportForm.value.reason) {
+    toast.error('Missing Reason', { description: 'Please select a reason for your report.' })
+    return
+  }
+
+  isSubmittingReport.value = true
+  
+  const formData = new FormData()
+  formData.append('reason', reportForm.value.reason)
+  formData.append('description', reportForm.value.description)
+  formData.append('incident_date', reportForm.value.incident_date)
+  
+  if (reportEvidenceFile.value) {
+    formData.append('evidence', reportEvidenceFile.value)
+  }
+
+  try {
+    const res = await api.post(`/service-provider/clients/${selectedClientForReport.value.id}/report`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    if (res.data.success) {
+      toast.success('Report Submitted', { description: 'The admin team will review this incident.' })
+      isReportModalOpen.value = false
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' })
+  } finally {
+    isSubmittingReport.value = false
+  }
+}
+// ----------------------
+
 </script>
+
+<style scoped>
+.provider-card {
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.provider-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.filter-btn {
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.filter-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #0d9488, #059669);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #14b8a6, #10b981);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .provider-card {
+    padding: 1rem;
+  }
+  
+  .filter-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 640px) {
+  h1 {
+    font-size: 1.75rem;
+  }
+}
+</style>

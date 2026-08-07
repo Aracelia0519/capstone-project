@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\UserReport; // NEW IMPORT
 
 class ClientProviderListController extends Controller
 {
@@ -37,12 +38,18 @@ class ClientProviderListController extends Controller
             return $id != $clientId;
         });
 
-        // 3. Fetch Provider Details
+        // 3. Get the client's saved/favorite providers
+        $favoriteProviderIds = DB::table('client_favorite_providers')
+            ->where('client_id', $clientId)
+            ->pluck('provider_id')
+            ->toArray();
+
+        // 4. Fetch Provider Details
         $providers = User::whereIn('id', $allIds)
             ->where('role', 'service_provider')
             ->get();
 
-        $data = $providers->map(function($provider) use ($clientId) {
+        $data = $providers->map(function($provider) use ($clientId, $favoriteProviderIds) {
             // Fetch Portfolio & Address
             $portfolio = DB::table('service_provider_portfolios')->where('provider_id', $provider->id)->first();
             $req = DB::table('service_provider_requirements')->where('user_id', $provider->id)->first();
@@ -80,7 +87,7 @@ class ClientProviderListController extends Controller
                 'location' => $address ? ($address->city . ', ' . $address->province) : 'Location unavailable',
                 'status' => 'Available',
                 'online' => true,
-                'favorite' => false,
+                'favorite' => in_array($provider->id, $favoriteProviderIds),
                 'recentProjects' => $transactedServices
             ];
         });
@@ -88,6 +95,100 @@ class ClientProviderListController extends Controller
         return response()->json([
             'success' => true,
             'data' => $data
+        ]);
+    }
+
+    public function toggleFavorite(Request $request, $providerId)
+    {
+        $clientId = Auth::id();
+
+        // Check if already favorited
+        $exists = DB::table('client_favorite_providers')
+            ->where('client_id', $clientId)
+            ->where('provider_id', $providerId)
+            ->exists();
+
+        if ($exists) {
+            // Un-favorite
+            DB::table('client_favorite_providers')
+                ->where('client_id', $clientId)
+                ->where('provider_id', $providerId)
+                ->delete();
+            
+            $isFavorite = false;
+        } else {
+            // Favorite
+            DB::table('client_favorite_providers')->insert([
+                'client_id' => $clientId,
+                'provider_id' => $providerId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $isFavorite = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_favorite' => $isFavorite,
+            'message' => $isFavorite ? 'Added to favorites.' : 'Removed from favorites.'
+        ]);
+    }
+
+    // NEW: Function to submit a report against a user
+    public function submitReport(Request $request, $reportedUserId)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+            'description' => 'required|string',
+            'incident_date' => 'required|date',
+            'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120' // 5MB max
+        ]);
+
+        $reporter = Auth::user();
+
+        // --- Limit reports to 3 per day ---
+        $reportsToday = UserReport::where('reported_by_id', $reporter->id)
+            ->whereDate('created_at', now()->toDateString())
+            ->count();
+
+        if ($reportsToday >= 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have reached the maximum limit of 3 reports per day. Please try again tomorrow.'
+            ], 429); // 429 Too Many Requests
+        }
+        // ----------------------------------
+
+        $reportedUser = User::find($reportedUserId);
+
+        if (!$reportedUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found.'
+            ], 404);
+        }
+
+        $evidencePath = null;
+        if ($request->hasFile('evidence')) {
+            $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+        }
+
+        $report = UserReport::create([
+            'reported_user_id' => $reportedUser->id,
+            'reported_by_id' => $reporter->id,
+            'reporter_role' => $reporter->role,
+            'reported_user_role' => $reportedUser->role,
+            'reason' => $validated['reason'],
+            'description' => $validated['description'],
+            'incident_date' => $validated['incident_date'],
+            'evidence_path' => $evidencePath,
+            'status' => 'pending'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Report submitted successfully. Administrators will review the incident.'
         ]);
     }
 }

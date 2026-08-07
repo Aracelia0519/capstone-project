@@ -1,3 +1,778 @@
+<template>
+  <div class="min-h-screen">
+    <div class="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
+      <div class="container mx-auto px-4 md:px-8 py-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">My Orders</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">Track your purchases and service requests</p>
+          </div>
+          
+          <div class="flex items-center space-x-3 w-full md:w-auto">
+            <div class="flex-1 md:w-50">
+              <Select v-model="statusFilter">
+                <SelectTrigger class="w-full bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Orders</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing (Confirmed/Prepared/Pick-Up)</SelectItem>
+                  <SelectItem value="shipped">Shipped</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" size="icon" @click="refreshOrders" :disabled="isRefreshing" class="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-blue-600 shrink-0">
+              <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isRefreshing }" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-4 md:px-8 py-8 max-w-7xl">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardContent class="p-6 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Orders</p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ orders.length }}</p>
+            </div>
+            <div class="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center shrink-0">
+              <ShoppingBag class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardContent class="p-6 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</p>
+              <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mt-1">{{ pendingCount }}</p>
+            </div>
+            <div class="w-12 h-12 bg-yellow-50 dark:bg-yellow-900/20 rounded-full flex items-center justify-center shrink-0">
+              <Clock class="w-6 h-6 text-yellow-600 dark:text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardContent class="p-6 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Processing</p>
+              <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ processingCount }}</p>
+            </div>
+            <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center shrink-0">
+              <Package class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardContent class="p-6 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
+              <p class="text-3xl font-bold text-green-600 dark:text-green-500 mt-1">{{ completedCount }}</p>
+            </div>
+            <div class="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center shrink-0">
+              <CheckCircle2 class="w-6 h-6 text-green-600 dark:text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div class="space-y-6">
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+          <Loader2 class="w-10 h-10 animate-spin text-blue-500 mb-4" />
+          <p class="text-gray-500">Loading your orders...</p>
+        </div>
+
+        <Card v-else-if="filteredOrders.length === 0" class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border-gray-200 dark:border-gray-700 p-12 text-center">
+          <div class="w-20 h-20 mx-auto mb-6 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center text-gray-400">
+            <ShoppingBag class="w-10 h-10" />
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No orders found</h3>
+          <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8">
+            {{ !user ? 'Please log in to view and track your orders.' : (statusFilter === 'all' ? "Looks like you haven't placed any orders yet." : `No orders found matching the '${statusFilter}' status.`) }}
+          </p>
+          <div class="flex items-center justify-center gap-4">
+            <Button v-if="statusFilter !== 'all'" @click="statusFilter = 'all'" variant="outline">Clear Filters</Button>
+            <router-link v-if="user" to="/ECommerceClient/EccommerceShop">
+              <Button class="bg-blue-600 hover:bg-blue-700 text-white">Start Shopping</Button>
+            </router-link>
+            <Button v-else @click="isAuthAlertOpen = true" class="bg-blue-600 hover:bg-blue-700 text-white">Log In</Button>
+          </div>
+        </Card>
+
+        <Card v-else v-for="order in filteredOrders" :key="order.id" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md">
+          <div class="p-5 md:p-6 border-b border-gray-100 dark:border-gray-700/50">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                  Order <span class="text-blue-600 dark:text-blue-400">{{ order.order_number }}</span>
+                </h3>
+                <div class="flex items-center gap-3">
+                  <Badge :class="[getStatusConfig(order.status).color, 'px-3 py-1 rounded-full text-xs font-semibold border-0']">
+                    {{ getStatusConfig(order.status).text }}
+                  </Badge>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 sm:hidden">{{ formatDate(order.created_at) }}</p>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Placed on {{ formatDate(order.created_at) }}</p>
+              </div>
+              <div class="flex justify-between items-center md:block md:text-right border-t border-gray-100 dark:border-gray-700/50 md:border-t-0 pt-4 md:pt-0">
+                <p class="text-sm text-gray-500 dark:text-gray-400 md:hidden">Total Amount</p>
+                <div>
+                  <div class="text-2xl font-black text-gray-900 dark:text-white">{{ formatCurrency(order.grand_total) }}</div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 text-right">{{ order.items.length }} item(s)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="p-5 md:p-6">
+            <div class="space-y-4">
+              <div v-for="item in order.items.slice(0, 2)" :key="item.id" class="flex items-center">
+                <div class="w-16 h-16 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+                  <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                  <ImageIcon v-else class="w-6 h-6 text-gray-400" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-semibold text-gray-900 dark:text-gray-100 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                  <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Qty: {{ item.quantity }}</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                  </div>
+                </div>
+              </div>
+              <div v-if="order.items.length > 2" class="pt-2">
+                <Button variant="ghost" @click="toggleOrderDetails(order.id)" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium p-0 h-auto hover:bg-transparent">
+                  <span>{{ order.expanded ? 'Hide extra items' : `+${order.items.length - 2} more items` }}</span>
+                  <ChevronUp v-if="order.expanded" class="w-4 h-4 ml-1" />
+                  <ChevronDown v-else class="w-4 h-4 ml-1" />
+                </Button>
+                <div v-if="order.expanded" class="mt-4 space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                  <div v-for="item in order.items.slice(2)" :key="item.id" class="flex items-center">
+                    <div class="w-14 h-14 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center mr-4 shrink-0 overflow-hidden">
+                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                      <ImageIcon v-else class="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                      <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Qty: {{ item.quantity }}</p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700/50">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="flex flex-wrap gap-4 text-sm">
+                  <div class="bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100 dark:border-gray-800">
+                    <CreditCard class="w-4 h-4 text-gray-500" />
+                    <span class="font-medium text-gray-900 dark:text-gray-200 uppercase">{{ order.payment_method }}</span>
+                  </div>
+                  <div class="bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100 dark:border-gray-800">
+                    <MapPin class="w-4 h-4 text-gray-500" />
+                    <span class="font-medium text-gray-900 dark:text-gray-200 max-w-37.5 truncate">{{ order.delivery_address }}</span>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <Button variant="outline" @click="viewOrderDetails(order)" class="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 flex-1 sm:flex-none">
+                    <FileText class="w-4 h-4 mr-2" /> Details
+                  </Button>
+                  
+                  <Button v-if="order.status === 'pending'" variant="outline" @click="cancelOrder(order.id)" class="border-red-200 text-red-700 hover:bg-red-50 flex-1 sm:flex-none">
+                    <XCircle class="w-4 h-4 mr-2" /> Cancel
+                  </Button>
+                  
+                  <Button v-if="order.status === 'delivered'" @click="reorderItems(order.id)" class="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none">
+                    <RefreshCw class="w-4 h-4 mr-2" /> Reorder
+                  </Button>
+                  
+                  <Button v-if="(order.payment_method === 'pick-up' || order.payment_method === 'pickup') && (order.status === 'ready_for_pickup' || order.status === 'prepared')" @click="openPickUpTracking(order)" class="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none">
+                    <MapPin class="w-4 h-4 mr-2" /> View Pick-Up
+                  </Button>
+                  
+                  <Button v-else-if="order.status === 'shipped'" @click="trackOrder(order.id)" class="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none">
+                    <Truck class="w-4 h-4 mr-2" /> Track
+                  </Button>
+                  
+                  <Button variant="ghost" class="text-red-600 hover:bg-red-50 hover:text-red-700 flex-1 sm:flex-none" @click="openReportModal(order)">
+                    <Flag class="w-4 h-4 mr-2" /> Report Shop
+                  </Button>
+                </div>
+              </div>
+              <div v-if="order.status !== 'cancelled'" class="mt-6 bg-gray-50 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+                <div class="mb-2 flex justify-between text-sm">
+                  <span class="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <AlertCircle class="w-4 h-4 text-gray-400" /> Status
+                  </span>
+                  <span class="font-semibold text-gray-900 dark:text-white">{{ getProgressData(order.status).text }}</span>
+                </div>
+                <Progress :model-value="getProgressData(order.status).value" :class="['h-2.5', getProgressData(order.status).color]" />
+                <div class="flex justify-between mt-3 text-xs font-medium text-gray-400 dark:text-gray-500">
+                  <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 25}">Placed</span>
+                  <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 50}">Processing</span>
+                  <span :class="{
+                    'text-teal-600 dark:text-teal-400': getProgressData(order.status).value >= 75 && (order.payment_method === 'pick-up' || order.payment_method === 'pickup'),
+                    'text-purple-600 dark:text-purple-400': getProgressData(order.status).value >= 75 && order.payment_method !== 'pick-up' && order.payment_method !== 'pickup'
+                  }">
+                    {{ (order.payment_method === 'pick-up' || order.payment_method === 'pickup') ? 'Ready' : 'Shipped' }}
+                  </span>
+                  <span :class="{'text-green-600 dark:text-green-400': getProgressData(order.status).value === 100}">Delivered</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <div v-if="filteredOrders.length > 0 && displayedOrders < orders.length" class="mt-8 text-center">
+          <Button @click="loadMoreOrders" variant="outline" class="w-full sm:w-auto px-8">Load More Orders</Button>
+        </div>
+      </div>
+    </div>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        <div v-if="isPickUpTrackingActive" class="fixed inset-0 z-9999 flex flex-col overflow-hidden bg-gray-900 text-gray-100 font-sans">
+          <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
+              <Loader2 v-if="isFetchingPickUp" class="w-16 h-16 text-blue-500 animate-spin" />
+              <div v-else class="relative">
+                <div class="absolute -inset-4 bg-teal-500/20 rounded-full animate-pulse blur-xl"></div>
+                <div class="bg-gray-900/40 p-6 rounded-full relative shadow-inner border border-teal-500/30">
+                  <MapPin class="w-16 h-16 text-teal-400" />
+                </div>
+              </div>
+              <div class="space-y-2">
+                <h1 class="text-3xl font-black tracking-tight text-white">{{ isFetchingPickUp ? 'Loading Tracker' : 'Location Required' }}</h1>
+                <p class="text-gray-400 text-sm md:text-base px-4">To trace your path to the shop and validate your pick-up, GPS access is needed.</p>
+              </div>
+              <Alert v-if="locationError" variant="destructive" class="text-left w-full bg-red-900/20 border-red-900/50 text-red-300">
+                <AlertTriangle class="h-4 w-4" />
+                <AlertTitle>Access Denied</AlertTitle>
+                <AlertDescription>{{ locationError }}</AlertDescription>
+              </Alert>
+              <div class="flex gap-4 w-full sm:w-auto">
+                <Button @click="closePickUpTracking" variant="outline" size="lg" class="bg-gray-800 text-white hover:bg-gray-700 border-gray-700">Cancel</Button>
+                <Button @click="requestLocationAndStartTracking" size="lg" :disabled="isFetchingPickUp" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20">
+                  <Navigation class="mr-2 h-5 w-5" /> Enable GPS Access
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div id="pickup-map" class="absolute inset-0 z-0"></div>
+          <div v-if="locationGranted" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+            <div class="p-4 md:p-6 pt-12 md:pt-6 flex justify-between items-start w-full">
+              <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
+                <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2 w-max">
+                  <div class="relative flex h-2.5 w-2.5 shrink-0">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
+                  </div>
+                  <span class="text-xs font-medium text-gray-200 truncate font-mono">{{ currentCoordsDisplay }}</span>
+                </div>
+                <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
+                  <div class="bg-teal-500/20 p-2 rounded-lg shrink-0">
+                    <Package class="h-5 w-5 text-teal-400" />
+                  </div>
+                  <div class="min-w-0">
+                    <h1 class="font-bold text-white text-sm md:text-base truncate">Pick-Up Order</h1>
+                    <p class="text-xs text-gray-400 truncate">{{ trackedOrder?.order_number }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="pointer-events-auto flex flex-col gap-2 items-end">
+                <Button @click="closePickUpTracking" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full mb-2">
+                  <X class="w-6 h-6" />
+                </Button>
+                <Button @click="isMapDrawerOpen = !isMapDrawerOpen" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full">
+                  <Menu v-if="!isMapDrawerOpen" class="w-6 h-6" />
+                  <ChevronDown v-else class="w-6 h-6" />
+                </Button>
+              </div>
+            </div>
+            <div class="bg-gray-900/95 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-transform duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] absolute bottom-0 left-0 right-0 z-20 h-[85vh] md:h-[70vh]" :style="{ transform: isMapDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }">
+              <div class="pt-6 pb-2 px-4 flex justify-between items-center border-b border-gray-800 mx-4 md:mx-6 shrink-0">
+                <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <MapPin class="h-5 w-5 text-teal-500" /> Shop Location & Handover
+                </h2>
+                <Button variant="ghost" size="icon" @click="isMapDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8">
+                  <X class="w-4 h-4" />
+                </Button>
+              </div>
+              <ScrollArea class="flex-1 min-h-0 px-4 md:px-6 py-4 w-full max-w-4xl mx-auto">
+                <div class="space-y-6 pb-8">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h2 class="text-2xl font-black text-white leading-tight">Distributor Shop</h2>
+                      <p class="text-sm text-gray-400 mt-1 max-w-sm">{{ pickUpDetails.distributor_address || 'Address unavailable' }}</p>
+                    </div>
+                    <Badge v-if="distanceToTarget !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 text-sm shrink-0">
+                      {{ distanceToTarget < 1000 ? Math.round(distanceToTarget) + 'm' : (distanceToTarget/1000).toFixed(1) + 'km' }} away
+                    </Badge>
+                  </div>
+                  <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                    <AlertTriangle class="h-5 w-5" />
+                    <AlertDescription class="text-sm ml-2 leading-tight">You must be within 500 meters of the shop to complete this pick-up.</AlertDescription>
+                  </Alert>
+                  <div class="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50">
+                    <p class="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+                      <Package class="h-4 w-4 text-indigo-400" /> Your Prepared Order
+                    </p>
+                    <div class="rounded-xl overflow-hidden bg-gray-900 h-40 relative flex items-center justify-center border border-gray-800">
+                      <img v-if="pickUpDetails.preparation_proof" :src="pickUpDetails.preparation_proof" class="w-full h-full object-cover" />
+                      <div v-else class="text-gray-500 text-sm flex flex-col items-center">
+                        <ImageIcon class="h-8 w-8 mb-2 opacity-50" /> No preparation image.
+                      </div>
+                    </div>
+                  </div>
+                  <div class="space-y-5">
+                    <div>
+                      <label class="text-sm font-semibold text-gray-300 mb-2 block">
+                        Upload Proof of Received Goods <span class="text-red-400">*</span>
+                      </label>
+                      <div class="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="pickupProofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'">
+                        <input v-if="!pickupProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePickupUpload" :disabled="!isWithinRange" />
+                        <div v-if="!pickupProofPreview" class="text-center pointer-events-none">
+                          <Camera class="h-8 w-8 text-gray-500 mx-auto mb-3" />
+                          <p class="text-sm font-medium text-gray-300">Tap to snap Package</p>
+                        </div>
+                        <div v-else class="relative w-full flex justify-center">
+                          <img :src="pickupProofPreview" class="max-h-56 rounded-xl border border-gray-700 object-cover shadow-lg" />
+                          <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePickupProof">
+                            <X class="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="text-sm font-semibold text-green-400 mb-2 block">
+                        Upload Proof of Payment <span class="text-red-400">*</span>
+                      </label>
+                      <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="paymentProofPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
+                        <input v-if="!paymentProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" :disabled="!isWithinRange" />
+                        <div v-if="!paymentProofPreview" class="text-center pointer-events-none">
+                          <Banknote class="h-8 w-8 text-green-600/50 mx-auto mb-3" />
+                          <p class="text-sm font-medium text-green-400">Tap to snap Receipt or Cash Handover</p>
+                        </div>
+                        <div v-else class="relative w-full flex justify-center">
+                          <img :src="paymentProofPreview" class="max-h-56 rounded-xl border border-green-800/50 object-cover shadow-lg" />
+                          <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePaymentProof">
+                            <X class="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <Button @click="submitPickUp" :disabled="!isWithinRange || !pickupProofFile || !paymentProofFile || isSubmittingPickUp" class="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" size="lg">
+                      <Loader2 v-if="isSubmittingPickUp" class="mr-2 h-5 w-5 animate-spin" />
+                      <CheckCircle2 v-else class="mr-2 h-5 w-5" /> Confirm Item Picked Up
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
+
+    <Dialog v-model:open="isDetailsModalOpen">
+      <DialogContent class="sm:max-w-200 md:max-w-237.5 lg:max-w-275 max-h-[90vh] overflow-y-auto w-[95vw] p-0 gap-0 rounded-2xl bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <div class="bg-white dark:bg-gray-800 p-6 md:p-8 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 flex justify-between items-start gap-4">
+          <DialogHeader class="flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div>
+              <DialogTitle class="text-2xl font-black text-gray-900 dark:text-white">
+                Order <span class="text-blue-600 dark:text-blue-400">{{ selectedOrder?.order_number }}</span>
+              </DialogTitle>
+              <DialogDescription class="flex flex-wrap items-center mt-3 gap-3">
+                <Badge :class="[getStatusConfig(selectedOrder?.status || '').color, 'px-3 py-1 rounded-full text-xs font-bold border-0']">
+                  {{ getStatusConfig(selectedOrder?.status || '').text }}
+                </Badge>
+                <span class="text-sm font-medium text-gray-500 flex items-center gap-1.5">
+                  <Clock class="w-4 h-4" /> Placed on {{ formatDate(selectedOrder?.created_at || '') }}
+                </span>
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <Button variant="ghost" size="icon" @click="isDetailsModalOpen = false" class="shrink-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
+            <X class="w-5 h-5" />
+          </Button>
+        </div>
+        <div class="p-6 md:p-8">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-6">
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h4 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Package class="w-5 h-5" /> Order Items
+                  </h4>
+                </div>
+                <div class="p-4 md:p-6 space-y-4">
+                  <div v-for="item in selectedOrder?.items" :key="item.id" class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
+                    <div class="w-20 h-20 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
+                      <ImageIcon v-else class="w-8 h-8 text-gray-300" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h4 class="font-bold text-gray-900 dark:text-white truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider font-semibold">{{ item.product?.category || 'General' }}</p>
+                      <div class="flex items-end justify-between mt-3">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                          Qty: <span class="text-gray-900 dark:text-white">{{ item.quantity }}</span> × {{ formatCurrency(item.price) }}
+                        </p>
+                        <p class="text-lg font-black text-gray-900 dark:text-white">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
+                      </div>
+
+                      <div v-if="selectedOrder?.status === 'delivered'" class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3">
+                          <Button v-if="!item.is_reviewed" @click="openReviewModal(selectedOrder.id, item)" size="sm" variant="outline" class="text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex-1">
+                            <Star class="w-4 h-4 mr-1.5" /> Write a Review
+                          </Button>
+                          <div v-else class="flex flex-col gap-1.5 bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 flex-1">
+                            <div class="flex items-center justify-between">
+                              <div class="flex items-center text-amber-500">
+                                <Star v-for="i in 5" :key="i" :class="['w-4 h-4', i <= (item.review_rating || 0) ? 'fill-current' : 'text-gray-300 dark:text-gray-600']" />
+                                <span class="text-xs text-gray-500 ml-2 font-bold uppercase tracking-wider">Reviewed</span>
+                              </div>
+                              <Button variant="link" size="sm" class="text-xs text-blue-500 h-auto p-0 m-0" @click="openReviewModal(selectedOrder.id, item)">Edit</Button>
+                            </div>
+                            <p v-if="item.review_comment" class="text-sm text-gray-600 dark:text-gray-300 italic mt-1">"{{ item.review_comment }}"</p>
+                          </div>
+
+                          <Button v-if="isReturnable(selectedOrder)" variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0 h-10 px-4">
+                            <RotateCcw class="w-4 h-4 mr-1.5" /> Return
+                          </Button>
+                          <div v-else class="text-xs text-red-500 font-medium px-2 shrink-0 flex items-center justify-center text-center">
+                            Return period<br>expired
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h4 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <MapPin class="w-5 h-5" /> Shipping Information
+                  </h4>
+                </div>
+                <div class="p-4 md:p-6">
+                  <p class="text-gray-700 dark:text-gray-300 leading-relaxed font-medium bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                    {{ selectedOrder?.delivery_address }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="lg:col-span-1 space-y-6">
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h4 class="font-bold text-gray-900 dark:text-white">Order Summary</h4>
+                </div>
+                <div class="p-5 space-y-4 text-sm font-medium">
+                  <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>Subtotal</span>
+                    <span class="text-gray-900 dark:text-gray-200">{{ formatCurrency(selectedOrder?.total_amount || 0) }}</span>
+                  </div>
+                  <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>Shipping Fee</span>
+                    <span class="text-gray-900 dark:text-gray-200">{{ formatCurrency(selectedOrder?.shipping_fee || 0) }}</span>
+                  </div>
+                  <div class="pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-end">
+                      <span class="text-base font-bold text-gray-900 dark:text-white">Grand Total</span>
+                      <span class="text-2xl font-black text-blue-600 dark:text-blue-400">{{ formatCurrency(selectedOrder?.grand_total || 0) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <h4 class="font-bold text-gray-900 dark:text-white">Payment Method</h4>
+                </div>
+                <div class="p-5">
+                  <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                    <div class="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <CreditCard class="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                    </div>
+                    <div>
+                      <p class="font-bold text-gray-900 dark:text-white uppercase tracking-wider">{{ selectedOrder?.payment_method }}</p>
+                      <p class="text-xs text-green-600 dark:text-green-400 font-semibold mt-0.5">Payment Verified</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <Button @click="downloadInvoice" class="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20 py-6 text-base font-bold rounded-xl">
+                <FileText class="w-5 h-5 mr-2" /> Download Invoice
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="isReviewModalOpen">
+      <DialogContent class="sm:max-w-125 p-6 rounded-2xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <DialogHeader class="mb-4">
+          <DialogTitle class="text-xl font-bold text-gray-900 dark:text-white">Review Product</DialogTitle>
+          <DialogDescription class="text-gray-500 dark:text-gray-400 mt-2">
+            How was your experience with <span class="font-bold text-gray-800 dark:text-gray-200">{{ reviewForm.product_name }}</span>?
+          </DialogDescription>
+        </DialogHeader>
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-3">Overall Rating</label>
+            <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 w-max">
+              <button v-for="star in 5" :key="star" @click="setRating(star)" class="focus:outline-none transition-transform hover:scale-110 active:scale-95">
+                <Star :class="['w-8 h-8 drop-shadow-sm', star <= reviewForm.rating ? 'text-amber-400 fill-current' : 'text-gray-300 dark:text-gray-600']" />
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Write your comment (Optional)</label>
+            <textarea v-model="reviewForm.comment" rows="4" placeholder="Share your thoughts, what you liked or disliked..." class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all shadow-inner"></textarea>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="outline" @click="isReviewModalOpen = false" class="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl">Cancel</Button>
+          <Button @click="submitReview" :disabled="isSubmittingReview" class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 px-6">
+            <Loader2 v-if="isSubmittingReview" class="w-4 h-4 mr-2 animate-spin" />
+            {{ isSubmittingReview ? 'Submitting...' : 'Submit Review' }}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="closeReportModal">
+      <DialogContent class="sm:max-w-md bg-white border-gray-200 shadow-2xl rounded-xl p-6">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-600">
+            <Flag class="w-5 h-5" /> Report Shop
+          </DialogTitle>
+          <DialogDescription class="text-gray-500 mt-1">
+            Submit a formal report regarding <span class="font-bold text-gray-800">{{ selectedDistributorForReport?.company_name || selectedDistributorForReport?.first_name || 'this shop' }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-800">Reason for Report</label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-white border-gray-300 text-gray-900 focus:ring-blue-500 shadow-sm">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-white border-gray-200 text-gray-900 shadow-xl rounded-lg">
+                <SelectItem value="Counterfeit Product">Counterfeit Product</SelectItem>
+                <SelectItem value="Poor Quality Item">Poor Quality Item</SelectItem>
+                <SelectItem value="Delayed Shipping">Delayed Shipping</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Fraudulent Activity">Fraudulent Activity</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-800">Detailed Description</label>
+            <textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about the issue..."
+              class="w-full p-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus-visible:ring-blue-500 placeholder:text-gray-400 min-h-[100px] resize-none shadow-sm"
+              required
+            ></textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-800">Date of Incident</label>
+            <input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-gray-800">Evidence <span class="text-gray-400 text-xs font-normal">(Optional, max 5MB)</span></label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-white border-gray-300 text-gray-700 file:bg-gray-100 file:text-gray-800 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-blue-500 shadow-sm"
+            />
+          </div>
+
+          <p class="text-[11px] text-gray-500 text-center mt-2">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-6">
+            <Button type="button" variant="outline" @click="closeReportModal" class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white shadow-sm border-0">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <Loader2 class="w-4 h-4 animate-spin" /> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    <Teleport to="body">
+      <div v-if="isReturnChatOpen" class="fixed inset-0 flex justify-end pointer-events-auto" style="z-index: 99999;">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click.stop="closeReturnChat"></div>
+
+        <transition enter-active-class="transition-transform duration-300 ease-out" enter-from-class="translate-x-full" enter-to-class="translate-x-0" leave-active-class="transition-transform duration-200 ease-in" leave-from-class="translate-x-0" leave-to-class="translate-x-full">
+          <div v-if="isReturnChatOpen" class="relative w-full md:w-112.5 bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col z-10">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+              <div>
+                <h3 class="font-bold text-lg text-gray-900 dark:text-white">Return Item</h3>
+                <p class="text-xs text-gray-500">{{ activeReturnItem?.product?.name }}</p>
+              </div>
+              <Button variant="ghost" size="icon" @click.stop.prevent="closeReturnChat">
+                <X class="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div v-if="!returnRequest" class="p-6 overflow-y-auto flex-1 space-y-5">
+              <Alert class="bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
+                <Info class="w-4 h-4" />
+                <AlertDescription>Please provide a valid reason and clear photo proof to request a return.</AlertDescription>
+              </Alert>
+              <div>
+                <label class="block text-sm font-bold mb-2">Reason for Return</label>
+                <Select v-model="selectedReturnReason">
+                  <SelectTrigger class="w-full bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-xl h-12">
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent class="z-100000">
+                    <SelectItem value="Damaged Item">Damaged Item</SelectItem>
+                    <SelectItem value="Wrong Item">Wrong Item</SelectItem>
+                    <SelectItem value="Not as Described">Not as Described</SelectItem>
+                    <SelectItem value="Changed Mind">Changed Mind</SelectItem>
+                    <SelectItem value="Defective">Defective</SelectItem>
+                    <SelectItem value="Others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div v-if="selectedReturnReason === 'Others'">
+                <label class="block text-sm font-bold mb-2">Please specify</label>
+                <textarea v-model="customReturnReason" rows="3" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 resize-none outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your reason here..."></textarea>
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold mb-2">Photo Proof</label>
+                <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer relative" :class="{'bg-transparent': returnProofPreview}">
+                  <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleReturnProofUpload" />
+                  <div v-if="!returnProofPreview">
+                    <Camera class="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p class="text-sm text-gray-500">Tap to upload image</p>
+                  </div>
+                  <div v-else class="relative inline-block">
+                    <img :src="returnProofPreview" class="max-h-40 rounded-lg shadow-sm" />
+                    <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 w-6 h-6 rounded-full" @click.stop.prevent="removeReturnProof">
+                      <X class="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Button @click="submitInitialReturn" :disabled="isSubmittingReturn || !selectedReturnReason || (selectedReturnReason === 'Others' && !customReturnReason) || !returnProofFile" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl">
+                <Loader2 v-if="isSubmittingReturn" class="w-5 h-5 mr-2 animate-spin" /> Submit Return Request
+              </Button>
+            </div>
+
+            <div v-else class="flex flex-col flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+              <div class="p-3 text-center text-sm font-semibold text-white shadow-sm shrink-0" :class="{ 'bg-yellow-500': returnRequest.status === 'pending', 'bg-green-500': returnRequest.status === 'approved', 'bg-red-500': returnRequest.status === 'rejected', 'bg-purple-500': returnRequest.status === 'shipped', 'bg-teal-500': returnRequest.status === 'completed' }">
+                Status: {{ returnRequest.status.toUpperCase() }}
+              </div>
+
+              <div class="flex-1 overflow-y-auto p-4 space-y-4" id="returnChatContainer">
+                <div v-for="msg in returnMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === user?.id ? 'items-end' : 'items-start'">
+                  <div v-if="msg.type === 'system'" class="w-full text-center my-4">
+                    <span class="bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full">{{ msg.message }}</span>
+                    <img v-if="msg.file_path" :src="getFullImageUrl(msg.file_path)" class="max-w-50 mt-2 rounded-lg mx-auto border border-gray-200 dark:border-gray-700 shadow-sm" />
+                  </div>
+                  <div v-else class="max-w-[80%] rounded-2xl p-3 shadow-sm" :class="msg.sender_id === user?.id ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-bl-none'">
+                    <p v-if="msg.type === 'text'" class="text-sm whitespace-pre-wrap">{{ msg.message }}</p>
+                    <div v-else-if="msg.type === 'image'">
+                      <img :src="getFullImageUrl(msg.file_path)" class="rounded-lg max-w-full cursor-pointer hover:opacity-90" @click="openImageInNewTab(getFullImageUrl(msg.file_path))" />
+                      <p v-if="msg.message" class="text-sm mt-2">{{ msg.message }}</p>
+                    </div>
+                  </div>
+                  <span class="text-[10px] text-gray-400 mt-1">{{ formatDate(msg.created_at) }}</span>
+                </div>
+              </div>
+
+              <div v-if="returnRequest.status === 'approved'" class="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 space-y-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
+                <p class="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Submit Tracking Info</p>
+                <input v-model="trackingNumber" type="text" placeholder="Tracking Number" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 outline-none focus:border-blue-500" />
+                <div class="flex items-center gap-2">
+                  <input type="file" id="trackImg" accept="image/*" class="hidden" @change="handleTrackingProofUpload" />
+                  <label for="trackImg" class="cursor-pointer px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-medium flex-1 text-center truncate border border-gray-200 dark:border-gray-600">
+                    {{ trackingProofFile ? trackingProofFile.name : 'Upload Receipt Photo' }}
+                  </label>
+                  <Button @click="submitTrackingInfo" :disabled="!trackingNumber || !trackingProofFile || isSubmittingTracking" class="bg-green-600 hover:bg-green-700 text-white shrink-0">
+                    <Send class="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div v-if="chatImagePreview" class="px-4 py-3 bg-gray-100 dark:bg-gray-800/80 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                <div class="relative inline-block">
+                  <img :src="chatImagePreview" class="h-20 w-20 object-cover rounded-xl shadow-md border border-gray-300 dark:border-gray-600" />
+                  <button @click="removeChatImage" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition-transform hover:scale-110">
+                    <X class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="['pending', 'approved', 'shipped'].includes(returnRequest.status)" class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex items-end gap-2">
+                <input type="file" id="chatImg" accept="image/*" class="hidden" @change="handleChatImageUpload" />
+                <label for="chatImg" class="cursor-pointer p-3 rounded-full text-gray-500 hover:bg-gray-100 dark:bg-gray-700 shrink-0 transition-colors" :class="{'text-blue-500 bg-blue-50 dark:bg-blue-900/30': chatImageFile}">
+                  <Paperclip class="w-5 h-5" />
+                </label>
+                <div class="flex-1 bg-gray-100 dark:bg-gray-900 rounded-2xl border border-transparent focus-within:border-blue-500 flex items-center overflow-hidden transition-colors">
+                <input v-model="chatMessage" @keyup.enter="sendChatMessage" type="text" placeholder="Type a message..." class="w-full bg-transparent border-none focus:ring-0 text-sm px-4 py-3 outline-none" />
+                </div>
+                <Button @click="sendChatMessage" :disabled="isSendingMessage || (!chatMessage.trim() && !chatImageFile)" size="icon" class="rounded-full h-11 w-11 shrink-0 bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+                  <Send class="w-4 h-4 ml-0.5" />
+                </Button>
+              </div>
+              <div v-else class="p-3 text-center text-xs text-gray-500 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
+                This return request is {{ returnRequest.status }}. Chat is disabled.
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-10000 bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+      </transition>
+      <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-10000">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <AlertCircle class="w-6 h-6 text-blue-500" /> Authentication Required
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
+              You must be logged in to view and manage your orders.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">Log In</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Teleport>
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -6,7 +781,6 @@ import { toast } from 'vue-sonner'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Fix for default Leaflet icon paths in Vue
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -18,7 +792,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow
 })
 
-// Shadcn UI Components
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,13 +802,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
-// Icons
 import { 
   ShoppingBag, Clock, Package, CheckCircle2, RefreshCw, Search, ChevronDown, ChevronUp, Image as ImageIcon, Truck, XCircle, FileText, AlertCircle, MapPin, CreditCard, Loader2, X, Star, Camera, Upload, Navigation, AlertTriangle, Banknote, Menu, Info,
-  RotateCcw, Send, Paperclip
+  RotateCcw, Send, Paperclip, Flag
 } from 'lucide-vue-next'
 
-// Import Echo and Pusher
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 
@@ -59,6 +830,13 @@ const isAuthAlertOpen = ref(false)
 const isReviewModalOpen = ref(false)
 const isSubmittingReview = ref(false)
 const reviewForm = ref({ order_id: null, product_id: null, product_name: '', rating: 5, comment: '' })
+
+// Report Shop State
+const isReportModalOpen = ref(false)
+const selectedDistributorForReport = ref(null)
+const isSubmittingReport = ref(false)
+const reportForm = ref({ reason: '', description: '', incident_date: '' })
+const reportEvidenceFile = ref(null)
 
 // Pick-Up Logic 
 const isPickUpTrackingActive = ref(false)
@@ -412,6 +1190,84 @@ const submitPickUp = async () => {
   }
 }
 
+// --- Report System Methods ---
+const openReportModal = (order) => {
+    if (!props.user) { isAuthAlertOpen.value = true; return }
+    const distributor = order.items?.[0]?.distributor;
+    if (!distributor) {
+        toast.error('Distributor details not found for this order.');
+        return;
+    }
+    selectedDistributorForReport.value = distributor;
+    reportForm.value = { reason: '', description: '', incident_date: '' };
+    reportEvidenceFile.value = null;
+    isReportModalOpen.value = true;
+}
+
+const closeReportModal = () => {
+    isReportModalOpen.value = false;
+    selectedDistributorForReport.value = null;
+}
+
+const handleReportEvidence = (event) => {
+    if (event.target.files.length > 0) {
+        reportEvidenceFile.value = event.target.files[0];
+    }
+}
+
+const submitReport = async () => {
+    if (!selectedDistributorForReport.value || !selectedDistributorForReport.value.id) return;
+    
+    // Explicit Frontend Validations
+    if (!reportForm.value.reason) {
+        toast.error('Missing Reason', { description: 'Please select a reason for your report.' });
+        return;
+    }
+    if (!reportForm.value.description || !reportForm.value.description.trim()) {
+        toast.error('Missing Description', { description: 'Please provide a detailed description.' });
+        return;
+    }
+    if (!reportForm.value.incident_date) {
+        toast.error('Missing Date', { description: 'Please select the date of the incident.' });
+        return;
+    }
+
+    isSubmittingReport.value = true;
+    
+    const formData = new FormData();
+    formData.append('reason', reportForm.value.reason);
+    formData.append('description', reportForm.value.description);
+    formData.append('incident_date', reportForm.value.incident_date);
+    
+    if (reportEvidenceFile.value) {
+        formData.append('evidence', reportEvidenceFile.value);
+    }
+
+    try {
+        const res = await api.post(`/client/orders/distributors/${selectedDistributorForReport.value.id}/report`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data.success) {
+            toast.success('Report Submitted', { description: 'The admin team will review this incident.' });
+            closeReportModal();
+        }
+    } catch (error) {
+        console.error(error);
+        
+        // Handle specific Laravel validation errors
+        if (error.response?.status === 422) {
+            const errors = error.response.data.errors;
+            const firstError = Object.values(errors)[0][0];
+            toast.error('Validation Error', { description: firstError });
+        } else {
+            toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' });
+        }
+    } finally {
+        isSubmittingReport.value = false;
+    }
+}
+
 // --- Utils ---
 const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(amount))
 
@@ -751,699 +1607,3 @@ const submitTrackingInfo = async () => {
   }
 }
 </script>
-
-<template>
-  <div class="min-h-screen">
-    <div class="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10">
-      <div class="container mx-auto px-4 md:px-8 py-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">My Orders</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-1">Track your purchases and service requests</p>
-          </div>
-          
-          <div class="flex items-center space-x-3 w-full md:w-auto">
-            <div class="flex-1 md:w-50">
-              <Select v-model="statusFilter">
-                <SelectTrigger class="w-full bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Orders</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing (Confirmed/Prepared/Pick-Up)</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" size="icon" @click="refreshOrders" :disabled="isRefreshing" class="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-blue-600 shrink-0">
-              <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isRefreshing }" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="container mx-auto px-4 md:px-8 py-8 max-w-7xl">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
-          <CardContent class="p-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Orders</p>
-              <p class="text-3xl font-bold text-gray-900 dark:text-white mt-1">{{ orders.length }}</p>
-            </div>
-            <div class="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center shrink-0">
-              <ShoppingBag class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
-          <CardContent class="p-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</p>
-              <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mt-1">{{ pendingCount }}</p>
-            </div>
-            <div class="w-12 h-12 bg-yellow-50 dark:bg-yellow-900/20 rounded-full flex items-center justify-center shrink-0">
-              <Clock class="w-6 h-6 text-yellow-600 dark:text-yellow-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
-          <CardContent class="p-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Processing</p>
-              <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">{{ processingCount }}</p>
-            </div>
-            <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center shrink-0">
-              <Package class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden">
-          <CardContent class="p-6 flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</p>
-              <p class="text-3xl font-bold text-green-600 dark:text-green-500 mt-1">{{ completedCount }}</p>
-            </div>
-            <div class="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center shrink-0">
-              <CheckCircle2 class="w-6 h-6 text-green-600 dark:text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div class="space-y-6">
-        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-          <Loader2 class="w-10 h-10 animate-spin text-blue-500 mb-4" />
-          <p class="text-gray-500">Loading your orders...</p>
-        </div>
-
-        <Card v-else-if="filteredOrders.length === 0" class="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div class="w-20 h-20 mx-auto mb-6 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center text-gray-400">
-            <ShoppingBag class="w-10 h-10" />
-          </div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">No orders found</h3>
-          <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-8">
-            {{ !user ? 'Please log in to view and track your orders.' : (statusFilter === 'all' ? "Looks like you haven't placed any orders yet." : `No orders found matching the '${statusFilter}' status.`) }}
-          </p>
-          <div class="flex items-center justify-center gap-4">
-            <Button v-if="statusFilter !== 'all'" @click="statusFilter = 'all'" variant="outline">Clear Filters</Button>
-            <router-link v-if="user" to="/ECommerceClient/EccommerceShop">
-              <Button class="bg-blue-600 hover:bg-blue-700 text-white">Start Shopping</Button>
-            </router-link>
-            <Button v-else @click="isAuthAlertOpen = true" class="bg-blue-600 hover:bg-blue-700 text-white">Log In</Button>
-          </div>
-        </Card>
-
-        <Card v-else v-for="order in filteredOrders" :key="order.id" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border-gray-200 dark:border-gray-700 overflow-hidden transition-all hover:shadow-md">
-          <div class="p-5 md:p-6 border-b border-gray-100 dark:border-gray-700/50">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                  Order <span class="text-blue-600 dark:text-blue-400">{{ order.order_number }}</span>
-                </h3>
-                <div class="flex items-center gap-3">
-                  <Badge :class="[getStatusConfig(order.status).color, 'px-3 py-1 rounded-full text-xs font-semibold border-0']">
-                    {{ getStatusConfig(order.status).text }}
-                  </Badge>
-                  <p class="text-sm text-gray-500 dark:text-gray-400 sm:hidden">{{ formatDate(order.created_at) }}</p>
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Placed on {{ formatDate(order.created_at) }}</p>
-              </div>
-              <div class="flex justify-between items-center md:block md:text-right border-t border-gray-100 dark:border-gray-700/50 md:border-t-0 pt-4 md:pt-0">
-                <p class="text-sm text-gray-500 dark:text-gray-400 md:hidden">Total Amount</p>
-                <div>
-                  <div class="text-2xl font-black text-gray-900 dark:text-white">{{ formatCurrency(order.grand_total) }}</div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400 text-right">{{ order.items.length }} item(s)</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="p-5 md:p-6">
-            <div class="space-y-4">
-              <div v-for="item in order.items.slice(0, 2)" :key="item.id" class="flex items-center">
-                <div class="w-16 h-16 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-                  <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                  <ImageIcon v-else class="w-6 h-6 text-gray-400" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-semibold text-gray-900 dark:text-gray-100 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                  <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Qty: {{ item.quantity }}</p>
-                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
-                  </div>
-                </div>
-              </div>
-              <div v-if="order.items.length > 2" class="pt-2">
-                <Button variant="ghost" @click="toggleOrderDetails(order.id)" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium p-0 h-auto hover:bg-transparent">
-                  <span>{{ order.expanded ? 'Hide extra items' : `+${order.items.length - 2} more items` }}</span>
-                  <ChevronUp v-if="order.expanded" class="w-4 h-4 ml-1" />
-                  <ChevronDown v-else class="w-4 h-4 ml-1" />
-                </Button>
-                <div v-if="order.expanded" class="mt-4 space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                  <div v-for="item in order.items.slice(2)" :key="item.id" class="flex items-center">
-                    <div class="w-14 h-14 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center mr-4 shrink-0 overflow-hidden">
-                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                      <ImageIcon v-else class="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                      <div class="flex flex-col sm:flex-row sm:justify-between mt-1">
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Qty: {{ item.quantity }}</p>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-200">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700/50">
-              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div class="flex flex-wrap gap-4 text-sm">
-                  <div class="bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100 dark:border-gray-800">
-                    <CreditCard class="w-4 h-4 text-gray-500" />
-                    <span class="font-medium text-gray-900 dark:text-gray-200 uppercase">{{ order.payment_method }}</span>
-                  </div>
-                  <div class="bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-gray-100 dark:border-gray-800">
-                    <MapPin class="w-4 h-4 text-gray-500" />
-                    <span class="font-medium text-gray-900 dark:text-gray-200 max-w-37.5 truncate">{{ order.delivery_address }}</span>
-                  </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <Button variant="outline" @click="viewOrderDetails(order)" class="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-400 flex-1 sm:flex-none">
-                    <FileText class="w-4 h-4 mr-2" /> Details
-                  </Button>
-                  <Button v-if="order.status === 'pending'" variant="outline" @click="cancelOrder(order.id)" class="border-red-200 text-red-700 hover:bg-red-50 flex-1 sm:flex-none">
-                    <XCircle class="w-4 h-4 mr-2" /> Cancel
-                  </Button>
-                  <Button v-if="order.status === 'delivered'" @click="reorderItems(order.id)" class="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none">
-                    <RefreshCw class="w-4 h-4 mr-2" /> Reorder
-                  </Button>
-                  <Button v-if="(order.payment_method === 'pick-up' || order.payment_method === 'pickup') && (order.status === 'ready_for_pickup' || order.status === 'prepared')" @click="openPickUpTracking(order)" class="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none">
-                    <MapPin class="w-4 h-4 mr-2" /> View Pick-Up
-                  </Button>
-                  <Button v-else-if="order.status === 'shipped'" @click="trackOrder(order.id)" class="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-none">
-                    <Truck class="w-4 h-4 mr-2" /> Track
-                  </Button>
-                </div>
-              </div>
-              <div v-if="order.status !== 'cancelled'" class="mt-6 bg-gray-50 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
-                <div class="mb-2 flex justify-between text-sm">
-                  <span class="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                    <AlertCircle class="w-4 h-4 text-gray-400" /> Status
-                  </span>
-                  <span class="font-semibold text-gray-900 dark:text-white">{{ getProgressData(order.status).text }}</span>
-                </div>
-                <Progress :model-value="getProgressData(order.status).value" :class="['h-2.5', getProgressData(order.status).color]" />
-                <div class="flex justify-between mt-3 text-xs font-medium text-gray-400 dark:text-gray-500">
-                  <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 25}">Placed</span>
-                  <span :class="{'text-blue-600 dark:text-blue-400': getProgressData(order.status).value >= 50}">Processing</span>
-                  <span :class="{
-                    'text-teal-600 dark:text-teal-400': getProgressData(order.status).value >= 75 && (order.payment_method === 'pick-up' || order.payment_method === 'pickup'),
-                    'text-purple-600 dark:text-purple-400': getProgressData(order.status).value >= 75 && order.payment_method !== 'pick-up' && order.payment_method !== 'pickup'
-                  }">
-                    {{ (order.payment_method === 'pick-up' || order.payment_method === 'pickup') ? 'Ready' : 'Shipped' }}
-                  </span>
-                  <span :class="{'text-green-600 dark:text-green-400': getProgressData(order.status).value === 100}">Delivered</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <div v-if="filteredOrders.length > 0 && displayedOrders < orders.length" class="mt-8 text-center">
-          <Button @click="loadMoreOrders" variant="outline" class="w-full sm:w-auto px-8">Load More Orders</Button>
-        </div>
-      </div>
-    </div>
-
-    <Teleport to="body">
-      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
-        <div v-if="isPickUpTrackingActive" class="fixed inset-0 z-9999 flex flex-col overflow-hidden bg-gray-900 text-gray-100 font-sans">
-          <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
-            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
-              <Loader2 v-if="isFetchingPickUp" class="w-16 h-16 text-blue-500 animate-spin" />
-              <div v-else class="relative">
-                <div class="absolute -inset-4 bg-teal-500/20 rounded-full animate-pulse blur-xl"></div>
-                <div class="bg-gray-900/40 p-6 rounded-full relative shadow-inner border border-teal-500/30">
-                  <MapPin class="w-16 h-16 text-teal-400" />
-                </div>
-              </div>
-              <div class="space-y-2">
-                <h1 class="text-3xl font-black tracking-tight text-white">{{ isFetchingPickUp ? 'Loading Tracker' : 'Location Required' }}</h1>
-                <p class="text-gray-400 text-sm md:text-base px-4">To trace your path to the shop and validate your pick-up, GPS access is needed.</p>
-              </div>
-              <Alert v-if="locationError" variant="destructive" class="text-left w-full bg-red-900/20 border-red-900/50 text-red-300">
-                <AlertTriangle class="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
-                <AlertDescription>{{ locationError }}</AlertDescription>
-              </Alert>
-              <div class="flex gap-4 w-full sm:w-auto">
-                <Button @click="closePickUpTracking" variant="outline" size="lg" class="bg-gray-800 text-white hover:bg-gray-700 border-gray-700">Cancel</Button>
-                <Button @click="requestLocationAndStartTracking" size="lg" :disabled="isFetchingPickUp" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20">
-                  <Navigation class="mr-2 h-5 w-5" /> Enable GPS Access
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div id="pickup-map" class="absolute inset-0 z-0"></div>
-          <div v-if="locationGranted" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
-            <div class="p-4 md:p-6 pt-12 md:pt-6 flex justify-between items-start w-full">
-              <div class="flex flex-col gap-2 pointer-events-auto max-w-[65%] sm:max-w-sm">
-                <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-full py-1.5 px-3 shadow-lg flex items-center gap-2 w-max">
-                  <div class="relative flex h-2.5 w-2.5 shrink-0">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
-                  </div>
-                  <span class="text-xs font-medium text-gray-200 truncate font-mono">{{ currentCoordsDisplay }}</span>
-                </div>
-                <div class="bg-gray-900/80 backdrop-blur-md border border-gray-800 rounded-xl p-3 shadow-lg flex items-center gap-3">
-                  <div class="bg-teal-500/20 p-2 rounded-lg shrink-0">
-                    <Package class="h-5 w-5 text-teal-400" />
-                  </div>
-                  <div class="min-w-0">
-                    <h1 class="font-bold text-white text-sm md:text-base truncate">Pick-Up Order</h1>
-                    <p class="text-xs text-gray-400 truncate">{{ trackedOrder?.order_number }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="pointer-events-auto flex flex-col gap-2 items-end">
-                <Button @click="closePickUpTracking" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full mb-2">
-                  <X class="w-6 h-6" />
-                </Button>
-                <Button @click="isMapDrawerOpen = !isMapDrawerOpen" size="icon" variant="outline" class="bg-gray-900/90 backdrop-blur-md border-gray-700 text-white hover:bg-gray-800 shadow-xl h-12 w-12 rounded-full">
-                  <Menu v-if="!isMapDrawerOpen" class="w-6 h-6" />
-                  <ChevronDown v-else class="w-6 h-6" />
-                </Button>
-              </div>
-            </div>
-            <div class="bg-gray-900/95 border-t border-gray-800 backdrop-blur-xl pointer-events-auto w-full transition-transform duration-300 ease-in-out flex flex-col rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] absolute bottom-0 left-0 right-0 z-20 h-[85vh] md:h-[70vh]" :style="{ transform: isMapDrawerOpen ? 'translateY(0)' : 'translateY(100%)' }">
-              <div class="pt-6 pb-2 px-4 flex justify-between items-center border-b border-gray-800 mx-4 md:mx-6 shrink-0">
-                <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                  <MapPin class="h-5 w-5 text-teal-500" /> Shop Location & Handover
-                </h2>
-                <Button variant="ghost" size="icon" @click="isMapDrawerOpen = false" class="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 w-8">
-                  <X class="w-4 h-4" />
-                </Button>
-              </div>
-              <ScrollArea class="flex-1 min-h-0 px-4 md:px-6 py-4 w-full max-w-4xl mx-auto">
-                <div class="space-y-6 pb-8">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <h2 class="text-2xl font-black text-white leading-tight">Distributor Shop</h2>
-                      <p class="text-sm text-gray-400 mt-1 max-w-sm">{{ pickUpDetails.distributor_address || 'Address unavailable' }}</p>
-                    </div>
-                    <Badge v-if="distanceToTarget !== null" :class="isWithinRange ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'" class="border-0 px-3 py-1 text-sm shrink-0">
-                      {{ distanceToTarget < 1000 ? Math.round(distanceToTarget) + 'm' : (distanceToTarget/1000).toFixed(1) + 'km' }} away
-                    </Badge>
-                  </div>
-                  <Alert v-if="!isWithinRange" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
-                    <AlertTriangle class="h-5 w-5" />
-                    <AlertDescription class="text-sm ml-2 leading-tight">You must be within 500 meters of the shop to complete this pick-up.</AlertDescription>
-                  </Alert>
-                  <div class="bg-gray-800/40 rounded-2xl p-4 border border-gray-700/50">
-                    <p class="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
-                      <Package class="h-4 w-4 text-indigo-400" /> Your Prepared Order
-                    </p>
-                    <div class="rounded-xl overflow-hidden bg-gray-900 h-40 relative flex items-center justify-center border border-gray-800">
-                      <img v-if="pickUpDetails.preparation_proof" :src="pickUpDetails.preparation_proof" class="w-full h-full object-cover" />
-                      <div v-else class="text-gray-500 text-sm flex flex-col items-center">
-                        <ImageIcon class="h-8 w-8 mb-2 opacity-50" /> No preparation image.
-                      </div>
-                    </div>
-                  </div>
-                  <div class="space-y-5">
-                    <div>
-                      <label class="text-sm font-semibold text-gray-300 mb-2 block">
-                        Upload Proof of Received Goods <span class="text-red-400">*</span>
-                      </label>
-                      <div class="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="pickupProofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'">
-                        <input v-if="!pickupProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePickupUpload" :disabled="!isWithinRange" />
-                        <div v-if="!pickupProofPreview" class="text-center pointer-events-none">
-                          <Camera class="h-8 w-8 text-gray-500 mx-auto mb-3" />
-                          <p class="text-sm font-medium text-gray-300">Tap to snap Package</p>
-                        </div>
-                        <div v-else class="relative w-full flex justify-center">
-                          <img :src="pickupProofPreview" class="max-h-56 rounded-xl border border-gray-700 object-cover shadow-lg" />
-                          <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePickupProof">
-                            <X class="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="text-sm font-semibold text-green-400 mb-2 block">
-                        Upload Proof of Payment <span class="text-red-400">*</span>
-                      </label>
-                      <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="paymentProofPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
-                        <input v-if="!paymentProofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" :disabled="!isWithinRange" />
-                        <div v-if="!paymentProofPreview" class="text-center pointer-events-none">
-                          <Banknote class="h-8 w-8 text-green-600/50 mx-auto mb-3" />
-                          <p class="text-sm font-medium text-green-400">Tap to snap Receipt or Cash Handover</p>
-                        </div>
-                        <div v-else class="relative w-full flex justify-center">
-                          <img :src="paymentProofPreview" class="max-h-56 rounded-xl border border-green-800/50 object-cover shadow-lg" />
-                          <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePaymentProof">
-                            <X class="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    <Button @click="submitPickUp" :disabled="!isWithinRange || !pickupProofFile || !paymentProofFile || isSubmittingPickUp" class="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" size="lg">
-                      <Loader2 v-if="isSubmittingPickUp" class="mr-2 h-5 w-5 animate-spin" />
-                      <CheckCircle2 v-else class="mr-2 h-5 w-5" /> Confirm Item Picked Up
-                    </Button>
-                  </div>
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </Teleport>
-
-    <Dialog v-model:open="isDetailsModalOpen">
-      <DialogContent class="sm:max-w-200 md:max-w-237.5 lg:max-w-275 max-h-[90vh] overflow-y-auto w-[95vw] p-0 gap-0 rounded-2xl bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-        <div class="bg-white dark:bg-gray-800 p-6 md:p-8 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 flex justify-between items-start gap-4">
-          <DialogHeader class="flex flex-col sm:flex-row justify-between items-start gap-4">
-            <div>
-              <DialogTitle class="text-2xl font-black text-gray-900 dark:text-white">
-                Order <span class="text-blue-600 dark:text-blue-400">{{ selectedOrder?.order_number }}</span>
-              </DialogTitle>
-              <DialogDescription class="flex flex-wrap items-center mt-3 gap-3">
-                <Badge :class="[getStatusConfig(selectedOrder?.status || '').color, 'px-3 py-1 rounded-full text-xs font-bold border-0']">
-                  {{ getStatusConfig(selectedOrder?.status || '').text }}
-                </Badge>
-                <span class="text-sm font-medium text-gray-500 flex items-center gap-1.5">
-                  <Clock class="w-4 h-4" /> Placed on {{ formatDate(selectedOrder?.created_at || '') }}
-                </span>
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <Button variant="ghost" size="icon" @click="isDetailsModalOpen = false" class="shrink-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
-            <X class="w-5 h-5" />
-          </Button>
-        </div>
-        <div class="p-6 md:p-8">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-6">
-              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h4 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Package class="w-5 h-5" /> Order Items
-                  </h4>
-                </div>
-                <div class="p-4 md:p-6 space-y-4">
-                  <div v-for="item in selectedOrder?.items" :key="item.id" class="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                    <div class="w-20 h-20 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                      <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-full h-full object-cover" />
-                      <ImageIcon v-else class="w-8 h-8 text-gray-300" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h4 class="font-bold text-gray-900 dark:text-white truncate">{{ item.product?.name || 'Unknown Product' }}</h4>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider font-semibold">{{ item.product?.category || 'General' }}</p>
-                      <div class="flex items-end justify-between mt-3">
-                        <p class="text-sm font-medium text-gray-600 dark:text-gray-300">
-                          Qty: <span class="text-gray-900 dark:text-white">{{ item.quantity }}</span> × {{ formatCurrency(item.price) }}
-                        </p>
-                        <p class="text-lg font-black text-gray-900 dark:text-white">{{ formatCurrency(Number(item.price) * item.quantity) }}</p>
-                      </div>
-
-                      <div v-if="selectedOrder?.status === 'delivered'" class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center gap-3">
-                          <Button v-if="!item.is_reviewed" @click="openReviewModal(selectedOrder.id, item)" size="sm" variant="outline" class="text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20 flex-1">
-                            <Star class="w-4 h-4 mr-1.5" /> Write a Review
-                          </Button>
-                          <div v-else class="flex flex-col gap-1.5 bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 flex-1">
-                            <div class="flex items-center justify-between">
-                              <div class="flex items-center text-amber-500">
-                                <Star v-for="i in 5" :key="i" :class="['w-4 h-4', i <= (item.review_rating || 0) ? 'fill-current' : 'text-gray-300 dark:text-gray-600']" />
-                                <span class="text-xs text-gray-500 ml-2 font-bold uppercase tracking-wider">Reviewed</span>
-                              </div>
-                              <Button variant="link" size="sm" class="text-xs text-blue-500 h-auto p-0 m-0" @click="openReviewModal(selectedOrder.id, item)">Edit</Button>
-                            </div>
-                            <p v-if="item.review_comment" class="text-sm text-gray-600 dark:text-gray-300 italic mt-1">"{{ item.review_comment }}"</p>
-                          </div>
-
-                          <Button v-if="isReturnable(selectedOrder)" variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0 h-10 px-4">
-                            <RotateCcw class="w-4 h-4 mr-1.5" /> Return
-                          </Button>
-                          <div v-else class="text-xs text-red-500 font-medium px-2 shrink-0 flex items-center justify-center text-center">
-                            Return period<br>expired
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h4 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <MapPin class="w-5 h-5" /> Shipping Information
-                  </h4>
-                </div>
-                <div class="p-4 md:p-6">
-                  <p class="text-gray-700 dark:text-gray-300 leading-relaxed font-medium bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                    {{ selectedOrder?.delivery_address }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div class="lg:col-span-1 space-y-6">
-              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h4 class="font-bold text-gray-900 dark:text-white">Order Summary</h4>
-                </div>
-                <div class="p-5 space-y-4 text-sm font-medium">
-                  <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>Subtotal</span>
-                    <span class="text-gray-900 dark:text-gray-200">{{ formatCurrency(selectedOrder?.total_amount || 0) }}</span>
-                  </div>
-                  <div class="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>Shipping Fee</span>
-                    <span class="text-gray-900 dark:text-gray-200">{{ formatCurrency(selectedOrder?.shipping_fee || 0) }}</span>
-                  </div>
-                  <div class="pt-4 border-t border-dashed border-gray-200 dark:border-gray-700">
-                    <div class="flex justify-between items-end">
-                      <span class="text-base font-bold text-gray-900 dark:text-white">Grand Total</span>
-                      <span class="text-2xl font-black text-blue-600 dark:text-blue-400">{{ formatCurrency(selectedOrder?.grand_total || 0) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div class="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                  <h4 class="font-bold text-gray-900 dark:text-white">Payment Method</h4>
-                </div>
-                <div class="p-5">
-                  <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <div class="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                      <CreditCard class="w-6 h-6 text-gray-600 dark:text-gray-300" />
-                    </div>
-                    <div>
-                      <p class="font-bold text-gray-900 dark:text-white uppercase tracking-wider">{{ selectedOrder?.payment_method }}</p>
-                      <p class="text-xs text-green-600 dark:text-green-400 font-semibold mt-0.5">Payment Verified</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <Button @click="downloadInvoice" class="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20 py-6 text-base font-bold rounded-xl">
-                <FileText class="w-5 h-5 mr-2" /> Download Invoice
-              </Button>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog v-model:open="isReviewModalOpen">
-      <DialogContent class="sm:max-w-125 p-6 rounded-2xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-        <DialogHeader class="mb-4">
-          <DialogTitle class="text-xl font-bold text-gray-900 dark:text-white">Review Product</DialogTitle>
-          <DialogDescription class="text-gray-500 dark:text-gray-400 mt-2">
-            How was your experience with <span class="font-bold text-gray-800 dark:text-gray-200">{{ reviewForm.product_name }}</span>?
-          </DialogDescription>
-        </DialogHeader>
-        <div class="space-y-6">
-          <div>
-            <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-3">Overall Rating</label>
-            <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 w-max">
-              <button v-for="star in 5" :key="star" @click="setRating(star)" class="focus:outline-none transition-transform hover:scale-110 active:scale-95">
-                <Star :class="['w-8 h-8 drop-shadow-sm', star <= reviewForm.rating ? 'text-amber-400 fill-current' : 'text-gray-300 dark:text-gray-600']" />
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Write your comment (Optional)</label>
-            <textarea v-model="reviewForm.comment" rows="4" placeholder="Share your thoughts, what you liked or disliked..." class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all shadow-inner"></textarea>
-          </div>
-        </div>
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="outline" @click="isReviewModalOpen = false" class="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold rounded-xl">Cancel</Button>
-          <Button @click="submitReview" :disabled="isSubmittingReview" class="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 px-6">
-            <Loader2 v-if="isSubmittingReview" class="w-4 h-4 mr-2 animate-spin" />
-            {{ isSubmittingReview ? 'Submitting...' : 'Submit Review' }}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-
-    <Teleport to="body">
-      <div v-if="isReturnChatOpen" class="fixed inset-0 flex justify-end pointer-events-auto" style="z-index: 99999;">
-        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click.stop="closeReturnChat"></div>
-
-        <transition enter-active-class="transition-transform duration-300 ease-out" enter-from-class="translate-x-full" enter-to-class="translate-x-0" leave-active-class="transition-transform duration-200 ease-in" leave-from-class="translate-x-0" leave-to-class="translate-x-full">
-          <div v-if="isReturnChatOpen" class="relative w-full md:w-112.5 bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col z-10">
-            <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-              <div>
-                <h3 class="font-bold text-lg text-gray-900 dark:text-white">Return Item</h3>
-                <p class="text-xs text-gray-500">{{ activeReturnItem?.product?.name }}</p>
-              </div>
-              <Button variant="ghost" size="icon" @click.stop.prevent="closeReturnChat">
-                <X class="w-5 h-5" />
-              </Button>
-            </div>
-
-            <div v-if="!returnRequest" class="p-6 overflow-y-auto flex-1 space-y-5">
-              <Alert class="bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
-                <Info class="w-4 h-4" />
-                <AlertDescription>Please provide a valid reason and clear photo proof to request a return.</AlertDescription>
-              </Alert>
-              <div>
-                <label class="block text-sm font-bold mb-2">Reason for Return</label>
-                <Select v-model="selectedReturnReason">
-                  <SelectTrigger class="w-full bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-xl h-12">
-                    <SelectValue placeholder="Select a reason" />
-                  </SelectTrigger>
-                  <SelectContent class="z-100000">
-                    <SelectItem value="Damaged Item">Damaged Item</SelectItem>
-                    <SelectItem value="Wrong Item">Wrong Item</SelectItem>
-                    <SelectItem value="Not as Described">Not as Described</SelectItem>
-                    <SelectItem value="Changed Mind">Changed Mind</SelectItem>
-                    <SelectItem value="Defective">Defective</SelectItem>
-                    <SelectItem value="Others">Others</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div v-if="selectedReturnReason === 'Others'">
-                <label class="block text-sm font-bold mb-2">Please specify</label>
-                <textarea v-model="customReturnReason" rows="3" class="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 resize-none outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your reason here..."></textarea>
-              </div>
-
-              <div>
-                <label class="block text-sm font-bold mb-2">Photo Proof</label>
-                <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer relative" :class="{'bg-transparent': returnProofPreview}">
-                  <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleReturnProofUpload" />
-                  <div v-if="!returnProofPreview">
-                    <Camera class="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p class="text-sm text-gray-500">Tap to upload image</p>
-                  </div>
-                  <div v-else class="relative inline-block">
-                    <img :src="returnProofPreview" class="max-h-40 rounded-lg shadow-sm" />
-                    <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 w-6 h-6 rounded-full" @click.stop.prevent="removeReturnProof">
-                      <X class="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <Button @click="submitInitialReturn" :disabled="isSubmittingReturn || !selectedReturnReason || (selectedReturnReason === 'Others' && !customReturnReason) || !returnProofFile" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl">
-                <Loader2 v-if="isSubmittingReturn" class="w-5 h-5 mr-2 animate-spin" /> Submit Return Request
-              </Button>
-            </div>
-
-            <div v-else class="flex flex-col flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
-              <div class="p-3 text-center text-sm font-semibold text-white shadow-sm shrink-0" :class="{ 'bg-yellow-500': returnRequest.status === 'pending', 'bg-green-500': returnRequest.status === 'approved', 'bg-red-500': returnRequest.status === 'rejected', 'bg-purple-500': returnRequest.status === 'shipped', 'bg-teal-500': returnRequest.status === 'completed' }">
-                Status: {{ returnRequest.status.toUpperCase() }}
-              </div>
-
-              <div class="flex-1 overflow-y-auto p-4 space-y-4" id="returnChatContainer">
-                <div v-for="msg in returnMessages" :key="msg.id" class="flex flex-col" :class="msg.sender_id === user?.id ? 'items-end' : 'items-start'">
-                  <div v-if="msg.type === 'system'" class="w-full text-center my-4">
-                    <span class="bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full">{{ msg.message }}</span>
-                    <img v-if="msg.file_path" :src="getFullImageUrl(msg.file_path)" class="max-w-50 mt-2 rounded-lg mx-auto border border-gray-200 dark:border-gray-700 shadow-sm" />
-                  </div>
-                  <div v-else class="max-w-[80%] rounded-2xl p-3 shadow-sm" :class="msg.sender_id === user?.id ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-bl-none'">
-                    <p v-if="msg.type === 'text'" class="text-sm whitespace-pre-wrap">{{ msg.message }}</p>
-                    <div v-else-if="msg.type === 'image'">
-                      <img :src="getFullImageUrl(msg.file_path)" class="rounded-lg max-w-full cursor-pointer hover:opacity-90" @click="openImageInNewTab(getFullImageUrl(msg.file_path))" />
-                      <p v-if="msg.message" class="text-sm mt-2">{{ msg.message }}</p>
-                    </div>
-                  </div>
-                  <span class="text-[10px] text-gray-400 mt-1">{{ formatDate(msg.created_at) }}</span>
-                </div>
-              </div>
-
-              <div v-if="returnRequest.status === 'approved'" class="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 space-y-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)]">
-                <p class="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Submit Tracking Info</p>
-                <input v-model="trackingNumber" type="text" placeholder="Tracking Number" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 outline-none focus:border-blue-500" />
-                <div class="flex items-center gap-2">
-                  <input type="file" id="trackImg" accept="image/*" class="hidden" @change="handleTrackingProofUpload" />
-                  <label for="trackImg" class="cursor-pointer px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-medium flex-1 text-center truncate border border-gray-200 dark:border-gray-600">
-                    {{ trackingProofFile ? trackingProofFile.name : 'Upload Receipt Photo' }}
-                  </label>
-                  <Button @click="submitTrackingInfo" :disabled="!trackingNumber || !trackingProofFile || isSubmittingTracking" class="bg-green-600 hover:bg-green-700 text-white shrink-0">
-                    <Send class="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div v-if="chatImagePreview" class="px-4 py-3 bg-gray-100 dark:bg-gray-800/80 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                <div class="relative inline-block">
-                  <img :src="chatImagePreview" class="h-20 w-20 object-cover rounded-xl shadow-md border border-gray-300 dark:border-gray-600" />
-                  <button @click="removeChatImage" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition-transform hover:scale-110">
-                    <X class="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="['pending', 'approved', 'shipped'].includes(returnRequest.status)" class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0 flex items-end gap-2">
-                <input type="file" id="chatImg" accept="image/*" class="hidden" @change="handleChatImageUpload" />
-                <label for="chatImg" class="cursor-pointer p-3 rounded-full text-gray-500 hover:bg-gray-100 dark:bg-gray-700 shrink-0 transition-colors" :class="{'text-blue-500 bg-blue-50 dark:bg-blue-900/30': chatImageFile}">
-                  <Paperclip class="w-5 h-5" />
-                </label>
-                <div class="flex-1 bg-gray-100 dark:bg-gray-900 rounded-2xl border border-transparent focus-within:border-blue-500 flex items-center overflow-hidden transition-colors">
-                <input v-model="chatMessage" @keyup.enter="sendChatMessage" type="text" placeholder="Type a message..." class="w-full bg-transparent border-none focus:ring-0 text-sm px-4 py-3 outline-none" />
-                </div>
-                <Button @click="sendChatMessage" :disabled="isSendingMessage || (!chatMessage.trim() && !chatImageFile)" size="icon" class="rounded-full h-11 w-11 shrink-0 bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                  <Send class="w-4 h-4 ml-0.5" />
-                </Button>
-              </div>
-              <div v-else class="p-3 text-center text-xs text-gray-500 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shrink-0">
-                This return request is {{ returnRequest.status }}. Chat is disabled.
-              </div>
-            </div>
-          </div>
-        </transition>
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
-      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-10000 bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
-      </transition>
-      <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-10000">
-          <AlertDialogHeader>
-            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
-              <AlertCircle class="w-6 h-6 text-blue-500" /> Authentication Required
-            </AlertDialogTitle>
-            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
-              You must be logged in to view and manage your orders.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter class="mt-6 sm:space-x-3">
-            <AlertDialogCancel @click="isAuthAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">Log In</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Teleport>
-  </div>
-</template>
-
-<style scoped>
-:deep(.leaflet-control-container) { display: none; }
-</style>

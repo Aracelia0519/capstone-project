@@ -90,13 +90,17 @@
                 </TableCell>
 
                 <TableCell class="text-right">
-                  <Button v-if="req.status === 'pending' || (req.status === 'negotiating' && req.last_proposed_by === 'service_provider')" variant="outline" size="sm" class="h-8 gap-2 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" @click="openViewDialog(req)">
-                    <Eye class="h-4 w-4" /> Review
-                  </Button>
-                  
-                  <div v-else-if="req.status === 'active'" class="flex items-center justify-end gap-2">
-                    <Button variant="outline" size="sm" class="h-8 gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300" @click="openAgreementDialog(req)">
+                  <div class="flex justify-end items-center gap-2">
+                    <Button v-if="req.status === 'pending' || (req.status === 'negotiating' && req.last_proposed_by === 'service_provider')" variant="outline" size="sm" class="h-8 gap-2 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" @click="openViewDialog(req)">
+                      <Eye class="h-4 w-4" /> Review
+                    </Button>
+                    
+                    <Button v-else-if="req.status === 'active'" variant="outline" size="sm" class="h-8 gap-2 bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300" @click="openAgreementDialog(req)">
                       <FileText class="h-4 w-4" /> Agreement
+                    </Button>
+
+                    <Button variant="ghost" size="icon" @click="openReportModal(req)" class="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20" title="Report Provider">
+                      <Flag class="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -288,6 +292,81 @@
       </DialogContent>
     </Dialog>
 
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="closeReportModal">
+      <DialogContent class="sm:max-w-md bg-slate-900 border-slate-800 text-white rounded-2xl shadow-2xl">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-500">
+            <Flag class="w-5 h-5" /> Report Service Provider
+          </DialogTitle>
+          <DialogDescription class="text-slate-400">
+            Submit a formal report regarding <span class="text-white font-bold">{{ selectedRequestForReport?.provider_name }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          
+          <div class="space-y-2">
+            <Label class="text-slate-300">Reason for Report</Label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-slate-800 border-slate-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="Scam / Fraud">Scam / Fraud</SelectItem>
+                <SelectItem value="Inappropriate Behavior">Inappropriate Behavior</SelectItem>
+                <SelectItem value="Poor Professionalism">Poor Professionalism</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Detailed Description</Label>
+            <Textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about what happened..."
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500 placeholder:text-slate-500 min-h-[100px] resize-none"
+              required
+            ></Textarea>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Date of Incident</Label>
+            <Input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Evidence <span class="text-slate-500 text-xs">(Optional, max 5MB)</span></Label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-slate-800 border-slate-700 text-slate-300 file:bg-slate-700 file:text-white file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-red-500"
+            />
+          </div>
+
+          <p class="text-xs text-slate-500 text-center mt-2">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-6">
+            <Button type="button" variant="outline" @click="closeReportModal" class="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <Loader2 class="w-4 h-4 animate-spin" /> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -297,7 +376,7 @@ import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import echo from '@/utils/websocket.js' 
 
-import { Loader2, RefreshCw, Search, Eye, Check, X, Inbox, Users, CalendarRange, CheckCircle2, Calendar, Briefcase, UserCheck, FileText, Download, FileCheck, FileX, ShieldAlert } from 'lucide-vue-next'
+import { Loader2, RefreshCw, Search, Eye, Check, X, Inbox, Users, CalendarRange, CheckCircle2, Calendar, Briefcase, UserCheck, FileText, Download, FileCheck, FileX, ShieldAlert, Flag } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -306,6 +385,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const requests = ref([])
 const loading = ref(false)
@@ -337,6 +417,13 @@ const isDrawing = ref(false)
 const ctx = ref(null)
 const hasSignature = ref(false)
 const uploadedSignature = ref(null)
+
+// Report State Variables
+const isReportModalOpen = ref(false)
+const selectedRequestForReport = ref(null)
+const isSubmittingReport = ref(false)
+const reportForm = ref({ reason: '', description: '', incident_date: '' })
+const reportEvidenceFile = ref(null)
 
 const permissions = ref({ can_view: false, can_manage: false, can_approve: false })
 
@@ -451,6 +538,60 @@ const downloadAgreement = (url) => {
 
 const initiateReject = () => { rejectReason.value = ''; showViewDialog.value = false; showRejectDialog.value = true }
 const closeRejectDialog = () => { showRejectDialog.value = false }
+
+// --- REPORTING LOGIC ---
+const openReportModal = (req) => {
+  selectedRequestForReport.value = req
+  reportForm.value = { reason: '', description: '', incident_date: '' }
+  reportEvidenceFile.value = null
+  isReportModalOpen.value = true
+}
+
+const closeReportModal = () => {
+  isReportModalOpen.value = false
+  selectedRequestForReport.value = null
+}
+
+const handleReportEvidence = (event) => {
+  if (event.target.files.length > 0) {
+    reportEvidenceFile.value = event.target.files[0]
+  }
+}
+
+const submitReport = async () => {
+  if (!selectedRequestForReport.value) return
+  if (!reportForm.value.reason) {
+    toast.error('Missing Reason', { description: 'Please select a reason for your report.' })
+    return
+  }
+
+  isSubmittingReport.value = true
+  
+  const formData = new FormData()
+  formData.append('reason', reportForm.value.reason)
+  formData.append('description', reportForm.value.description)
+  formData.append('incident_date', reportForm.value.incident_date)
+  
+  if (reportEvidenceFile.value) {
+    formData.append('evidence', reportEvidenceFile.value)
+  }
+
+  try {
+    const res = await api.post(`/operation-distributor/service-provider-requests/${selectedRequestForReport.value.provider_id}/report`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    if (res.data.success) {
+      toast.success('Report Submitted', { description: 'The admin team will review this incident.' })
+      closeReportModal()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' })
+  } finally {
+    isSubmittingReport.value = false
+  }
+}
 
 // Signature Pad
 const initSignaturePad = () => {

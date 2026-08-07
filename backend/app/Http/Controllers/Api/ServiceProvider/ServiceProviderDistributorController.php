@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\ServiceProvider;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ServiceProvider\ServiceProviderDistributor;
+use App\Models\UserReport; // NEW IMPORT
 use App\Events\Partnership\PartnershipStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -356,6 +357,71 @@ class ServiceProviderDistributorController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to request renewal.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    // --- NEW: Submit a Report Against a Distributor ---
+    public function submitReport(Request $request, $reportedUserId): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+                'description' => 'required|string',
+                'incident_date' => 'required|date',
+                'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120' // 5MB limit
+            ]);
+
+            $reporter = Auth::user();
+
+            // Enforce limit: Maximum of 3 reports per day
+            $reportsToday = UserReport::where('reported_by_id', $reporter->id)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            if ($reportsToday >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have reached the maximum limit of 3 reports per day. Please try again tomorrow.'
+                ], 429);
+            }
+
+            $reportedUser = User::find($reportedUserId);
+
+            if (!$reportedUser || $reportedUser->role !== 'distributor') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Distributor not found.'
+                ], 404);
+            }
+
+            $evidencePath = null;
+            if ($request->hasFile('evidence')) {
+                $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+            }
+
+            UserReport::create([
+                'reported_user_id' => $reportedUser->id,
+                'reported_by_id' => $reporter->id,
+                'reporter_role' => $reporter->role,
+                'reported_user_role' => $reportedUser->role,
+                'reason' => $validated['reason'],
+                'description' => $validated['description'],
+                'incident_date' => $validated['incident_date'],
+                'evidence_path' => $evidencePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Report submitted successfully. Administrators will review the incident.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit report',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }

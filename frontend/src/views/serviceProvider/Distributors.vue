@@ -79,7 +79,7 @@
         <div v-for="distributor in filteredDistributors" :key="distributor.id"
           class="group bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden hover:bg-slate-800/60 hover:border-slate-600 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-300 flex flex-col h-full relative backdrop-blur-sm">
           
-          <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+          <div class="absolute top-4 right-4 z-10 flex flex-row gap-2 items-start">
             <span v-if="distributor.status === 'active'" class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 backdrop-blur-md shadow-sm">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2 animate-pulse"></span> Connected
             </span>
@@ -91,14 +91,19 @@
               <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
               Contract Expired
             </span>
+
+            <!-- REPORT BUTTON -->
+            <button @click.stop="openReportModal(distributor)" class="p-1.5 bg-slate-900/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full transition-colors border border-slate-700/50 hover:border-red-500/30 backdrop-blur-md shadow-sm" title="Report Distributor">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+            </button>
           </div>
 
           <div class="p-6 sm:p-8 flex-grow">
-            <div class="flex items-start gap-4 sm:gap-5 mb-6">
+            <div class="flex items-start gap-4 sm:gap-5 mb-6 mt-4">
               <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner">
                 <span class="text-xl sm:text-2xl font-bold text-indigo-400">{{ distributor.name.charAt(0) }}</span>
               </div>
-              <div class="flex-1 min-w-0 pr-16 sm:pr-24">
+              <div class="flex-1 min-w-0">
                 <h3 class="text-lg sm:text-xl font-bold text-white truncate group-hover:text-indigo-300 transition-colors">{{ distributor.name }}</h3>
                 <div class="flex items-center text-slate-400 mt-1.5 text-xs sm:text-sm">
                   <svg class="w-4 h-4 mr-1.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,7 +309,7 @@
             Cancel
           </button>
           <button @click="submitRequest" :disabled="!isFormValid || isSubmitting"
-            class="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            class="w-full sm:w-auto px-6 py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
             <svg v-if="isSubmitting" class="w-4 h-4 sm:w-5 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -569,17 +574,110 @@
       </div>
     </div>
 
+    <!-- NATIVE TAILWIND REPORT MODAL -->
+    <div v-if="isReportModalOpen" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-950/80 backdrop-blur-sm p-4 sm:p-6" @mousedown.self="closeReportModal">
+      <div class="relative bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
+        
+        <div class="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center shrink-0 bg-slate-900/95 rounded-t-2xl z-10 sticky top-0">
+          <div class="flex items-center gap-2 text-red-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+            <h2 class="text-xl font-bold tracking-tight">Report Distributor</h2>
+          </div>
+          <button @click="closeReportModal" class="text-slate-500 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors focus:outline-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <form @submit.prevent="submitReport" class="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 relative space-y-4">
+          <p class="text-sm text-slate-400 mb-4">
+            Submit a formal report regarding <span class="text-white font-bold">{{ selectedDistributorForReport?.name }}</span>. This will be reviewed by an administrator.
+          </p>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-300">Reason for Report</label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-slate-800 border-slate-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="Scam / Fraud">Scam / Fraud</SelectItem>
+                <SelectItem value="Inappropriate Behavior">Inappropriate Behavior</SelectItem>
+                <SelectItem value="Poor Service/Product Quality">Poor Service/Product Quality</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-300">Detailed Description</label>
+            <textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about what happened..."
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-slate-500 min-h-[100px] resize-none"
+              required
+            ></textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-300">Date of Incident</label>
+            <input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-slate-300">Evidence <span class="text-slate-500 text-xs">(Optional, max 5MB)</span></label>
+            <input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="w-full bg-slate-800 border border-slate-700 text-slate-300 rounded-lg file:bg-slate-700 file:text-white file:border-0 file:mr-4 file:py-2 file:px-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+
+          <p class="text-xs text-slate-500 text-center mt-2 pt-2 border-t border-slate-800">
+            Note: You can submit up to 3 reports per day.
+          </p>
+
+          <div class="flex justify-end gap-3 pt-4">
+            <button type="button" @click="closeReportModal" class="px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors">
+              Cancel
+            </button>
+            <button type="submit" :disabled="isSubmittingReport" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center min-w-[120px]">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Submitting
+              </span>
+              <span v-else>Submit Report</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+    <!-- END REPORT MODAL -->
+
   </div>
 </template>
 
 <script>
 import api from '@/utils/axios';
 import { Toaster, toast } from 'vue-sonner';
-import echo from '@/utils/websocket.js' 
+import echo from '@/utils/websocket.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default {
   name: 'DistributorList',
-  components: { Toaster },
+  components: { 
+    Toaster,
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+  },
   data() {
     return {
       distributors: [],
@@ -608,6 +706,17 @@ export default {
 
       terms: [],
       newTerm: '',
+
+      // Report State
+      isReportModalOpen: false,
+      selectedDistributorForReport: null,
+      isSubmittingReport: false,
+      reportForm: {
+        reason: '',
+        description: '',
+        incident_date: '',
+      },
+      reportEvidenceFile: null
     };
   },
   computed: {
@@ -809,6 +918,57 @@ export default {
       this.showRenewalModal = false;
       this.selectedDistributor = null;
       document.body.style.overflow = '';
+    },
+
+    // --- Report Distributor Logic ---
+    openReportModal(distributor) {
+      this.selectedDistributorForReport = distributor;
+      this.reportForm = { reason: '', description: '', incident_date: '' };
+      this.reportEvidenceFile = null;
+      this.isReportModalOpen = true;
+      document.body.style.overflow = 'hidden';
+    },
+    closeReportModal() {
+      this.isReportModalOpen = false;
+      this.selectedDistributorForReport = null;
+      document.body.style.overflow = '';
+    },
+    handleReportEvidence(event) {
+      if (event.target.files.length > 0) {
+        this.reportEvidenceFile = event.target.files[0];
+      }
+    },
+    async submitReport() {
+      if (!this.selectedDistributorForReport) return;
+      if (!this.reportForm.reason) {
+        toast.error('Missing Reason', { description: 'Please select a reason for your report.' });
+        return;
+      }
+
+      this.isSubmittingReport = true;
+      const formData = new FormData();
+      formData.append('reason', this.reportForm.reason);
+      formData.append('description', this.reportForm.description);
+      formData.append('incident_date', this.reportForm.incident_date);
+      if (this.reportEvidenceFile) {
+        formData.append('evidence', this.reportEvidenceFile);
+      }
+
+      try {
+        const res = await api.post(`/service-provider/distributors/${this.selectedDistributorForReport.id}/report`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data.success) {
+          toast.success('Report Submitted', { description: 'The admin team will review this incident.' });
+          this.closeReportModal();
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' });
+      } finally {
+        this.isSubmittingReport = false;
+      }
     },
 
     // --- Signature Logic ---

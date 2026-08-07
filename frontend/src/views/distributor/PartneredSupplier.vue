@@ -150,6 +150,11 @@
                 <RefreshCw class="mr-2 h-4 w-4" /> Renew Contract
               </DropdownMenuItem>
 
+              <DropdownMenuSeparator />
+              <DropdownMenuItem @click="openReportModal(supplier)" class="text-red-600 focus:text-red-600 focus:bg-red-50">
+                <Flag class="mr-2 h-4 w-4" /> Report Supplier
+              </DropdownMenuItem>
+
             </DropdownMenuContent>
           </DropdownMenu>
         </CardFooter>
@@ -476,6 +481,81 @@
       </DialogContent>
     </Dialog>
 
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="closeReportModal">
+      <DialogContent class="sm:max-w-md bg-white text-slate-900 border-slate-200">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-600">
+            <Flag class="w-5 h-5" /> Report Supplier
+          </DialogTitle>
+          <DialogDescription class="text-slate-500 mt-1">
+            Submit a formal report regarding <span class="font-bold text-slate-700">{{ selectedSupplierForReport?.company_name }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">Reason for Report</label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-white border-slate-200 text-slate-900 focus:ring-indigo-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-white border-slate-200 text-slate-900">
+                <SelectItem value="Breach of Contract">Breach of Contract</SelectItem>
+                <SelectItem value="Poor Quality Materials">Poor Quality Materials</SelectItem>
+                <SelectItem value="Delayed Fulfillment">Delayed Fulfillment</SelectItem>
+                <SelectItem value="Unresponsive">Unresponsive / Ghosting</SelectItem>
+                <SelectItem value="Fraudulent Activity">Fraudulent Activity</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">Detailed Description</label>
+            <Textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details about the issue..."
+              class="bg-white border-slate-200 text-slate-900 focus-visible:ring-indigo-500 placeholder:text-slate-400 min-h-[100px] resize-none"
+              required
+            ></Textarea>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">Date of Incident</label>
+            <Input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="bg-white border-slate-200 text-slate-900 focus-visible:ring-indigo-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700">Evidence <span class="text-slate-400 text-xs font-normal">(Optional, max 5MB)</span></label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-white border-slate-200 text-slate-700 file:bg-slate-100 file:text-slate-700 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-indigo-500"
+            />
+          </div>
+
+          <p class="text-[11px] text-slate-500 text-center mt-2">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+            <Button type="button" variant="outline" @click="closeReportModal" class="border-slate-200 text-slate-600 hover:bg-slate-50">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white shadow-sm border-0">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <Loader2 class="w-4 h-4 animate-spin" /> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -486,7 +566,7 @@ import echo from '@/utils/websocket.js'
 import { toast } from 'vue-sonner'
 import { 
   Search, MapPin, Star, MoreHorizontal, User, Mail, Phone, Store, FileBadge, Eye, X, MessageSquare, FileClock,
-  Ban, FileText, FileX, RefreshCw, RefreshCcw, CheckCircle, AlertCircle, Loader2, PenTool, Download, Clock, Send, Calendar
+  Ban, FileText, FileX, RefreshCw, RefreshCcw, CheckCircle, AlertCircle, Loader2, PenTool, Download, Clock, Send, Calendar, Flag
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -498,6 +578,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 
 const suppliers = ref([])
 const loading = ref(true)
@@ -526,6 +607,13 @@ const isSending = ref(false)
 const chatScrollContainer = ref(null)
 
 const showAgreementDialog = ref(false)
+
+// Report state
+const isReportModalOpen = ref(false)
+const selectedSupplierForReport = ref(null)
+const isSubmittingReport = ref(false)
+const reportForm = ref({ reason: '', description: '', incident_date: '' })
+const reportEvidenceFile = ref(null)
 
 const parseTerms = (termsStr) => {
     if (!termsStr) return [];
@@ -633,6 +721,62 @@ const sendMessage = async () => {
 
 const closeChat = () => { showChatPanel.value = false; chatPartnerId.value = null; }
 const scrollToBottom = () => { nextTick(() => { if (chatScrollContainer.value) { chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight; } }); }
+
+// Reporting methods
+const openReportModal = (supplier) => {
+  selectedSupplierForReport.value = supplier;
+  reportForm.value = { reason: '', description: '', incident_date: '' };
+  reportEvidenceFile.value = null;
+  isReportModalOpen.value = true;
+}
+
+const closeReportModal = () => {
+  isReportModalOpen.value = false;
+  selectedSupplierForReport.value = null;
+}
+
+const handleReportEvidence = (event) => {
+  if (event.target.files.length > 0) {
+    reportEvidenceFile.value = event.target.files[0];
+  }
+}
+
+const submitReport = async () => {
+  if (!selectedSupplierForReport.value || !selectedSupplierForReport.value.supplier_user_id) return;
+  if (!reportForm.value.reason) {
+    toast.error('Missing Reason', { description: 'Please select a reason for your report.' });
+    return;
+  }
+
+  isSubmittingReport.value = true;
+  
+  const formData = new FormData();
+  formData.append('reason', reportForm.value.reason);
+  formData.append('description', reportForm.value.description);
+  formData.append('incident_date', reportForm.value.incident_date);
+  
+  if (reportEvidenceFile.value) {
+    formData.append('evidence', reportEvidenceFile.value);
+  }
+
+  try {
+    // Pass the supplier's actual user ID to the endpoint
+    const res = await api.post(`/distributor/partnered-suppliers/${selectedSupplierForReport.value.supplier_user_id}/report`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    if (res.data.success) {
+      toast.success('Report Submitted', { description: 'The admin team will review this incident.' });
+      closeReportModal();
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' });
+  } finally {
+    isSubmittingReport.value = false;
+  }
+}
+
 
 const getInitials = (name) => name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '??'
 const getAvatarColor = (name) => 'bg-blue-100 text-blue-700'

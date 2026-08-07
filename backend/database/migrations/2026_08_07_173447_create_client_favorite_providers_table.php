@@ -13,7 +13,12 @@ return new class extends Migration
     {
         Schema::create('client_favorite_providers', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('provider_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();
+
+            // Ensure a client can only favorite a specific provider once
+            $table->unique(['client_id', 'provider_id']);
         });
     }
 

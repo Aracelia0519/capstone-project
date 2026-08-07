@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Models\OperationDistributor\DistributorSupplier;
 use App\Models\Supplier\SupplierPartner;
 use App\Models\User; 
+use App\Models\UserReport; // <--- ADDED IMPORT
 use App\Events\Partnership\SupplierRequestUpdated;
 use App\Models\PartnershipMessage;
 use App\Events\PartnershipMessageSent;
@@ -397,6 +398,73 @@ class DistributorRequestController extends Controller
             }
             
             Storage::disk('public')->put($agreementPath, $html);
+        }
+    }
+
+    // --- NEW: Submit a Report Against a Distributor ---
+    public function submitReport(Request $request, $userId)
+    {
+        try {
+            $user = Auth::user();
+
+            if (!in_array($user->role, ['supplier', 'supplier_employee', 'personnel_officer'])) {
+                return response()->json(['message' => 'Unauthorized. Only supplier personnel can submit this report.'], 403);
+            }
+
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+                'description' => 'required|string',
+                'incident_date' => 'required|date',
+                'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120'
+            ]);
+
+            $supplierId = $this->resolveSupplierId($user);
+
+            // Enforce limit: Maximum 3 reports per day for this supplier
+            $reportsToday = UserReport::where('reported_by_id', $supplierId)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            if ($reportsToday >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have reached the maximum limit of 3 reports per day.'
+                ], 429);
+            }
+
+            $reportedUser = \App\Models\User::find($userId);
+            if (!$reportedUser || !in_array($reportedUser->role, ['distributor', 'operational_distributor'])) {
+                return response()->json(['success' => false, 'message' => 'Distributor not found.'], 404);
+            }
+
+            $evidencePath = null;
+            if ($request->hasFile('evidence')) {
+                $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+            }
+
+            UserReport::create([
+                'reported_user_id' => $reportedUser->id,
+                'reported_by_id' => $supplierId,
+                'reporter_role' => 'supplier',
+                'reported_user_role' => 'distributor',
+                'reason' => $validated['reason'],
+                'description' => $validated['description'],
+                'incident_date' => $validated['incident_date'],
+                'evidence_path' => $evidencePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Report submitted successfully. Administrators will review the incident.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Failed to submit report', 
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }

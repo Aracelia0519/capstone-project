@@ -1,7 +1,6 @@
 <template>
   <div class="ecommerce-reviews p-4 md:p-6 min-h-screen relative">
     
-
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col md:flex-row md:items-center justify-between">
         <div>
@@ -210,6 +209,11 @@
                       <DropdownMenuItem @click="requirePermission('manage', () => showResponseForm(review))" class="hover:bg-gray-800 focus:bg-gray-800 cursor-pointer rounded-lg m-1 font-medium">
                         <Reply class="w-4 h-4 mr-2 text-blue-400" /> Reply to Customer
                       </DropdownMenuItem>
+                      <!-- NEW REPORT BUTTON -->
+                      <DropdownMenuSeparator class="bg-gray-800" />
+                      <DropdownMenuItem @click="openReportModal(review)" class="hover:bg-red-900/20 focus:bg-red-900/20 text-red-400 cursor-pointer rounded-lg m-1 font-medium">
+                        <Flag class="w-4 h-4 mr-2" /> Report User
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -238,6 +242,7 @@
       </div>
     </div>
 
+    <!-- RESPONSE MODAL -->
     <Dialog :open="!!respondingToReview" @update:open="(val) => !val && (respondingToReview = null)">
       <DialogContent class="bg-gray-900 border-gray-800 text-white sm:max-w-[500px] rounded-2xl shadow-2xl">
         <DialogHeader>
@@ -277,6 +282,81 @@
             {{ isProcessing ? 'Submitting...' : 'Submit Reply' }}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- REPORT MODAL DIALOG -->
+    <Dialog :open="isReportModalOpen" @update:open="closeReportModal">
+      <DialogContent class="sm:max-w-md bg-slate-900 border-slate-800 text-white rounded-2xl shadow-2xl">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-xl font-bold text-red-500">
+            <Flag class="w-5 h-5" /> Report User
+          </DialogTitle>
+          <DialogDescription class="text-slate-400">
+            Submit a formal report regarding <span class="text-white font-bold">{{ selectedReviewForReport?.client }}</span>. This will be reviewed by an administrator.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form @submit.prevent="submitReport" class="space-y-4 mt-4">
+          
+          <div class="space-y-2">
+            <Label class="text-slate-300">Reason for Report</Label>
+            <Select v-model="reportForm.reason">
+              <SelectTrigger class="w-full bg-slate-800 border-slate-700 text-white focus:ring-red-500">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent class="bg-slate-800 border-slate-700 text-white">
+                <SelectItem value="Inappropriate Language">Inappropriate Language</SelectItem>
+                <SelectItem value="Spam / Bot">Spam / Bot</SelectItem>
+                <SelectItem value="False Information">False Information</SelectItem>
+                <SelectItem value="Harassment">Harassment</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Detailed Description</Label>
+            <Textarea 
+              v-model="reportForm.description"
+              placeholder="Please provide specific details..."
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500 placeholder:text-slate-500 min-h-[100px] resize-none"
+              required
+            ></Textarea>
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Date of Incident</Label>
+            <Input 
+              type="date" 
+              v-model="reportForm.incident_date"
+              class="bg-slate-800 border-slate-700 text-white focus-visible:ring-red-500"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Label class="text-slate-300">Evidence <span class="text-slate-500 text-xs">(Optional, max 5MB)</span></Label>
+            <Input 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              @change="handleReportEvidence"
+              class="bg-slate-800 border-slate-700 text-slate-300 file:bg-slate-700 file:text-white file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded cursor-pointer focus-visible:ring-red-500"
+            />
+          </div>
+
+          <p class="text-xs text-slate-500 text-center mt-2">Note: You can submit up to 3 reports per day.</p>
+
+          <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-6">
+            <Button type="button" variant="outline" @click="closeReportModal" class="bg-slate-800 border-slate-700 text-white hover:bg-slate-700">Cancel</Button>
+            <Button type="submit" :disabled="isSubmittingReport" class="bg-red-600 hover:bg-red-700 text-white border-0">
+              <span v-if="isSubmittingReport" class="flex items-center gap-2">
+                <Loader2 class="w-4 h-4 animate-spin" /> Submitting...
+              </span>
+              <span v-else>Submit Report</span>
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
 
@@ -324,7 +404,9 @@ import {
   Reply, 
   Search,
   Package,
-  MessageSquare
+  MessageSquare,
+  Flag,
+  Loader2
 } from 'lucide-vue-next'
 
 // State
@@ -338,6 +420,13 @@ const selectedStatus = ref('all')
 
 const respondingToReview = ref(null)
 const responseForm = ref({ text: '' })
+
+// Report State Variables
+const isReportModalOpen = ref(false)
+const selectedReviewForReport = ref(null)
+const isSubmittingReport = ref(false)
+const reportForm = ref({ reason: '', description: '', incident_date: '' })
+const reportEvidenceFile = ref(null)
 
 // WebSockets State
 const activeDistributorId = ref(null)
@@ -552,4 +641,63 @@ const submitResponse = async () => {
     isProcessing.value = false
   }
 }
+
+// --- REPORTING LOGIC ---
+const openReportModal = (review) => {
+  selectedReviewForReport.value = review
+  reportForm.value = { reason: '', description: '', incident_date: '' }
+  reportEvidenceFile.value = null
+  isReportModalOpen.value = true
+}
+
+const closeReportModal = () => {
+  isReportModalOpen.value = false
+  selectedReviewForReport.value = null
+}
+
+const handleReportEvidence = (event) => {
+  if (event.target.files.length > 0) {
+    reportEvidenceFile.value = event.target.files[0]
+  }
+}
+
+const submitReport = async () => {
+  if (!selectedReviewForReport.value || !selectedReviewForReport.value.reviewer_id) return
+  if (!reportForm.value.reason) {
+    toast.error('Missing Reason', { description: 'Please select a reason for your report.' })
+    return
+  }
+
+  isSubmittingReport.value = true
+  
+  const formData = new FormData()
+  formData.append('reason', reportForm.value.reason)
+  formData.append('description', reportForm.value.description)
+  formData.append('incident_date', reportForm.value.incident_date)
+  
+  if (reportEvidenceFile.value) {
+    formData.append('evidence', reportEvidenceFile.value)
+  }
+
+  try {
+    const res = await api.post(`/operation-distributor/reviews/${selectedReviewForReport.value.reviewer_id}/report`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    if (res.data.success) {
+      toast.success('Report Submitted', { description: 'The admin team will review this incident.' })
+      closeReportModal()
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error('Failed to submit report', { description: error.response?.data?.message || 'Check your inputs and try again.' })
+  } finally {
+    isSubmittingReport.value = false
+  }
+}
+
 </script>
+
+<style scoped>
+/* Additional component-specific styles can go here */
+</style>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServiceProvider\ServiceProviderDistributor;
+use App\Models\UserReport; // NEW IMPORT
 use App\Events\Partnership\PartnershipStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -80,6 +81,7 @@ class ServiceProviderRequestController extends Controller
 
                     return [
                         'id' => $req->id,
+                        'provider_id' => $req->service_provider_id, // Exposing Provider ID for the reporting system
                         'provider_name' => $sp ? $sp->full_name : 'Unknown',
                         'email' => $sp ? $sp->email : 'Unknown',
                         'phone' => $sp ? $sp->phone : 'Unknown',
@@ -284,6 +286,73 @@ class ServiceProviderRequestController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to decline request.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    // --- NEW: Submit a Report Against a Service Provider ---
+    public function submitReport(Request $request, $providerId): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            if (!$this->checkRbacAccess($user, 'ec_service_provider', 'can_view')) {
+                return response()->json(['message' => 'Access Denied.'], 403);
+            }
+
+            $validated = $request->validate([
+                'reason' => 'required|string|max:255',
+                'description' => 'required|string',
+                'incident_date' => 'required|date',
+                'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120'
+            ]);
+
+            // The Main Distributor is the one credited with the report
+            $distId = $this->getDistributorId($user);
+
+            // Enforce limit: Maximum 3 reports per day for this distributor
+            $reportsToday = UserReport::where('reported_by_id', $distId)
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+
+            if ($reportsToday >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your distributor account has reached the maximum limit of 3 reports per day.'
+                ], 429);
+            }
+
+            $reportedUser = \App\Models\User::find($providerId);
+            if (!$reportedUser || $reportedUser->role !== 'service_provider') {
+                return response()->json(['success' => false, 'message' => 'Service Provider not found.'], 404);
+            }
+
+            $evidencePath = null;
+            if ($request->hasFile('evidence')) {
+                $evidencePath = $request->file('evidence')->store('reports/evidence', 'public');
+            }
+
+            UserReport::create([
+                'reported_user_id' => $reportedUser->id,
+                'reported_by_id' => $distId, // Managed by OP but officially from the Distributor
+                'reporter_role' => 'distributor',
+                'reported_user_role' => $reportedUser->role,
+                'reason' => $validated['reason'],
+                'description' => $validated['description'],
+                'incident_date' => $validated['incident_date'],
+                'evidence_path' => $evidencePath,
+                'status' => 'pending'
+            ]);
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Report submitted successfully. Administrators will review the incident.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Failed to submit report', 
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
