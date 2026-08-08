@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\UserReport;
 use App\Models\User;
+use App\Models\SystemNotification;
+use App\Events\Notification\NotificationEvent; // <-- CORRECTED IMPORT
 use Illuminate\Support\Facades\DB;
 
 class AdminReportController extends Controller
@@ -51,7 +53,7 @@ class AdminReportController extends Controller
     /**
      * Get specific details and all reports for a single reported user.
      */
-    public function show($userId)
+    public function show(int $userId)
     {
         try {
             $user = User::select('id', 'first_name', 'last_name', 'email', 'role', 'status')->find($userId);
@@ -118,7 +120,7 @@ class AdminReportController extends Controller
     /**
      * Update the status of an individual report.
      */
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, int $id)
     {
         $request->validate([
             'status' => 'required|in:pending,reviewed'
@@ -126,8 +128,36 @@ class AdminReportController extends Controller
 
         try {
             $report = UserReport::findOrFail($id);
+            $oldStatus = $report->status;
+            
             $report->status = $request->status;
             $report->save();
+
+            // --- REAL-TIME NOTIFICATION DISPATCH ---
+            // If the status is newly updated to "reviewed", send a system notification to the reporter
+            if ($oldStatus === 'pending' && $request->status === 'reviewed') {
+                
+                $reporter = User::find($report->reported_by_id);
+                $reportedUser = User::find($report->reported_user_id);
+
+                if ($reporter && $reportedUser) {
+                    $reportedName = $reportedUser->first_name . ' ' . $reportedUser->last_name;
+                    $incidentDate = date('M d, Y', strtotime($report->incident_date));
+
+                    $notification = SystemNotification::create([
+                        'receiver_id' => $reporter->id,
+                        'type' => 'Success', 
+                        'title' => 'Incident Report Reviewed',
+                        'message' => "Your incident report regarding {$reportedName} (from {$incidentDate}) has been officially reviewed. The administrative team is now processing the appropriate actions. Thank you for your vigilance and for keeping our community safe.",
+                        'is_read' => false,
+                        'sender_role' => 'admin',
+                        'receiver_role' => $report->reporter_role,
+                    ]);
+
+                    // Broadcast directly to the specific user's private notification channel using the correct Event Class
+                    broadcast(new NotificationEvent($notification)); // <-- CORRECTED DISPATCH
+                }
+            }
 
             return response()->json([
                 'success' => true,

@@ -135,7 +135,8 @@ import {
   LayoutDashboard, Package, ShoppingCart, Truck, Factory,
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
   Loader2, ScrollText, Container, Handshake, ClipboardList, 
-  PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw, Car  
+  PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw, Car,
+  Bell  
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -290,6 +291,18 @@ const navigation = [
     items: [
       { name: 'Invoices', path: '/supplier/Invoices', icon: FileText, color: 'text-cyan-400', requiresVerify: true },
       { name: 'Payments', path: '/supplier/SupplierPayments', icon: Wallet, color: 'text-green-400', requiresVerify: true }
+    ]
+  },
+  {
+    title: 'Notification',
+    items: [
+      { 
+        name: 'Notifications', 
+        path: '/supplier/notificationsSup', 
+        icon: Bell, 
+        color: 'text-blue-400', 
+        requiresVerify: true 
+      },
     ]
   },
 ]

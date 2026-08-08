@@ -61,6 +61,13 @@ Route::get('/client/orders', [ECommerceOrderController::class, 'index']);
 // ==========================================
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    // --- GLOBAL NOTIFICATIONS ROUTES ---
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\Client\NotificationController::class, 'index']);
+        Route::put('/{id}/read', [\App\Http\Controllers\Api\Client\NotificationController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [\App\Http\Controllers\Api\Client\NotificationController::class, 'markAllAsRead']);
+    });
     // Auth routes
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -232,6 +239,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
 
+        // SERVICE PROVIDER NOTIFICATIONS ROUTES ---
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'index']);
+            Route::put('/{id}/read', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'markAsRead']);
+            Route::post('/mark-all-read', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'markAllAsRead']);
+        });
+
         Route::get('/interacted-clients', [\App\Http\Controllers\Api\ServiceProvider\ClientListController::class, 'index']);
         Route::post('/clients/{id}/report', [\App\Http\Controllers\Api\ServiceProvider\ClientListController::class, 'submitReport']);
 
@@ -392,6 +406,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
+
+        // DISTRIBUTOR NOTIFICATIONS ROUTES ---
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\DistributorNotificationController::class, 'index']);
+            Route::put('/{id}/read', [\App\Http\Controllers\Api\Distributor\DistributorNotificationController::class, 'markAsRead']);
+            Route::post('/mark-all-read', [\App\Http\Controllers\Api\Distributor\DistributorNotificationController::class, 'markAllAsRead']);
+        });
 
         Route::get('/supplier-products/{id}', [\App\Http\Controllers\Api\Distributor\DistributorSupplierProductController::class, 'index']);
 
@@ -716,6 +737,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('supplier')->group(function () {
+
+        // ---SUPPLIER NOTIFICATIONS ROUTES ---
+        Route::prefix('notifications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierNotificationController::class, 'index']);
+            Route::put('/{id}/read', [\App\Http\Controllers\Api\Supplier\SupplierNotificationController::class, 'markAsRead']);
+            Route::post('/mark-all-read', [\App\Http\Controllers\Api\Supplier\SupplierNotificationController::class, 'markAllAsRead']);
+        });
 
         Route::get('/sidebar-access', [\App\Http\Controllers\Api\Supplier\SupplierSidebarController::class, 'getSidebarAccess']);
 

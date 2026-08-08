@@ -132,7 +132,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ClipboardList, Palette, History, 
   Lightbulb, Users, User, LogOut, Loader2, UserCircle, 
-  Lock, MessageCircle
+  Lock, MessageCircle, Bell
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -176,7 +176,14 @@ const navigation = [
     title: 'Recommendations',
     items: [
       { name: 'Suggestions', path: '/Clients/recommendation', icon: Lightbulb, color: 'text-amber-400', requiresVerify: true },
-      { name: 'Service Providers', path: '/Clients/serviceProviderC', icon: Users, color: 'text-teal-400', requiresVerify: true }
+      { name: 'Service Providers', path: '/Clients/serviceProviderC', icon: Users, color: 'text-teal-400', requiresVerify: true },
+      { 
+      name: 'Notifications', 
+      path: '/Clients/notificationsC', 
+      icon: Bell, 
+      color: 'text-blue-400', 
+      requiresVerify: true 
+    },
     ]
   }
 ]

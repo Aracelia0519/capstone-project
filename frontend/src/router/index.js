@@ -34,6 +34,10 @@ import PayrollFrequency from '@/views/distributor/PayrollFrequency.vue'
 import PartnerDistributorReq from '@/views/distributor/PartnerDistributorReq.vue'
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
+import notificationsDis from '@/views/distributor/notificationsDis.vue'
+
+
+
 
 import ServiceProviderLayout from '@/layouts/ServiceProviderLayout.vue'
 import DashboardSP from '@/views/serviceProvider/DashboardSP.vue'
@@ -55,6 +59,8 @@ import SpProductDetails from '@/views/serviceProvider/SpProductDetails.vue'
 import SpInventory from '@/views/serviceProvider/SpInventory.vue'
 import SpDistributorProducts from '@/views/serviceProvider/SpDistributorProducts.vue'
 import PortfolioSetup from '@/views/serviceProvider/PortfolioSetup.vue'
+import notificationsSP from '@/views/serviceProvider/notificationsSP.vue'
+
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -65,6 +71,8 @@ import ColorHistoryC from '@/views/client/ColorHistoryC.vue'
 import Recommendations from '@/views/client/Recommendations.vue'
 import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
+import notificationsC from '@/views/client/notificationsC.vue'
+
 
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
@@ -156,7 +164,7 @@ import RoleActivation from '@/views/supplier/RoleActivation.vue'
 import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
 import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
 import SupplierVehicles from '@/views/supplier/SupplierVehicles.vue'
-
+import notificationsSup from '@/views/supplier/notificationsSup.vue'
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
 import SupplierReturns from '@/views/supplier/SupplierReturns.vue'
@@ -668,6 +676,13 @@ const routes = [
         component: ProfileSettings,
         meta: { requiresVerification: false }
       },
+      {
+        path: 'notificationsDis',
+        name: 'notificationsDis',
+        component: notificationsDis,
+        meta: { requiresVerification: false }
+      },
+
     ]
   },
   {
@@ -750,6 +765,7 @@ const routes = [
       { path: 'ProductDetails/:id', name: 'sp_product_details', component: SpProductDetails },
       { path: 'inventory', name: 'sp_inventory', component: SpInventory },
       { path: 'distributor-products/:id', name: 'sp_distributor_products', component: SpDistributorProducts },
+      { path: 'notificationsSP', name: 'notificationsSP', component: notificationsSP },
     ]
   },
   {
@@ -797,6 +813,11 @@ const routes = [
         name: 'ClientChat',
         component: ClientChat
       },
+      {
+        path: 'notificationsC',
+        name: 'notificationsC',
+        component: notificationsC
+      }, 
     ]
   },
   
@@ -1148,6 +1169,13 @@ const routes = [
         name: 'SupplierVehicles',
         component: SupplierVehicles
       }, 
+      {
+        path: 'notificationsSup', 
+        name: 'notificationsSup',
+        component: notificationsSup
+      }, 
+
+      
     ]
   },
   

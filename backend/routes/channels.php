@@ -330,4 +330,9 @@ Broadcast::channel('support.user.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id || $user->role === 'admin';
 });
 
+// ------------- NOTIFICATIONS CHANNEL -------------
+Broadcast::channel('notifications.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
 

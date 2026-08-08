@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-8 font-sans selection:bg-blue-100 selection:text-blue-900">
+  <div class="min-h-screen p-4 md:p-8 font-sans selection:bg-blue-100 selection:text-blue-900">
     
     <!-- Hero Page Header -->
     <div class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl mb-8 border border-slate-700">
@@ -481,9 +481,11 @@ const toggleStatus = async (report) => {
   try {
     const res = await api.put(`/admin/reports/${report.id}/status`, { status: newStatus })
     if (res.data.success) {
-      report.status = newStatus
-      toast.success('Case Status Updated', { description: `Report has been marked as ${newStatus}.` })
       
+      // Update local state for immediate feedback
+      report.status = newStatus
+      
+      // Update analytics within the modal
       if (newStatus === 'reviewed') {
         selectedUserAnalytics.value.statuses.pending--
         selectedUserAnalytics.value.statuses.reviewed++
@@ -492,6 +494,26 @@ const toggleStatus = async (report) => {
         selectedUserAnalytics.value.statuses.reviewed--
       }
 
+      // Optimistically update the main summaries grid (without reloading)
+      const summaryItem = summaries.value.find(s => s.reported_user_id === report.reported_user_id)
+      if (summaryItem) {
+          if (newStatus === 'reviewed') {
+              summaryItem.pending_reports = Math.max(0, summaryItem.pending_reports - 1)
+              summaryItem.reviewed_reports++
+          } else {
+              summaryItem.pending_reports++
+              summaryItem.reviewed_reports = Math.max(0, summaryItem.reviewed_reports - 1)
+          }
+      }
+
+      // Show toast
+      if (newStatus === 'reviewed') {
+          toast.success('Case Reviewed', { description: `The report has been resolved and the user was notified.` })
+      } else {
+          toast.success('Status Changed', { description: `The report is now marked as pending.` })
+      }
+
+      // Silently sync the database just in case
       fetchSummariesBackground()
     }
   } catch (err) {
