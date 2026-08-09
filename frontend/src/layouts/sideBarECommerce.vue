@@ -206,7 +206,7 @@ import {
   LayoutDashboard, ShoppingBag, Box, Tag, ClipboardList, CreditCard, 
   Truck, Undo2, Star, Percent, BarChart3, LogOut, Loader2, Handshake,
   UserCircle, PackageSearch, Briefcase, PackageCheck, Boxes, MessageCircle,
-  CheckCircle, Car, AlertTriangle, Users
+  CheckCircle, Car, AlertTriangle, Users, Bug
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -281,7 +281,8 @@ const navigation = [
       { id: 'ec_reviews', name: 'Reviews', path: '/ECommerce/ECReviews', icon: Star, color: 'text-violet-400' },
       { id: 'ec_promotions', name: 'Promotions', path: '/ECommerce/ECPromotions', icon: Percent, color: 'text-orange-400' },
       { id: 'ec_reports', name: 'Reports', path: '/ECommerce/ECreports', icon: BarChart3, color: 'text-sky-400' },
-      { id: 'ec_messages', name: 'Messages', path: '/ECommerce/ECMessages', icon: MessageCircle, color: 'text-green-400', badge: 'new' }
+      { id: 'ec_messages', name: 'Messages', path: '/ECommerce/ECMessages', icon: MessageCircle, color: 'text-green-400', badge: 'new' },
+      { name: 'Technical Reports', path: '/ECommerce/TechnicalReportsOpe', icon: Bug, color: 'text-orange-400'},
     ]
   }
 ]

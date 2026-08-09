@@ -120,7 +120,8 @@ import { ref, onMounted, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, Box, Package, Palette, Wrench, 
-  FileText, ShieldCheck, Settings, LogOut, Loader2, ClipboardList, AlertTriangle
+  FileText, ShieldCheck, Settings, LogOut, Loader2, ClipboardList, 
+  AlertTriangle, Bug
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -154,6 +155,7 @@ const navigation = [
     items: [
       { name: 'Reports', path: '/admin/Reports', icon: FileText, color: 'text-pink-400' },
       { name: 'User Reports', path: '/admin/UserReports', icon: AlertTriangle, color: 'text-red-400' },
+      { name: 'Technical Reports', path: '/admin/TechnicalReportsAd', icon: Bug, color: 'text-orange-400' },
       { name: 'Audit Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' },
     ]
   }

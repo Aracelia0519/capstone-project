@@ -166,8 +166,14 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
 
-        // --- NEW: FETCH ACCOUNT STATUS ---
+        // --- FETCH ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Client\ClientAccountStatusController::class, 'getStatus']);
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Client\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Client\TechnicalReportController::class, 'store']);
+        });
 
         // -----------------------------------------------------
         // ECOMMERCE SERVICES: Actions requiring Auth
@@ -252,6 +258,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'index']);
             Route::put('/{id}/read', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'markAsRead']);
             Route::post('/mark-all-read', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderNotificationController::class, 'markAllAsRead']);
+        });
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\ServiceProvider\TechnicalReportController::class, 'store']);
         });
 
         Route::get('/interacted-clients', [\App\Http\Controllers\Api\ServiceProvider\ClientListController::class, 'index']);
@@ -417,6 +429,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ---FETCH DISTRIBUTOR ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Distributor\DistributorAccountStatusController::class, 'getStatus']);
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Distributor\TechnicalReportController::class, 'store']);
+        });
 
         // DISTRIBUTOR NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
@@ -590,6 +608,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/user/{id}/reverse', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'reverseTermination']);
         });
 
+        // --- ADMIN TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'index']);
+            Route::get('/statistics', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'statistics']);
+            Route::put('/{id}/status', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'updateStatus']);
+        });
+
         Route::prefix('users')->group(function () {
             Route::get('/', [AdminUserController::class, 'index']);
             Route::post('/', [AdminUserController::class, 'store']);
@@ -612,6 +637,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // HR Employees Routes
     Route::prefix('hr')->middleware(['auth:sanctum'])->group(function () {
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\HR\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\HR\TechnicalReportController::class, 'store']);
+        });
+
         Route::prefix('employees')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'index']);
             Route::get('/statistics', [\App\Http\Controllers\Api\HR\EmployeeController::class, 'statistics']);
@@ -682,6 +713,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Finance Procurement Routes
     Route::prefix('finance')->middleware(['auth:sanctum'])->group(function () {
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Finance\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Finance\TechnicalReportController::class, 'store']);
+        });
+
         Route::prefix('transactions')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'index']);
             Route::post('/refund/{id}/process', [\App\Http\Controllers\Api\Finance\FinanceTransactionController::class, 'processRefund']);
@@ -725,6 +763,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Employee Individual Routes
     Route::prefix('employee')->group(function () {
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Employee\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Employee\TechnicalReportController::class, 'store']);
+        });
         
         // MOVED HERE: The dedicated profile endpoints for Employee users!
         Route::get('/profile', [\App\Http\Controllers\Api\Employee\EmployeeProfileController::class, 'getProfile']);
@@ -756,6 +800,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ---FETCH SUPPLIER ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Supplier\SupplierAccountStatusController::class, 'getStatus']);
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\Supplier\TechnicalReportController::class, 'store']);
+        });
 
         // ---SUPPLIER NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
@@ -894,6 +944,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/account-status', [\App\Http\Controllers\Api\OperationDistributor\EcAccountStatusController::class, 'getStatus']);
 
         Route::get('/sidebar-access', [\App\Http\Controllers\Api\OperationDistributor\OperationDistributorSidebarController::class, 'getSidebarAccess']);
+
+        // --- TECHNICAL REPORTS ---
+        Route::prefix('technical-reports')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\TechnicalReportController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\OperationDistributor\TechnicalReportController::class, 'store']);
+        });
 
         Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);
         Route::get('/categories/products', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'products']);

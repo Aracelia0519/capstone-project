@@ -173,7 +173,8 @@ const navItems = ref([
   { id: 'leaves', text: 'Leaves', route: '/Employees/LeavesEmployee', badge: '3' },
   { id: 'requests', text: 'Requests', route: '/Employees/RequestEmployee', badge: '5' },
   { id: 'my-profile', text: 'My Profile', route: '/Employees/ProfileEmployee' },
-  { id: 'notifications', text: 'Notifications', route: '/Employees/NotificationEmployee', badge: '12' }
+  { id: 'notifications', text: 'Notifications', route: '/Employees/NotificationEmployee', badge: '12' },
+  { id: 'technical_reports', text: 'Technical Reports', route: '/Employees/TechnicalReportsEmp'}
 ])
 
 const getIcon = (id) => {

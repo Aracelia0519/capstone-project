@@ -115,7 +115,8 @@ import { ref, onMounted, computed, defineEmits } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, ShieldCheck, Building2, ClipboardCheck, 
-  FileStack, Banknote, BarChart3, CalendarCheck, Settings, LogOut, Loader2, Lock, CalendarMinus 
+  FileStack, Banknote, BarChart3, CalendarCheck, Settings, LogOut, Loader2, Lock, CalendarMinus,
+  Bug 
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -163,6 +164,11 @@ const hrNavItems = ref([
 ])
 
 const toolsNavItems = ref([
+  {
+    id: 'ec_technical_reports',
+    text: 'Technical Reports',
+    route: '/HR/TechnicalReportsHR'
+  },
   { id: 'reports', text: 'EM Reports', route: '/HR/reportsHR', permissionKey: 'reports' },
 ])
 

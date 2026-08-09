@@ -112,7 +112,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, ArrowLeftRight, CreditCard, FileText, 
   BarChart3, ShoppingCart, LogOut, Loader2, UserCircle, 
-  CircleDollarSign, Users, UserCheck, Wallet
+  CircleDollarSign, Users, UserCheck, Wallet, Bug
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -151,6 +151,12 @@ const navigation = [
       { name: 'Payroll Request', path: '/finance/PayrollRequestFinance', icon: Users, color: 'text-emerald-400', badge: 'Pending' },
       { name: 'Payroll Paid', path: '/finance/PayrollPaidFinance', icon: UserCheck, color: 'text-emerald-400', badge: 'New' },
       { name: 'Reports', path: '/finance/reportFinance', icon: BarChart3, color: 'text-teal-400' },
+    ]
+  },
+  {
+    title: 'system',
+    items: [
+      { name: 'Technical Reports', path: '/finance/TechnicalReportsFinance', icon: Bug, color: 'text-orange-400'},
     ]
   }
 ]

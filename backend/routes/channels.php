@@ -356,3 +356,14 @@ Broadcast::channel('account.status.{id}', function ($user, $id) {
 });
 
 
+// ------------- TECHNICAL REPORTS CHANNELS -------------
+Broadcast::channel('admin.technical_reports', function ($user) {
+    return $user->role === 'admin';
+});
+
+// Allow users to listen to their own report updates
+Broadcast::channel('user.{id}.technical_reports', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
+

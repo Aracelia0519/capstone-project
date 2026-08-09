@@ -229,7 +229,7 @@ import {
   Settings, LogOut, FileText, Wallet, Calendar, Lock,
   Loader2, ScrollText, Container, Handshake, ClipboardList, 
   PackageCheck, Users, UserPlus, ShieldCheck, RotateCcw, Car,
-  Bell, AlertTriangle 
+  Bell, AlertTriangle, Bug
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -405,8 +405,16 @@ const navigation = [
     ]
   },
   {
-    title: 'Notification',
+    title: 'System',
     items: [
+      { 
+        name: 'Technical Reports', 
+        path: '/supplier/TechnicalReportsSup', 
+        icon: Bug, 
+        color: 'text-orange-400', 
+        requiresVerify: true,
+        hideOnTerminate: true
+      },
       { 
         name: 'Notifications', 
         path: '/supplier/notificationsSup', 

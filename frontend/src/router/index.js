@@ -14,6 +14,7 @@ import Reports from '@/views/admin/Reports.vue'
 import SystemSettings from '@/views/admin/SystemSettings.vue'
 import AuditLogs from '@/views/admin/AuditLogs.vue'
 import userReports from '@/views/admin/userReports.vue'
+import TechnicalReportsAd from '@/views/admin/TechnicalReportsAd.vue'
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
@@ -35,9 +36,7 @@ import PartnerDistributorReq from '@/views/distributor/PartnerDistributorReq.vue
 import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
 import notificationsDis from '@/views/distributor/notificationsDis.vue'
-
-
-
+import TechnicalReportsDis from '@/views/distributor/TechnicalReportsDis.vue'
 
 import ServiceProviderLayout from '@/layouts/ServiceProviderLayout.vue'
 import DashboardSP from '@/views/serviceProvider/DashboardSP.vue'
@@ -60,7 +59,7 @@ import SpInventory from '@/views/serviceProvider/SpInventory.vue'
 import SpDistributorProducts from '@/views/serviceProvider/SpDistributorProducts.vue'
 import PortfolioSetup from '@/views/serviceProvider/PortfolioSetup.vue'
 import notificationsSP from '@/views/serviceProvider/notificationsSP.vue'
-
+import TechnicalReportsSP from '@/views/serviceProvider/TechnicalReportsSP.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -72,7 +71,7 @@ import Recommendations from '@/views/client/Recommendations.vue'
 import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
 import notificationsC from '@/views/client/notificationsC.vue'
-
+import TechnicalReportsC from '@/views/client/TechnicalReportsC.vue'
 
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
@@ -94,6 +93,7 @@ import RecruitmentApplication from '@/views/humanResource/RecruitmentApplication
 import PayrollManagement from '@/views/humanResource/PayrollManagement.vue'
 import AttendanceRequestHR from '@/views/humanResource/AttendanceRequestHR.vue'
 import LeaveRequestHR from '@/views/humanResource/LeaveRequestHR.vue'
+import TechnicalReportsHR from '@/views/humanResource/TechnicalReportsHR.vue'
 
 import FinanceLayout from '@/layouts/financeLayout.vue'
 import FinanceDashboard from '@/views/finance/financeDashboard.vue'
@@ -105,6 +105,9 @@ import ProcurementRequestFinance from '@/views/finance/ProcurementRequestFinance
 import PayrollRequestFinance from '@/views/finance/PayrollRequestFinance.vue'
 import PayrollPaidFinance from '@/views/finance/PayrollPaidFinance.vue'
 import procurementBudgetRelease from '@/views/finance/procurementBudgetRelease.vue'
+import TechnicalReportsFinance from '@/views/finance/TechnicalReportsFinance.vue'
+
+
 
 import ECommerceLayout from '@/layouts/ECommerceLayout.vue'
 import ECommerceDashboard from '@/views/E-commerce/ECommerceDashboard.vue'
@@ -129,6 +132,7 @@ import ECPromoApproval from '@/views/E-commerce/ECPromoApproval.vue'
 import ECSupplierProducts from '@/views/E-commerce/ECSupplierProducts.vue'
 import DistributorSupplierProducts from '@/views/distributor/DistributorSupplierProducts.vue' 
 import ECVehicles from '@/views/E-commerce/ECVehicles.vue'
+import TechnicalReportsOpe from '@/views/E-commerce/TechnicalReportsOpe.vue'
 
 import ECommerceClientLayout from '@/layouts/ECommerceClientLayout.vue'
 import ECommerceShop from '@/views/ClientE-Commerce/ECommerceShop.vue'
@@ -149,6 +153,7 @@ import LeavesEmployee from '@/views/Employees/LeavesEmployee.vue'
 import RequestsEmployee from '@/views/Employees/RequestsEmployee.vue'
 import ProfileEmployee from '@/views/Employees/ProfileEmployee.vue'
 import NotificationsEmployee from '@/views/Employees/NotificationsEmployee.vue'
+import TechnicalReportsEmp from '@/views/Employees/TechnicalReportsEmp.vue'
 
 import SupplierLayout from '@/layouts/SupplierLayout.vue'
 import SupplierSettings from '@/views/supplier/SupplierSettings.vue'
@@ -165,6 +170,8 @@ import SupplierDelivery from '@/views/supplier/SupplierDelivery.vue'
 import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
 import SupplierVehicles from '@/views/supplier/SupplierVehicles.vue'
 import notificationsSup from '@/views/supplier/notificationsSup.vue'
+import TechnicalReportsSup from '@/views/supplier/TechnicalReportsSup.vue'
+
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
 import SupplierReturns from '@/views/supplier/SupplierReturns.vue'
@@ -556,6 +563,11 @@ const routes = [
         name: 'userReports',
         component: userReports
       },
+      {
+        path: 'TechnicalReportsAd',
+        name: 'TechnicalReportsAd',
+        component: TechnicalReportsAd
+      },
     ]
   },
   {
@@ -682,7 +694,12 @@ const routes = [
         component: notificationsDis,
         meta: { requiresVerification: false }
       },
-
+      {
+        path: 'TechnicalReportsDis',
+        name: 'TechnicalReportsDis',
+        component: TechnicalReportsDis,
+        meta: { requiresVerification: false }
+      },
     ]
   },
   {
@@ -766,6 +783,8 @@ const routes = [
       { path: 'inventory', name: 'sp_inventory', component: SpInventory },
       { path: 'distributor-products/:id', name: 'sp_distributor_products', component: SpDistributorProducts },
       { path: 'notificationsSP', name: 'notificationsSP', component: notificationsSP },
+      { path: 'TechnicalReportsSP', name: 'TechnicalReportsSP', component: TechnicalReportsSP },
+
     ]
   },
   {
@@ -817,6 +836,11 @@ const routes = [
         path: 'notificationsC',
         name: 'notificationsC',
         component: notificationsC
+      }, 
+      {
+        path: 'TechnicalReportsC',
+        name: 'TechnicalReportsC',
+        component: TechnicalReportsC
       }, 
     ]
   },
@@ -922,6 +946,11 @@ const routes = [
         name: 'reportsHR',
         component: ReportsHR
       },
+      {
+        path: 'TechnicalReportsHR',
+        name: 'TechnicalReportsHR',
+        component: TechnicalReportsHR
+      },
     ]
   },
   
@@ -977,6 +1006,11 @@ const routes = [
         path: 'PayrollPaidFinance',
         name: 'PayrollPaidFinance',
         component: PayrollPaidFinance
+      },
+      {
+        path: 'TechnicalReportsFinance',
+        name: 'TechnicalReportsFinance',
+        component: TechnicalReportsFinance
       },
     ]
   },
@@ -1092,6 +1126,12 @@ const routes = [
         name: 'ECSupplierProducts',
         component: ECSupplierProducts
       },
+      {
+        path: 'TechnicalReportsOpe',
+        name: 'TechnicalReportsOpe',
+        component: TechnicalReportsOpe
+      },
+      
     ]
   },
   {
@@ -1174,6 +1214,11 @@ const routes = [
         name: 'notificationsSup',
         component: notificationsSup
       }, 
+      {
+        path: 'TechnicalReportsSup', 
+        name: 'TechnicalReportsSup',
+        component: TechnicalReportsSup
+      },
 
       
     ]
@@ -1271,6 +1316,11 @@ const routes = [
         path: 'NotificationEmployee',
         name: 'NotificationEmployee',
         component: NotificationsEmployee
+      },
+      {
+        path: 'TechnicalReportsEmp',
+        name: 'TechnicalReportsEmp',
+        component: TechnicalReportsEmp
       },
     ]
   },
