@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth; // Added Auth facade
+use Illuminate\Support\Facades\Auth; 
 use App\Models\TechnicalReport;
+use App\Events\TechnicalReportUpdated;
 
 class TechnicalReportController extends Controller
 {
@@ -46,6 +47,8 @@ class TechnicalReportController extends Controller
             $total = TechnicalReport::count();
             $pending = TechnicalReport::where('status', 'pending')->count();
             $reviewed = TechnicalReport::where('status', 'reviewed')->count();
+            // New resolved statistic variable
+            $resolved = TechnicalReport::where('status', 'resolved')->count();
 
             $byCategory = TechnicalReport::selectRaw('category, COUNT(*) as count')
                 ->groupBy('category')
@@ -61,6 +64,7 @@ class TechnicalReportController extends Controller
                     'total' => $total,
                     'pending' => $pending,
                     'reviewed' => $reviewed,
+                    'resolved' => $resolved,
                     'by_category' => $byCategory,
                     'by_role' => $byRole
                 ]
@@ -73,16 +77,17 @@ class TechnicalReportController extends Controller
         }
     }
 
-    // Fixed: Added "int" type declaration to $id
     public function updateStatus(Request $request, int $id)
     {
         try {
             $report = TechnicalReport::findOrFail($id);
-            $report->status = $request->status; // 'pending' or 'reviewed'
+            $report->status = $request->status; 
             
-            // Fixed: Used Auth::id() instead of auth()->id()
             $report->reviewed_by = Auth::id(); 
             $report->save();
+
+            // Fire event so the client is notified their issue was marked as reviewed/resolved
+            event(new TechnicalReportUpdated($report));
 
             return response()->json([
                 'success' => true,

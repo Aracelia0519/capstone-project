@@ -2,13 +2,13 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel; // <-- Changed to PrivateChannel
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TechnicalReportSubmitted implements ShouldBroadcastNow
+class TechnicalReportUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,12 +21,12 @@ class TechnicalReportSubmitted implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        // Broadcast to admins securely
-        return new PrivateChannel('admin.technical_reports');
+        // Broadcast specifically to the user who made the report
+        return new PrivateChannel('user.' . $this->report->user_id . '.technical_reports');
     }
 
     public function broadcastAs()
     {
-        return 'report.submitted';
+        return 'report.updated';
     }
 }

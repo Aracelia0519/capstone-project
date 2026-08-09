@@ -22,7 +22,7 @@ return new class extends Migration
             $table->text('error_message');
             $table->string('attachment')->nullable();
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->enum('status', ['pending', 'reviewed'])->default('pending');
+            $table->enum('status', ['pending', 'reviewed', 'resolved'])->default('pending');
             $table->timestamps();
         });
     }
