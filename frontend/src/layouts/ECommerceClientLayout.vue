@@ -31,6 +31,7 @@
 
     <TopBar 
       :user="userData"
+      :is-terminated="isTerminated"
       @logout-started="handleLogoutStart" 
       @logout-finished="handleLogoutFinish" 
     />
@@ -39,18 +40,36 @@
       <div class="container mx-auto">
         <Suspense>
           <template #default>
-            <router-view v-slot="{ Component }">
-              <transition name="page-slide" mode="out-in">
-                <div v-if="isCheckingAuth" class="flex items-center justify-center min-h-[50vh]">
-                  <Loader2 class="w-12 h-12 text-blue-600 animate-spin" />
+            <transition name="page-slide" mode="out-in">
+              <!-- Loading State -->
+              <div v-if="isCheckingAuth" class="flex items-center justify-center min-h-[50vh]">
+                <Loader2 class="w-12 h-12 text-blue-600 animate-spin" />
+              </div>
+
+              <!-- Terminated Restriction Banner - Blocks all router views -->
+              <div v-else-if="isTerminated" class="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-red-50/50 rounded-3xl mt-8 border border-red-100 shadow-sm mx-4">
+                <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                  <AlertTriangle class="w-12 h-12 text-red-500 animate-pulse" />
                 </div>
+                <h2 class="text-3xl font-black text-slate-900 mb-4 tracking-tight">Account Restricted</h2>
+                <p class="text-slate-600 max-w-lg mx-auto text-lg leading-relaxed">
+                  Your account access has been temporarily suspended or permanently terminated due to a policy violation. You are currently restricted from making purchases or browsing the store.
+                </p>
+                <div class="mt-8 flex gap-4">
+                  <Button as-child variant="outline" class="h-12 px-6 rounded-xl border-slate-300 font-bold hover:bg-slate-50 transition-all">
+                     <router-link to="/Clients/notificationsC">Check Notifications Dashboard</router-link>
+                  </Button>
+                </div>
+              </div>
+
+              <!-- Main Application View -->
+              <router-view v-else v-slot="{ Component }">
                 <component 
-                  v-else
                   :is="Component" 
                   :user="userData"
                 />
-              </transition>
-            </router-view>
+              </router-view>
+            </transition>
           </template>
           <template #fallback>
             <div class="flex items-center justify-center min-h-[50vh]">
@@ -100,15 +119,20 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/utils/axios'
+import echo from '@/utils/websocket' 
+import { toast } from 'vue-sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
 import TopBar from '../layouts/topBarECommerceClient.vue'
-import { Loader2, Paintbrush, LogOut } from 'lucide-vue-next'
+import { Loader2, Paintbrush, LogOut, AlertTriangle } from 'lucide-vue-next'
 import { getCurrentUser } from '@/utils/auth'
 
 const router = useRouter()
 const userData = ref(null)
 const isCheckingAuth = ref(true)
+const isTerminated = ref(false)
 
 const isLoggingOut = ref(false)
 const logoutProgress = ref(0)
@@ -139,6 +163,33 @@ const initializeUserData = () => {
   if (stored) userData.value = JSON.parse(stored)
 }
 
+const checkAccountStatus = async () => {
+  if (!userData.value) return;
+  try {
+    const res = await api.get('/client/shop/account-status')
+    if (res.data.success) {
+      isTerminated.value = res.data.is_terminated
+    }
+  } catch (err) {
+    console.error('Failed to check account status', err)
+  }
+}
+
+const setupWebsockets = () => {
+  if (!userData.value || !userData.value.id) return
+
+  echo.private(`account.status.${userData.value.id}`)
+    .listen('.AccountStatusUpdated', (e) => {
+      isTerminated.value = e.status === 'terminated'
+      
+      if (isTerminated.value) {
+        toast.error('Account Restricted', { description: 'Your account has been limited by an administrator.' })
+      } else {
+        toast.success('Account Restored', { description: 'Your standard account access has been fully restored.' })
+      }
+    })
+}
+
 onMounted(async () => {
   initializeUserData()
   
@@ -147,11 +198,14 @@ onMounted(async () => {
     if (user) {
       userData.value = user
       localStorage.setItem('user_data', JSON.stringify(userData.value))
+      
+      // Perform security checks
+      await checkAccountStatus()
+      setupWebsockets()
     } else {
       userData.value = null // Explicitly handle guest state
     }
   } catch (error) {
-    // If getting the user fails (e.g. invalid token, no token), proceed as guest.
     console.warn("Continuing as guest user.")
     userData.value = null
   } finally {
@@ -161,6 +215,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (progressInterval) clearInterval(progressInterval)
+  if (echo && userData.value) {
+    echo.leave(`account.status.${userData.value.id}`)
+  }
 })
 
 const footerLinks = [

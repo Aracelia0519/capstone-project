@@ -76,7 +76,7 @@
 
                     <div class="flex flex-col sm:flex-row items-start gap-5 w-full">
                       <div class="w-full sm:w-28 h-48 sm:h-28 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 shadow-sm overflow-hidden" :style="item.image_url ? {} : { backgroundColor: item.color }">
-                        <img v-if="item.image_url" :src="item.image_url" alt="Product" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img v-if="item.image_url" :src="getImageUrl(item.image_url)" alt="Product" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       </div>
                       
                       <div class="flex-1 w-full flex flex-col justify-between h-full">
@@ -292,7 +292,7 @@
                 <div class="flex items-center gap-4 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm">
                   <div class="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 border border-blue-200 shadow-sm">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                   </div>
                   <div class="flex-1">
@@ -486,6 +486,20 @@ const paymentMethod = ref('gcash')
 const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
+
+// Robust Dynamic Image URL Generator Fallback
+const getImageUrl = (path) => {
+  if (!path) return '';
+  const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'http://localhost:8000';
+  if (path.includes('localhost:8000')) {
+      path = path.replace('http://localhost:8000', baseUrl);
+  }
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+}
 
 // Computed Values
 const productItems = computed(() => cartItems.value.filter(item => item.type === 'product' || !item.type))

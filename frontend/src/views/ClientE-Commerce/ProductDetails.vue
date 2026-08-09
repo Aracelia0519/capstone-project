@@ -46,7 +46,7 @@
               
               <img 
                 v-if="selectedVariant?.image_url" 
-                :src="selectedVariant.image_url" 
+                :src="getImageUrl(selectedVariant.image_url)" 
                 alt="Product Image" 
                 class="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
                 @error="handleImageError"
@@ -397,7 +397,7 @@
             <div class="h-40 relative overflow-hidden bg-gray-50 flex items-center justify-center shrink-0" :style="product.image_url ? {} : { backgroundColor: product.color || '#f1f5f9' }">
               <img 
                  v-if="product.image_url"
-                 :src="product.image_url" 
+                 :src="getImageUrl(product.image_url)" 
                  class="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
               />
               <div v-else class="w-20 h-20 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: product.color || '#cbd5e1' }"></div>

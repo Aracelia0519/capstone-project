@@ -14,7 +14,7 @@
 
       <nav class="hidden lg:flex items-center gap-1">
         <Button 
-          v-for="item in navItems" 
+          v-for="item in filteredNavItems" 
           :key="item.id"
           variant="ghost"
           as-child
@@ -80,7 +80,7 @@
 
     <div v-if="mobileMenuOpen" class="lg:hidden border-t bg-white px-4 py-4 space-y-1">
       <Button 
-        v-for="item in navItems" 
+        v-for="item in filteredNavItems" 
         :key="item.id" 
         variant="ghost" 
         class="w-full justify-start h-12 rounded-xl"
@@ -147,12 +147,16 @@ const activeItem = ref('shop')
 const mobileMenuOpen = ref(false)
 const showLogoutModal = ref(false)
 const isLoggingOut = ref(false)
-const cartCount = ref(0) // You may want to tie this to a store or API for guests/users
+const cartCount = ref(0) 
 
 const props = defineProps({
   user: {
     type: Object,
     default: null
+  },
+  isTerminated: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -174,6 +178,13 @@ const navItems = [
   { id: 'cart', label: 'Cart', route: '/ECommerceClient/EccommerceCart', icon: ShoppingCart },
   { id: 'orders', label: 'Orders', route: '/ECommerceClient/EccommerceOrders', icon: Package }
 ]
+
+const filteredNavItems = computed(() => {
+  if (props.isTerminated) {
+    return navItems.filter(item => item.id === 'shop')
+  }
+  return navItems
+})
 
 const profileMenuItems = [
   { id: 'profile', label: 'My Profile', route: '/Clients/profileC', icon: UserCircle },

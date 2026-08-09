@@ -173,6 +173,19 @@ class ProcurementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
 
+            // Security Check: Block if the supplier is currently terminated
+            $isTerminated = DB::table('account_terminations')
+                ->where('account_id', $supplierId)
+                ->where('status', 'terminated')
+                ->exists();
+
+            if ($isTerminated) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot retrieve products. This supplier\'s account is currently restricted.'
+                ], 403);
+            }
+
             $products = SupplierRawMaterial::where('user_id', $supplierId)
                 ->where('is_active', true)
                 ->get()
@@ -212,10 +225,21 @@ class ProcurementController extends Controller
                 ->first();
             $availableBudget = $salesRecord ? (float) ($salesRecord->total_revenue ?? 0) : 0;
 
-            $suppliers = SupplierPartner::where('distributor_id', $distributorId)
+            // Block Terminated Suppliers from appearing in the selection list
+            $terminatedSupplierIds = DB::table('account_terminations')
+                ->where('status', 'terminated')
+                ->pluck('account_id')
+                ->toArray();
+
+            $suppliersQuery = SupplierPartner::where('distributor_id', $distributorId)
                 ->where('status', 'active')
-                ->with('supplier')
-                ->get()
+                ->with('supplier');
+                
+            if (!empty($terminatedSupplierIds)) {
+                $suppliersQuery->whereNotIn('supplier_id', $terminatedSupplierIds);
+            }
+
+            $suppliers = $suppliersQuery->get()
                 ->map(function($partner) {
                     if (!$partner->supplier) return null;
                     $supplierName = $partner->supplier->full_name ?? ($partner->supplier->first_name . ' ' . $partner->supplier->last_name);
@@ -301,6 +325,19 @@ class ProcurementController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
+
+            // Security Check: Block submission if the supplier is currently terminated
+            $isTerminated = DB::table('account_terminations')
+                ->where('account_id', $request->supplier_id)
+                ->where('status', 'terminated')
+                ->exists();
+
+            if ($isTerminated) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot create request. The selected supplier is currently restricted due to policy violations.'
+                ], 403);
+            }
             
             $totalRequestedCost = 0;
 
@@ -351,8 +388,7 @@ class ProcurementController extends Controller
                     'requester_id' => $user->id,
                     'distributor_id' => $distributorId,
                     'supplier_id' => $request->supplier_id,
-                    // 🔥 FIX: store the supplier_raw_material id as product_id
-                    'product_id' => $material->id,   // <-- Changed from null
+                    'product_id' => $material->id,
                     'request_code' => ProcurementRequest::generateRequestCode(),
                     'product_name' => $material->name,
                     'category' => $material->category,

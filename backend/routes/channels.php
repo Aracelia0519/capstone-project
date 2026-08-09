@@ -335,4 +335,24 @@ Broadcast::channel('notifications.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+// ------------- REAL-TIME ACCOUNT STATUS CHANNEL -------------
+Broadcast::channel('account.status.{id}', function ($user, $id) {
+    // 1. Direct Match
+    if ((int) $user->id === (int) $id) return true;
+
+    // 2. Allow Operational Distributor to listen to their Parent Distributor's status
+    if ($user->role === 'operational_distributor') {
+        $opDist = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+        if ($opDist && (int)$opDist->parent_distributor_id === (int)$id) return true;
+    }
+
+    // 3. Allow Employee to listen to their Parent Distributor's status
+    if ($user->role === 'employee') {
+        $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
+        if ($employee && (int)$employee->parent_distributor_id === (int)$id) return true;
+    }
+
+    return false;
+});
+
 

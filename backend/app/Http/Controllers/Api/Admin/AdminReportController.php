@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\AccountTermination;
 use App\Models\SystemNotification;
 use App\Events\Notification\NotificationEvent; 
+use App\Events\Account\AccountStatusUpdated; // NEW EVENT IMPORTED
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -246,9 +247,8 @@ class AdminReportController extends Controller
                 ]);
             }
 
-            // Suspend User
-            $user->status = 'inactive';
-            $user->save();
+            // NOTE: The 'users' table structure and status column are intentionally left UNTOUCHED.
+            // Control is purely handled via the AccountTermination log.
 
             $notification = SystemNotification::create([
                 'receiver_id' => $user->id,
@@ -262,6 +262,9 @@ class AdminReportController extends Controller
             ]);
 
             broadcast(new NotificationEvent($notification));
+
+            // BROADCAST DYNAMIC STATUS UPDATE
+            broadcast(new AccountStatusUpdated($user->id, 'terminated', $termination));
 
             return response()->json(['success' => true, 'message' => 'Account terminated.', 'termination' => $termination]);
 
@@ -298,10 +301,8 @@ class AdminReportController extends Controller
                 ]);
             }
 
-            // Restore User
-            $user->status = 'active';
-            $user->save();
-
+            // NOTE: The 'users' table structure and status column are intentionally left UNTOUCHED.
+            
             $notification = SystemNotification::create([
                 'receiver_id' => $user->id,
                 'type' => 'Success', 
@@ -314,6 +315,9 @@ class AdminReportController extends Controller
             ]);
 
             broadcast(new NotificationEvent($notification));
+
+            // BROADCAST DYNAMIC STATUS UPDATE
+            broadcast(new AccountStatusUpdated($user->id, 'reversed', $termination));
 
             return response()->json(['success' => true, 'message' => 'Termination reversed.', 'termination' => $termination]);
 

@@ -39,8 +39,8 @@ Route::prefix('auth')->group(function () {
 
 // Public E-Commerce Client Routes - Shop
 Route::prefix('client/shop')->group(function () {
-    Route::get('/product/{id}', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProduct']);
-    Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'getProducts']);
+    Route::get('/product/{id}', [\App\Http\Controllers\Api\EcommerceClient\EcommerceProductController::class, 'getProduct']);
+    Route::get('/products', [\App\Http\Controllers\Api\EcommerceClient\EcommerceProductController::class, 'getProducts']);
     Route::get('/cart-items', [\App\Http\Controllers\Api\EcommerceClient\CartController::class, 'index']); // Public so guests don't get 401
 });
 
@@ -166,6 +166,9 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
 
+        // --- NEW: FETCH ACCOUNT STATUS ---
+        Route::get('/account-status', [\App\Http\Controllers\Api\Client\ClientAccountStatusController::class, 'getStatus']);
+
         // -----------------------------------------------------
         // ECOMMERCE SERVICES: Actions requiring Auth
         // -----------------------------------------------------
@@ -194,6 +197,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // E-Commerce Client Shop & Cart Routes
         Route::prefix('shop')->group(function () {
+            // --- FETCH ECOMMERCE ACCOUNT STATUS ---
+            Route::get('/account-status', [\App\Http\Controllers\Api\EcommerceClient\EcommerceAccountStatusController::class, 'getStatus']);
             // Protected Shop Endpoints (Actions)
             Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
             Route::post('/cart', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'addToCart']);
@@ -238,6 +243,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Service Provider Requirements - ID Verification
     Route::prefix('service-provider')->group(function () {
+
+        // --- FETCH SERVICE PROVIDER ACCOUNT STATUS ---
+        Route::get('/account-status', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderAccountStatusController::class, 'getStatus']);
 
         // SERVICE PROVIDER NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
@@ -406,6 +414,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Distributor Requirements - Business Verification
     Route::prefix('distributor')->group(function () {
+
+        // ---FETCH DISTRIBUTOR ACCOUNT STATUS ---
+        Route::get('/account-status', [\App\Http\Controllers\Api\Distributor\DistributorAccountStatusController::class, 'getStatus']);
 
         // DISTRIBUTOR NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
@@ -743,6 +754,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('supplier')->group(function () {
 
+        // ---FETCH SUPPLIER ACCOUNT STATUS ---
+        Route::get('/account-status', [\App\Http\Controllers\Api\Supplier\SupplierAccountStatusController::class, 'getStatus']);
+
         // ---SUPPLIER NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierNotificationController::class, 'index']);
@@ -875,6 +889,10 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('operation-distributor')->group(function () {
+
+        // ---FETCH OPERATIONAL E-COMMERCE ACCOUNT STATUS ---
+        Route::get('/account-status', [\App\Http\Controllers\Api\OperationDistributor\EcAccountStatusController::class, 'getStatus']);
+
         Route::get('/sidebar-access', [\App\Http\Controllers\Api\OperationDistributor\OperationDistributorSidebarController::class, 'getSidebarAccess']);
 
         Route::get('/categories', [\App\Http\Controllers\Api\OperationDistributor\CategoryController::class, 'index']);

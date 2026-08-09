@@ -192,7 +192,7 @@
               <div v-if="selectedGroupVariants[group.id] === variant.id.toString()" class="flex flex-col h-full relative" @click="goToProductDetails(variant.id)">
                 
                 <div class="h-56 relative overflow-hidden flex items-center justify-center bg-gray-50" :style="variant.image_url ? {} : { backgroundColor: variant.color }">
-                  <img v-if="variant.image_url" :src="variant.image_url" alt="Product Image" 
+                  <img v-if="variant.image_url" :src="getImageUrl(variant.image_url)" alt="Product Image" 
                        :class="['object-cover w-full h-full group-hover:scale-105 transition-transform duration-500', variant.stock <= 0 ? 'grayscale opacity-60' : '']" />
                   <div v-else class="w-32 h-32 rounded-full border-4 border-white shadow-lg" :style="{ backgroundColor: variant.color }"></div>
                   
@@ -355,7 +355,7 @@
                       class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
                    >
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
-                         <img v-if="prod.image_url" :src="prod.image_url" class="object-cover w-full h-full" />
+                         <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
                       </div>
                       <div class="p-3 flex flex-col justify-center flex-1">
@@ -382,7 +382,7 @@
                       class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
                    >
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
-                         <img v-if="prod.image_url" :src="prod.image_url" class="object-cover w-full h-full" />
+                         <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
                       </div>
                       <div class="p-3 flex flex-col justify-center flex-1">
@@ -421,7 +421,7 @@
                 
                 <div class="flex items-center gap-5 mb-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                   <div class="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
-                    <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
+                    <img v-if="selectedProduct?.image_url" :src="getImageUrl(selectedProduct?.image_url)" class="w-full h-full object-cover" />
                   </div>
                   <div class="flex-1">
                     <h3 class="font-bold text-gray-900 text-lg leading-tight">{{ selectedProduct?.name }}</h3>
@@ -492,7 +492,7 @@
               <div class="p-6">
                 <div class="flex items-center gap-5 mb-8 bg-gray-50 rounded-2xl p-4 border border-gray-100">
                   <div class="w-20 h-20 rounded-xl bg-white shadow-sm overflow-hidden flex-shrink-0 border border-gray-100" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
-                    <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
+                    <img v-if="selectedProduct?.image_url" :src="getImageUrl(selectedProduct?.image_url)" class="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h3 class="font-bold text-gray-900 text-lg leading-tight mb-1">{{ selectedProduct?.name }}</h3>
@@ -542,7 +542,7 @@
               <div class="px-6 py-4 overflow-y-auto flex-1 custom-scrollbar">
                 <div class="flex items-center gap-4 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm">
                   <div class="w-16 h-16 rounded-xl bg-white overflow-hidden flex-shrink-0 border border-gray-100 shadow-sm" :style="selectedProduct?.image_url ? {} : { backgroundColor: selectedProduct?.color }">
-                    <img v-if="selectedProduct?.image_url" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
+                    <img v-if="selectedProduct?.image_url" :src="getImageUrl(selectedProduct?.image_url)" class="w-full h-full object-cover" />
                   </div>
                   <div class="flex-1">
                     <h3 class="font-bold text-gray-900 text-lg">{{ selectedProduct?.name }}</h3>
@@ -875,6 +875,20 @@ const paymentMethod = ref('cod')
 const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
+
+// Robust Dynamic Image URL Generator Fallback
+const getImageUrl = (path) => {
+  if (!path) return '';
+  const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'http://localhost:8000';
+  if (path.includes('localhost:8000')) {
+      path = path.replace('http://localhost:8000', baseUrl);
+  }
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+}
 
 const formatCurrency = (value) => {
   return Number(value || 0).toLocaleString('en-PH', { 

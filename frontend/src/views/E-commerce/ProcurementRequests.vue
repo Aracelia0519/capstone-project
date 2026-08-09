@@ -265,7 +265,7 @@
                       <text class="text-white font-medium">{{ supplier.name }}</text>
                     </div>
                   </div>
-                  <div v-if="suppliers.length === 0" class="col-span-full text-gray-400 py-4">You have no active supplier partnerships.</div>
+                  <div v-if="suppliers.length === 0" class="col-span-full text-gray-400 py-4">You have no active supplier partnerships or your partners are currently restricted.</div>
                 </div>
               </div>
 
@@ -723,7 +723,12 @@ const fetchSupplierProducts = async (supplierId) => {
       supplierProducts.value = response.data.data
     }
   } catch (err) {
-    showToast('Failed to fetch supplier products', 'error')
+    if (err.response?.status === 403) {
+      submitError.value = err.response.data.message || 'Supplier restricted.';
+      showToast('Cannot fetch products from restricted supplier.', 'error');
+    } else {
+      showToast('Failed to fetch supplier products', 'error');
+    }
   } finally {
     productsLoading.value = false
   }

@@ -9,7 +9,7 @@ use App\Models\EcommerceClient\ClientOrderItem;
 use App\Models\EcommerceClient\ShippingRule;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\EcommerceClient\OrderVatDeduction;
-use App\Events\Ecommerce\EcommerceOrderPlaced; // <--- NEW RENAMED EVENT IMPORTED
+use App\Events\Ecommerce\EcommerceOrderPlaced; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +25,20 @@ class CartController extends Controller
         $user = Auth::guard('sanctum')->user();
         if (!$user) return response()->json(['success' => true, 'data' => []]);
         
-        $cartItems = ClientCart::with(['product'])->where('client_id', $user->id)->get();
+        // Ensure terminated distributors are omitted from the cart display
+        $terminatedIds = DB::table('account_terminations')
+            ->where('status', 'terminated')
+            ->pluck('account_id')
+            ->toArray();
+
+        $cartItemsQuery = ClientCart::with(['product'])->where('client_id', $user->id);
+        
+        if (!empty($terminatedIds)) {
+            $cartItemsQuery->whereNotIn('distributor_id', $terminatedIds);
+        }
+
+        $cartItems = $cartItemsQuery->get();
+
         $currentDate = now()->toDateString();
         $promotions = DB::table('crm_promotions')
             ->whereIn('status', ['approved', 'active', 'pending'])
@@ -147,14 +160,25 @@ class CartController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // Enforce restriction at checkout to prevent bypassing
+        $terminatedIds = DB::table('account_terminations')
+            ->where('status', 'terminated')
+            ->pluck('account_id')
+            ->toArray();
         
-        $cartItems = ClientCart::with('product')
+        $cartItemsQuery = ClientCart::with('product')
             ->where('client_id', $user->id)
-            ->whereIn('id', $request->selected_items)
-            ->get();
+            ->whereIn('id', $request->selected_items);
+
+        if (!empty($terminatedIds)) {
+            $cartItemsQuery->whereNotIn('distributor_id', $terminatedIds);
+        }
+
+        $cartItems = $cartItemsQuery->get();
 
         if ($cartItems->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'No valid items selected for checkout.'], 400);
+            return response()->json(['success' => false, 'message' => 'No valid items selected for checkout. Items may belong to a restricted distributor.'], 400);
         }
 
         $clientAddress = DB::table('client_addresses')
