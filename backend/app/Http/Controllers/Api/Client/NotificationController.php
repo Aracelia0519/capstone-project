@@ -21,7 +21,17 @@ class NotificationController extends Controller
         $notifications = SystemNotification::where('receiver_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->limit(50) // Limit to recent 50 to prevent heavy payloads
-            ->get();
+            ->get()
+            ->map(function ($notification) {
+                // Ensure we provide a ready-to-use full URL for the frontend
+                if ($notification->attachment) {
+                    $cleanPath = str_replace('storage/', '', $notification->attachment);
+                    $notification->attachment_url = asset('storage/' . $cleanPath);
+                } else {
+                    $notification->attachment_url = null;
+                }
+                return $notification;
+            });
 
         return response()->json([
             'success' => true,

@@ -80,11 +80,14 @@
                 </div>
               </div>
               
-              <p class="text-sm md:text-base leading-relaxed max-w-4xl" :class="!notification.is_read ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400'">
+              <p class="text-sm md:text-base leading-relaxed max-w-4xl whitespace-pre-line" :class="!notification.is_read ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400'">
                 {{ notification.message }}
               </p>
 
-              <div v-if="notification.attachment" class="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900 shadow-sm transition-transform group-hover:scale-105">
+              <!-- Dynamic Attachment Button -->
+              <div v-if="notification.attachment || notification.attachment_url" 
+                   @click.stop="viewAttachment(notification)"
+                   class="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900 shadow-sm transition-transform group-hover:scale-105 cursor-pointer hover:bg-amber-50">
                 <Paperclip class="w-3.5 h-3.5" /> View Attached File
               </div>
             </div>
@@ -99,7 +102,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/utils/axios' 
-import echo from '@/utils/websocket' // IMPORT YOUR CENTRALIZED WEBSOCKET FILE
+import echo from '@/utils/websocket' 
 import { toast } from 'vue-sonner'
 import { 
   Bell, BellOff, Loader2, Package, CheckCircle2, AlertCircle, Info, MessageSquare, ShieldAlert, Users, Paperclip, Truck, CircleDollarSign
@@ -125,6 +128,11 @@ const setupWebsockets = () => {
   // Listen to User's private notification channel using the imported echo instance
   echo.private(`notifications.${props.user.id}`)
     .listen('.NotificationSent', (e) => {
+      // Re-format attachment path if necessary before unshifting
+      if (e.notification.attachment && !e.notification.attachment.startsWith('storage/')) {
+        e.notification.attachment = 'storage/' + e.notification.attachment
+      }
+
       notifications.value.unshift(e.notification)
       unreadCount.value++
       
@@ -135,7 +143,7 @@ const setupWebsockets = () => {
     })
 }
 
-// Fetch Notifications from DB using SP endpoints
+// Fetch Notifications from DB
 const fetchNotifications = async () => {
   isLoading.value = true
   try {
@@ -178,6 +186,26 @@ const markAllAsRead = async () => {
   } catch (error) {
     console.error("Failed to mark all as read", error)
   }
+}
+
+// Solid File Viewer Handler using centralized Axios configuration
+const viewAttachment = (notification) => {
+    // Priority 1: Use pre-formatted asset URL from Laravel Database Fetch
+    if (notification.attachment_url) {
+        window.open(notification.attachment_url, '_blank');
+        return;
+    }
+    
+    // Priority 2: Safe fallback for raw paths from live WebSocket broadcasts
+    if (notification.attachment) {
+        const cleanPath = notification.attachment.replace(/^storage\//, '');
+        
+        // Extract the base URL directly from the Axios configuration, stripping off '/api'
+        const axiosBaseUrl = api.defaults.baseURL || '';
+        const baseUrl = axiosBaseUrl.replace(/\/api\/?$/, '');
+        
+        window.open(`${baseUrl}/storage/${cleanPath}`, '_blank');
+    }
 }
 
 // Visual Utilities

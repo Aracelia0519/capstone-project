@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\UserReport;
 use App\Models\User;
+use App\Models\AccountTermination;
 use App\Models\SystemNotification;
-use App\Events\Notification\NotificationEvent; // <-- CORRECTED IMPORT
+use App\Events\Notification\NotificationEvent; 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class AdminReportController extends Controller
 {
@@ -33,7 +35,7 @@ class AdminReportController extends Controller
                     DB::raw('MAX(user_reports.created_at) as last_report_date')
                 )
                 ->groupBy('user_reports.reported_user_id', 'user_reports.reported_user_role', 'users.first_name', 'users.last_name', 'users.email')
-                ->orderBy('pending_reports', 'desc') // Prioritize users with pending reports
+                ->orderBy('pending_reports', 'desc') 
                 ->orderBy('last_report_date', 'desc')
                 ->get();
 
@@ -43,10 +45,7 @@ class AdminReportController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch reports: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to fetch reports: ' . $e->getMessage()], 500);
         }
     }
 
@@ -61,7 +60,12 @@ class AdminReportController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not found'], 404);
             }
 
-            // Fetch detailed reports with reporter info
+            // Fetch the termination status
+            $termination = AccountTermination::where('account_id', $userId)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            // Fetch detailed reports
             $reports = DB::table('user_reports')
                 ->join('users as reporters', 'user_reports.reported_by_id', '=', 'reporters.id')
                 ->select(
@@ -78,30 +82,21 @@ class AdminReportController extends Controller
                     return $report;
                 });
 
-            // Analytics Data for Charts
             $reasonStats = [];
             $statusStats = ['pending' => 0, 'reviewed' => 0];
 
             foreach ($reports as $report) {
-                // Tally Reasons
-                if (!isset($reasonStats[$report->reason])) {
-                    $reasonStats[$report->reason] = 0;
-                }
+                if (!isset($reasonStats[$report->reason])) $reasonStats[$report->reason] = 0;
                 $reasonStats[$report->reason]++;
-
-                // Tally Statuses
-                if (isset($statusStats[$report->status])) {
-                    $statusStats[$report->status]++;
-                }
+                if (isset($statusStats[$report->status])) $statusStats[$report->status]++;
             }
-
-            // Sort reasons by highest count
             arsort($reasonStats);
 
             return response()->json([
                 'success' => true,
                 'user' => $user,
                 'reports' => $reports,
+                'termination' => $termination,
                 'analytics' => [
                     'reasons' => $reasonStats,
                     'statuses' => $statusStats,
@@ -110,10 +105,7 @@ class AdminReportController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch user reports: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to fetch user reports: ' . $e->getMessage()], 500);
         }
     }
 
@@ -133,10 +125,7 @@ class AdminReportController extends Controller
             $report->status = $request->status;
             $report->save();
 
-            // --- REAL-TIME NOTIFICATION DISPATCH ---
-            // If the status is newly updated to "reviewed", send a system notification to the reporter
             if ($oldStatus === 'pending' && $request->status === 'reviewed') {
-                
                 $reporter = User::find($report->reported_by_id);
                 $reportedUser = User::find($report->reported_user_id);
 
@@ -148,28 +137,188 @@ class AdminReportController extends Controller
                         'receiver_id' => $reporter->id,
                         'type' => 'Success', 
                         'title' => 'Incident Report Reviewed',
-                        'message' => "Your incident report regarding {$reportedName} (from {$incidentDate}) has been officially reviewed. The administrative team is now processing the appropriate actions. Thank you for your vigilance and for keeping our community safe.",
+                        'message' => "Your incident report regarding {$reportedName} (from {$incidentDate}) has been officially reviewed. The administrative team is now processing the appropriate actions.",
                         'is_read' => false,
                         'sender_role' => 'admin',
                         'receiver_role' => $report->reporter_role,
                     ]);
 
-                    // Broadcast directly to the specific user's private notification channel using the correct Event Class
-                    broadcast(new NotificationEvent($notification)); // <-- CORRECTED DISPATCH
+                    broadcast(new NotificationEvent($notification)); 
                 }
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Report status updated to ' . ucfirst($request->status),
-                'data' => $report
-            ]);
+            return response()->json(['success' => true, 'message' => 'Report status updated.', 'data' => $report]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update status: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Failed to update status.'], 500);
+        }
+    }
+
+    /**
+     * Send an official warning to the reported user.
+     */
+    public function sendWarning(Request $request, int $userId)
+    {
+        $request->validate([
+            'message' => 'required|string|max:2000',
+            'attachment' => 'nullable|file|max:10240' // Max 10MB
+        ]);
+
+        try {
+            $user = User::findOrFail($userId);
+
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('notifications/attachments', 'public');
+            }
+
+            // Log pending termination state
+            $termination = AccountTermination::firstOrCreate([
+                'account_id' => $user->id,
+                'status' => 'pending',
+            ], [
+                'role' => $user->role
+            ]);
+
+            $notification = SystemNotification::create([
+                'receiver_id' => $user->id,
+                'type' => 'Warning', 
+                'title' => 'Official Admin Warning',
+                'message' => $request->message,
+                'attachment' => $attachmentPath,
+                'is_read' => false,
+                'sender_role' => 'admin',
+                'receiver_role' => $user->role,
+            ]);
+
+            broadcast(new NotificationEvent($notification));
+
+            return response()->json(['success' => true, 'message' => 'Warning sent successfully.', 'termination' => $termination]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send warning: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Terminate the Account
+     */
+    public function terminateAccount(Request $request, int $userId)
+    {
+        $request->validate([
+            'termination_type' => 'required|string',
+            'reason' => 'required|string|max:2000',
+            'attachment' => 'nullable|file|max:10240'
+        ]);
+
+        try {
+            $user = User::findOrFail($userId);
+            $termination = AccountTermination::where('account_id', $userId)->where('status', 'pending')->first();
+
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('notifications/attachments', 'public');
+            }
+
+            $terminationLabels = [
+                'voluntary' => 'Voluntary Closure',
+                'admin_action' => 'Administrative Action',
+                'policy_violation' => 'Policy Violation',
+                'fraud' => 'Fraud / Deceptive Activity',
+                'abuse' => 'Abuse / Harassment',
+                'security_violation' => 'Security Violation',
+                'multiple_reports' => 'Multiple Valid Reports',
+                'inactive' => 'Inactive Account',
+                'duplicate_account' => 'Duplicate Account',
+                'business_closure' => 'Business Closure',
+                'other' => 'Other Reason',
+            ];
+            
+            $readableType = $terminationLabels[$request->termination_type] ?? $request->termination_type;
+
+            if($termination) {
+                $termination->update([
+                    'status' => 'terminated',
+                    'terminated_by' => Auth::id() ?? 1, 
+                    'termination_type' => $request->termination_type,
+                    'reason' => $request->reason,
+                    'terminated_at' => now()
+                ]);
+            }
+
+            // Suspend User
+            $user->status = 'inactive';
+            $user->save();
+
+            $notification = SystemNotification::create([
+                'receiver_id' => $user->id,
+                'type' => 'Alert', 
+                'title' => 'Account Terminated',
+                'message' => "Your account has been officially terminated.\nType: {$readableType}.\nReason: {$request->reason}.",
+                'attachment' => $attachmentPath,
+                'is_read' => false,
+                'sender_role' => 'admin',
+                'receiver_role' => $user->role,
+            ]);
+
+            broadcast(new NotificationEvent($notification));
+
+            return response()->json(['success' => true, 'message' => 'Account terminated.', 'termination' => $termination]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to terminate account: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reverse the Termination
+     */
+    public function reverseTermination(Request $request, int $userId)
+    {
+        $request->validate([
+            'reversal_reason' => 'required|string|max:2000',
+            'attachment' => 'nullable|file|max:10240'
+        ]);
+
+        try {
+            $user = User::findOrFail($userId);
+            $termination = AccountTermination::where('account_id', $userId)->where('status', 'terminated')->first();
+
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('notifications/attachments', 'public');
+            }
+
+            if($termination) {
+                $termination->update([
+                    'status' => 'reversed',
+                    'reversed_by' => Auth::id() ?? 1,
+                    'reversal_reason' => $request->reversal_reason,
+                    'reversed_at' => now()
+                ]);
+            }
+
+            // Restore User
+            $user->status = 'active';
+            $user->save();
+
+            $notification = SystemNotification::create([
+                'receiver_id' => $user->id,
+                'type' => 'Success', 
+                'title' => 'Account Restored',
+                'message' => "Your account termination has been officially reversed. Reason: {$request->reversal_reason}. You may now resume standard activities.",
+                'attachment' => $attachmentPath,
+                'is_read' => false,
+                'sender_role' => 'admin',
+                'receiver_role' => $user->role,
+            ]);
+
+            broadcast(new NotificationEvent($notification));
+
+            return response()->json(['success' => true, 'message' => 'Termination reversed.', 'termination' => $termination]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to reverse termination: ' . $e->getMessage()], 500);
         }
     }
 }

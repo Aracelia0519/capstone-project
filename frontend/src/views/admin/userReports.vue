@@ -3,7 +3,6 @@
     
     <!-- Hero Page Header -->
     <div class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl mb-8 border border-slate-700">
-      <!-- Decorative background elements -->
       <div class="absolute -right-20 -top-20 opacity-10 pointer-events-none transform rotate-12">
         <ShieldAlert class="w-96 h-96 text-white" />
       </div>
@@ -194,7 +193,6 @@
 
     <!-- Super Cool Details Modal -->
     <Dialog :open="isDetailsModalOpen" @update:open="closeDetailsModal">
-      <!-- Added native HTML overflow and wide sizing -->
       <DialogContent class="w-[95vw] max-w-[95vw] xl:max-w-7xl h-[95vh] p-0 flex flex-col bg-slate-50 overflow-hidden rounded-2xl border-0 shadow-2xl [&>button]:text-slate-400 [&>button]:right-6 [&>button]:top-6 [&>button]:z-50 [&>button]:bg-white [&>button]:rounded-full [&>button]:shadow-md [&>button]:p-2">
         
         <!-- Modal Header -->
@@ -202,23 +200,55 @@
           <div class="absolute top-0 right-0 opacity-10 pointer-events-none">
             <ShieldAlert class="w-64 h-64 -mt-10 -mr-10 text-white" />
           </div>
-          <div v-if="selectedUser" class="relative z-10 pr-12">
-            <div class="flex items-center gap-3 mb-3">
-              <Badge variant="outline" class="border-white/20 bg-white/10 text-white backdrop-blur-sm font-bold uppercase tracking-wider shadow-sm">
-                Defendant Profile
-              </Badge>
-              <span class="text-slate-300 text-sm font-medium">{{ selectedUser.email }}</span>
+          <div v-if="selectedUser" class="relative z-10 pr-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
+            <div>
+              <div class="flex items-center gap-3 mb-3">
+                <Badge variant="outline" class="border-white/20 bg-white/10 text-white backdrop-blur-sm font-bold uppercase tracking-wider shadow-sm">
+                  Defendant Profile
+                </Badge>
+                <span class="text-slate-300 text-sm font-medium">{{ selectedUser.email }}</span>
+              </div>
+              <DialogTitle class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                {{ selectedUser.first_name }} {{ selectedUser.last_name }}
+              </DialogTitle>
+              <DialogDescription class="mt-2 text-slate-300 text-base font-medium flex items-center gap-2">
+                Registered Role: <strong class="text-white capitalize">{{ selectedUser.role.replace('_', ' ') }}</strong>
+              </DialogDescription>
             </div>
-            <DialogTitle class="text-3xl font-black text-white tracking-tight flex items-center gap-3">
-              {{ selectedUser.first_name }} {{ selectedUser.last_name }}
-            </DialogTitle>
-            <DialogDescription class="mt-2 text-slate-300 text-base font-medium flex items-center gap-2">
-              Registered Role: <strong class="text-white capitalize">{{ selectedUser.role.replace('_', ' ') }}</strong>
-            </DialogDescription>
+            
+            <!-- Dynamic Action Button: Warning -> Terminate -> Reverse -->
+            <div v-if="selectedUserAnalytics">
+                <!-- Condition 1: No active termination (null or reversed) -->
+                <Button 
+                    v-if="!selectedUserTermination || selectedUserTermination.status === 'reversed'"
+                    @click="openWarningModal" 
+                    class="bg-rose-500 hover:bg-rose-600 text-white border-0 shadow-[0_0_20px_rgba(244,63,94,0.4)] font-bold tracking-wide rounded-xl shrink-0 h-12 px-6 transition-transform hover:scale-105"
+                >
+                    <AlertTriangle class="w-5 h-5 mr-2" /> Issue Official Warning
+                </Button>
+
+                <!-- Condition 2: Warning sent (pending termination) -->
+                <Button 
+                    v-else-if="selectedUserTermination.status === 'pending'"
+                    @click="openTerminateModal" 
+                    class="bg-red-600 hover:bg-red-700 text-white border-0 shadow-[0_0_20px_rgba(220,38,38,0.4)] font-bold tracking-wide rounded-xl shrink-0 h-12 px-6 transition-transform hover:scale-105"
+                >
+                    <Ban class="w-5 h-5 mr-2" /> Terminate Account
+                </Button>
+
+                <!-- Condition 3: Account Terminated -->
+                <Button 
+                    v-else-if="selectedUserTermination.status === 'terminated'"
+                    @click="openReverseModal" 
+                    class="bg-emerald-500 hover:bg-emerald-600 text-white border-0 shadow-[0_0_20px_rgba(16,185,129,0.4)] font-bold tracking-wide rounded-xl shrink-0 h-12 px-6 transition-transform hover:scale-105"
+                >
+                    <Undo2 class="w-5 h-5 mr-2" /> Reverse Termination
+                </Button>
+            </div>
           </div>
         </DialogHeader>
 
-        <!-- NATIVE Scrollable Content with Overflow-Y-Auto -->
+        <!-- Scrollable Content -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar relative">
           
           <div v-if="isFetchingDetails" class="flex flex-col justify-center items-center py-40">
@@ -251,7 +281,6 @@
                     </div>
                   </div>
                   
-                  <!-- Glowing Progress Bar -->
                   <div class="h-4 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner p-0.5">
                     <div class="h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
                          :class="reviewedPercentage === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-amber-400 to-emerald-400'"
@@ -280,16 +309,12 @@
                   </CardTitle>
                 </CardHeader>
                 <CardContent class="p-8 flex flex-col sm:flex-row items-center gap-10">
-                  
-                  <!-- CSS Conic Gradient Donut -->
                   <div class="relative w-40 h-40 rounded-full shadow-[0_0_20px_rgba(0,0,0,0.08)] shrink-0 transition-transform hover:scale-105 duration-500" :style="reasonsPieChartStyle">
                     <div class="absolute inset-3 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
                       <TrendingUp class="w-6 h-6 text-slate-300 mb-1" />
                       <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Metrics</span>
                     </div>
                   </div>
-
-                  <!-- Color Legend -->
                   <div class="flex-1 w-full space-y-3 custom-scrollbar max-h-[160px] overflow-y-auto pr-2">
                     <div v-for="item in reasonsWithColors" :key="item.reason" class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors">
                       <div class="flex items-center gap-3 min-w-0">
@@ -315,13 +340,11 @@
                 <div v-for="report in selectedUserReports" :key="report.id" 
                      class="bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all overflow-hidden flex flex-col md:flex-row group relative">
                   
-                  <!-- Left Colored Border Strip -->
                   <div class="absolute left-0 top-0 bottom-0 w-2 md:w-3 transition-colors" 
                        :class="report.status === 'reviewed' ? 'bg-emerald-500' : 'bg-amber-400'"></div>
                   
                   <div class="p-6 md:p-8 pl-8 md:pl-10 flex-1 flex flex-col md:flex-row gap-8">
                     
-                    <!-- Core Info -->
                     <div class="flex-1 space-y-4">
                       <div class="flex flex-wrap items-center justify-between gap-4">
                         <div class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black border"
@@ -346,10 +369,8 @@
                       </div>
                     </div>
 
-                    <!-- Action Sidebar -->
                     <div class="md:w-72 shrink-0 flex flex-col justify-center gap-6 border-t md:border-t-0 md:border-l border-slate-100 pt-6 md:pt-0 md:pl-8 relative">
                       
-                      <!-- Absolute status icon for visual flair -->
                       <div class="absolute right-0 top-0 opacity-5 pointer-events-none hidden md:block">
                         <CheckCircle2 v-if="report.status === 'reviewed'" class="w-32 h-32 text-emerald-500" />
                         <Clock v-else class="w-32 h-32 text-amber-500" />
@@ -404,6 +425,153 @@
       </DialogContent>
     </Dialog>
 
+    <!-- Send Warning Modal -->
+    <Dialog :open="isWarningModalOpen" @update:open="isWarningModalOpen = $event">
+      <DialogContent class="sm:max-w-xl bg-white rounded-2xl">
+        <DialogHeader>
+          <DialogTitle class="text-rose-600 flex items-center gap-2 text-xl font-black">
+            <AlertTriangle class="w-5 h-5"/> Issue Warning
+          </DialogTitle>
+          <DialogDescription class="text-slate-500 font-medium">
+            This message will be dispatched directly to <strong class="text-slate-800">{{ selectedUser?.first_name }}'s</strong> notification center in real-time.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-4 py-2">
+          
+          <Select v-model="warningTemplate" @update:modelValue="applyWarningTemplate">
+            <SelectTrigger class="w-full h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700">
+              <SelectValue placeholder="Select Pre-defined Template or write Custom" />
+            </SelectTrigger>
+            <SelectContent class="rounded-xl font-medium">
+              <SelectItem value="custom">Custom (Write manually)</SelectItem>
+              <SelectItem value="standard">Standard Warning</SelectItem>
+              <SelectItem value="final">Final Warning before Termination</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Textarea 
+            v-model="warningMessage" 
+            class="h-32 resize-none rounded-xl border-slate-200 focus-visible:ring-rose-500 text-slate-700 font-medium" 
+            placeholder="Type your official warning message here..." 
+          />
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><UploadCloud class="w-3 h-3"/> Attach Evidence (Optional)</label>
+            <Input type="file" @change="e => warningFile = e.target.files[0]" class="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer h-10 border-slate-200 pt-1 text-slate-500" />
+          </div>
+
+        </div>
+        <div class="flex justify-end gap-3 mt-2">
+          <Button variant="outline" class="font-bold rounded-xl" @click="isWarningModalOpen = false" :disabled="isProcessingApi">Cancel</Button>
+          <Button class="bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105" @click="sendWarning" :disabled="isProcessingApi || !warningMessage.trim()">
+            <Loader2 v-if="isProcessingApi" class="w-4 h-4 animate-spin mr-2"/>
+            Dispatch Warning
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Terminate Account Modal -->
+    <Dialog :open="isTerminateModalOpen" @update:open="isTerminateModalOpen = $event">
+      <DialogContent class="sm:max-w-xl bg-white rounded-2xl">
+        <DialogHeader>
+          <DialogTitle class="text-red-600 flex items-center gap-2 text-xl font-black">
+            <Ban class="w-5 h-5"/> Terminate Account
+          </DialogTitle>
+          <DialogDescription class="text-slate-500 font-medium">
+            Specify the details for terminating <strong class="text-slate-800">{{ selectedUser?.first_name }}'s</strong> account.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-4 py-2">
+          <Select v-model="terminateForm.type">
+            <SelectTrigger class="w-full h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700">
+              <SelectValue placeholder="Select Termination Type" />
+            </SelectTrigger>
+            <SelectContent class="rounded-xl font-medium max-h-60 overflow-y-auto">
+              <SelectItem v-for="t in terminationTypes" :key="t.value" :value="t.value">
+                {{ t.label }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select v-model="terminateTemplate" @update:modelValue="applyTerminateTemplate">
+            <SelectTrigger class="w-full h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700">
+              <SelectValue placeholder="Select Pre-defined Reason or write Custom" />
+            </SelectTrigger>
+            <SelectContent class="rounded-xl font-medium">
+              <SelectItem value="custom">Custom (Write manually)</SelectItem>
+              <SelectItem value="policy">Violation of Platform Policy</SelectItem>
+              <SelectItem value="fraud">Fraudulent Activity Detected</SelectItem>
+              <SelectItem value="abuse">Harassment or Abuse</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Textarea 
+            v-model="terminateForm.reason" 
+            class="h-28 resize-none rounded-xl border-slate-200 focus-visible:ring-red-500 text-slate-700 font-medium" 
+            placeholder="Provide the official reason for termination..." 
+          />
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><UploadCloud class="w-3 h-3"/> Attach Evidence (Optional)</label>
+            <Input type="file" @change="e => terminateFile = e.target.files[0]" class="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer h-10 border-slate-200 pt-1 text-slate-500" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-2">
+          <Button variant="outline" class="font-bold rounded-xl" @click="isTerminateModalOpen = false" :disabled="isProcessingApi">Cancel</Button>
+          <Button class="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105" @click="terminateAccount" :disabled="isProcessingApi || !terminateForm.type || !terminateForm.reason.trim()">
+            <Loader2 v-if="isProcessingApi" class="w-4 h-4 animate-spin mr-2"/>
+            Confirm Termination
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Reverse Termination Modal -->
+    <Dialog :open="isReverseModalOpen" @update:open="isReverseModalOpen = $event">
+      <DialogContent class="sm:max-w-xl bg-white rounded-2xl">
+        <DialogHeader>
+          <DialogTitle class="text-emerald-600 flex items-center gap-2 text-xl font-black">
+            <Undo2 class="w-5 h-5"/> Reverse Termination
+          </DialogTitle>
+          <DialogDescription class="text-slate-500 font-medium">
+            Restore <strong class="text-slate-800">{{ selectedUser?.first_name }}'s</strong> account and provide the justification for this reversal.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="grid gap-4 py-2">
+          
+          <Select v-model="reverseTemplate" @update:modelValue="applyReverseTemplate">
+            <SelectTrigger class="w-full h-11 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700">
+              <SelectValue placeholder="Select Pre-defined Reason or write Custom" />
+            </SelectTrigger>
+            <SelectContent class="rounded-xl font-medium">
+              <SelectItem value="custom">Custom (Write manually)</SelectItem>
+              <SelectItem value="error">Termination was an administrative error</SelectItem>
+              <SelectItem value="appeal">User successfully appealed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Textarea 
+            v-model="reverseForm.reason" 
+            class="h-28 resize-none rounded-xl border-slate-200 focus-visible:ring-emerald-500 text-slate-700 font-medium" 
+            placeholder="Provide justification for reversing this termination..." 
+          />
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1"><UploadCloud class="w-3 h-3"/> Attach Evidence (Optional)</label>
+            <Input type="file" @change="e => reverseFile = e.target.files[0]" class="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer h-10 border-slate-200 pt-1 text-slate-500" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-2">
+          <Button variant="outline" class="font-bold rounded-xl" @click="isReverseModalOpen = false" :disabled="isProcessingApi">Cancel</Button>
+          <Button class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105" @click="reverseTermination" :disabled="isProcessingApi || !reverseForm.reason.trim()">
+            <Loader2 v-if="isProcessingApi" class="w-4 h-4 animate-spin mr-2"/>
+            Confirm Reversal
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -413,12 +581,13 @@ import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 import { 
   ShieldAlert, RefreshCw, Users, Flag, AlertCircle, Search, Eye, X, Loader2, ShieldCheck, 
-  Calendar, UserCircle2, Paperclip, Sparkles, Activity, CheckCircle2, Clock, PieChart, TrendingUp, FileText
+  Calendar, UserCircle2, Paperclip, Sparkles, Activity, CheckCircle2, Clock, PieChart, TrendingUp, FileText, AlertTriangle, Ban, Undo2, UploadCloud
 } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -439,9 +608,65 @@ const isFetchingDetails = ref(false)
 const selectedUser = ref(null)
 const selectedUserReports = ref([])
 const selectedUserAnalytics = ref(null)
+const selectedUserTermination = ref(null)
 const isUpdatingStatus = ref(null)
+const isProcessingApi = ref(false)
 
-// --- Methods ---
+// Warning Modal State
+const isWarningModalOpen = ref(false)
+const warningTemplate = ref('custom')
+const warningMessage = ref('')
+const warningFile = ref(null)
+
+// Terminate Modal State
+const isTerminateModalOpen = ref(false)
+const terminateTemplate = ref('custom')
+const terminateForm = ref({ type: '', reason: '' })
+const terminateFile = ref(null)
+
+// Reverse Modal State
+const isReverseModalOpen = ref(false)
+const reverseTemplate = ref('custom')
+const reverseForm = ref({ reason: '' })
+const reverseFile = ref(null)
+
+// Termination Types based on requirements
+const terminationTypes = [
+  { value: 'voluntary', label: 'Voluntary Closure' },
+  { value: 'admin_action', label: 'Administrative Action' },
+  { value: 'policy_violation', label: 'Policy Violation' },
+  { value: 'fraud', label: 'Fraud / Deceptive Activity' },
+  { value: 'abuse', label: 'Abuse / Harassment' },
+  { value: 'security_violation', label: 'Security Violation' },
+  { value: 'multiple_reports', label: 'Multiple Valid Reports' },
+  { value: 'inactive', label: 'Inactive Account' },
+  { value: 'duplicate_account', label: 'Duplicate Account' },
+  { value: 'business_closure', label: 'Business Closure' },
+  { value: 'other', label: 'Other Reason' }
+]
+
+// --- Template Handling Methods ---
+const applyWarningTemplate = (val) => {
+  if(val === 'standard') warningMessage.value = `Attention: Multiple incident reports have been filed against your account regarding your recent activities on the platform. Please review our community guidelines and ensure your conduct aligns with our policies.\n\n- The Administration Team`
+  else if(val === 'final') warningMessage.value = `FINAL WARNING: Your account is on the verge of permanent termination due to repeated and confirmed violations of our platform policies. Any further infractions will result in immediate closure.\n\n- The Administration Team`
+  else warningMessage.value = ''
+}
+
+const applyTerminateTemplate = (val) => {
+  if(val === 'policy') terminateForm.value.reason = `Your account has been terminated due to a severe or repeated violation of our Platform Guidelines.`
+  else if(val === 'fraud') terminateForm.value.reason = `Your account has been permanently terminated due to confirmed fraudulent or deceptive activities.`
+  else if(val === 'abuse') terminateForm.value.reason = `Termination action applied due to verified reports of harassment and abusive behavior towards other community members.`
+  else terminateForm.value.reason = ''
+}
+
+const applyReverseTemplate = (val) => {
+  if(val === 'error') reverseForm.value.reason = `The prior termination was found to be an administrative error during our internal review process.`
+  else if(val === 'appeal') reverseForm.value.reason = `The user successfully appealed the decision and provided the necessary documentation to prove compliance.`
+  else reverseForm.value.reason = ''
+}
+
+
+// --- Main Methods ---
 
 const fetchSummaries = async () => {
   isLoading.value = true
@@ -466,6 +691,7 @@ const viewUserDetails = async (userId) => {
       selectedUser.value = res.data.user
       selectedUserReports.value = res.data.reports
       selectedUserAnalytics.value = res.data.analytics
+      selectedUserTermination.value = res.data.termination
     }
   } catch (err) {
     toast.error('Error fetching user cases', { description: 'Could not load detailed reports.' })
@@ -481,11 +707,8 @@ const toggleStatus = async (report) => {
   try {
     const res = await api.put(`/admin/reports/${report.id}/status`, { status: newStatus })
     if (res.data.success) {
-      
-      // Update local state for immediate feedback
       report.status = newStatus
       
-      // Update analytics within the modal
       if (newStatus === 'reviewed') {
         selectedUserAnalytics.value.statuses.pending--
         selectedUserAnalytics.value.statuses.reviewed++
@@ -494,7 +717,6 @@ const toggleStatus = async (report) => {
         selectedUserAnalytics.value.statuses.reviewed--
       }
 
-      // Optimistically update the main summaries grid (without reloading)
       const summaryItem = summaries.value.find(s => s.reported_user_id === report.reported_user_id)
       if (summaryItem) {
           if (newStatus === 'reviewed') {
@@ -506,15 +728,11 @@ const toggleStatus = async (report) => {
           }
       }
 
-      // Show toast
       if (newStatus === 'reviewed') {
-          toast.success('Case Reviewed', { description: `The report has been resolved and the user was notified.` })
+          toast.success('Case Reviewed', { description: `The report has been resolved and the reporter was notified.` })
       } else {
           toast.success('Status Changed', { description: `The report is now marked as pending.` })
       }
-
-      // Silently sync the database just in case
-      fetchSummariesBackground()
     }
   } catch (err) {
     toast.error('Update Failed', { description: 'Could not change the case status.' })
@@ -523,12 +741,110 @@ const toggleStatus = async (report) => {
   }
 }
 
-const fetchSummariesBackground = async () => {
-    try {
-        const res = await api.get('/admin/reports')
-        if (res.data.success) summaries.value = res.data.data
-    } catch(e) {}
+// ---------------------------------
+// ACTIONS MODALS & API INTEGRATION (With File Upload)
+// ---------------------------------
+
+const openWarningModal = () => {
+  warningTemplate.value = 'custom'
+  warningMessage.value = ''
+  warningFile.value = null
+  isWarningModalOpen.value = true
 }
+
+const openTerminateModal = () => {
+  terminateTemplate.value = 'custom'
+  terminateForm.value = { type: '', reason: '' }
+  terminateFile.value = null
+  isTerminateModalOpen.value = true
+}
+
+const openReverseModal = () => {
+  reverseTemplate.value = 'custom'
+  reverseForm.value = { reason: '' }
+  reverseFile.value = null
+  isReverseModalOpen.value = true
+}
+
+const sendWarning = async () => {
+  if(!warningMessage.value.trim()) return
+  isProcessingApi.value = true
+
+  const formData = new FormData()
+  formData.append('message', warningMessage.value)
+  if (warningFile.value) {
+    formData.append('attachment', warningFile.value)
+  }
+
+  try {
+    const res = await api.post(`/admin/reports/user/${selectedUser.value.id}/warn`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data.success) {
+      toast.success('Warning Dispatched', { description: 'The user has received your official warning.' })
+      selectedUserTermination.value = res.data.termination
+      isWarningModalOpen.value = false
+    }
+  } catch (err) {
+    toast.error('Dispatch Failed', { description: 'An error occurred while sending the warning.' })
+  } finally {
+    isProcessingApi.value = false
+  }
+}
+
+const terminateAccount = async () => {
+  if(!terminateForm.value.type || !terminateForm.value.reason.trim()) return
+  isProcessingApi.value = true
+
+  const formData = new FormData()
+  formData.append('termination_type', terminateForm.value.type)
+  formData.append('reason', terminateForm.value.reason)
+  if (terminateFile.value) {
+    formData.append('attachment', terminateFile.value)
+  }
+
+  try {
+    const res = await api.post(`/admin/reports/user/${selectedUser.value.id}/terminate`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data.success) {
+      toast.error('Account Terminated', { description: `User's account has been successfully terminated.` })
+      selectedUserTermination.value = res.data.termination 
+      isTerminateModalOpen.value = false
+    }
+  } catch (err) {
+    toast.error('Termination Failed', { description: 'An error occurred while terminating the account.' })
+  } finally {
+    isProcessingApi.value = false
+  }
+}
+
+const reverseTermination = async () => {
+  if(!reverseForm.value.reason.trim()) return
+  isProcessingApi.value = true
+
+  const formData = new FormData()
+  formData.append('reversal_reason', reverseForm.value.reason)
+  if (reverseFile.value) {
+    formData.append('attachment', reverseFile.value)
+  }
+
+  try {
+    const res = await api.post(`/admin/reports/user/${selectedUser.value.id}/reverse`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data.success) {
+      toast.success('Termination Reversed', { description: `User's account access has been restored.` })
+      selectedUserTermination.value = res.data.termination
+      isReverseModalOpen.value = false
+    }
+  } catch (err) {
+    toast.error('Reversal Failed', { description: 'An error occurred while reversing the termination.' })
+  } finally {
+    isProcessingApi.value = false
+  }
+}
+
 
 const closeDetailsModal = (val) => {
   if (val === false || typeof val === 'object') {
@@ -537,6 +853,7 @@ const closeDetailsModal = (val) => {
       selectedUser.value = null
       selectedUserReports.value = []
       selectedUserAnalytics.value = null
+      selectedUserTermination.value = null
     }, 300)
   }
 }

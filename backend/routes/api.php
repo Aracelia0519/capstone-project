@@ -572,6 +572,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'index']);
             Route::get('/user/{id}', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'show']);
             Route::put('/{id}/status', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'updateStatus']);
+
+            // Endpoints to warn, terminate, and reverse accounts
+            Route::post('/user/{id}/warn', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'sendWarning']);
+            Route::post('/user/{id}/terminate', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'terminateAccount']);
+            Route::post('/user/{id}/reverse', [\App\Http\Controllers\Api\Admin\AdminReportController::class, 'reverseTermination']);
         });
 
         Route::prefix('users')->group(function () {
