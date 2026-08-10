@@ -101,12 +101,43 @@ class DistributorDashboardController extends Controller
             $netCashFlow = $currentTotalSales - $totalExpenses;
 
             // ==========================================
-            // 2. FINANCE: 6-Month Revenue Trend (NEW)
+            // 2. FINANCE: DYNAMIC REVENUE TREND
             // ==========================================
+            $period = $request->query('period', '12m');
             $monthlyRevenue = [];
-            for ($i = 5; $i >= 0; $i--) {
-                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
-                $mEnd = Carbon::now()->subMonths($i)->endOfMonth();
+            $iterations = 12;
+            $stepType = 'month';
+
+            switch ($period) {
+                case '7d': $iterations = 7; $stepType = 'day'; break;
+                case '30d': $iterations = 30; $stepType = 'day_month'; break;
+                case '3m': $iterations = 12; $stepType = 'week'; break;
+                case '12m':
+                default: $iterations = 12; $stepType = 'month'; break;
+            }
+
+            for ($i = $iterations - 1; $i >= 0; $i--) {
+                if ($stepType === 'day_month') {
+                    $date = Carbon::now()->subDays($i);
+                    $mStart = $date->copy()->startOfDay();
+                    $mEnd = $date->copy()->endOfDay();
+                    $label = $date->format('M d');
+                } elseif ($stepType === 'week') {
+                    $date = Carbon::now()->subWeeks($i);
+                    $mStart = $date->copy()->startOfWeek();
+                    $mEnd = $date->copy()->endOfWeek();
+                    $label = 'W' . $date->weekOfMonth . ' ' . $date->format('M');
+                } elseif ($stepType === 'month') {
+                    $date = Carbon::now()->subMonths($i);
+                    $mStart = $date->copy()->startOfMonth();
+                    $mEnd = $date->copy()->endOfMonth();
+                    $label = $date->format('M');
+                } else {
+                    $date = Carbon::now()->subDays($i);
+                    $mStart = $date->copy()->startOfDay();
+                    $mEnd = $date->copy()->endOfDay();
+                    $label = $date->format('D');
+                }
                 
                 $cSales = DB::table('client_orders')->join('client_order_items', 'client_orders.id', '=', 'client_order_items.order_id')
                     ->where('client_order_items.distributor_id', $distributorId)->whereIn('client_orders.status', $validOrderStatuses)
@@ -117,7 +148,7 @@ class DistributorDashboardController extends Controller
                     ->whereBetween('sp_orders.created_at', [$mStart, $mEnd])->select('sp_orders.id', 'sp_orders.grand_total')->distinct()->get()->sum('grand_total');
 
                 $monthlyRevenue[] = [
-                    'label' => $mStart->format('M'),
+                    'label' => $label,
                     'revenue' => $cSales + $sSales
                 ];
             }
@@ -185,7 +216,7 @@ class DistributorDashboardController extends Controller
             })->values();
 
             // ==========================================
-            // 5. RECENT ORDERS DATATABLE (NEW)
+            // 5. RECENT ORDERS DATATABLE 
             // ==========================================
             $recentClientOrders = DB::table('client_orders')
                 ->join('client_order_items', 'client_orders.id', '=', 'client_order_items.order_id')
@@ -246,9 +277,6 @@ class DistributorDashboardController extends Controller
         $paymentTerm = $amount <= 10000 ? 'gcash' : 'stripe';
         $referenceNumber = 'DEP-' . strtoupper(Str::random(10));
         
-        // =================================================================================
-        // VERIFY PAYMENT CONFIGURATION SETTINGS
-        // =================================================================================
         $paymentSettings = DB::table('distributor_payment_settings')->where('distributor_id', $distributorId)->first();
 
         if (!$paymentSettings) {
@@ -265,16 +293,13 @@ class DistributorDashboardController extends Controller
             ], 400);
         }
 
-        // Assuming is_bank_enabled column controls Bank Transfers, alternatively checking if bank details are set
         $bankDisabled = isset($paymentSettings->is_bank_enabled) && !$paymentSettings->is_bank_enabled;
-        
         if ($paymentTerm === 'stripe' && $bankDisabled) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bank Transfer transactions are currently disabled. Please formally request the Operations department to enable and configure the banking details.'
             ], 400);
         }
-        // =================================================================================
 
         $billingName = trim($user->first_name . ' ' . $user->last_name) ?: 'Distributor';
         $billingEmail = $user->email;
@@ -336,13 +361,11 @@ class DistributorDashboardController extends Controller
                 $sessionId = $paymongoData['data']['id'] ?? null;
 
             } else {
-                // Stripe Implementation
                 $provider = 'stripe';
                 $stripeSecretKey = env('STRIPE_SECRET_KEY', 'sk_test_51TJD8JGe0rCXOZj6zNH9eUdp5IxSCOVJejF9WH9SaNjdICx4Ftr75YiEcSHu2A3jm2zKXrPkxnfAabLAiztdDGP8003ePhoRZE');
                 
-                // Demo Conversion
                 $usdAmount = (int) round(($amount / 56) * 100);
-                if ($usdAmount < 50) $usdAmount = 50; // Stripe min is 50 cents
+                if ($usdAmount < 50) $usdAmount = 50; 
 
                 $response = $client->request('POST', 'https://api.stripe.com/v1/checkout/sessions', [
                     'headers' => [
@@ -351,10 +374,7 @@ class DistributorDashboardController extends Controller
                     ],
                     'http_errors' => false,
                     'form_params' => [
-                        'payment_method_types' => [
-                            0 => 'us_bank_account', 
-                            1 => 'card'
-                        ],
+                        'payment_method_types' => [0 => 'us_bank_account', 1 => 'card'],
                         'line_items' => [
                             [
                                 'price_data' => [
@@ -390,7 +410,6 @@ class DistributorDashboardController extends Controller
                 return response()->json(['success' => false, 'message' => 'Failed to generate Checkout link.'], 500);
             }
 
-            // Save deposit intention securely
             $cacheData = [
                 'session_id' => $sessionId,
                 'reference_number' => $referenceNumber,
@@ -402,10 +421,7 @@ class DistributorDashboardController extends Controller
 
             Storage::disk('local')->put('pending_deposits/' . $referenceNumber . '.json', json_encode($cacheData));
 
-            return response()->json([
-                'success' => true,
-                'checkout_url' => $checkoutUrl,
-            ]);
+            return response()->json(['success' => true, 'checkout_url' => $checkoutUrl]);
 
         } catch (\Exception $e) {
             Log::error("Deposit Initialization Error: " . $e->getMessage());
@@ -413,9 +429,6 @@ class DistributorDashboardController extends Controller
         }
     }
 
-    /**
-     * Verify Deposit via PayMongo or Stripe after redirect
-     */
     public function verifyDeposit(Request $request)
     {
         $request->validate(['reference_number' => 'required|string']);
@@ -495,31 +508,22 @@ class DistributorDashboardController extends Controller
             return response()->json(['success' => false, 'message' => ucfirst($provider) . ' Status: Payment has not been fully verified.'], 400);
         }
 
-        // Apply Funds safely to DB
         DB::beginTransaction();
         try {
             $existing = DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->first();
             
             if ($existing) {
-                DB::table('distributor_overall_sales')
-                    ->where('distributor_id', $distributorId)
-                    ->increment('total_revenue', $amount);
+                DB::table('distributor_overall_sales')->where('distributor_id', $distributorId)->increment('total_revenue', $amount);
             } else {
                 DB::table('distributor_overall_sales')->insert([
-                    'distributor_id' => $distributorId,
-                    'total_revenue' => $amount,
-                    'created_at' => now(),
-                    'updated_at' => now()
+                    'distributor_id' => $distributorId, 'total_revenue' => $amount, 'created_at' => now(), 'updated_at' => now()
                 ]);
             }
 
             DB::commit();
             Storage::disk('local')->delete($filePath);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Deposit verified and funds credited successfully.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Deposit verified and funds credited successfully.']);
 
         } catch (\Exception $e) {
             DB::rollBack();

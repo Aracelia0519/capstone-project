@@ -54,13 +54,61 @@ class ECommerceDashboardController extends Controller
         $completedOrders = DB::table('client_orders')->whereIn('id', $clientOrderIds)->where('status', 'delivered')->count()
                          + DB::table('sp_orders')->whereIn('id', $spOrderIds)->where('status', 'delivered')->count();
 
-        // 2. Sales Overview Data (Last 7 Days)
+        // ---------------------------------------------------------
+        // 2. Sales Overview Data (DYNAMIC based on selected period)
+        // ---------------------------------------------------------
+        
+        // Changed default to '12m' here
+        $period = $request->query('period', '12m');
         $salesData = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $dayName = $date->format('D');
-            $startOfDay = $date->copy()->startOfDay();
-            $endOfDay = $date->copy()->endOfDay();
+        
+        $iterations = 12;
+        $stepType = 'month';
+
+        switch ($period) {
+            case '30d':
+                $iterations = 30; // 30 Days
+                $stepType = 'day_month'; 
+                break;
+            case '3m':
+                $iterations = 12; // 12 weeks
+                $stepType = 'week';
+                break;
+            case '7d':
+                $iterations = 7; // 7 days
+                $stepType = 'day';
+                break;
+            case '12m':
+            default:
+                $iterations = 12; // 12 months
+                $stepType = 'month';
+                break;
+        }
+
+        // Loop backwards to build the timeline accurately
+        for ($i = $iterations - 1; $i >= 0; $i--) {
+            if ($stepType === 'day_month') {
+                $date = now()->subDays($i);
+                $label = $date->format('M d'); // e.g. "Aug 10"
+                $startOfDay = $date->copy()->startOfDay();
+                $endOfDay = $date->copy()->endOfDay();
+            } elseif ($stepType === 'week') {
+                $date = now()->subWeeks($i);
+                $label = 'W' . $date->weekOfMonth . ' ' . $date->format('M'); // e.g. "W2 Aug"
+                $startOfDay = $date->copy()->startOfWeek();
+                $endOfDay = $date->copy()->endOfWeek();
+            } elseif ($stepType === 'month') {
+                $date = now()->subMonths($i);
+                $label = $date->format('M'); // e.g. "Jan", "Feb"
+                $startOfDay = $date->copy()->startOfMonth();
+                $endOfDay = $date->copy()->endOfMonth();
+            } else {
+                // Default 'day'
+                $date = now()->subDays($i);
+                $label = $date->format('D'); // e.g. "Mon", "Tue"
+                $startOfDay = $date->copy()->startOfDay();
+                $endOfDay = $date->copy()->endOfDay();
+            }
 
             $dayClientSales = DB::table('client_orders')
                 ->whereIn('id', $clientOrderIds)
@@ -77,12 +125,13 @@ class ECommerceDashboardController extends Controller
             $daySales = $dayClientSales + $daySpSales;
 
             $salesData[] = [
-                'day' => $dayName,
+                'day' => $label,
                 'raw_amount' => $daySales,
                 'amount' => number_format($daySales, 2)
             ];
         }
 
+        // Add percentage calculation to prevent frontend errors
         $maxSales = max(array_column($salesData, 'raw_amount')) ?: 1;
         foreach ($salesData as &$data) {
             $data['value'] = ($data['raw_amount'] / $maxSales) * 100;

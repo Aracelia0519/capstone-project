@@ -26,7 +26,7 @@ class DistributorReportController extends Controller
             $user = Auth::user();
             $distributorId = $this->getDistributorId($user);
 
-            $period = $request->input('period', 'month');
+            $period = $request->input('period', 'year');
             $startDate = Carbon::now();
             $endDate = Carbon::now();
             $prevStartDate = Carbon::now();
@@ -71,10 +71,11 @@ class DistributorReportController extends Controller
                     $prevEndDate = Carbon::now()->subQuarter()->endOfQuarter();
                     break;
                 case 'year':
-                    $startDate = Carbon::now()->startOfYear();
-                    $endDate = Carbon::now()->endOfYear();
-                    $prevStartDate = Carbon::now()->subYear()->startOfYear();
-                    $prevEndDate = Carbon::now()->subYear()->endOfYear();
+                    // FIX: Set to rolling "Last 12 Months" ending today
+                    $startDate = Carbon::now()->subMonths(11)->startOfMonth();
+                    $endDate = Carbon::now()->endOfMonth();
+                    $prevStartDate = Carbon::now()->subMonths(23)->startOfMonth();
+                    $prevEndDate = Carbon::now()->subMonths(12)->endOfMonth();
                     break;
                 case 'custom':
                     $startDate = Carbon::parse($request->input('startDate', Carbon::now()->startOfMonth()))->startOfDay();
@@ -134,7 +135,7 @@ class DistributorReportController extends Controller
             ];
 
             // ==========================================
-            // 2. HR SUMMARY ADDITION (Combined reporting)
+            // 2. HR SUMMARY ADDITION
             // ==========================================
             $totalEmployees = DB::table('hr_employees')->where('parent_distributor_id', $distributorId)->count();
             $activeAttendances = DB::table('employee_attendances')
@@ -148,15 +149,63 @@ class DistributorReportController extends Controller
             ];
 
             // ==========================================
-            // 3. MONTHLY CHART DATA (Last 12 Months)
+            // 3. CHART DATA (Dynamic Grouping based on Period)
             // ==========================================
             $monthlyChartData = [];
-            for ($i = 11; $i >= 0; $i--) {
-                $mStart = Carbon::now()->subMonths($i)->startOfMonth();
-                $mEnd = Carbon::now()->subMonths($i)->endOfMonth();
-                $mMetrics = $getSalesData($mStart, $mEnd);
+            $iterations = 12;
+            $stepType = 'month';
+
+            switch ($period) {
+                case 'today':
+                case 'yesterday':
+                case 'week':
+                    $iterations = 7;
+                    $stepType = 'day';
+                    break;
+                case 'month':
+                case 'last_month':
+                    $iterations = 30; // Approx 30 days
+                    $stepType = 'day_month';
+                    break;
+                case 'quarter':
+                    $iterations = 12; // 12 weeks
+                    $stepType = 'week';
+                    break;
+                case 'year':
+                case 'custom':
+                default:
+                    $iterations = 12;
+                    $stepType = 'month';
+                    break;
+            }
+
+            for ($i = $iterations - 1; $i >= 0; $i--) {
+                if ($stepType === 'day_month') {
+                    $date = (clone $endDate)->subDays($i);
+                    $cStart = $date->copy()->startOfDay();
+                    $cEnd = $date->copy()->endOfDay();
+                    $label = $date->format('M d');
+                } elseif ($stepType === 'week') {
+                    $date = (clone $endDate)->subWeeks($i);
+                    $cStart = $date->copy()->startOfWeek();
+                    $cEnd = $date->copy()->endOfWeek();
+                    $label = 'W' . $date->weekOfMonth . ' ' . $date->format('M');
+                } elseif ($stepType === 'month') {
+                    // FIX: Shift to the exact 1st day of the month before subtracting to prevent "Month Overflow" skips
+                    $date = (clone $endDate)->startOfMonth()->subMonths($i);
+                    $cStart = $date->copy()->startOfMonth();
+                    $cEnd = $date->copy()->endOfMonth();
+                    $label = $date->format('M');
+                } else {
+                    $date = (clone $endDate)->subDays($i);
+                    $cStart = $date->copy()->startOfDay();
+                    $cEnd = $date->copy()->endOfDay();
+                    $label = $date->format('D');
+                }
+
+                $mMetrics = $getSalesData($cStart, $cEnd);
                 $monthlyChartData[] = [
-                    'month' => $mStart->format('M'),
+                    'month' => $label,
                     'revenue' => round($mMetrics['revenue'], 2)
                 ];
             }
@@ -191,8 +240,8 @@ class DistributorReportController extends Controller
                         $mergedProducts[$product->id] = [
                             'id' => $product->id, 
                             'name' => $product->name, 
-                            'brand' => 'In-House', // Adjust based on your schema
-                            'finish' => 'Standard', // Adjust based on your schema
+                            'brand' => 'In-House',
+                            'finish' => 'Standard',
                             'sku' => $product->sku_code,
                             'revenue' => 0, 
                             'quantity' => 0
