@@ -592,7 +592,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
 
-        // --- NEW ADMIN SUPPORT CHAT ROUTES ---
+        // ---> dashboard <---
+        Route::get('/analytics', [\App\Http\Controllers\Api\Admin\AdminAnalyticalDashboardController::class, 'getAnalytics']);
+
+        // ---> Report <---
+        Route::get('/reports-analytics', [\App\Http\Controllers\Api\Admin\AdminAnalyticalReportController::class, 'getReports']);
+
+        // --- ADMIN SUPPORT CHAT ROUTES ---
         Route::get('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'getAdminMessages']);
         Route::post('/support/messages/{userId}', [\App\Http\Controllers\Api\SupportController::class, 'sendAdminMessage']);
 

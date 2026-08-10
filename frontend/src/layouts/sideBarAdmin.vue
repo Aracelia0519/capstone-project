@@ -156,7 +156,7 @@ const navigation = [
       { name: 'Reports', path: '/admin/Reports', icon: FileText, color: 'text-pink-400' },
       { name: 'User Reports', path: '/admin/UserReports', icon: AlertTriangle, color: 'text-red-400' },
       { name: 'Technical Reports', path: '/admin/TechnicalReportsAd', icon: Bug, color: 'text-orange-400' },
-      { name: 'Audit Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' },
+      //{ name: 'Audit Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' },
     ]
   }
 ]

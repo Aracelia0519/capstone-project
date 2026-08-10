@@ -93,22 +93,16 @@
                                 <select v-model="form.page" class="w-full bg-white border border-slate-300 text-slate-900 rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all appearance-none">
                                     <option value="" disabled>Where did this happen?</option>
                                     <option value="Dashboard">Dashboard</option>
-                                    <option value="Distributor Partner">Distributor Partner</option>
-                                    <option value="Personnel Officer">Personnel Officer</option>
-                                    <option value="Add Personnel">Add Personnel</option>
-                                    <option value="Role Activation">Role Activation</option>
-                                    <option value="Vehicles">Vehicles</option>
-                                    <option value="Order Request">Order Request</option>
-                                    <option value="Process Orders">Process Orders</option>
-                                    <option value="Order History">Order History</option>
-                                    <option value="Returns">Returns</option>
-                                    <option value="Raw Materials">Raw Materials</option>
-                                    <option value="Shipments">Shipments</option>
-                                    <option value="Delivery">Delivery</option>
-                                    <option value="Invoices">Invoices</option>
-                                    <option value="Payments">Payments</option>
+                                    <option value="Employee List">Employee List</option>
+                                    <option value="Positions & Roles">Positions & Roles</option>
+                                    <option value="Departments">Departments</option>
+                                    <option value="Employment Status">Employment Status</option>
+                                    <option value="Recruitment Application">Recruitment Application</option>
+                                    <option value="Payroll Management">Payroll Management</option>
+                                    <option value="Attendance Request">Attendance Request</option>
+                                    <option value="Leave Request">Leave Request</option>
                                     <option value="Technical Reports">Technical Reports</option>
-                                    <option value="Notifications">Notifications</option>
+                                    <option value="EM Reports">EM Reports</option>
                                     <option value="Other">Other (General)</option>
                                 </select>
                                 <ChevronDown class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />

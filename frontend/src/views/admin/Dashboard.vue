@@ -1,206 +1,159 @@
 <template>
-  <div class="relative min-h-screen w-full overflow-hidden bg-white p-4 md:p-8 font-sans">
+  <div class="min-h-screen w-full  font-sans p-6 md:p-8">
     
-    <div class="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-blue-500/5 blur-[80px]"></div>
-    <div class="pointer-events-none absolute -bottom-32 -left-32 h-[500px] w-[500px] rounded-full bg-purple-500/5 blur-[80px]"></div>
-
-    <div class="relative z-10 mx-auto w-full max-w-[1400px] space-y-8">
+    <div class="max-w-[1600px] mx-auto space-y-8">
       
-      <header class="flex flex-col gap-4 rounded-xl bg-white p-5 border shadow-sm md:flex-row md:items-center md:justify-between">
-        <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-          <div class="flex items-center gap-3">
-            <i class="fas fa-tachometer-alt text-2xl text-[#4A90E2]"></i>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-800">System Dashboard</h1>
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-slate-200/60">
+        <div class="space-y-1">
+          <div class="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 mb-3">
+            <span class="flex h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
+            System Live
           </div>
-          <div v-if="isMobile" class="flex items-center gap-2 rounded-lg border bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
-            <i class="far fa-calendar-alt text-[#4A90E2]"></i> {{ shortDate }}
-          </div>
+          <h2 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900">
+            Platform Analytics
+          </h2>
+          <p class="text-sm font-medium text-slate-500">Real-time overview of network health, user metrics, and global reports.</p>
         </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <Button 
-            @click="refreshData" 
-            class="bg-gradient-to-r from-[#4A90E2] to-[#357ABD] text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
-          >
-            <i class="fas fa-sync-alt mr-2"></i>
-            <span class="hidden sm:inline">Refresh</span>
-          </Button>
-          
-          <div v-if="!isMobile" class="flex items-center gap-2 rounded-md border bg-white px-5 py-2.5 text-sm font-medium text-slate-600 shadow-sm">
-            <i class="far fa-calendar-alt text-[#4A90E2]"></i> {{ currentDate }}
-          </div>
-        </div>
-      </header>
-
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         
-        <Card class="border-l-4 border-l-[#4A90E2] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
-          <div class="p-6 flex gap-5">
-            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4A90E2] to-[#357ABD] text-white shadow-md">
-              <i class="fas fa-users text-2xl"></i>
-            </div>
-            <div class="w-full space-y-2">
-              <h3 class="text-sm font-semibold text-slate-500">Total Users</h3>
-              <div class="text-4xl font-bold text-slate-800">{{ stats.totalUsers }}</div>
-              <div class="flex flex-wrap gap-2 pt-1">
-                <Badge variant="secondary" class="bg-blue-50 text-blue-700 hover:bg-blue-100">Admins: {{ stats.usersByRole.admin }}</Badge>
-                <Badge variant="secondary" class="bg-green-50 text-green-700 hover:bg-green-100">Dist: {{ stats.usersByRole.distributor }}</Badge>
-                <Badge variant="secondary" class="bg-orange-50 text-orange-700 hover:bg-orange-100">Service: {{ stats.usersByRole.serviceProvider }}</Badge>
-                <Badge variant="secondary" class="bg-purple-50 text-purple-700 hover:bg-purple-100">Clients: {{ stats.usersByRole.client }}</Badge>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card class="border-l-4 border-l-[#51C16B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
-          <div class="p-6 flex gap-5">
-            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#51C16B] to-[#3DA857] text-white shadow-md">
-              <i class="fas fa-truck text-2xl"></i>
-            </div>
-            <div class="w-full space-y-1">
-              <h3 class="text-sm font-semibold text-slate-500">Active Distributors</h3>
-              <div class="text-4xl font-bold text-slate-800">{{ stats.totalDistributors }}</div>
-              <div class="text-sm font-medium text-[#51C16B] flex items-center gap-1">
-                <i class="fas fa-arrow-up text-xs"></i> 12% this month
-              </div>
-              <div class="flex items-end gap-1 h-5 mt-3">
-                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[70%]"></div>
-                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[85%]"></div>
-                <div class="w-full rounded-sm bg-[#51C16B]/70 h-[60%]"></div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card class="border-l-4 border-l-[#FF6B6B] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
-          <div class="p-6 flex gap-5">
-            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF6B6B] to-[#E05555] text-white shadow-md">
-              <i class="fas fa-tools text-2xl"></i>
-            </div>
-            <div class="w-full space-y-1">
-              <h3 class="text-sm font-semibold text-slate-500">Service Providers</h3>
-              <div class="text-4xl font-bold text-slate-800">{{ stats.totalServiceProviders }}</div>
-              <p class="text-sm text-slate-500"><span class="font-bold text-[#FF6B6B]">{{ stats.activeServiceProviders }} Active</span></p>
-              <div class="space-y-1 pt-2">
-                <Progress :model-value="stats.serviceProviderActivity" class="h-2 bg-slate-100" indicator-class="bg-[#FF6B6B]" />
-                <div class="flex justify-end text-xs text-slate-400">Activity: {{ stats.serviceProviderActivity }}%</div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card class="border-l-4 border-l-[#9B59B6] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg bg-white border-t border-r border-b">
-          <div class="p-6 flex gap-5">
-            <div class="flex h-[70px] w-[70px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#9B59B6] to-[#8E44AD] text-white shadow-md">
-              <i class="fas fa-palette text-2xl"></i>
-            </div>
-            <div class="w-full space-y-1">
-              <h3 class="text-sm font-semibold text-slate-500">Color Mixes</h3>
-              <div class="text-4xl font-bold text-slate-800">{{ stats.totalColorCustomizations }}</div>
-              <p class="text-sm text-slate-400">From Unity System</p>
-              
-              <div class="flex items-center -space-x-2 pt-3">
-                <TooltipProvider v-for="color in recentColors" :key="color.id">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <div 
-                        class="h-7 w-7 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110 hover:z-10 cursor-help"
-                        :style="{ backgroundColor: color.hex }"
-                      ></div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{{ color.name }}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <span class="pl-4 text-sm text-slate-500 font-medium">+{{ recentColors.length }} more</span>
-              </div>
-            </div>
-          </div>
-        </Card>
+        <button 
+          @click="fetchAnalytics(false)" 
+          class="relative inline-flex items-center justify-center rounded-xl text-sm font-medium focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-white shadow-md hover:bg-slate-800 h-11 px-6 py-2"
+        >
+          <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>Sync Data</span>
+        </button>
       </div>
 
-      <Card class="overflow-hidden border shadow-sm bg-white">
-        <div class="flex flex-wrap items-center justify-between p-6 gap-4">
-          <div class="flex items-center gap-2">
-            <i class="fas fa-history text-[#4A90E2] text-xl"></i>
-            <h2 class="text-xl font-bold text-slate-800">Recent Activity</h2>
-          </div>
-          <Button variant="outline" class="border-[#4A90E2] text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white transition-colors" @click="viewAllActivity">
-            View All <i class="fas fa-arrow-right ml-2"></i>
-          </Button>
-        </div>
+      <!-- KPIs (Bento Grid Style) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        <div class="overflow-x-auto">
-          <Table>
-            <TableHeader class="bg-slate-50">
-              <TableRow>
-                <TableHead class="w-[250px]">User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="activity in recentActivities" :key="activity.id" class="hover:bg-slate-50/50">
-                <TableCell>
-                  <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4A90E2] to-[#357ABD] text-white">
-                      <i :class="activity.userIcon"></i>
-                    </div>
-                    <div class="flex flex-col">
-                      <span class="font-semibold text-slate-800">{{ activity.userName }}</span>
-                      <span class="text-xs text-slate-500">{{ activity.userRole }}</span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge :class="getActionBadgeClass(activity.actionType)" variant="secondary" class="font-medium rounded-full px-3 py-1">
-                    <i :class="activity.actionIcon" class="mr-1.5 text-xs"></i> {{ activity.action }}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div class="flex items-center gap-2">
-                    <span class="truncate max-w-[200px] text-slate-600">{{ activity.details }}</span>
-                    <div v-if="activity.color" class="h-5 w-5 shrink-0 rounded border border-white shadow-sm" :style="{ backgroundColor: activity.color }"></div>
-                  </div>
-                </TableCell>
-                <TableCell class="text-slate-500 whitespace-nowrap">
-                  <i class="far fa-clock mr-1"></i> {{ activity.time }}
-                </TableCell>
-                <TableCell>
-                  <Badge :variant="activity.status === 'completed' ? 'default' : activity.status === 'pending' ? 'secondary' : 'destructive'" 
-                         :class="getStatusBadgeClass(activity.status)">
-                    {{ activity.status }}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 pb-8">
-        <Card v-for="(stat, index) in quickStats" :key="index" class="hover:-translate-y-1 hover:shadow-md transition-all duration-300 bg-white border">
-          <div class="p-5 flex items-center gap-4">
-            <div :class="`flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-xl text-white text-xl shadow-sm ${stat.gradient}`">
-              <i :class="stat.icon"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-semibold text-slate-700">{{ stat.title }}</h4>
-              <p :class="`text-lg font-bold ${stat.textColor}`">{{ stat.value }}</p>
-              <div v-if="stat.isHealth" class="flex items-center gap-2 mt-1">
-                 <span class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-[#51C16B]"></span>
-                </span>
-                <span class="text-xs text-slate-500">All Systems Operational</span>
+        <!-- KPI 1 -->
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+          <div class="flex flex-row items-center justify-between pb-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </div>
-              <p v-else class="text-xs text-slate-400">{{ stat.subtext }}</p>
+              <h3 class="font-semibold text-slate-600">Total Network</h3>
             </div>
           </div>
-        </Card>
+          <div class="flex items-baseline gap-2 relative z-10">
+            <div class="text-4xl font-black tracking-tight text-slate-900">{{ kpis.total_users }}</div>
+            <span class="text-sm font-medium text-emerald-500 flex items-center bg-emerald-50 px-2 py-0.5 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              {{ kpis.users_this_month }} new
+            </span>
+          </div>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+          <div class="flex flex-row items-center justify-between pb-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <h3 class="font-semibold text-slate-600">Active Sessions</h3>
+            </div>
+          </div>
+          <div class="text-4xl font-black tracking-tight text-slate-900 relative z-10">{{ kpis.active_users }}</div>
+          <p class="text-sm font-medium text-slate-400 mt-2 relative z-10">Verified & active accounts</p>
+        </div>
+
+        <!-- KPI 3 -->
+        <div :class="['relative overflow-hidden rounded-2xl border bg-white p-6 shadow-sm', isPulseTech ? 'border-amber-400 shadow-amber-500/20' : 'border-slate-200/60']">
+          <div class="flex flex-row items-center justify-between pb-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600 shadow-inner relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              </div>
+              <h3 class="font-semibold text-slate-600">Tech Reports</h3>
+            </div>
+          </div>
+          <div class="text-4xl font-black tracking-tight text-slate-900 relative z-10">
+            {{ kpis.pending_tech_reports }}
+          </div>
+          <p class="text-sm font-medium text-slate-400 mt-2 relative z-10">Pending bugs / errors</p>
+        </div>
+
+        <!-- KPI 4 -->
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+          <div class="flex flex-row items-center justify-between pb-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-50 text-rose-600 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              </div>
+              <h3 class="font-semibold text-slate-600">User Reports</h3>
+            </div>
+          </div>
+          <div class="text-4xl font-black tracking-tight text-slate-900 relative z-10">{{ kpis.pending_user_reports }}</div>
+          <p class="text-sm font-medium text-slate-400 mt-2 relative z-10">Pending moderation</p>
+        </div>
+      </div>
+
+      <!-- Charts Row 1 -->
+      <div class="grid grid-cols-1 lg:grid-cols-7 gap-6">
+        <!-- Main Line Chart -->
+        <div class="lg:col-span-4 rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden flex flex-col">
+          <div class="flex flex-col space-y-1 p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">User Acquisition Trajectory</h3>
+            <p class="text-sm font-medium text-slate-500">Historical velocity of new accounts over 6 months.</p>
+          </div>
+          <div class="p-6 h-[380px] w-full flex-grow relative">
+            <div v-if="isLoading" class="absolute inset-0 p-6 flex items-end justify-between gap-2 animate-pulse">
+              <div v-for="i in 6" :key="i" class="w-full bg-slate-100 rounded-t-md" :style="{ height: `${Math.random() * 80 + 20}%` }"></div>
+            </div>
+            <!-- Ensure chart only mounts when datasets array is populated -->
+            <Line v-else-if="userGrowthData.datasets?.length > 0" :data="userGrowthData" :options="lineOptions" />
+          </div>
+        </div>
+
+        <!-- Doughnut Chart -->
+        <div class="lg:col-span-3 rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden flex flex-col">
+          <div class="flex flex-col space-y-1 p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">Ecosystem Distribution</h3>
+            <p class="text-sm font-medium text-slate-500">Live composition of platform roles.</p>
+          </div>
+          <div class="p-6 h-[380px] flex items-center justify-center relative">
+             <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center animate-pulse">
+                <div class="h-48 w-48 rounded-full border-[16px] border-slate-100"></div>
+             </div>
+            <Doughnut v-else-if="usersRoleData.datasets?.length > 0" :data="usersRoleData" :options="doughnutOptions" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row 2 -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
+        <!-- Bar Chart: Tech Reports -->
+        <div class="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden flex flex-col">
+          <div class="flex flex-col space-y-1 p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">System Anomaly Index</h3>
+            <p class="text-sm font-medium text-slate-500">Categorized classification of reported bugs and errors.</p>
+          </div>
+          <div class="p-6 h-[350px] relative">
+            <div v-if="isLoading" class="absolute inset-0 p-6 flex items-end justify-between gap-4 animate-pulse">
+              <div v-for="i in 5" :key="i" class="w-full bg-slate-100 rounded-t-md" :style="{ height: `${Math.random() * 60 + 20}%` }"></div>
+            </div>
+            <Bar v-else-if="techReportsData.datasets?.length > 0" :data="techReportsData" :options="barOptions" />
+          </div>
+        </div>
+
+        <!-- Bar Chart: User Reports -->
+        <div class="rounded-2xl border border-slate-200/60 bg-white shadow-sm overflow-hidden flex flex-col">
+          <div class="flex flex-col space-y-1 p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-900">Moderation Heatmap</h3>
+            <p class="text-sm font-medium text-slate-500">Volume of user-filed reports segregated by infraction type.</p>
+          </div>
+          <div class="p-6 h-[350px] relative">
+            <div v-if="isLoading" class="absolute inset-0 p-6 flex flex-col items-start justify-between gap-4 animate-pulse">
+              <div v-for="i in 5" :key="i" class="h-full bg-slate-100 rounded-r-md" :style="{ width: `${Math.random() * 60 + 20}%` }"></div>
+            </div>
+            <Bar v-else-if="userReportsData.datasets?.length > 0" :data="userReportsData" :options="barOptionsHorizontal" />
+          </div>
+        </div>
       </div>
 
     </div>
@@ -208,156 +161,260 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue';
+import api from '@/utils/axios.js';
+import echo from '@/utils/websocket.js';
+import { Line, Bar, Doughnut } from 'vue-chartjs';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 
-// Reactive State
-const isMobile = ref(false);
-const currentDate = ref(new Date().toLocaleDateString('en-US', { 
-  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-}));
-const shortDate = ref(new Date().toLocaleDateString('en-US', { 
-  month: 'short', day: 'numeric', year: 'numeric'
-}));
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
-const stats = ref({
-  totalUsers: 142,
-  usersByRole: { admin: 3, distributor: 12, serviceProvider: 28, client: 99 },
-  totalDistributors: 12,
-  totalServiceProviders: 28,
-  activeServiceProviders: 22,
-  serviceProviderActivity: 78,
-  totalColorCustomizations: 347,
-  dailyColorMixes: 24,
-  lowStockItems: 8,
-  pendingRequests: 15
+// Safety killswitch to prevent chart crashes during Vue Router navigation
+const isComponentMounted = ref(false);
+
+const isLoading = ref(true);
+const isPulseTech = ref(false);
+
+const kpis = ref({
+  total_users: 0,
+  active_users: 0,
+  users_this_month: 0,
+  pending_tech_reports: 0,
+  pending_user_reports: 0
 });
 
-const recentColors = ref([
-  { id: 1, name: 'Ocean Blue', hex: '#4A90E2' },
-  { id: 2, name: 'Sunset Orange', hex: '#FF6B6B' },
-  { id: 3, name: 'Meadow Green', hex: '#51C16B' },
-  { id: 4, name: 'Lavender', hex: '#9B59B6' },
-  { id: 5, name: 'Sunshine Yellow', hex: '#F1C40F' }
-]);
+// shallowRef MUST be used here so Vue doesn't deep-proxy the Chart.js objects
+const userGrowthData = shallowRef({ labels: [], datasets: [] });
+const usersRoleData = shallowRef({ labels: [], datasets: [] });
+const techReportsData = shallowRef({ labels: [], datasets: [] });
+const userReportsData = shallowRef({ labels: [], datasets: [] });
 
-const recentActivities = ref([
-  { id: 1, userName: 'Maria Santos', userRole: 'Service Provider', userIcon: 'fas fa-user-tie', action: 'Color Mix', actionIcon: 'fas fa-palette', actionType: 'color-mix', details: 'Created "Ocean Breeze" color palette', color: '#4A90E2', time: '2 minutes ago', status: 'completed' },
-  { id: 2, userName: 'Juan Dela Cruz', userRole: 'Distributor', userIcon: 'fas fa-truck', action: 'Inventory Update', actionIcon: 'fas fa-boxes', actionType: 'inventory', details: 'Added 50 units of Premium White', time: '15 minutes ago', status: 'completed' },
-  { id: 3, userName: 'System Admin', userRole: 'Administrator', userIcon: 'fas fa-user-shield', action: 'User Added', actionIcon: 'fas fa-user-plus', actionType: 'user', details: 'Added new service provider', time: '1 hour ago', status: 'completed' },
-  { id: 4, userName: 'Anna Reyes', userRole: 'Client', userIcon: 'fas fa-user', action: 'Color Request', actionIcon: 'fas fa-paint-brush', actionType: 'request', details: 'Requested custom color consultation', time: '2 hours ago', status: 'pending' },
-  { id: 5, userName: 'Carlos Lim', userRole: 'Service Provider', userIcon: 'fas fa-user-tie', action: 'Job Completed', actionIcon: 'fas fa-check-circle', actionType: 'service', details: 'Completed paint job for Client #234', time: '3 hours ago', status: 'completed' }
-]);
+// Enhanced Chart Palettes
+const palettes = {
+  primary: '#4f46e5', // Indigo 600
+  secondary: '#0ea5e9', // Sky 500
+  accent1: '#f43f5e', // Rose 500
+  accent2: '#f59e0b', // Amber 500
+  accent3: '#10b981', // Emerald 500
+  accent4: '#8b5cf6', // Violet 500
+  grid: '#f1f5f9', // Slate 100
+  text: '#64748b' // Slate 500
+};
 
-// Computed Quick Stats configuration to keep template clean
-const quickStats = computed(() => [
-  { 
-    title: 'Daily Color Mixes', 
-    value: stats.value.dailyColorMixes, 
-    subtext: 'today',
-    icon: 'fas fa-chart-line', 
-    gradient: 'bg-gradient-to-br from-[#FF8E53] to-[#FF6B6B]',
-    textColor: 'text-[#4A90E2]'
+// Premium Tooltip configuration
+const premiumTooltip = {
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  titleColor: '#0f172a',
+  bodyColor: '#475569',
+  borderColor: '#e2e8f0',
+  borderWidth: 1,
+  padding: 12,
+  boxPadding: 6,
+  usePointStyle: true,
+  titleFont: { size: 14, family: 'Inter, sans-serif', weight: 'bold' },
+  bodyFont: { size: 13, family: 'Inter, sans-serif' },
+  caretSize: 6,
+  cornerRadius: 8,
+  boxWidth: 10,
+  boxHeight: 10
+};
+
+// Helper function to create canvas gradients safely
+const createGradient = (ctx, chartArea, colorStart, colorEnd) => {
+  if (!chartArea) return colorStart;
+  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  gradient.addColorStop(0, colorStart);
+  gradient.addColorStop(1, colorEnd);
+  return gradient;
+};
+
+// Line Chart with Dynamic Canvas Gradient Fill
+const lineOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: premiumTooltip },
+  scales: {
+    y: { border: { display: false }, grid: { color: palettes.grid, drawTicks: false }, ticks: { color: palettes.text, padding: 10 } },
+    x: { grid: { display: false }, ticks: { color: palettes.text, padding: 10 } }
   },
-  { 
-    title: 'Low Stock Items', 
-    value: stats.value.lowStockItems, 
-    subtext: 'products',
-    icon: 'fas fa-box-open', 
-    gradient: 'bg-gradient-to-br from-[#4A90E2] to-[#357ABD]',
-    textColor: 'text-[#4A90E2]'
-  },
-  { 
-    title: 'Pending Requests', 
-    value: stats.value.pendingRequests, 
-    subtext: 'awaiting action',
-    icon: 'fas fa-bell', 
-    gradient: 'bg-gradient-to-br from-[#51C16B] to-[#3DA857]',
-    textColor: 'text-[#4A90E2]'
-  },
-  { 
-    title: 'System Health', 
-    value: '', 
-    isHealth: true,
-    icon: 'fas fa-cog', 
-    gradient: 'bg-gradient-to-br from-[#9B59B6] to-[#8E44AD]',
-    textColor: 'text-[#4A90E2]'
+  interaction: { mode: 'index', intersect: false },
+  elements: {
+    line: { tension: 0.4, borderWidth: 3 },
+    point: { radius: 0, hitRadius: 20, hoverRadius: 6, backgroundColor: palettes.primary, borderWidth: 2, borderColor: '#fff' }
   }
-]);
+};
 
-// Methods
-const refreshData = () => {
-  stats.value.totalColorCustomizations += 1;
-  stats.value.dailyColorMixes += 1;
+// Vertical Bar Chart
+const barOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: premiumTooltip },
+  scales: {
+    y: { border: { display: false }, grid: { color: palettes.grid, drawTicks: false }, ticks: { color: palettes.text, padding: 10 } },
+    x: { grid: { display: false }, ticks: { color: palettes.text, padding: 10 } }
+  },
+  borderRadius: 6,
+  barThickness: 32
+};
+
+// Horizontal Bar Chart
+const barOptionsHorizontal = {
+  ...barOptions,
+  indexAxis: 'y',
+  scales: {
+    x: { border: { display: false }, grid: { color: palettes.grid, drawTicks: false }, ticks: { color: palettes.text, padding: 10 } },
+    y: { grid: { display: false }, ticks: { color: palettes.text, padding: 10 } }
+  },
+  barThickness: 24
+};
+
+// Doughnut Chart
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '80%',
+  layout: { padding: 10 },
+  plugins: {
+    legend: { position: 'right', labels: { usePointStyle: true, color: palettes.text, padding: 25, font: { size: 13, family: 'Inter' } } },
+    tooltip: premiumTooltip
+  }
+};
+
+// Fetch Data safely
+const fetchAnalytics = async (isBackgroundRefresh = false) => {
+  if (!isComponentMounted.value) return; 
+
+  if (!isBackgroundRefresh) isLoading.value = true;
   
-  const newActivity = {
-    id: Date.now(),
-    userName: 'System',
-    userRole: 'Auto',
-    userIcon: 'fas fa-robot',
-    action: 'System Update',
-    actionIcon: 'fas fa-sync-alt',
-    actionType: 'system',
-    details: 'Dashboard data refreshed',
-    time: 'Just now',
-    status: 'completed'
-  };
-  
-  recentActivities.value.unshift(newActivity);
-  // Toast would go here (requires shadcn toast component setup)
-  console.log('Dashboard data refreshed successfully!');
+  try {
+    const response = await api.get('/admin/analytics');
+    
+    // Final check before rendering data to canvas
+    if (!isComponentMounted.value) return; 
+    
+    if (response.data && response.data.data) {
+      const { data } = response.data;
+      
+      kpis.value = data.kpis;
+      
+      userGrowthData.value = {
+        labels: data.charts.user_growth.labels,
+        datasets: [{
+          label: 'New Users',
+          data: data.charts.user_growth.data,
+          borderColor: palettes.primary,
+          backgroundColor: (context) => {
+            const chart = context.chart;
+            const {ctx, chartArea} = chart;
+            return createGradient(ctx, chartArea, 'rgba(79, 70, 229, 0.4)', 'rgba(79, 70, 229, 0.0)');
+          },
+          fill: true,
+        }]
+      };
+
+      usersRoleData.value = {
+        labels: data.charts.users_by_role.labels,
+        datasets: [{
+          data: data.charts.users_by_role.data,
+          backgroundColor: [palettes.primary, palettes.secondary, palettes.accent3, palettes.accent4, palettes.accent2, palettes.accent1],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      };
+
+      techReportsData.value = {
+        labels: data.charts.tech_reports.labels,
+        datasets: [{
+          label: 'Reports Filed',
+          data: data.charts.tech_reports.data,
+          backgroundColor: palettes.accent2,
+          hoverBackgroundColor: '#d97706'
+        }]
+      };
+
+      userReportsData.value = {
+        labels: data.charts.user_reports.labels,
+        datasets: [{
+          label: 'Infractions',
+          data: data.charts.user_reports.data,
+          backgroundColor: palettes.accent1,
+          hoverBackgroundColor: '#e11d48'
+        }]
+      };
+    }
+  } catch (error) {
+    if (isComponentMounted.value) console.error("Analytics fetch failed:", error);
+  } finally {
+    if (isComponentMounted.value && !isBackgroundRefresh) {
+      isLoading.value = false;
+    }
+  }
 };
 
-const viewAllActivity = () => {
-  alert('Redirecting to full activity log...');
-};
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768;
-};
-
-// Helper methods for styling
-const getActionBadgeClass = (type) => {
-  const map = {
-    'color-mix': 'bg-purple-50 text-purple-700 hover:bg-purple-100',
-    'inventory': 'bg-green-50 text-green-700 hover:bg-green-100',
-    'user': 'bg-blue-50 text-blue-700 hover:bg-blue-100',
-    'request': 'bg-orange-50 text-orange-700 hover:bg-orange-100',
-    'service': 'bg-green-50 text-green-700 hover:bg-green-100',
-    'system': 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-  };
-  return map[type] || 'bg-slate-100';
-};
-
-const getStatusBadgeClass = (status) => {
-  if (status === 'completed') return 'bg-[#E8F5E9] text-[#51C16B] hover:bg-green-100 border-none';
-  if (status === 'pending') return 'bg-[#FFF3E0] text-[#FF8E53] hover:bg-orange-100 border-none';
-  return 'bg-[#FFEBEE] text-[#F44336] hover:bg-red-100 border-none';
-};
-
-// Lifecycle
+// Lifecycle Hooks
 onMounted(() => {
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
+  isComponentMounted.value = true;
+  fetchAnalytics(false);
+
+  // Safely initialize WebSockets
+  if (echo) {
+    try {
+      echo.private('admin.technical_reports')
+        .listen('.report.submitted', () => {
+          if (!isComponentMounted.value) return;
+          isPulseTech.value = true;
+          setTimeout(() => { if (isComponentMounted.value) isPulseTech.value = false; }, 1500);
+          kpis.value.pending_tech_reports++;
+          fetchAnalytics(true); 
+        })
+        .listen('.report.updated', () => {
+          if (!isComponentMounted.value) return;
+          fetchAnalytics(true); 
+        });
+    } catch (e) {
+      console.warn("WebSocket listener initialization skipped:", e);
+    }
+  }
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkMobile);
+  // 1. Flip killswitch so APIs die silently
+  isComponentMounted.value = false;
+
+  // 2. Clear chart variables so they drop from the DOM gracefully
+  userGrowthData.value = { labels: [], datasets: [] };
+  usersRoleData.value = { labels: [], datasets: [] };
+  techReportsData.value = { labels: [], datasets: [] };
+  userReportsData.value = { labels: [], datasets: [] };
+  
+  // 3. Unbind sockets
+  try {
+    if (echo) echo.leave('admin.technical_reports');
+  } catch (e) {
+    console.warn("Skipped websocket cleanup during unmount");
+  }
 });
 </script>
-
-<style scoped>
-/* Only necessary style not handled by Tailwind */
-.relative::-webkit-scrollbar {
-  display: none;
-}
-.relative {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

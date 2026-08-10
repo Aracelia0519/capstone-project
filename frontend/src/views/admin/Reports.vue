@@ -1,621 +1,640 @@
 <template>
-  <div class="reports p-6">
-    <div class="mb-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-800 mb-2">Reports & Analytics</h1>
-          <p class="text-gray-600">Decision support foundation for strategic planning</p>
-        </div>
-        <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
-          <div class="relative">
-            <Input 
-              type="month" 
-              v-model="selectedMonth"
-              class="w-auto border-gray-300 focus-visible:ring-blue-500"
-            />
+  <div class="min-h-screen w-full  font-sans p-6 md:p-8">
+    <div class="max-w-[1600px] mx-auto space-y-8">
+      
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-slate-200">
+        <div class="space-y-1">
+          <div class="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 mb-3">
+            <i class="fas fa-database mr-2"></i>
+            Data Hub
           </div>
-          <Button 
-            @click="generateReport"
-            class="bg-blue-600 hover:bg-blue-700 text-white"
+          <h2 class="text-3xl font-bold tracking-tight text-slate-900">
+            System Records & Exports
+          </h2>
+          <p class="text-sm font-medium text-slate-500">Tabular breakdown of platform entities and filed reports.</p>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <!-- EXPORT ALL DATA BUTTON -->
+          <button 
+            @click="exportAllData" 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 h-10 px-5"
           >
-            <i class="fas fa-chart-line mr-2"></i>
-            Generate Report
-          </Button>
-          <Button 
-            variant="outline"
-            @click="exportAllReports"
-            class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            <i class="fas fa-file-archive text-indigo-600 mr-2"></i>
+            <span>Export All Data</span>
+          </button>
+
+          <button 
+            @click="fetchReports(false)" 
+            class="relative inline-flex items-center justify-center rounded-md text-sm font-medium focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-white shadow-sm hover:bg-slate-800 h-10 px-5"
           >
-            <i class="fas fa-download mr-2"></i>
-            Export All
-          </Button>
+            <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <i v-else class="fas fa-sync-alt mr-2"></i>
+            <span>Sync</span>
+          </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card class="shadow-md border-l-4 border-l-purple-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Total Colors Used</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.totalColors }}</h3>
-            </div>
-            <div class="p-3 bg-purple-50 rounded-lg">
-              <i class="fas fa-palette text-purple-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
+      <!-- Quick Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Total Registered Users</p>
+            <h3 class="text-2xl font-bold text-slate-900 mt-1">{{ summary.total_users }}</h3>
+          </div>
+          <div class="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <i class="fas fa-users text-lg"></i>
+          </div>
+        </div>
         
-        <Card class="shadow-md border-l-4 border-l-green-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Active Distributors</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.activeDistributors }}</h3>
-            </div>
-            <div class="p-3 bg-green-50 rounded-lg">
-              <i class="fas fa-warehouse text-green-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Total Technical Reports</p>
+            <h3 class="text-2xl font-bold text-slate-900 mt-1">{{ summary.total_tech_reports }}</h3>
+          </div>
+          <div class="h-10 w-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i class="fas fa-bug text-lg"></i>
+          </div>
+        </div>
         
-        <Card class="shadow-md border-l-4 border-l-blue-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Monthly Requests</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.monthlyRequests }}</h3>
-            </div>
-            <div class="p-3 bg-blue-50 rounded-lg">
-              <i class="fas fa-tasks text-blue-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-500">Total User Reports</p>
+            <h3 class="text-2xl font-bold text-slate-900 mt-1">{{ summary.total_user_reports }}</h3>
+          </div>
+          <div class="h-10 w-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i class="fas fa-user-shield text-lg"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- High-Level Charts -->
+      <div class="space-y-6">
         
-        <Card class="shadow-md border-l-4 border-l-yellow-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Avg. Completion</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ summaryStats.avgCompletion }}%</h3>
+        <!-- Row 1: Ecosystem Roles -->
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-[400px]">
+          <h3 class="font-semibold text-slate-900 mb-4">Ecosystem Roles</h3>
+          <div class="flex-grow relative flex items-center justify-center w-full">
+            <div class="w-full max-w-lg h-full relative">
+              <Doughnut v-if="chartDataRoles.datasets?.length" :data="chartDataRoles" :options="doughnutOptions" />
             </div>
-            <div class="p-3 bg-yellow-50 rounded-lg">
-              <i class="fas fa-chart-pie text-yellow-500 text-xl"></i>
+          </div>
+        </div>
+
+        <!-- Row 2: Tech and User Reports -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-[350px]">
+            <h3 class="font-semibold text-slate-900 mb-4">Tech Issue Distribution</h3>
+            <div class="flex-grow relative">
+              <Bar v-if="chartDataTech.datasets?.length" :data="chartDataTech" :options="barOptions" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          
+          <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-[350px]">
+            <h3 class="font-semibold text-slate-900 mb-4">Infraction Volume</h3>
+            <div class="flex-grow relative">
+              <Bar v-if="chartDataUser.datasets?.length" :data="chartDataUser" :options="barOptionsHorizontal" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE 1: Registered Users -->
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900"><i class="fas fa-users text-indigo-500 mr-2"></i>Registered Users</h3>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input v-model="filters.users.search" type="text" placeholder="Search names/emails..." class="text-sm border-slate-200 rounded-lg px-3 py-2 w-64 focus:ring-indigo-500 focus:border-indigo-500">
+            
+            <div class="relative">
+              <select v-model="filters.users.role" class="appearance-none text-sm border-slate-200 rounded-lg pl-3 pr-8 py-2 w-full focus:ring-indigo-500 focus:border-indigo-500 bg-white cursor-pointer shadow-sm">
+                <option value="">All Roles</option>
+                <option v-for="role in availableRoles" :key="role" :value="role">{{ role }}</option>
+              </select>
+              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none"></i>
+            </div>
+
+            <div class="relative">
+              <select v-model="filters.users.status" class="appearance-none text-sm border-slate-200 rounded-lg pl-3 pr-8 py-2 w-full focus:ring-indigo-500 focus:border-indigo-500 bg-white cursor-pointer shadow-sm">
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none"></i>
+            </div>
+
+            <button @click="exportTable(filteredUsers, 'Users_Report')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-emerald-200 shadow-sm">
+              <i class="fas fa-download mr-1.5"></i> Export Filtered
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left whitespace-nowrap">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
+              <tr>
+                <th class="px-6 py-4 font-semibold">User details</th>
+                <th class="px-6 py-4 font-semibold">Platform Role</th>
+                <th class="px-6 py-4 font-semibold">Status</th>
+                <th class="px-6 py-4 font-semibold">Join Date</th>
+                <th class="px-6 py-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="isLoading"><td colspan="5" class="px-6 py-8 text-center text-slate-400">Loading...</td></tr>
+              <tr v-else-if="!paginatedUsers.length"><td colspan="5" class="px-6 py-8 text-center text-slate-400">No users found matching filters.</td></tr>
+              <tr v-else v-for="(user, index) in paginatedUsers" :key="'u'+index" class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-medium text-slate-900">{{ user.name }}</div>
+                  <div class="text-xs text-slate-500">{{ user.email }}</div>
+                </td>
+                <td class="px-6 py-4 text-slate-700 font-medium">{{ user.role }}</td>
+                <td class="px-6 py-4">
+                  <span :class="getStatusBadgeClass(user.status)" class="px-2.5 py-1 rounded-md text-xs font-semibold border">{{ user.status }}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-500">{{ user.date }}</td>
+                <td class="px-6 py-4 text-right">
+                  <button @click="openViewModal('user', user)" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">View Data</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-if="!isLoading" class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <span class="text-sm text-slate-500">Showing {{ filteredUsers.length ? (pagination.users.page - 1) * pagination.users.perPage + 1 : 0 }} to {{ Math.min(pagination.users.page * pagination.users.perPage, filteredUsers.length) }} of {{ filteredUsers.length }}</span>
+          <div class="flex items-center gap-2">
+            <button :disabled="getCurrentPage('users') === 1" @click="changePage('users', -1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-left"></i></button>
+            <span class="text-sm font-medium text-slate-700 px-2">Page {{ getCurrentPage('users') }} of {{ getMaxPage('users') || 1 }}</span>
+            <button :disabled="getCurrentPage('users') >= getMaxPage('users')" @click="changePage('users', 1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE 2: Technical Reports -->
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900"><i class="fas fa-bug text-amber-500 mr-2"></i>Technical Reports</h3>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input v-model="filters.tech.search" type="text" placeholder="Search reporters..." class="text-sm border-slate-200 rounded-lg px-3 py-2 w-64 focus:ring-indigo-500 focus:border-indigo-500">
+            
+            <div class="relative">
+              <select v-model="filters.tech.category" class="appearance-none text-sm border-slate-200 rounded-lg pl-3 pr-8 py-2 w-full focus:ring-indigo-500 focus:border-indigo-500 bg-white cursor-pointer shadow-sm">
+                <option value="">All Categories</option>
+                <option v-for="category in availableTechCategories" :key="category" :value="category">{{ category }}</option>
+              </select>
+              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none"></i>
+            </div>
+
+            <div class="relative">
+              <select v-model="filters.tech.status" class="appearance-none text-sm border-slate-200 rounded-lg pl-3 pr-8 py-2 w-full focus:ring-indigo-500 focus:border-indigo-500 bg-white cursor-pointer shadow-sm">
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Reviewed">Reviewed</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none"></i>
+            </div>
+
+            <button @click="exportTable(filteredTechReports, 'Technical_Reports')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-emerald-200 shadow-sm">
+              <i class="fas fa-download mr-1.5"></i> Export Filtered
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left whitespace-nowrap">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
+              <tr>
+                <th class="px-6 py-4 font-semibold">Reporter Details</th>
+                <th class="px-6 py-4 font-semibold">Issue Category</th>
+                <th class="px-6 py-4 font-semibold">Status</th>
+                <th class="px-6 py-4 font-semibold">Filed On</th>
+                <th class="px-6 py-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="isLoading"><td colspan="5" class="px-6 py-8 text-center text-slate-400">Loading...</td></tr>
+              <tr v-else-if="!paginatedTechReports.length"><td colspan="5" class="px-6 py-8 text-center text-slate-400">No technical reports matching filters.</td></tr>
+              <tr v-else v-for="(report, index) in paginatedTechReports" :key="'t'+index" class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-medium text-slate-900">{{ report.reporter }}</div>
+                  <div class="text-xs text-slate-500">{{ report.role }}</div>
+                </td>
+                <td class="px-6 py-4 text-slate-700 font-medium">{{ report.category }}</td>
+                <td class="px-6 py-4">
+                  <span :class="getStatusBadgeClass(report.status)" class="px-2.5 py-1 rounded-md text-xs font-semibold border">{{ report.status }}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-500">{{ report.date }}</td>
+                <td class="px-6 py-4 text-right">
+                  <button @click="openViewModal('tech', report)" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">View Specs</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div v-if="!isLoading" class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <span class="text-sm text-slate-500">Showing {{ filteredTechReports.length ? (pagination.tech.page - 1) * pagination.tech.perPage + 1 : 0 }} to {{ Math.min(pagination.tech.page * pagination.tech.perPage, filteredTechReports.length) }} of {{ filteredTechReports.length }}</span>
+          <div class="flex items-center gap-2">
+            <button :disabled="getCurrentPage('tech') === 1" @click="changePage('tech', -1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-left"></i></button>
+            <span class="text-sm font-medium text-slate-700 px-2">Page {{ getCurrentPage('tech') }} of {{ getMaxPage('tech') || 1 }}</span>
+            <button :disabled="getCurrentPage('tech') >= getMaxPage('tech')" @click="changePage('tech', 1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE 3: User Reports -->
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900"><i class="fas fa-user-shield text-rose-500 mr-2"></i>User Infraction Reports</h3>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input v-model="filters.userReport.search" type="text" placeholder="Search reporters or reasons..." class="text-sm border-slate-200 rounded-lg px-3 py-2 w-64 focus:ring-indigo-500 focus:border-indigo-500">
+            
+            <div class="relative">
+              <select v-model="filters.userReport.status" class="appearance-none text-sm border-slate-200 rounded-lg pl-3 pr-8 py-2 w-full focus:ring-indigo-500 focus:border-indigo-500 bg-white cursor-pointer shadow-sm">
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Reviewed">Reviewed</option>
+              </select>
+              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 pointer-events-none"></i>
+            </div>
+
+            <button @click="exportTable(filteredUserReports, 'User_Infractions')" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-emerald-200 shadow-sm">
+              <i class="fas fa-download mr-1.5"></i> Export Filtered
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left whitespace-nowrap">
+            <thead class="text-xs text-slate-500 bg-slate-50 uppercase border-b border-slate-100">
+              <tr>
+                <th class="px-6 py-4 font-semibold">Incident Details</th>
+                <th class="px-6 py-4 font-semibold">Reported Entity</th>
+                <th class="px-6 py-4 font-semibold">Status</th>
+                <th class="px-6 py-4 font-semibold">Filed On</th>
+                <th class="px-6 py-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-if="isLoading"><td colspan="5" class="px-6 py-8 text-center text-slate-400">Loading...</td></tr>
+              <tr v-else-if="!paginatedUserReports.length"><td colspan="5" class="px-6 py-8 text-center text-slate-400">No user reports matching filters.</td></tr>
+              <tr v-else v-for="(report, index) in paginatedUserReports" :key="'ur'+index" class="hover:bg-slate-50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-medium text-slate-900">{{ report.reason }}</div>
+                  <div class="text-xs text-slate-500">By: {{ report.reporter }}</div>
+                </td>
+                <td class="px-6 py-4 font-medium text-rose-600">{{ report.reported_user }}</td>
+                <td class="px-6 py-4">
+                  <span :class="getStatusBadgeClass(report.status)" class="px-2.5 py-1 rounded-md text-xs font-semibold border">{{ report.status }}</span>
+                </td>
+                <td class="px-6 py-4 text-slate-500">{{ report.date }}</td>
+                <td class="px-6 py-4 text-right">
+                  <button @click="openViewModal('userReport', report)" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">View Details</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div v-if="!isLoading" class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <span class="text-sm text-slate-500">Showing {{ filteredUserReports.length ? (pagination.userReport.page - 1) * pagination.userReport.perPage + 1 : 0 }} to {{ Math.min(pagination.userReport.page * pagination.userReport.perPage, filteredUserReports.length) }} of {{ filteredUserReports.length }}</span>
+          <div class="flex items-center gap-2">
+            <button :disabled="getCurrentPage('userReport') === 1" @click="changePage('userReport', -1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-left"></i></button>
+            <span class="text-sm font-medium text-slate-700 px-2">Page {{ getCurrentPage('userReport') }} of {{ getMaxPage('userReport') || 1 }}</span>
+            <button :disabled="getCurrentPage('userReport') >= getMaxPage('userReport')" @click="changePage('userReport', 1)" class="px-3 py-1 border border-slate-200 bg-white rounded-md text-sm disabled:opacity-50 hover:bg-slate-100"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- UNIVERSAL VIEW MODAL -->
+    <div v-if="modal.isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
+      <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <h3 class="text-lg font-bold text-slate-900">
+            <i :class="modal.type === 'user' ? 'fas fa-user text-indigo-500' : modal.type === 'tech' ? 'fas fa-bug text-amber-500' : 'fas fa-shield-alt text-rose-500'" class="mr-2"></i>
+            {{ modal.type === 'user' ? 'Account Profile' : modal.type === 'tech' ? 'System Anomaly Report' : 'Infraction Dossier' }}
+          </h3>
+          <button @click="closeModal" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-md hover:bg-slate-200 transition-colors">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto flex-grow space-y-6 bg-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+            <div v-for="(value, key) in formatModalData(modal.data)" :key="key" class="flex flex-col col-span-1" :class="{ 'sm:col-span-2': String(value).length > 50 }">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{{ key.replace(/_/g, ' ') }}</span>
+              <span class="text-sm font-medium text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-100 break-words whitespace-pre-wrap leading-relaxed">{{ value || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+          <button @click="closeModal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-md hover:bg-slate-100 transition-colors">Close</button>
+          <button @click="exportSingleRecord" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm transition-colors">
+            <i class="fas fa-download mr-2"></i> Export Record
+          </button>
+        </div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <Card class="shadow overflow-hidden bg-white">
-        <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <i class="fas fa-chart-bar text-purple-500 text-lg mr-3"></i>
-              <h3 class="text-lg font-semibold text-gray-800">Most Used Colors</h3>
-            </div>
-            <span class="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded">
-              Top 5
-            </span>
-          </div>
-          <p class="text-sm text-gray-500 mt-1">Popular color selections for decision support</p>
-        </div>
-        <CardContent class="p-6">
-          <div class="space-y-4">
-            <div 
-              v-for="color in topColors" 
-              :key="color.id"
-              class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <div class="flex items-center">
-                <div 
-                  class="w-10 h-10 rounded-md mr-4 border shadow-sm" 
-                  :style="{ backgroundColor: color.hex }"
-                ></div>
-                <div>
-                  <div class="font-medium text-gray-900">{{ color.name }}</div>
-                  <div class="text-sm text-gray-500">{{ color.usageCount }} uses</div>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="font-semibold text-gray-900">{{ color.percentage }}%</div>
-                <div class="text-xs text-gray-500">of total</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="mt-6 pt-6 border-t border-gray-100">
-            <div class="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <i class="fas fa-chart-simple mr-2 text-gray-500"></i>
-              Usage Distribution
-            </div>
-            <div class="space-y-2">
-              <div 
-                v-for="color in topColors" 
-                :key="'bar-' + color.id"
-                class="flex items-center"
-              >
-                <div class="text-xs text-gray-500 w-24 truncate">{{ color.name }}</div>
-                <div class="flex-1 ml-2">
-                  <div class="bg-gray-200 rounded-full h-2">
-                    <div 
-                      class="h-2 rounded-full"
-                      :style="{ 
-                        backgroundColor: color.hex,
-                        width: color.percentage + '%' 
-                      }"
-                    ></div>
-                  </div>
-                </div>
-                <div class="text-xs font-medium text-gray-700 w-8 text-right">{{ color.percentage }}%</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="shadow overflow-hidden bg-white">
-        <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <i class="fas fa-trophy text-yellow-500 text-lg mr-3"></i>
-              <h3 class="text-lg font-semibold text-gray-800">Top Distributors</h3>
-            </div>
-            <span class="text-xs font-medium text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
-              By Demand
-            </span>
-          </div>
-          <p class="text-sm text-gray-500 mt-1">Highest performing paint distributors</p>
-        </div>
-        <CardContent class="p-6">
-          <div class="space-y-4">
-            <div 
-              v-for="distributor in topDistributors" 
-              :key="distributor.id"
-              class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <div class="flex items-center">
-                <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <i class="fas fa-warehouse text-blue-600"></i>
-                </div>
-                <div class="ml-4">
-                  <div class="font-medium text-gray-900">{{ distributor.name }}</div>
-                  <div class="text-sm text-gray-500">{{ distributor.location }}</div>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="font-semibold text-gray-900">{{ distributor.salesVolume.toLocaleString() }}</div>
-                <div class="text-xs text-gray-500">gallons sold</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="mt-6 pt-6 border-t border-gray-100">
-            <div class="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <i class="fas fa-trend-up mr-2 text-gray-500"></i>
-              Performance Metrics
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="bg-gray-50 p-3 rounded-lg">
-                <div class="text-xs text-gray-500 mb-1">Avg. Inventory Turnover</div>
-                <div class="font-semibold text-gray-900">4.2x</div>
-              </div>
-              <div class="bg-gray-50 p-3 rounded-lg">
-                <div class="text-xs text-gray-500 mb-1">Customer Satisfaction</div>
-                <div class="font-semibold text-gray-900">92%</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="shadow overflow-hidden bg-white">
-        <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <i class="fas fa-calendar-alt text-green-500 text-lg mr-3"></i>
-              <h3 class="text-lg font-semibold text-gray-800">Monthly Activity</h3>
-            </div>
-            <span class="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
-              {{ currentMonth }}
-            </span>
-          </div>
-          <p class="text-sm text-gray-500 mt-1">Service request summary and trends</p>
-        </div>
-        <CardContent class="p-6">
-          <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="bg-blue-50 p-4 rounded-lg">
-              <div class="flex items-center mb-2">
-                <i class="fas fa-play-circle text-blue-500 mr-2"></i>
-                <div class="text-sm font-medium text-blue-700">Requests Started</div>
-              </div>
-              <div class="text-2xl font-bold text-blue-900">{{ monthlyActivity.started }}</div>
-            </div>
-            <div class="bg-green-50 p-4 rounded-lg">
-              <div class="flex items-center mb-2">
-                <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                <div class="text-sm font-medium text-green-700">Requests Completed</div>
-              </div>
-              <div class="text-2xl font-bold text-green-900">{{ monthlyActivity.completed }}</div>
-            </div>
-          </div>
-          
-          <div class="space-y-3">
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center">
-                <i class="fas fa-clock text-yellow-500 mr-2"></i>
-                <span class="text-gray-600">Pending Requests</span>
-              </div>
-              <span class="font-medium text-gray-900">{{ monthlyActivity.pending }}</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center">
-                <i class="fas fa-spinner text-blue-500 mr-2"></i>
-                <span class="text-gray-600">In Progress</span>
-              </div>
-              <span class="font-medium text-gray-900">{{ monthlyActivity.inProgress }}</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <div class="flex items-center">
-                <i class="fas fa-times-circle text-red-500 mr-2"></i>
-                <span class="text-gray-600">Cancelled</span>
-              </div>
-              <span class="font-medium text-gray-900">{{ monthlyActivity.cancelled }}</span>
-            </div>
-          </div>
-          
-          <div class="mt-6 pt-6 border-t border-gray-100">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-sm font-medium text-gray-700">Monthly Trend</div>
-              <div class="flex items-center" :class="trendClass">
-                <i :class="trendIcon" class="mr-1"></i>
-                <span class="text-xs font-medium">{{ monthlyActivity.trend }}%</span>
-              </div>
-            </div>
-            <div class="text-xs text-gray-500">
-              Compared to previous month
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-
-    <Card class="shadow overflow-hidden mb-8 bg-white">
-      <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-        <div class="flex items-center">
-          <i class="fas fa-table text-gray-500 text-lg mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Detailed Activity Report</h3>
-        </div>
-        <p class="text-sm text-gray-500 mt-1">Comprehensive monthly data for analysis</p>
-      </div>
-      <div class="overflow-x-auto">
-        <Table>
-          <TableHeader class="bg-gray-50">
-            <TableRow>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-calendar"></i>
-                  <span>Week</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-paint-roller"></i>
-                  <span>Top Color</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-building"></i>
-                  <span>Top Distributor</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-tasks"></i>
-                  <span>Requests</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-percentage"></i>
-                  <span>Completion Rate</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-chart-line"></i>
-                  <span>Trend</span>
-                </div>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody class="bg-white divide-y divide-gray-200">
-            <TableRow 
-              v-for="week in weeklyReports" 
-              :key="week.week"
-              class="hover:bg-gray-50 transition-colors duration-150"
-            >
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="font-medium text-gray-900">Week {{ week.week }}</div>
-                <div class="text-sm text-gray-500">{{ week.dates }}</div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div 
-                    class="w-6 h-6 rounded mr-2 border" 
-                    :style="{ backgroundColor: week.topColor.hex }"
-                  ></div>
-                  <span class="text-sm font-medium text-gray-900">{{ week.topColor.name }}</span>
-                </div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ week.topDistributor }}</div>
-                <div class="text-xs text-gray-500">{{ week.distributorSales }} gallons</div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ week.totalRequests }}</div>
-                <div class="text-xs text-gray-500">{{ week.completedRequests }} completed</div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                    <div 
-                      class="h-2 rounded-full"
-                      :class="{
-                        'bg-red-500': week.completionRate < 70,
-                        'bg-yellow-500': week.completionRate >= 70 && week.completionRate < 90,
-                        'bg-green-500': week.completionRate >= 90
-                      }"
-                      :style="{ width: week.completionRate + '%' }"
-                    ></div>
-                  </div>
-                  <span class="text-sm font-medium text-gray-900">{{ week.completionRate }}%</span>
-                </div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center" :class="getTrendClass(week.trend)">
-                  <i :class="getTrendIcon(week.trend)" class="mr-1"></i>
-                  <span class="text-sm font-medium">{{ Math.abs(week.trend) }}%</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-
-    <Card class="bg-blue-50 border border-blue-200">
-      <CardContent class="p-6">
-        <div class="flex items-start mb-4">
-          <div class="flex-shrink-0">
-            <i class="fas fa-lightbulb text-blue-500 text-2xl"></i>
-          </div>
-          <div class="ml-4">
-            <h4 class="font-bold text-blue-900 text-lg">Decision Support Insights</h4>
-            <p class="text-blue-700 mt-2">
-              Based on the current reports, here are key insights for strategic planning:
-            </p>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="bg-white p-4 rounded-lg border border-blue-100">
-            <div class="flex items-center mb-2">
-              <i class="fas fa-palette text-purple-500 mr-2"></i>
-              <h5 class="font-semibold text-gray-800">Color Strategy</h5>
-            </div>
-            <p class="text-sm text-gray-600">
-              {{ topColors[0].name }} accounts for {{ topColors[0].percentage }}% of all color selections. 
-              Consider increasing inventory for this popular shade.
-            </p>
-          </div>
-          <div class="bg-white p-4 rounded-lg border border-blue-100">
-            <div class="flex items-center mb-2">
-              <i class="fas fa-warehouse text-yellow-500 mr-2"></i>
-              <h5 class="font-semibold text-gray-800">Distributor Performance</h5>
-            </div>
-            <p class="text-sm text-gray-600">
-              Top distributor {{ topDistributors[0].name }} outperforms others by {{ getPerformanceDifference() }}%.
-              Consider implementing their best practices across the network.
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import api from '@/utils/axios.js';
+import echo from '@/utils/websocket.js';
+import { Bar, Doughnut } from 'vue-chartjs';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
 
-// Current date for reports
-const selectedMonth = ref(new Date().toISOString().slice(0, 7))
-const currentMonth = computed(() => {
-  const date = new Date(selectedMonth.value + '-01')
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-})
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
-// Summary Statistics
-const summaryStats = ref({
-  totalColors: 42,
-  activeDistributors: 8,
-  monthlyRequests: 156,
-  avgCompletion: 87
-})
+// Control States
+const isComponentMounted = ref(false);
+const isLoading = ref(true);
 
-// Top Colors Data
-const topColors = ref([
-  { id: 1, name: 'Ocean Blue', hex: '#4A90E2', usageCount: 45, percentage: 28 },
-  { id: 2, name: 'Forest Green', hex: '#2ECC71', usageCount: 32, percentage: 20 },
-  { id: 3, name: 'Sunset Orange', hex: '#FF6B6B', usageCount: 25, percentage: 16 },
-  { id: 4, name: 'Slate Gray', hex: '#7F8C8D', usageCount: 18, percentage: 11 },
-  { id: 5, name: 'Royal Purple', hex: '#9B59B6', usageCount: 15, percentage: 9 }
-])
+// Core Data
+const summary = ref({ total_users: 0, total_tech_reports: 0, total_user_reports: 0 });
+const usersData = ref([]);
+const techReportsDataRaw = ref([]);
+const userReportsDataRaw = ref([]);
 
-// Top Distributors Data
-const topDistributors = ref([
-  { id: 1, name: 'ColorCraft Supplies', location: 'Dasmarinas', salesVolume: 12500 },
-  { id: 2, name: 'Premium Paint Pros', location: 'Bacoor', salesVolume: 9800 },
-  { id: 3, name: 'Brush Masters Co.', location: 'Imus', salesVolume: 8750 },
-  { id: 4, name: 'Tint & Finish Experts', location: 'General Trias', salesVolume: 7200 },
-  { id: 5, name: 'HueCraft Distributors', location: 'Silang', salesVolume: 6800 }
-])
+// Dynamic Options for Filters
+const availableRoles = computed(() => [...new Set(usersData.value.map(u => u.role))].sort());
+const availableTechCategories = computed(() => [...new Set(techReportsDataRaw.value.map(t => t.category))].sort());
 
-// Monthly Activity Data
-const monthlyActivity = ref({
-  started: 42,
-  completed: 36,
-  pending: 8,
-  inProgress: 12,
-  cancelled: 4,
-  trend: 12.5  // Percentage change from previous month
-})
+// Pagination & Filters State
+const filters = ref({
+  users: { search: '', status: '', role: '' },
+  tech: { search: '', status: '', category: '' },
+  userReport: { search: '', status: '' }
+});
 
-// Weekly Reports Data
-const weeklyReports = ref([
-  { 
-    week: 1, 
-    dates: 'Jan 1-7', 
-    topColor: { name: 'Ocean Blue', hex: '#4A90E2' },
-    topDistributor: 'ColorCraft Supplies',
-    distributorSales: 3200,
-    totalRequests: 38,
-    completedRequests: 32,
-    completionRate: 84,
-    trend: 8
+const pagination = ref({
+  users: { page: 1, perPage: 5 },
+  tech: { page: 1, perPage: 5 },
+  userReport: { page: 1, perPage: 5 }
+});
+
+// Reset pagination when filters change
+watch(() => filters.value.users, () => pagination.value.users.page = 1, { deep: true });
+watch(() => filters.value.tech, () => pagination.value.tech.page = 1, { deep: true });
+watch(() => filters.value.userReport, () => pagination.value.userReport.page = 1, { deep: true });
+
+// Chart Data (shallowRef prevents chartjs deep clone crashes)
+const chartDataRoles = shallowRef({ labels: [], datasets: [] });
+const chartDataTech = shallowRef({ labels: [], datasets: [] });
+const chartDataUser = shallowRef({ labels: [], datasets: [] });
+
+// Modal State
+const modal = ref({
+  isOpen: false,
+  type: null, 
+  data: null
+});
+
+// Palettes
+const palettes = { primary: '#4f46e5', secondary: '#0ea5e9', accent1: '#e11d48', accent2: '#f59e0b', accent3: '#10b981', accent4: '#8b5cf6', grid: '#f1f5f9', text: '#64748b' };
+const defaultTooltip = { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#475569', borderColor: '#e2e8f0', borderWidth: 1, padding: 10, cornerRadius: 6, usePointStyle: true };
+
+const doughnutOptions = { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, padding: 20 } }, tooltip: defaultTooltip } };
+const barOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: defaultTooltip }, scales: { y: { border: { display: false }, grid: { color: palettes.grid }, ticks: { color: palettes.text } }, x: { grid: { display: false }, ticks: { color: palettes.text } } }, borderRadius: 6, barThickness: 24 };
+
+// Horizontal Bar Options
+const barOptionsHorizontal = {
+  ...barOptions,
+  indexAxis: 'y',
+  scales: {
+    x: { border: { display: false }, grid: { color: palettes.grid, drawTicks: false }, ticks: { color: palettes.text, padding: 10 } },
+    y: { grid: { display: false }, ticks: { color: palettes.text, padding: 10 } }
   },
-  { 
-    week: 2, 
-    dates: 'Jan 8-14', 
-    topColor: { name: 'Forest Green', hex: '#2ECC71' },
-    topDistributor: 'Premium Paint Pros',
-    distributorSales: 2850,
-    totalRequests: 42,
-    completedRequests: 38,
-    completionRate: 90,
-    trend: 15
-  },
-  { 
-    week: 3, 
-    dates: 'Jan 15-21', 
-    topColor: { name: 'Sunset Orange', hex: '#FF6B6B' },
-    topDistributor: 'Brush Masters Co.',
-    distributorSales: 2650,
-    totalRequests: 40,
-    completedRequests: 35,
-    completionRate: 88,
-    trend: 5
-  },
-  { 
-    week: 4, 
-    dates: 'Jan 22-31', 
-    topColor: { name: 'Ocean Blue', hex: '#4A90E2' },
-    topDistributor: 'ColorCraft Supplies',
-    distributorSales: 3800,
-    totalRequests: 46,
-    completedRequests: 41,
-    completionRate: 89,
-    trend: 12
+  barThickness: 24
+};
+
+// Computed logic for Users
+const filteredUsers = computed(() => {
+  return usersData.value.filter(u => {
+    const matchSearch = u.name.toLowerCase().includes(filters.value.users.search.toLowerCase()) || u.email.toLowerCase().includes(filters.value.users.search.toLowerCase());
+    const matchStatus = filters.value.users.status ? u.status === filters.value.users.status : true;
+    const matchRole = filters.value.users.role ? u.role === filters.value.users.role : true;
+    return matchSearch && matchStatus && matchRole;
+  });
+});
+const paginatedUsers = computed(() => {
+  const start = (pagination.value.users.page - 1) * pagination.value.users.perPage;
+  return filteredUsers.value.slice(start, start + pagination.value.users.perPage);
+});
+
+// Computed logic for Tech Reports
+const filteredTechReports = computed(() => {
+  return techReportsDataRaw.value.filter(t => {
+    const matchSearch = t.reporter.toLowerCase().includes(filters.value.tech.search.toLowerCase());
+    const matchStatus = filters.value.tech.status ? t.status === filters.value.tech.status : true;
+    const matchCategory = filters.value.tech.category ? t.category === filters.value.tech.category : true;
+    return matchSearch && matchStatus && matchCategory;
+  });
+});
+const paginatedTechReports = computed(() => {
+  const start = (pagination.value.tech.page - 1) * pagination.value.tech.perPage;
+  return filteredTechReports.value.slice(start, start + pagination.value.tech.perPage);
+});
+
+// Computed logic for User Reports
+const filteredUserReports = computed(() => {
+  return userReportsDataRaw.value.filter(ur => {
+    const matchSearch = ur.reporter.toLowerCase().includes(filters.value.userReport.search.toLowerCase()) || ur.reason.toLowerCase().includes(filters.value.userReport.search.toLowerCase());
+    const matchStatus = filters.value.userReport.status ? ur.status === filters.value.userReport.status : true;
+    return matchSearch && matchStatus;
+  });
+});
+const paginatedUserReports = computed(() => {
+  const start = (pagination.value.userReport.page - 1) * pagination.value.userReport.perPage;
+  return filteredUserReports.value.slice(start, start + pagination.value.userReport.perPage);
+});
+
+// Pagination Helpers
+const getCurrentPage = (type) => pagination.value[type].page;
+const getMaxPage = (type) => {
+  if (type === 'users') return Math.ceil(filteredUsers.value.length / pagination.value.users.perPage);
+  if (type === 'tech') return Math.ceil(filteredTechReports.value.length / pagination.value.tech.perPage);
+  return Math.ceil(filteredUserReports.value.length / pagination.value.userReport.perPage);
+};
+const changePage = (type, step) => {
+  pagination.value[type].page += step;
+};
+
+// Fetch Data
+const fetchReports = async (isBackgroundRefresh = false) => {
+  if (!isComponentMounted.value) return;
+  if (!isBackgroundRefresh) isLoading.value = true;
+
+  try {
+    const response = await api.get('/admin/reports-analytics');
+    if (!isComponentMounted.value) return;
+
+    if (response.data && response.data.data) {
+      const { data } = response.data;
+      summary.value = data.summary;
+      usersData.value = data.users;
+      techReportsDataRaw.value = data.tech_reports;
+      userReportsDataRaw.value = data.user_reports;
+
+      extractChartData(data.users, data.tech_reports, data.user_reports);
+    }
+  } catch (error) {
+    if (isComponentMounted.value) console.error("Data Hub fetch failed:", error);
+  } finally {
+    if (isComponentMounted.value && !isBackgroundRefresh) isLoading.value = false;
   }
-])
+};
 
-// Computed Properties
-const trendClass = computed(() => {
-  return monthlyActivity.value.trend >= 0 
-    ? 'text-green-600' 
-    : 'text-red-600'
-})
+const extractChartData = (users, tech, userReps) => {
+  // Roles Doughnut
+  const roles = {};
+  users.forEach(u => roles[u.role] = (roles[u.role] || 0) + 1);
+  chartDataRoles.value = {
+    labels: Object.keys(roles),
+    datasets: [{ data: Object.values(roles), backgroundColor: [palettes.primary, palettes.secondary, palettes.accent3, palettes.accent4, palettes.accent2, palettes.accent1], borderWidth: 0 }]
+  };
 
-const trendIcon = computed(() => {
-  return monthlyActivity.value.trend >= 0 
-    ? 'fas fa-arrow-up' 
-    : 'fas fa-arrow-down'
-})
+  // Tech Categories Bar
+  const tCats = {};
+  tech.forEach(t => tCats[t.category] = (tCats[t.category] || 0) + 1);
+  chartDataTech.value = {
+    labels: Object.keys(tCats),
+    datasets: [{ data: Object.values(tCats), backgroundColor: palettes.accent2, borderRadius: 4 }]
+  };
 
-// Helper Functions
-const getTrendClass = (trend) => {
-  return trend >= 0 ? 'text-green-600' : 'text-red-600'
-}
+  // User Reports Horizontal Bar
+  const uCats = {};
+  userReps.forEach(u => uCats[u.reason] = (uCats[u.reason] || 0) + 1);
+  chartDataUser.value = {
+    labels: Object.keys(uCats),
+    datasets: [{ data: Object.values(uCats), backgroundColor: palettes.accent1, borderRadius: 4 }]
+  };
+};
 
-const getTrendIcon = (trend) => {
-  return trend >= 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'
-}
+// Modals
+const openViewModal = (type, data) => {
+  modal.value = { isOpen: true, type, data };
+};
+const closeModal = () => {
+  modal.value.isOpen = false;
+};
 
-const getPerformanceDifference = () => {
-  if (topDistributors.value.length < 2) return 0
-  const top = topDistributors.value[0].salesVolume
-  const second = topDistributors.value[1].salesVolume
-  return Math.round(((top - second) / second) * 100)
-}
+// Filter out internal IDs for modal display
+const formatModalData = (data) => {
+  if (!data) return {};
+  const formatted = { ...data };
+  delete formatted.id;
+  delete formatted.raw_date;
+  return formatted;
+};
 
-// Methods
-const generateReport = () => {
-  console.log('Generating report for:', selectedMonth.value)
-  // In real app: fetch data for selected month from API
-  alert(`Generating report for ${currentMonth.value}`)
-}
+// Styling Badges
+const getStatusBadgeClass = (status) => {
+  const s = status.toLowerCase();
+  if (['active', 'resolved', 'approved'].includes(s)) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (['pending'].includes(s)) return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (['reviewed'].includes(s)) return 'bg-blue-50 text-blue-700 border-blue-200';
+  return 'bg-rose-50 text-rose-700 border-rose-200'; 
+};
 
-const exportAllReports = () => {
-  const reportData = {
-    summaryStats: summaryStats.value,
-    topColors: topColors.value,
-    topDistributors: topDistributors.value,
-    monthlyActivity: monthlyActivity.value,
-    weeklyReports: weeklyReports.value
+// Exporters
+const convertToCSV = (dataArr) => {
+  if (!dataArr || !dataArr.length) return '';
+  const keys = Object.keys(dataArr[0]).filter(k => k !== 'id' && k !== 'raw_date');
+  let csv = keys.map(k => `"${k.toUpperCase()}"`).join(',') + '\n';
+  dataArr.forEach(row => {
+    csv += keys.map(k => {
+      let cell = row[k] === null || row[k] === undefined ? '' : String(row[k]);
+      cell = cell.replace(/"/g, '""'); 
+      return `"${cell}"`;
+    }).join(',') + '\n';
+  });
+  return csv;
+};
+
+const triggerDownload = (csvContent, filename) => {
+  const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", filename + ".csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportTable = (filteredArray, filename) => {
+  if (!filteredArray.length) return alert("No data to export matching filters.");
+  const csv = convertToCSV(filteredArray);
+  triggerDownload(csv, filename);
+};
+
+const exportSingleRecord = () => {
+  if (!modal.value.data) return;
+  const csv = convertToCSV([modal.value.data]);
+  triggerDownload(csv, `Record_Export_${modal.value.type}`);
+};
+
+const exportAllData = () => {
+  if (usersData.value.length) {
+    setTimeout(() => exportTable(usersData.value, 'All_Users_Database'), 0);
   }
-  
-  const dataStr = JSON.stringify(reportData, null, 2)
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr)
-  
-  const exportFileDefaultName = `paint-reports-${selectedMonth.value}.json`
-  
-  const linkElement = document.createElement('a')
-  linkElement.setAttribute('href', dataUri)
-  linkElement.setAttribute('download', exportFileDefaultName)
-  linkElement.click()
-}
+  if (techReportsDataRaw.value.length) {
+    setTimeout(() => exportTable(techReportsDataRaw.value, 'All_Technical_Reports'), 500);
+  }
+  if (userReportsDataRaw.value.length) {
+    setTimeout(() => exportTable(userReportsDataRaw.value, 'All_User_Infractions'), 1000);
+  }
+};
 
+// Lifecycle
 onMounted(() => {
-  console.log('Reports page loaded')
-})
+  isComponentMounted.value = true;
+  fetchReports(false);
+
+  if (echo) {
+    try {
+      echo.private('admin.technical_reports')
+        .listen('.report.submitted', () => {
+          if (!isComponentMounted.value) return;
+          fetchReports(true); 
+        })
+        .listen('.report.updated', () => {
+          if (isComponentMounted.value) fetchReports(true);
+        });
+    } catch (e) {
+      console.warn("WebSocket listener initialization skipped:", e);
+    }
+  }
+});
+
+onBeforeUnmount(() => {
+  isComponentMounted.value = false;
+  chartDataRoles.value = { labels: [], datasets: [] };
+  chartDataTech.value = { labels: [], datasets: [] };
+  chartDataUser.value = { labels: [], datasets: [] };
+  try {
+    if (echo) echo.leave('admin.technical_reports');
+  } catch (e) {}
+});
 </script>
-
-<style scoped>
-/* Custom styles for color swatches and progress bars */
-.w-6 {
-  width: 1.5rem;
-}
-.h-6 {
-  height: 1.5rem;
-}
-.w-10 {
-  width: 2.5rem;
-}
-.h-10 {
-  height: 2.5rem;
-}
-
-/* Mobile responsive adjustments */
-@media (max-width: 768px) {
-  .text-3xl {
-    font-size: 1.75rem;
-  }
-  
-  .text-2xl {
-    font-size: 1.5rem;
-  }
-  
-  .grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .lg\:grid-cols-3 {
-    grid-template-columns: 1fr;
-  }
-  
-  .md\:grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
