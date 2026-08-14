@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\HR\Employee;
+use App\Models\LoginLog;
+use App\Events\NewLoginLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Jobs\SendRegistrationEmail;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -108,11 +111,25 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $browser = $request->header('User-Agent');
+
         try {
             // Check if user exists
             $user = User::where('email', $request->email)->first();
 
             if (!$user) {
+                // Log Failed Login (User not found)
+                $log = LoginLog::create([
+                    'email' => $request->email,
+                    'status' => 'Failed',
+                    'browser' => $browser,
+                    'failure_reason' => 'User not found / Guessing credentials',
+                    'logged_in_at' => null,
+                    'Fullname' => null,
+                    'role' => null,
+                ]);
+                event(new NewLoginLog($log));
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Invalid credentials'
@@ -121,6 +138,18 @@ class AuthController extends Controller
 
             // Check password
             if (!Hash::check($request->password, $user->password)) {
+                // Log Failed Login (Incorrect Password)
+                $log = LoginLog::create([
+                    'email' => $request->email,
+                    'status' => 'Failed',
+                    'browser' => $browser,
+                    'failure_reason' => 'Incorrect password / Possible brute force',
+                    'logged_in_at' => null,
+                    'Fullname' => $user->full_name,
+                    'role' => $user->role,
+                ]);
+                event(new NewLoginLog($log));
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Invalid credentials'
@@ -129,6 +158,18 @@ class AuthController extends Controller
 
             // Only block inactive users, allow pending users
             if ($user->status === 'inactive') {
+                // Log Failed Login (Inactive Account)
+                $log = LoginLog::create([
+                    'email' => $request->email,
+                    'status' => 'Failed',
+                    'browser' => $browser,
+                    'failure_reason' => 'Account is inactive',
+                    'logged_in_at' => null,
+                    'Fullname' => $user->full_name,
+                    'role' => $user->role,
+                ]);
+                event(new NewLoginLog($log));
+
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Your account is inactive. Please contact support.'
@@ -208,6 +249,18 @@ class AuthController extends Controller
             if ($user->status === 'pending') {
                 $response['warning'] = 'Your account is pending approval. Some features may be limited.';
             }
+
+            // SUCCESSFUL LOGIN - Log the Event
+            $log = LoginLog::create([
+                'email' => $user->email,
+                'status' => 'Success',
+                'browser' => $browser,
+                'failure_reason' => null,
+                'logged_in_at' => now(),
+                'Fullname' => $user->full_name,
+                'role' => $user->role,
+            ]);
+            event(new NewLoginLog($log));
 
             return response()->json($response);
 

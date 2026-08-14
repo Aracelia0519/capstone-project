@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\OperationDistributor\PaymentManagementController;
 use App\Http\Controllers\Api\OperationDistributor\ReviewManagementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceOfferingController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceJobController;
+use App\Http\Controllers\Api\LoginLogController;
 
 use Illuminate\Support\Facades\Broadcast;
 
@@ -591,6 +592,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
+
+        Route::get('/login-logs', [LoginLogController::class, 'index']);
+
+        // --- Sending Security Alerts Route ---
+        Route::post('/login-logs/notify', [\App\Http\Controllers\Api\Admin\LoginLogController::class, 'sendSecurityNotification']);
 
         // ---> dashboard <---
         Route::get('/analytics', [\App\Http\Controllers\Api\Admin\AdminAnalyticalDashboardController::class, 'getAnalytics']);

@@ -1,826 +1,748 @@
 <template>
-  <div class="audit-logs p-6">
-    <div class="mb-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+  <div class="p-4 md:p-8 text-slate-900 w-full">
+    <div class="max-w-[1400px] mx-auto space-y-6">
+      
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-800 mb-2">Audit Logs</h1>
-          <p class="text-gray-600">System activity tracking and accountability records</p>
+          <h1 class="text-3xl font-black tracking-tight flex items-center gap-3">
+            <ShieldCheck class="w-8 h-8 text-indigo-600" />
+            System Audit Logs
+          </h1>
+          <p class="text-slate-500 mt-1">Monitor, analyze, and track authentication activities across the platform.</p>
         </div>
-        <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
-          <Button 
-            @click="clearOldLogs"
-            variant="outline"
-            class="border-red-300 text-red-700 hover:bg-red-50"
-          >
-            <i class="fas fa-trash-alt mr-2"></i>
-            Clear Old Logs
-          </Button>
-          <Button 
-            @click="exportLogs"
-            class="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <i class="fas fa-file-export mr-2"></i>
-            Export Logs
-          </Button>
+        <button @click="refreshData" class="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold hover:bg-slate-50 shadow-sm transition-all">
+          <RefreshCw :class="['w-4 h-4', isLoading ? 'animate-spin text-indigo-600' : '']" />
+          Refresh Data
+        </button>
+      </div>
+
+      <!-- Statistics KPI Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+          <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center shrink-0">
+            <FileText class="w-7 h-7" />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Logs</p>
+            <h3 class="text-3xl font-black text-slate-900">{{ stats.total }}</h3>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+          <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+            <CheckCircle2 class="w-7 h-7" />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Successful Logins</p>
+            <h3 class="text-3xl font-black text-slate-900">{{ stats.success }}</h3>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+          <div class="w-14 h-14 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center shrink-0">
+            <AlertCircle class="w-7 h-7" />
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Failed Attempts</p>
+            <h3 class="text-3xl font-black text-slate-900">{{ stats.failed }}</h3>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card class="shadow-md border-l-4 border-l-blue-500">
-          <CardContent class="p-5 flex items-center justify-between">
+      <!-- DSS Live Ranking & Threat Analysis Panel -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+        <div class="flex justify-between items-start mb-6 shrink-0">
             <div>
-              <p class="text-sm text-gray-500">Total Logs</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.totalLogs }}</h3>
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <Activity class="w-4 h-4 text-indigo-600" />
+                  DSS Security Analysis & Threat Detection
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Real-time dynamic threat scaling based on network failure averages and sequence anomalies.</p>
             </div>
-            <div class="p-3 bg-blue-50 rounded-lg">
-              <i class="fas fa-history text-blue-500 text-xl"></i>
+            <div class="group relative cursor-help z-20">
+                <Info class="w-4 h-4 text-slate-400 hover:text-indigo-500 transition-colors" />
+                <div class="absolute right-0 w-80 p-4 bg-slate-800 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none mt-2">
+                    <strong class="text-sm block mb-2 text-indigo-300">Dynamic Decision Support System (DSS)</strong>
+                    <p class="mb-2">Calculates the current average failure rate across all users to establish a dynamic baseline.</p>
+                    <ul class="space-y-1.5">
+                      <li><span class="text-rose-400 font-bold">Critical (Breach):</span> Successful login immediately following a critical sequence of failures.</li>
+                      <li><span class="text-rose-400 font-bold">Critical:</span> Consecutive failures exceeding {{ dssInsights.criticalThreshold }} (Dynamic Threshold).</li>
+                      <li><span class="text-orange-400 font-bold">High:</span> Consecutive failures exceeding {{ dssInsights.highThreshold }} (Dynamic Threshold).</li>
+                      <li><span class="text-amber-400 font-bold">Medium:</span> Successful logins at unusual hours (12 AM - 5 AM).</li>
+                    </ul>
+                </div>
             </div>
-          </CardContent>
-        </Card>
+        </div>
         
-        <Card class="shadow-md border-l-4 border-l-green-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Today's Activity</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.todaysLogs }}</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- DSS Analytics -->
+            <div class="lg:col-span-1 border-b lg:border-b-0 lg:border-r border-slate-100 pb-6 lg:pb-0 lg:pr-6 flex flex-col justify-center">
+                <div class="space-y-4">
+                  <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Avg Network Failures</span>
+                    <span class="text-lg font-black text-slate-900">{{ dssInsights.avgFailures.toFixed(1) }} <span class="text-xs font-normal text-slate-500">per user</span></span>
+                  </div>
+                  <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-orange-600 uppercase">High Threshold</span>
+                    <span class="text-lg font-black text-orange-700">>= {{ dssInsights.highThreshold }}</span>
+                  </div>
+                  <div class="bg-rose-50 p-4 rounded-xl border border-rose-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-rose-600 uppercase">Critical Threshold</span>
+                    <span class="text-lg font-black text-rose-700">>= {{ dssInsights.criticalThreshold }}</span>
+                  </div>
+                </div>
             </div>
-            <div class="p-3 bg-green-50 rounded-lg">
-              <i class="fas fa-calendar-day text-green-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card class="shadow-md border-l-4 border-l-purple-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Active Users</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.activeUsers }}</h3>
-            </div>
-            <div class="p-3 bg-purple-50 rounded-lg">
-              <i class="fas fa-users text-purple-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card class="shadow-md border-l-4 border-l-yellow-500">
-          <CardContent class="p-5 flex items-center justify-between">
-            <div>
-              <p class="text-sm text-gray-500">Security Events</p>
-              <h3 class="text-2xl font-bold text-gray-800 mt-1">{{ stats.securityEvents }}</h3>
-            </div>
-            <div class="p-3 bg-yellow-50 rounded-lg">
-              <i class="fas fa-shield-alt text-yellow-500 text-xl"></i>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
 
-    <Card class="shadow-sm mb-6">
-      <CardContent class="p-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex flex-col md:flex-row gap-4 flex-1">
-            <div class="relative flex-1 md:max-w-md">
-              <i class="fas fa-search absolute left-3 top-3 text-gray-400 z-10"></i>
-              <Input 
-                v-model="searchQuery"
-                type="text" 
-                placeholder="Search users, actions, or details..."
-                class="pl-10 pr-4 w-full border-gray-300 focus-visible:ring-blue-500"
-              />
+            <!-- DSS Live Threat List -->
+            <div class="lg:col-span-2 h-56 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Identified High-Risk Accounts</h4>
+                    <button v-if="dssInsights.allAtRiskAccounts.length > 0" @click="isAtRiskModalOpen = true" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors">
+                        View Accounts <ChevronRight class="w-3 h-3" />
+                    </button>
+                </div>
+                
+                <div class="overflow-y-auto pr-2 custom-scrollbar flex-1">
+                  <div v-if="dssInsights.atRiskAccounts.length === 0" class="flex flex-col items-center justify-center text-slate-400 h-32 w-full">
+                      <ShieldCheck class="w-8 h-8 mb-2 opacity-50" />
+                      <span class="text-sm">No critical threats detected.</span>
+                  </div>
+
+                  <div v-else class="space-y-2">
+                    <div v-for="account in dssInsights.atRiskAccounts" :key="account.email" 
+                      class="flex justify-between items-center p-3 rounded-xl border"
+                      :class="account.threatLevel.includes('Critical') ? 'bg-rose-50 border-rose-200' : 'bg-orange-50 border-orange-200'">
+                    
+                      <div>
+                        <div class="font-bold text-sm" :class="account.threatLevel.includes('Critical') ? 'text-rose-900' : 'text-orange-900'">
+                          {{ account.email }}
+                        </div>
+                        <div class="text-xs font-medium mt-0.5" :class="account.threatLevel.includes('Critical') ? 'text-rose-600' : 'text-orange-600'">
+                          <span v-if="account.threatLevel.includes('Breach')">⚠️ Critical: Potential Account Compromise</span>
+                          <span v-else-if="account.threatLevel.includes('Critical')">⚠️ Critical: Sustained Brute Force Attack</span>
+                          <span v-else>⚠️ High Risk: Continuous Brute Force Targeting</span>
+                        </div>
+                      </div>
+
+                      <div class="text-right shrink-0">
+                        <div class="text-[10px] uppercase font-bold text-slate-500 mb-0.5">Consecutive Failures</div>
+                        <div class="text-lg font-black" :class="account.threatLevel.includes('Critical') ? 'text-rose-700' : 'text-orange-700'">
+                          {{ account.maxConsecutiveFailures }}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Custom SVG Analytics Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Chart 1: Login Trends (SVG Line Chart) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-72">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Login Trends</h3>
+          <p class="text-xs text-slate-500 mb-6">Daily authentication attempts (Last 7 Days)</p>
+          
+          <div class="relative w-full h-full flex items-end mt-auto pt-4 group">
+            <svg class="w-full h-full overflow-visible" viewBox="0 0 100 40" preserveAspectRatio="none">
+              <line x1="0" y1="10" x2="100" y2="10" stroke="#f8fafc" stroke-width="0.5" />
+              <line x1="0" y1="20" x2="100" y2="20" stroke="#f8fafc" stroke-width="0.5" />
+              <line x1="0" y1="30" x2="100" y2="30" stroke="#f8fafc" stroke-width="0.5" />
+              
+              <path :d="trendData.fillPath" fill="rgba(79, 70, 229, 0.1)" />
+              <path :d="trendData.linePath" fill="none" stroke="#4f46e5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              
+              <circle 
+                v-for="(pt, i) in trendData.points" 
+                :key="i"
+                :cx="pt.x" :cy="pt.y" r="2" fill="#fff" stroke="#4f46e5" stroke-width="1.5" 
+                class="transition-all duration-300 opacity-0 group-hover:opacity-100 hover:r-3 cursor-pointer"
+              >
+                <title>{{ pt.label }}: {{ pt.val }} Logins</title>
+              </circle>
+            </svg>
+            <div class="absolute -bottom-6 left-0 right-0 flex justify-between text-[10px] font-medium text-slate-400">
+              <span v-for="pt in trendData.points" :key="pt.label">{{ pt.label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 2: Success Rate (SVG Doughnut Chart) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-72">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Status Overview</h3>
+          <p class="text-xs text-slate-500 mb-6">Success vs Failed distributions</p>
+          
+          <div class="relative w-full h-full flex flex-col items-center justify-center mt-auto">
+            <div class="relative w-36 h-36 flex items-center justify-center">
+              <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90">
+                <circle cx="18" cy="18" r="15.91549430918954" fill="transparent" stroke="#f1f5f9" stroke-width="4"></circle>
+                <circle cx="18" cy="18" r="15.91549430918954" fill="transparent" stroke="#10b981" stroke-width="4"
+                        stroke-dasharray="100"
+                        :stroke-dashoffset="100 - doughnutData.successPct"
+                        stroke-linecap="round"
+                        class="transition-all duration-1000 ease-out"></circle>
+              </svg>
+              <div class="absolute flex flex-col items-center">
+                <span class="text-2xl font-black text-slate-900">{{ Math.round(doughnutData.successPct) }}%</span>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Success</span>
+              </div>
             </div>
             
-            <div class="flex flex-wrap gap-3">
-              <Select v-model="selectedUser">
-                <SelectTrigger class="w-[180px] border-gray-300">
-                  <SelectValue placeholder="All Users" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  <SelectItem v-for="user in uniqueUsers" :key="user" :value="user">{{ user }}</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select v-model="selectedAction">
-                <SelectTrigger class="w-[180px] border-gray-300">
-                  <SelectValue placeholder="All Actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem v-for="action in uniqueActions" :key="action" :value="action">
-                    {{ formatAction(action) }}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select v-model="selectedSeverity">
-                <SelectTrigger class="w-[180px] border-gray-300">
-                  <SelectValue placeholder="All Severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severity</SelectItem>
-                  <SelectItem value="info">Info</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
+            <div class="flex items-center justify-center gap-6 mt-6 w-full">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span class="text-xs font-bold text-slate-600">Success ({{ doughnutData.success }})</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-slate-200"></span>
+                <span class="text-xs font-bold text-slate-600">Failed ({{ doughnutData.failed }})</span>
+              </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Chart 3: Roles Distribution (CSS Horizontal Bar Chart) -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col h-72">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Activity by Role</h3>
+          <p class="text-xs text-slate-500 mb-6">Logins distributed by user role</p>
+          
+          <div class="flex flex-col justify-end h-full gap-4">
+            <div v-if="barData.length === 0" class="text-xs text-center text-slate-400 py-4 flex flex-col items-center gap-2">
+              <Activity class="w-8 h-8 opacity-20" />
+              No data available
+            </div>
+            <div v-for="item in barData" :key="item.label" class="w-full group">
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-700 font-bold capitalize truncate pr-2">{{ item.label }}</span>
+                <span class="text-slate-500 font-medium group-hover:text-indigo-600 transition-colors">{{ item.value }}</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-1000 ease-out" 
+                     :style="{ width: `${item.percentage}%` }"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Main Logs Table with DSS Indicators -->
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <!-- Table Header & Filters -->
+        <div class="p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <h2 class="text-lg font-black text-slate-900 shrink-0">Authentication Records</h2>
+          
+          <!-- Filter Bar -->
+          <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+            <div class="relative w-full sm:w-64">
+              <Search class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input v-model="searchQuery" type="text" placeholder="Search user or IP..." class="w-full bg-slate-50 border border-slate-200 text-sm rounded-xl pl-9 pr-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+            </div>
+
+            <select v-model="roleFilter" class="bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer">
+              <option value="all">All Roles</option>
+              <option v-for="role in uniqueRoles" :key="role" :value="role">
+                {{ role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}
+              </option>
+            </select>
+
+            <select v-model="riskFilter" class="bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer">
+              <option value="all">All DSS Risks</option>
+              <option value="Critical">Critical Risk</option>
+              <option value="High">High Risk</option>
+              <option value="Medium">Medium Risk</option>
+              <option value="Safe">Safe</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-wider font-bold border-b border-slate-200">
+                <th class="px-6 py-4">DSS Risk Level</th>
+                <th class="px-6 py-4">Date & Time</th>
+                <th class="px-6 py-4">User Details</th>
+                <th class="px-6 py-4 text-center">Status</th>
+                <th class="px-6 py-4">Browser & Device</th>
+                <th class="px-6 py-4">DSS Analysis</th>
+              </tr>
+            </thead>
+            <tbody class="text-sm divide-y divide-slate-100">
+              <tr v-if="isLoading" class="bg-white">
+                <td colspan="6" class="py-12 text-center text-slate-400">
+                  <Loader2 class="w-8 h-8 animate-spin mx-auto text-indigo-500 mb-2" />
+                  Analyzing records...
+                </td>
+              </tr>
+              <tr v-else-if="paginatedLogs.length === 0" class="bg-white">
+                <td colspan="6" class="py-12 text-center text-slate-400">
+                  <FileX class="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  No audit logs found matching your criteria.
+                </td>
+              </tr>
+              <tr v-else v-for="log in paginatedLogs" :key="log.id" class="bg-white hover:bg-slate-50 transition-colors group">
+                
+                <!-- DSS Risk Level -->
+                <td class="px-6 py-4">
+                  <span :class="[
+                      'text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 border',
+                      log.dss_risk === 'Critical' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
+                      log.dss_risk === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                      log.dss_risk === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                      'bg-slate-100 text-slate-500 border-slate-200'
+                    ]">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="
+                      log.dss_risk === 'Critical' ? 'bg-rose-500' : 
+                      log.dss_risk === 'High' ? 'bg-orange-500' :
+                      log.dss_risk === 'Medium' ? 'bg-amber-500' : 'bg-slate-400'"></span>
+                    {{ log.dss_risk }}
+                  </span>
+                </td>
+
+                <!-- Date & Time -->
+                <td class="px-6 py-4 w-44">
+                  <div class="flex items-center gap-2 text-[11px] font-mono text-slate-500">
+                    <Clock class="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    {{ formatDate(log.created_at) }}
+                  </div>
+                </td>
+
+                <!-- User Info & Role -->
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0"
+                         :class="log.role === 'client' ? 'bg-blue-100 text-blue-600' : 'bg-indigo-100 text-indigo-600'">
+                      {{ log.Fullname ? log.Fullname.charAt(0) : 'U' }}
+                    </div>
+                    <div>
+                      <div class="font-bold text-slate-900 text-xs">{{ log.Fullname || 'Unknown User' }}</div>
+                      <div class="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        {{ log.email }}
+                        <span v-if="log.role" class="px-1.5 py-0.5 bg-slate-100 rounded border capitalize">{{ log.role.replace(/_/g, ' ') }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Auth Status -->
+                <td class="px-6 py-4 text-center">
+                  <span :class="[
+                      'text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md inline-flex items-center',
+                      log.status === 'Success' ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'
+                    ]">
+                    {{ log.status }}
+                  </span>
+                </td>
+
+                <!-- Browser/Device -->
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2 text-[10px] text-slate-500 max-w-[150px] truncate" :title="log.browser">
+                    <Globe class="w-3 h-3 text-slate-400 shrink-0" />
+                    <span class="truncate">{{ log.browser || 'Unknown' }}</span>
+                  </div>
+                </td>
+
+                <!-- Notes / DSS Reason -->
+                <td class="px-6 py-4">
+                  <div class="text-[11px] leading-relaxed max-w-xs" :class="[
+                    log.dss_risk === 'Critical' ? 'text-rose-600 font-bold' : 
+                    log.dss_risk === 'High' ? 'text-orange-600 font-semibold' :
+                    log.dss_risk === 'Medium' ? 'text-amber-600 font-medium' : 'text-slate-400'
+                  ]">
+                    {{ log.dss_reason }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div v-if="!isLoading && filteredLogs.length > 0" class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+          <span class="text-sm text-slate-500 font-medium">
+            Showing {{ ((currentPage - 1) * itemsPerPage) + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredLogs.length) }} of {{ filteredLogs.length }} entries
+          </span>
+          <div class="flex items-center gap-4">
+            <button @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 text-sm font-bold border border-slate-200 bg-white rounded-xl hover:bg-slate-50 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm">
+              Previous
+            </button>
+            <span class="text-sm font-bold text-slate-700">Page {{ currentPage }} of {{ totalPages || 1 }}</span>
+            <button @click="nextPage" :disabled="currentPage === totalPages || totalPages === 0" class="px-4 py-2 text-sm font-bold border border-slate-200 bg-white rounded-xl hover:bg-slate-50 text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm">
+              Next
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- At-Risk Accounts Modal -->
+    <Dialog :open="isAtRiskModalOpen" @update:open="isAtRiskModalOpen = $event">
+      <DialogContent class="sm:max-w-[700px] p-0 overflow-hidden bg-white border-none shadow-2xl rounded-2xl">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
+              <AlertCircle class="w-5 h-5 text-rose-500" />
+              All Identified High-Risk Accounts
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Review potentially compromised or targeted accounts.</p>
           </div>
           
-          <div class="flex items-center gap-2 text-sm text-gray-600">
-            <i class="fas fa-info-circle"></i>
-            <span>Showing last {{ timeRange }} days</span>
-          </div>
         </div>
         
-        <div class="mt-4 flex items-center gap-4">
-          <div class="text-sm text-gray-600">Time Range:</div>
-          <div class="flex flex-wrap gap-2">
-            <Button 
-              v-for="range in timeRanges" 
-              :key="range.value"
-              @click="setTimeRange(range.value)"
-              size="sm"
-              :variant="timeRange === range.value ? 'default' : 'secondary'"
-              :class="timeRange === range.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-            >
-              {{ range.label }}
-            </Button>
+        <div class="max-h-[60vh] overflow-y-auto p-6 space-y-3 custom-scrollbar">
+          <div v-if="dssInsights.allAtRiskAccounts.length === 0" class="flex flex-col items-center justify-center text-slate-400 py-10 w-full">
+            <ShieldCheck class="w-10 h-10 mb-3 opacity-50 text-emerald-500" />
+            <span class="text-sm font-medium text-slate-600">No high-risk accounts identified in the current logs.</span>
           </div>
-        </div>
-      </CardContent>
-    </Card>
 
-    <Card class="shadow overflow-hidden bg-white">
-      <div class="border-b border-gray-200 px-6 py-4 bg-gray-50 flex flex-wrap justify-between items-center">
-        <div class="flex items-center">
-          <i class="fas fa-clipboard-list text-gray-500 text-lg mr-3"></i>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">System Audit Trail</h3>
-            <p class="text-sm text-gray-500 mt-1">Complete record of all system activities and user actions</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-3 mt-4 sm:mt-0">
-          <div class="text-xs text-gray-500">
-            Auto-refresh: 
-            <span class="font-medium" :class="autoRefresh ? 'text-green-600' : 'text-gray-400'">
-              {{ autoRefresh ? 'ON' : 'OFF' }}
-            </span>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            @click="toggleAutoRefresh"
-            class="text-blue-600 hover:text-blue-800 h-8 w-8"
-          >
-            <i class="fas fa-sync-alt"></i>
-          </Button>
-        </div>
-      </div>
-      
-      <div class="overflow-x-auto">
-        <Table>
-          <TableHeader class="bg-gray-50">
-            <TableRow>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-user"></i>
-                  <span>User</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-bolt"></i>
-                  <span>Action</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-calendar-alt"></i>
-                  <span>Timestamp</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-info-circle"></i>
-                  <span>Details</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-exclamation-triangle"></i>
-                  <span>Severity</span>
-                </div>
-              </TableHead>
-              <TableHead class="px-6 py-3">
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <i class="fas fa-map-marker-alt"></i>
-                  <span>IP Address</span>
-                </div>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody class="bg-white divide-y divide-gray-200">
-            <TableRow 
-              v-for="log in filteredLogs" 
-              :key="log.id"
-              class="hover:bg-gray-50 transition-colors duration-150"
-            >
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div 
-                    class="flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center"
-                    :class="getUserRoleClass(log.userRole)"
-                  >
-                    <i :class="getUserIcon(log.userRole)" class="text-white"></i>
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ log.userName }}</div>
-                    <div class="text-xs text-gray-500">{{ log.userRole }}</div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell class="px-6 py-4">
-                <div class="flex items-center">
-                  <div class="mr-3">
-                    <i :class="getActionIcon(log.actionType)" class="text-lg" :style="{ color: getActionColor(log.actionType) }"></i>
-                  </div>
-                  <div>
-                    <div class="text-sm font-medium text-gray-900">{{ formatAction(log.actionType) }}</div>
-                    <div class="text-xs text-gray-500">{{ log.entityType }}</div>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ formatDate(log.timestamp) }}</div>
-                <div class="text-xs text-gray-500">{{ formatTime(log.timestamp) }}</div>
-                <div class="text-xs text-gray-400">{{ getTimeAgo(log.timestamp) }}</div>
-              </TableCell>
-              <TableCell class="px-6 py-4">
-                <div class="text-sm text-gray-900 max-w-xs truncate" :title="log.details">{{ log.details }}</div>
-                <div v-if="log.entityId" class="text-xs text-gray-500">
-                  ID: {{ log.entityId }}
-                </div>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <Badge 
-                  class="px-3 py-1 text-xs font-semibold rounded-full border-0 shadow-none"
-                  :class="getSeverityClass(log.severity)"
-                >
-                  <i :class="getSeverityIcon(log.severity)" class="mr-1"></i>
-                  {{ log.severity.charAt(0).toUpperCase() + log.severity.slice(1) }}
-                </Badge>
-              </TableCell>
-              <TableCell class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-mono text-gray-900">{{ log.ipAddress }}</div>
-                <div class="text-xs text-gray-500">{{ log.browser }}</div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-      
-      <div v-if="filteredLogs.length === 0" class="text-center py-16">
-        <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <i class="fas fa-search text-gray-400 text-3xl"></i>
-        </div>
-        <h3 class="text-lg font-medium text-gray-900 mb-2">No audit logs found</h3>
-        <p class="text-gray-500 max-w-sm mx-auto">Try adjusting your search or filter criteria.</p>
-      </div>
-      
-      <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-        <div class="flex flex-col md:flex-row md:items-center justify-between">
-          <div class="text-sm text-gray-500 mb-2 md:mb-0">
-            Showing <span class="font-medium">{{ filteredLogs.length }}</span> of 
-            <span class="font-medium">{{ auditLogs.length }}</span> audit logs
-            <span v-if="filteredLogs.length < auditLogs.length" class="ml-2 text-blue-600">
-              (filtered)
-            </span>
-          </div>
-          <div class="flex items-center gap-4">
-            <Button 
-              variant="outline"
-              size="sm"
-              @click="loadMoreLogs"
-              class="border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <i class="fas fa-plus mr-2"></i>
-              Load More
-            </Button>
-            <div class="text-xs text-gray-500">
-              <i class="fas fa-database mr-1"></i>
-              Log retention: 90 days
-            </div>
-          </div>
-        </div>
-      </div>
-    </Card>
-
-    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card class="shadow">
-        <CardContent class="p-6">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-chart-pie text-blue-500 text-lg mr-3"></i>
-            <h4 class="font-bold text-gray-800">Activity Summary</h4>
-          </div>
-          <div class="space-y-4">
-            <div 
-              v-for="activity in activitySummary" 
-              :key="activity.type"
-              class="flex items-center justify-between"
-            >
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded-full mr-3" :style="{ backgroundColor: activity.color }"></div>
-                <span class="text-sm text-gray-700">{{ activity.label }}</span>
+          <div v-else v-for="account in dssInsights.allAtRiskAccounts" :key="account.email" 
+            class="flex flex-col sm:flex-row justify-between sm:items-center p-4 rounded-xl border transition-all"
+            :class="account.threatLevel.includes('Critical') ? 'bg-rose-50 border-rose-200' : 'bg-orange-50 border-orange-200'">
+            
+            <div class="mb-3 sm:mb-0">
+              <div class="font-bold text-sm" :class="account.threatLevel.includes('Critical') ? 'text-rose-900' : 'text-orange-900'">
+                {{ account.email }}
               </div>
-              <div class="text-sm font-medium text-gray-900">{{ activity.count }} events</div>
+              <div class="text-xs font-medium mt-1" :class="account.threatLevel.includes('Critical') ? 'text-rose-600' : 'text-orange-600'">
+                <span v-if="account.threatLevel.includes('Breach')">⚠️ Critical: Potential Account Compromise</span>
+                <span v-else-if="account.threatLevel.includes('Critical')">⚠️ Critical: Sustained Brute Force Attack</span>
+                <span v-else>⚠️ High Risk: Continuous Brute Force Targeting</span>
+              </div>
+              <div class="text-[10px] uppercase font-bold mt-2" :class="account.threatLevel.includes('Critical') ? 'text-rose-400' : 'text-orange-400'">
+                Consecutive Failures: <span class="text-sm text-black">{{ account.maxConsecutiveFailures }}</span>
+              </div>
             </div>
-          </div>
-          <div class="mt-6 pt-6 border-t border-gray-100">
-            <div class="text-xs text-gray-500">
-              <i class="fas fa-clock mr-1"></i>
-              Last updated: {{ lastUpdated }}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card class="bg-blue-50 border-blue-200 shadow-none">
-        <CardContent class="p-6">
-          <div class="flex items-start mb-4">
-            <div class="flex-shrink-0">
-              <i class="fas fa-shield-alt text-blue-500 text-2xl"></i>
-            </div>
-            <div class="ml-4">
-              <h4 class="font-bold text-blue-900">Security & Compliance</h4>
-              <p class="text-blue-700 text-sm mt-2">
-                Audit logs provide accountability and are essential for security monitoring, 
-                compliance requirements, and troubleshooting system issues.
-              </p>
+            <div class="shrink-0 flex items-center justify-end">
+              <button 
+                @click="notifyUser(account.email)" 
+                :disabled="isNotifying[account.email]"
+                class="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="account.threatLevel.includes('Critical') ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'"
+              >
+                <Loader2 v-if="isNotifying[account.email]" class="w-4 h-4 animate-spin" />
+                <Bell v-else class="w-4 h-4" />
+                {{ isNotifying[account.email] ? 'Sending...' : 'Send Security Alert' }}
+              </button>
             </div>
           </div>
-          <ul class="text-sm text-blue-700 space-y-2 mt-4">
-            <li class="flex items-start">
-              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-              <span>All user actions are logged for accountability</span>
-            </li>
-            <li class="flex items-start">
-              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-              <span>Logs are retained for 90 days for compliance</span>
-            </li>
-            <li class="flex items-start">
-              <i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i>
-              <span>Critical security events trigger alerts</span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { 
+  ShieldCheck, RefreshCw, FileText, AlertCircle, CheckCircle2, 
+  Search, Clock, Globe, Loader2, FileX, Activity, Info, ChevronRight, X, Bell
+} from 'lucide-vue-next'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { toast } from 'vue-sonner'
+import axios from '@/utils/axios'
+import echo from '@/utils/websocket'
 
-// Audit logs data
-const auditLogs = ref([
-  {
-    id: 1,
-    userName: 'System Admin',
-    userRole: 'admin',
-    actionType: 'login',
-    entityType: 'User',
-    entityId: 'ADM001',
-    details: 'User logged in successfully',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 300000).toISOString(), // 5 mins ago
-    ipAddress: '192.168.1.100',
-    browser: 'Chrome 120'
-  },
-  {
-    id: 2,
-    userName: 'John Painters Inc.',
-    userRole: 'service_provider',
-    actionType: 'create',
-    entityType: 'Service Request',
-    entityId: 'SR-045',
-    details: 'Created new service request for client Maria Santos',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 900000).toISOString(), // 15 mins ago
-    ipAddress: '203.145.67.89',
-    browser: 'Firefox 121'
-  },
-  {
-    id: 3,
-    userName: 'ColorCraft Supplies',
-    userRole: 'distributor',
-    actionType: 'update',
-    entityType: 'Inventory',
-    entityId: 'INV-789',
-    details: 'Updated paint inventory quantity for Ocean Blue',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 1800000).toISOString(), // 30 mins ago
-    ipAddress: '175.158.32.45',
-    browser: 'Safari 17'
-  },
-  {
-    id: 4,
-    userName: 'System Admin',
-    userRole: 'admin',
-    actionType: 'delete',
-    entityType: 'User',
-    entityId: 'USR-023',
-    details: 'Deleted inactive user account',
-    severity: 'warning',
-    timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    ipAddress: '192.168.1.100',
-    browser: 'Chrome 120'
-  },
-  {
-    id: 5,
-    userName: 'Premium Paint Pros',
-    userRole: 'service_provider',
-    actionType: 'color_mix',
-    entityType: 'Color Customization',
-    entityId: 'COL-156',
-    details: 'Generated new color formula: Sunset Orange variant',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-    ipAddress: '210.187.54.32',
-    browser: 'Edge 120'
-  },
-  {
-    id: 6,
-    userName: 'Unknown',
-    userRole: 'unknown',
-    actionType: 'failed_login',
-    entityType: 'Security',
-    entityId: null,
-    details: 'Failed login attempt with invalid credentials',
-    severity: 'critical',
-    timestamp: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
-    ipAddress: '45.76.189.223',
-    browser: 'Unknown'
-  },
-  {
-    id: 7,
-    userName: 'Brush Masters Co.',
-    userRole: 'distributor',
-    actionType: 'export',
-    entityType: 'Report',
-    entityId: 'REP-2024-01',
-    details: 'Exported monthly sales report',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 14400000).toISOString(), // 4 hours ago
-    ipAddress: '189.204.76.33',
-    browser: 'Chrome 119'
-  },
-  {
-    id: 8,
-    userName: 'System Admin',
-    userRole: 'admin',
-    actionType: 'system_update',
-    entityType: 'System',
-    entityId: null,
-    details: 'Applied security patches to user management module',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 21600000).toISOString(), // 6 hours ago
-    ipAddress: '192.168.1.100',
-    browser: 'Chrome 120'
-  },
-  {
-    id: 9,
-    userName: 'Maria Santos',
-    userRole: 'client',
-    actionType: 'view',
-    entityType: 'Color Preview',
-    entityId: 'COL-142',
-    details: 'Viewed virtual paint color preview on living room wall',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 28800000).toISOString(), // 8 hours ago
-    ipAddress: '112.198.65.12',
-    browser: 'Mobile Safari'
-  },
-  {
-    id: 10,
-    userName: 'System Auto',
-    userRole: 'system',
-    actionType: 'backup',
-    entityType: 'Database',
-    entityId: 'DB-20240115',
-    details: 'Automated daily database backup completed successfully',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
-    ipAddress: '127.0.0.1',
-    browser: 'System Process'
-  }
-])
-
-// Statistics
-const stats = ref({
-  totalLogs: 1247,
-  todaysLogs: 42,
-  activeUsers: 18,
-  securityEvents: 7
-})
-
-// Filters
+// --- State ---
+const rawLogs = ref([])
+const isLoading = ref(true)
 const searchQuery = ref('')
-const selectedUser = ref('all')
-const selectedAction = ref('all')
-const selectedSeverity = ref('all')
-const timeRange = ref(7)
-const autoRefresh = ref(false)
+const roleFilter = ref('all')
+const riskFilter = ref('all')
 
-// Time ranges for filtering
-const timeRanges = [
-  { label: 'Today', value: 1 },
-  { label: '7 Days', value: 7 },
-  { label: '30 Days', value: 30 },
-  { label: 'All Time', value: 365 }
-]
+const isAtRiskModalOpen = ref(false)
+const isNotifying = ref({})
 
-// Computed properties
-const uniqueUsers = computed(() => {
-  const users = new Set(auditLogs.value.map(log => log.userName))
-  return Array.from(users).sort()
+// --- Pagination State ---
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+
+
+// Reset to page 1 when any filter changes
+watch([searchQuery, roleFilter, riskFilter], () => {
+  currentPage.value = 1
 })
 
-const uniqueActions = computed(() => {
-  const actions = new Set(auditLogs.value.map(log => log.actionType))
-  return Array.from(actions).sort()
+// --- Fetch & WebSockets ---
+const fetchLogs = async () => {
+  isLoading.value = true
+  try {
+    const response = await axios.get('/admin/login-logs') // Using the API endpoint from api.php
+    if (response.data.status === 'success') {
+      rawLogs.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Failed to fetch audit logs:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const refreshData = () => {
+  fetchLogs()
+}
+
+onMounted(() => {
+  fetchLogs()
+
+  if (echo) {
+    echo.private('admin.login-logs')
+      .listen('.new-login-log', (e) => {
+        if (e.log) rawLogs.value.unshift(e.log)
+      })
+  }
+})
+
+onUnmounted(() => {
+  if (echo) {
+    echo.leaveChannel('admin.login-logs')
+  }
+})
+
+// --- Notification Logic ---
+const notifyUser = async (email) => {
+  isNotifying.value[email] = true
+  try {
+    const res = await axios.post('/admin/login-logs/notify', { email })
+    if (res.data.status === 'success') {
+      toast.success('Notification Sent', { description: `Security alert sent regarding ${email}.` })
+      // Track that a notification was successfully sent
+      sentTodayMap.value[email] = (sentTodayMap.value[email] || 0) + 1
+    }
+  } catch (error) {
+    toast.error('Notification Failed', { description: error.response?.data?.message || 'Unable to send security alert.' })
+  } finally {
+    isNotifying.value[email] = false
+  }
+}
+
+// ==========================================
+// DYNAMIC DECISION SUPPORT SYSTEM (DSS)
+// ==========================================
+const dssInsights = computed(() => {
+  if (!rawLogs.value.length) {
+    return { evaluatedLogs: [], avgFailures: 0, highThreshold: 3, criticalThreshold: 5, atRiskAccounts: [], allAtRiskAccounts: [] }
+  }
+
+  const emailStats = {}
+  let totalFails = 0
+  let usersWithFails = 0
+
+  rawLogs.value.forEach(log => {
+    if (!emailStats[log.email]) emailStats[log.email] = { fails: 0 }
+    if (log.status === 'Failed') {
+      emailStats[log.email].fails++
+      totalFails++
+    }
+  })
+
+  Object.values(emailStats).forEach(s => { if (s.fails > 0) usersWithFails++ })
+
+  const avgFailures = usersWithFails > 0 ? (totalFails / usersWithFails) : 0
+  const highThreshold = Math.min(10, Math.max(3, Math.ceil(avgFailures * 1.5)))
+  const criticalThreshold = Math.min(15, Math.max(5, Math.ceil(avgFailures * 2.5)))
+
+  const sortedLogs = [...rawLogs.value].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  
+  const sequenceTracker = {} 
+  const atRiskMap = {} 
+
+  const evaluatedLogs = sortedLogs.map(log => {
+    if (!sequenceTracker[log.email]) sequenceTracker[log.email] = 0
+
+    let risk = 'Safe'
+    let reason = ''
+    const hour = new Date(log.created_at).getHours()
+
+    if (log.status === 'Failed') {
+      sequenceTracker[log.email]++
+      const consecFails = sequenceTracker[log.email]
+
+      if (consecFails >= criticalThreshold) {
+        risk = 'Critical'
+        reason = `Sustained Brute Force Attack detected (${consecFails} consecutive failures)`
+      } else if (consecFails >= highThreshold) {
+        risk = 'High'
+        reason = `Suspiciously high consecutive failures (${consecFails})`
+      } else {
+        risk = 'Low'
+        reason = log.failure_reason || 'Standard authentication failure'
+      }
+
+      if (consecFails >= highThreshold) {
+        const existing = atRiskMap[log.email]
+        if (!existing || (consecFails > existing.maxConsecutiveFailures && !existing.threatLevel.includes('Breach'))) {
+          atRiskMap[log.email] = { 
+            email: log.email, 
+            maxConsecutiveFailures: consecFails,
+            threatLevel: consecFails >= criticalThreshold ? 'Critical' : 'High'
+          }
+        }
+      }
+
+    } else if (log.status === 'Success') {
+      const pastFails = sequenceTracker[log.email]
+
+      if (pastFails >= highThreshold) {
+        risk = 'Critical'
+        reason = `CRITICAL: Successful login immediately following ${pastFails} failed attempts. Possible Account Compromise.`
+        
+        atRiskMap[log.email] = { 
+          email: log.email, 
+          maxConsecutiveFailures: pastFails,
+          threatLevel: 'Critical (Breach Risk)'
+        }
+      } 
+      else if (hour >= 0 && hour <= 5) {
+        risk = 'Medium'
+        reason = 'Successful login during unusual hours (12:00 AM - 5:00 AM)'
+      } 
+      else {
+        risk = 'Safe'
+        reason = 'Standard authorized login'
+      }
+
+      sequenceTracker[log.email] = 0
+    }
+
+    return { ...log, dss_risk: risk, dss_reason: reason }
+  })
+
+  const allAtRiskAccounts = Object.values(atRiskMap).sort((a, b) => b.maxConsecutiveFailures - a.maxConsecutiveFailures)
+  const atRiskAccounts = allAtRiskAccounts.slice(0, 5)
+
+  return { 
+    evaluatedLogs: evaluatedLogs.reverse(), 
+    avgFailures, 
+    highThreshold, 
+    criticalThreshold,
+    atRiskAccounts,
+    allAtRiskAccounts
+  }
+})
+
+// --- Computed Filters based on Evaluated DSS Logs ---
+const uniqueRoles = computed(() => {
+  const roles = new Set(dssInsights.value.evaluatedLogs.map(l => l.role).filter(Boolean))
+  return Array.from(roles).sort()
 })
 
 const filteredLogs = computed(() => {
-  let filtered = auditLogs.value
-  
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(log => 
-      log.userName.toLowerCase().includes(query) ||
-      log.actionType.toLowerCase().includes(query) ||
-      log.details.toLowerCase().includes(query) ||
-      log.entityType.toLowerCase().includes(query)
-    )
-  }
-  
-  // Apply user filter
-  if (selectedUser.value !== 'all') {
-    filtered = filtered.filter(log => log.userName === selectedUser.value)
-  }
-  
-  // Apply action filter
-  if (selectedAction.value !== 'all') {
-    filtered = filtered.filter(log => log.actionType === selectedAction.value)
-  }
-  
-  // Apply severity filter
-  if (selectedSeverity.value !== 'all') {
-    filtered = filtered.filter(log => log.severity === selectedSeverity.value)
-  }
-  
-  return filtered
-})
+  return dssInsights.value.evaluatedLogs.filter(log => {
+    const matchRole = roleFilter.value === 'all' || log.role === roleFilter.value
+    const matchRisk = riskFilter.value === 'all' || log.dss_risk === riskFilter.value
+    
+    const query = searchQuery.value.toLowerCase().trim()
+    const matchSearch = query === '' ||
+      (log.Fullname && log.Fullname.toLowerCase().includes(query)) ||
+      (log.email && log.email.toLowerCase().includes(query))
 
-const activitySummary = computed(() => {
-  const summary = {
-    'login': { label: 'User Logins', count: 0, color: '#4A90E2' },
-    'create': { label: 'Create Actions', count: 0, color: '#2ECC71' },
-    'update': { label: 'Update Actions', count: 0, color: '#F1C40F' },
-    'delete': { label: 'Delete Actions', count: 0, color: '#E74C3C' },
-    'security': { label: 'Security Events', count: 0, color: '#9B59B6' }
-  }
-  
-  auditLogs.value.forEach(log => {
-    if (log.actionType.includes('login')) summary.login.count++
-    else if (log.actionType.includes('create')) summary.create.count++
-    else if (log.actionType.includes('update')) summary.update.count++
-    else if (log.actionType.includes('delete')) summary.delete.count++
-    if (log.severity === 'critical' || log.actionType.includes('failed')) summary.security.count++
-  })
-  
-  return Object.values(summary)
-})
-
-const lastUpdated = computed(() => {
-  return new Date().toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    second: '2-digit'
+    return matchRole && matchRisk && matchSearch
   })
 })
 
-// Helper functions
-const getUserRoleClass = (role) => {
-  const classes = {
-    'admin': 'bg-blue-600',
-    'distributor': 'bg-green-600',
-    'service_provider': 'bg-purple-600',
-    'client': 'bg-yellow-600',
-    'system': 'bg-gray-600',
-    'unknown': 'bg-red-600'
-  }
-  return classes[role] || 'bg-gray-400'
+const totalPages = computed(() => Math.ceil(filteredLogs.value.length / itemsPerPage.value))
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredLogs.value.slice(start, end)
+})
+
+const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
+const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
+
+// --- Formatting ---
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  const d = new Date(dateString)
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit' })}`
 }
 
-const getUserIcon = (role) => {
-  const icons = {
-    'admin': 'fas fa-user-shield',
-    'distributor': 'fas fa-warehouse',
-    'service_provider': 'fas fa-user-hard-hat',
-    'client': 'fas fa-user',
-    'system': 'fas fa-server',
-    'unknown': 'fas fa-question'
-  }
-  return icons[role] || 'fas fa-user'
-}
+// ==========================================
+// CUSTOM CHART LOGIC (NO EXTERNAL LIBRARIES)
+// ==========================================
 
-const getActionIcon = (action) => {
-  const icons = {
-    'login': 'fas fa-sign-in-alt',
-    'logout': 'fas fa-sign-out-alt',
-    'create': 'fas fa-plus-circle',
-    'update': 'fas fa-edit',
-    'delete': 'fas fa-trash-alt',
-    'view': 'fas fa-eye',
-    'export': 'fas fa-download',
-    'color_mix': 'fas fa-palette',
-    'system_update': 'fas fa-cogs',
-    'backup': 'fas fa-database',
-    'failed_login': 'fas fa-exclamation-triangle'
-  }
-  return icons[action] || 'fas fa-bolt'
-}
+const stats = computed(() => {
+  const total = rawLogs.value.length
+  const success = rawLogs.value.filter(l => l.status === 'Success').length
+  const failed = rawLogs.value.filter(l => l.status === 'Failed').length
+  return { total, success, failed }
+})
 
-const getActionColor = (action) => {
-  const colors = {
-    'login': '#4A90E2',
-    'create': '#2ECC71',
-    'update': '#F1C40F',
-    'delete': '#E74C3C',
-    'failed_login': '#E74C3C'
-  }
-  return colors[action] || '#7F8C8D'
-}
+// 1. Line Chart Data
+const trendData = computed(() => {
+  const dates = [...Array(7)].map((_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    return d.toISOString().split('T')[0]
+  }).reverse()
 
-const formatAction = (action) => {
-  return action.split('_').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ')
-}
-
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
+  const counts = dates.map(date => {
+    return rawLogs.value.filter(log => log.created_at && log.created_at.startsWith(date)).length
   })
-}
 
-const formatTime = (timestamp) => {
-  return new Date(timestamp).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
+  const maxVal = Math.max(...counts, 1)
+  const width = 100
+  const height = 40
+
+  const points = counts.map((val, idx) => {
+    const x = (idx / (counts.length - 1)) * width
+    const y = height - (val / maxVal) * (height - 5)
+    return { x, y, val, label: new Date(dates[idx]).toLocaleDateString('en-US', { weekday: 'short' }) }
   })
-}
 
-const getTimeAgo = (timestamp) => {
-  const now = new Date()
-  const logTime = new Date(timestamp)
-  const diffMs = now - logTime
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
-  return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-}
+  const linePath = 'M ' + points.map(p => `${p.x} ${p.y}`).join(' L ')
+  const fillPath = `${linePath} L 100 40 L 0 40 Z`
 
-const getSeverityClass = (severity) => {
-  const classes = {
-    'info': 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-    'warning': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-    'critical': 'bg-red-100 text-red-800 hover:bg-red-100'
-  }
-  return classes[severity] || 'bg-gray-100 text-gray-800'
-}
+  return { points, linePath, fillPath }
+})
 
-const getSeverityIcon = (severity) => {
-  const icons = {
-    'info': 'fas fa-info-circle',
-    'warning': 'fas fa-exclamation-triangle',
-    'critical': 'fas fa-fire'
-  }
-  return icons[severity] || 'fas fa-circle'
-}
-
-// Methods
-const setTimeRange = (days) => {
-  timeRange.value = days
-  console.log(`Loading logs from last ${days} days`)
-}
-
-const toggleAutoRefresh = () => {
-  autoRefresh.value = !autoRefresh.value
-  if (autoRefresh.value) {
-    alert('Auto-refresh enabled - logs will update every 30 seconds')
-  } else {
-    alert('Auto-refresh disabled')
-  }
-}
-
-const loadMoreLogs = () => {
-  console.log('Loading more audit logs...')
-  alert('Loading additional audit logs...')
-}
-
-const clearOldLogs = () => {
-  if (confirm('Are you sure you want to clear logs older than 90 days? This action cannot be undone.')) {
-    console.log('Clearing old audit logs...')
-    alert('Old audit logs cleared successfully')
-  }
-}
-
-const exportLogs = () => {
-  const headers = ['Timestamp', 'User', 'Role', 'Action', 'Entity', 'Details', 'Severity', 'IP Address']
-  const csvContent = [
-    headers.join(','),
-    ...filteredLogs.value.map(log => [
-      new Date(log.timestamp).toISOString(),
-      log.userName,
-      log.userRole,
-      formatAction(log.actionType),
-      log.entityType,
-      `"${log.details}"`,
-      log.severity,
-      log.ipAddress
-    ].join(','))
-  ].join('\n')
-  
-  const blob = new Blob([csvContent], { type: 'text/csv' })
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
-  a.click()
-  window.URL.revokeObjectURL(url)
-}
-
-// Auto-refresh interval
-let refreshInterval = null
-
-onMounted(() => {
-  console.log('Audit Logs page loaded')
-  
-  // Set up auto-refresh if enabled
-  if (autoRefresh.value) {
-    refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing audit logs...')
-    }, 30000) // Every 30 seconds
+// 2. Doughnut Chart Data
+const doughnutData = computed(() => {
+  const total = rawLogs.value.length || 1
+  return {
+    success: stats.value.success,
+    failed: stats.value.failed,
+    successPct: (stats.value.success / total) * 100
   }
 })
 
-onBeforeUnmount(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-  }
+// 3. Bar Chart Data
+const barData = computed(() => {
+  const roleCounts = {}
+  rawLogs.value.forEach(log => {
+    const r = log.role ? log.role.replace(/_/g, ' ') : 'Unknown'
+    roleCounts[r] = (roleCounts[r] || 0) + 1
+  })
+
+  const sortedRoles = Object.entries(roleCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const maxCount = sortedRoles.length ? sortedRoles[0][1] : 1
+
+  return sortedRoles.map(([label, value]) => ({
+    label, value, percentage: (value / maxCount) * 100
+  }))
 })
 </script>
 
 <style scoped>
-/* Mobile responsive adjustments */
-@media (max-width: 768px) {
-  .text-3xl {
-    font-size: 1.75rem;
-  }
-  
-  .text-2xl {
-    font-size: 1.5rem;
-  }
-  
-  .grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .lg\:grid-cols-2 {
-    grid-template-columns: 1fr;
-  }
-  
-  table {
-    display: block;
-    overflow-x: auto;
-  }
-  
-  .max-w-xs {
-    max-width: 12rem;
-  }
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 20px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
 }
 </style>

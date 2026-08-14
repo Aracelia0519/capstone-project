@@ -8,6 +8,11 @@ Broadcast::channel('chat.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+// ------------- NEW: LOGIN LOGS ADMIN CHANNEL -------------
+Broadcast::channel('admin.login-logs', function ($user) {
+    return $user->role === 'admin';
+});
+
 /**
  * Authorization for E-Commerce Return Chats
  * Allows the client, distributor, operational_distributor, or employee to listen.
