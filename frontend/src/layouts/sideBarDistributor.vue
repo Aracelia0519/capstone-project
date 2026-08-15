@@ -232,7 +232,7 @@ import {
   LayoutDashboard, Package, ClipboardList, TrendingUp, Users, Clock, 
   Settings, LogOut, Lock, User, CheckCircle, Box, LineChart, Calendar, 
   History, Building2, UserCog, Wallet, FileBarChart, Lightbulb, Loader2, 
-  Handshake, ClipboardCheck, Bell, AlertTriangle, Bug
+  Handshake, ClipboardCheck, Bell, AlertTriangle, Bug, ShieldCheck
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -353,13 +353,22 @@ const baseNavigation = [
     items: [
       { name: 'Reports', path: '/distributor/ReportsD', icon: FileBarChart, color: 'text-pink-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Technical Reports', path: '/distributor/TechnicalReportsDis', icon: Bug, color: 'text-orange-400', requiresVerify: true, hideOnTerminate: true },
+      {
+        name: 'Security Settings',
+        path: '/distributor/securitySettingsDis',
+        icon: ShieldCheck,
+        color: 'text-emerald-400',
+        requiresVerify: true,
+        hideOnTerminate: true
+      },
       { 
         name: 'Notifications', 
         path: '/distributor/notificationsDis', 
         icon: Bell, 
         color: 'text-blue-400', 
         requiresVerify: true 
-      }
+      },
+      
     ]
   }, 
 ]

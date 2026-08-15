@@ -244,7 +244,7 @@ import {
   LayoutDashboard, Users, ClipboardCheck, Paintbrush, 
   History, Package, Building, FileText, Settings, LogOut, Lock, 
   Loader2, Briefcase, MessageCircle, CreditCard, UserCog, Bell, AlertTriangle,
-  Bug
+  Bug, ShieldCheck
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -313,8 +313,22 @@ const baseNavigation = [
       { name: 'Distributors', path: '/serviceProvider/Distributors', icon: Building, color: 'text-teal-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Reports', path: '/serviceProvider/ReportsSP', icon: FileText, color: 'text-rose-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Payment Settings', path: '/serviceProvider/SPPaymentSettings', icon: CreditCard, color: 'text-green-400', requiresVerify: true, hideOnTerminate: true },
+    ]
+  },
+  {
+    title: 'System',
+    items: [
       { name: 'Technical Reports', path: '/serviceProvider/TechnicalReportsSP', icon: Bug, color: 'text-orange-400', requiresVerify: true, hideOnTerminate: true},
-      { name: 'Notifications', path: '/serviceProvider/notificationsSP', icon: Bell, color: 'text-blue-400', requiresVerify: false }
+      {
+        name: 'Security Settings',
+        path: '/serviceProvider/securitySettingsSP',
+        icon: ShieldCheck,
+        color: 'text-emerald-400',
+        requiresVerify: true,
+        hideOnTerminate: true
+      },
+      { name: 'Notifications', path: '/serviceProvider/notificationsSP', icon: Bell, color: 'text-blue-400', requiresVerify: false },
+      
     ]
   }
 ]

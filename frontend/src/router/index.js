@@ -37,6 +37,10 @@ import ProfileSettings from '@/views/distributor/ProfileSettings.vue'
 import DistributorReports from '@/views/distributor/Reports.vue'
 import notificationsDis from '@/views/distributor/notificationsDis.vue'
 import TechnicalReportsDis from '@/views/distributor/TechnicalReportsDis.vue'
+import securitySettingsDis from '@/views/distributor/securitySettingsDis.vue'
+
+
+
 
 import ServiceProviderLayout from '@/layouts/ServiceProviderLayout.vue'
 import DashboardSP from '@/views/serviceProvider/DashboardSP.vue'
@@ -60,6 +64,7 @@ import SpDistributorProducts from '@/views/serviceProvider/SpDistributorProducts
 import PortfolioSetup from '@/views/serviceProvider/PortfolioSetup.vue'
 import notificationsSP from '@/views/serviceProvider/notificationsSP.vue'
 import TechnicalReportsSP from '@/views/serviceProvider/TechnicalReportsSP.vue'
+import securitySettingsSP from '@/views/serviceProvider/securitySettingsSP.vue'
 
 import ClientLayout from '@/layouts/ClientLayout.vue'
 import DashboardC from '@/views/client/DashboardC.vue'
@@ -72,6 +77,7 @@ import ServiceProvidersC from '@/views/client/ServiceProvidersC.vue'
 import ProfileC from '@/views/client/ProfileC.vue'
 import notificationsC from '@/views/client/notificationsC.vue'
 import TechnicalReportsC from '@/views/client/TechnicalReportsC.vue'
+import securitySettingsC from '@/views/client/securitySettingsC.vue'
 
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
@@ -171,7 +177,7 @@ import SupplierPayments from '@/views/supplier/SupplierPayments.vue'
 import SupplierVehicles from '@/views/supplier/SupplierVehicles.vue'
 import notificationsSup from '@/views/supplier/notificationsSup.vue'
 import TechnicalReportsSup from '@/views/supplier/TechnicalReportsSup.vue'
-
+import securitySettingsSup from '@/views/supplier/securitySettingsSup.vue'
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
 import SupplierReturns from '@/views/supplier/SupplierReturns.vue'
@@ -692,13 +698,19 @@ const routes = [
         path: 'notificationsDis',
         name: 'notificationsDis',
         component: notificationsDis,
-        meta: { requiresVerification: false }
+        meta: { requiresVerification: true }
       },
       {
         path: 'TechnicalReportsDis',
         name: 'TechnicalReportsDis',
         component: TechnicalReportsDis,
-        meta: { requiresVerification: false }
+        meta: { requiresVerification: true }
+      },
+      {
+        path: 'securitySettingsDis',
+        name: 'securitySettingsDis',
+        component: securitySettingsDis,
+        meta: { requiresVerification: true }
       },
     ]
   },
@@ -784,7 +796,7 @@ const routes = [
       { path: 'distributor-products/:id', name: 'sp_distributor_products', component: SpDistributorProducts },
       { path: 'notificationsSP', name: 'notificationsSP', component: notificationsSP },
       { path: 'TechnicalReportsSP', name: 'TechnicalReportsSP', component: TechnicalReportsSP },
-
+      { path: 'securitySettingsSP', name: 'securitySettingsSP', component: securitySettingsSP },
     ]
   },
   {
@@ -841,6 +853,11 @@ const routes = [
         path: 'TechnicalReportsC',
         name: 'TechnicalReportsC',
         component: TechnicalReportsC
+      }, 
+      {
+        path: 'securitySettingsC',
+        name: 'securitySettingsC',
+        component: securitySettingsC
       }, 
     ]
   },
@@ -1218,6 +1235,11 @@ const routes = [
         path: 'TechnicalReportsSup', 
         name: 'TechnicalReportsSup',
         component: TechnicalReportsSup
+      },
+      {
+        path: 'securitySettingsSup', 
+        name: 'securitySettingsSup',
+        component: securitySettingsSup
       },
 
       

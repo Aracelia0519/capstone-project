@@ -415,6 +415,14 @@ const navigation = [
         requiresVerify: true,
         hideOnTerminate: true
       },
+      {
+        name: 'Security Settings',
+        path: '/supplier/securitySettingsSup',
+        icon: ShieldCheck,
+        color: 'text-emerald-400',
+        requiresVerify: true,
+        hideOnTerminate: true
+      },
       { 
         name: 'Notifications', 
         path: '/supplier/notificationsSup', 
@@ -422,6 +430,7 @@ const navigation = [
         color: 'text-blue-400', 
         requiresVerify: true
       },
+      
     ]
   },
 ]

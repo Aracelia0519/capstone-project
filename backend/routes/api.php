@@ -112,6 +112,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
 
+        // -----------------------------------------------------
+        // CLIENT SECURITY SETTINGS
+        // -----------------------------------------------------
+        Route::prefix('security-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Client\SecuritySettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Client\SecuritySettingController::class, 'update']);
+
+            Route::post('/send-otp', [\App\Http\Controllers\Api\Client\SecuritySettingController::class, 'sendRecoveryOtp']);
+            Route::post('/verify-otp', [\App\Http\Controllers\Api\Client\SecuritySettingController::class, 'verifyRecoveryOtp']);
+            Route::post('/questions', [\App\Http\Controllers\Api\Client\SecuritySettingController::class, 'updateSecurityQuestions']);
+        });
+
         // --- NEW: FETCH INTERACTED SERVICE PROVIDERS ---
         Route::get('/interacted-providers', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'index']);
         Route::post('/providers/{id}/toggle-favorite', [\App\Http\Controllers\Api\Client\ClientProviderListController::class, 'toggleFavorite']);
@@ -253,6 +265,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // --- FETCH SERVICE PROVIDER ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderAccountStatusController::class, 'getStatus']);
+
+        // -----------------------------------------------------
+        // SERVICE PROVIDER SECURITY SETTINGS
+        // -----------------------------------------------------
+        Route::prefix('security-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\SecuritySettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\ServiceProvider\SecuritySettingController::class, 'update']);
+            Route::post('/send-otp', [\App\Http\Controllers\Api\ServiceProvider\SecuritySettingController::class, 'sendRecoveryOtp']);
+            Route::post('/verify-otp', [\App\Http\Controllers\Api\ServiceProvider\SecuritySettingController::class, 'verifyRecoveryOtp']);
+            Route::post('/questions', [\App\Http\Controllers\Api\ServiceProvider\SecuritySettingController::class, 'updateSecurityQuestions']);
+        });
 
         // SERVICE PROVIDER NOTIFICATIONS ROUTES ---
         Route::prefix('notifications')->group(function () {
@@ -430,6 +453,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ---FETCH DISTRIBUTOR ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Distributor\DistributorAccountStatusController::class, 'getStatus']);
+
+        // -----------------------------------------------------
+        // DISTRIBUTOR SECURITY SETTINGS
+        // -----------------------------------------------------
+        Route::prefix('security-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Distributor\SecuritySettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Distributor\SecuritySettingController::class, 'update']);
+            Route::post('/send-otp', [\App\Http\Controllers\Api\Distributor\SecuritySettingController::class, 'sendRecoveryOtp']);
+            Route::post('/verify-otp', [\App\Http\Controllers\Api\Distributor\SecuritySettingController::class, 'verifyRecoveryOtp']);
+            Route::post('/questions', [\App\Http\Controllers\Api\Distributor\SecuritySettingController::class, 'updateSecurityQuestions']);
+        });
 
         // --- TECHNICAL REPORTS ---
         Route::prefix('technical-reports')->group(function () {
@@ -812,6 +846,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ---FETCH SUPPLIER ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Supplier\SupplierAccountStatusController::class, 'getStatus']);
+
+        // -----------------------------------------------------
+        // SUPPLIER SECURITY SETTINGS
+        // -----------------------------------------------------
+        Route::prefix('security-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Supplier\SecuritySettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Supplier\SecuritySettingController::class, 'update']);
+            Route::post('/send-otp', [\App\Http\Controllers\Api\Supplier\SecuritySettingController::class, 'sendRecoveryOtp']);
+            Route::post('/verify-otp', [\App\Http\Controllers\Api\Supplier\SecuritySettingController::class, 'verifyRecoveryOtp']);
+            Route::post('/questions', [\App\Http\Controllers\Api\Supplier\SecuritySettingController::class, 'updateSecurityQuestions']);
+        });
 
         // --- TECHNICAL REPORTS ---
         Route::prefix('technical-reports')->group(function () {

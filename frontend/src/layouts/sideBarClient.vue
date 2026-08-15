@@ -226,7 +226,7 @@ import echo from '@/utils/websocket'
 import { 
   LayoutDashboard, ClipboardList, Palette, History, 
   Lightbulb, Users, User, LogOut, Loader2, UserCircle, 
-  Lock, MessageCircle, Bell, AlertTriangle, Bug
+  Lock, MessageCircle, Bell, AlertTriangle, Bug, ShieldCheck
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -278,7 +278,22 @@ const baseNavigation = [
     items: [
       { name: 'Suggestions', path: '/Clients/recommendation', icon: Lightbulb, color: 'text-amber-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Service Providers', path: '/Clients/serviceProviderC', icon: Users, color: 'text-teal-400', requiresVerify: true, hideOnTerminate: true },
+      
+    ]
+  },
+  {
+    title: 'System',
+    items: [
+      
       { name: 'Technical Reports', path: '/Clients/TechnicalReportsC', icon: Bug, color: 'text-orange-400', requiresVerify: true, hideOnTerminate: true},
+      {
+        name: 'Security Settings',
+        path: '/Clients/securitySettingsC',
+        icon: ShieldCheck,
+        color: 'text-emerald-400',
+        requiresVerify: true,
+        hideOnTerminate: true
+      },
       { name: 'Notifications', path: '/Clients/notificationsC', icon: Bell, color: 'text-blue-400', requiresVerify: true },
     ]
   }
