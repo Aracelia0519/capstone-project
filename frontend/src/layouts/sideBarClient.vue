@@ -378,6 +378,77 @@ const confirmLogout = async () => {
   }
 }
 
+// ==========================================
+// SESSION TERMINATION LOGIC
+// ==========================================
+
+const INACTIVITY_TIME = 1 * 60 * 1000; // 1 minute for testing (15 * 60 * 1000 for 15 mins)
+let inactivityTimer = null;
+
+const resetInactivityTimer = () => {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(autoLogout, INACTIVITY_TIME);
+};
+
+const setupActivityListeners = () => {
+  window.addEventListener('mousemove', resetInactivityTimer);
+  window.addEventListener('keydown', resetInactivityTimer);
+  window.addEventListener('click', resetInactivityTimer);
+  window.addEventListener('scroll', resetInactivityTimer);
+  resetInactivityTimer();
+};
+
+const removeActivityListeners = () => {
+  window.removeEventListener('mousemove', resetInactivityTimer);
+  window.removeEventListener('keydown', resetInactivityTimer);
+  window.removeEventListener('click', resetInactivityTimer);
+  window.removeEventListener('scroll', resetInactivityTimer);
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+};
+
+const autoLogout = async () => {
+  toast.error('Session Expired', { description: 'You have been logged out due to inactivity.' });
+  isLoggingOut.value = true;
+  emit('logout-started');
+  
+  try {
+    await api.post('/auth/session/terminate');
+  } catch (e) {
+    console.error('Auto logout error:', e);
+  } finally {
+    emit('logout-finished');
+    localStorage.clear();
+    router.push('/Landing/logIn');
+  }
+};
+
+const handleBeforeUnload = () => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    // Dynamically grab the baseURL from your centralized axios utility
+    const baseUrl = api.defaults.baseURL;
+    const url = `${baseUrl}/auth/session/terminate?token=${token}`;
+    
+    // sendBeacon sends a small amount of data asynchronously without blocking browser close
+    navigator.sendBeacon(url);
+  }
+};
+
+const applySessionTimeoutSettings = async () => {
+  try {
+    const res = await api.get('/client/security-settings');
+    // Safely parse the response depending on how your backend wraps the data
+    const isTimeoutEnabled = res.data?.data?.session_timeout || res.data?.settings?.session_timeout || res.data?.session_timeout;
+    
+    if (isTimeoutEnabled) {
+      setupActivityListeners();
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+  } catch (e) {
+    console.error("Failed to fetch security settings:", e);
+  }
+};
+
 onMounted(() => {
   const data = localStorage.getItem('user_data')
   if (data) {
@@ -388,6 +459,9 @@ onMounted(() => {
     // Check initial status and establish WebSocket listener
     checkAccountStatus()
     setupWebsockets()
+    
+    // Start Inactivity & Browser Close Listeners
+    applySessionTimeoutSettings()
   }
 })
 
@@ -395,6 +469,10 @@ onUnmounted(() => {
   if (echo && userId.value) {
     echo.leave(`account.status.${userId.value}`)
   }
+  
+  // Clean up Session Listeners
+  removeActivityListeners()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

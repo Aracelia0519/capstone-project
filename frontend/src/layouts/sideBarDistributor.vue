@@ -252,13 +252,13 @@ const router = useRouter()
 
 const isLoggingOut = ref(false)
 const showLogoutModal = ref(false)
-const showTerminationModal = ref(false) // State for full message modal
+const showTerminationModal = ref(false)
 
 const userName = ref('Distributor Hub')
 const userId = ref(null)
 
 const isTerminated = ref(false)
-const terminationDetails = ref(null) // State to store detailed termination info
+const terminationDetails = ref(null)
 const isVerified = computed(() => props.verificationStatus === 'approved')
 
 const baseNavigation = [
@@ -421,7 +421,7 @@ const setupWebsockets = () => {
                 }
             } else {
                 toast.success('Account Restored', { description: 'Your standard account access has been fully restored.' })
-                showTerminationModal.value = false // Auto-close if restored
+                showTerminationModal.value = false 
             }
         })
 }
@@ -432,7 +432,7 @@ const confirmLogout = async () => {
   emit('logout-started')
 
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500)) // Visual delay
+    await new Promise(resolve => setTimeout(resolve, 1500)) 
     const response = await api.post('/auth/logout')
     
     if (response.data.status === 'success') {
@@ -451,6 +451,72 @@ const confirmLogout = async () => {
   }
 }
 
+// ==========================================
+// SESSION TERMINATION LOGIC
+// ==========================================
+const INACTIVITY_TIME = 1 * 60 * 1000; 
+let inactivityTimer = null;
+
+const resetInactivityTimer = () => {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(autoLogout, INACTIVITY_TIME);
+};
+
+const setupActivityListeners = () => {
+  window.addEventListener('mousemove', resetInactivityTimer);
+  window.addEventListener('keydown', resetInactivityTimer);
+  window.addEventListener('click', resetInactivityTimer);
+  window.addEventListener('scroll', resetInactivityTimer);
+  resetInactivityTimer();
+};
+
+const removeActivityListeners = () => {
+  window.removeEventListener('mousemove', resetInactivityTimer);
+  window.removeEventListener('keydown', resetInactivityTimer);
+  window.removeEventListener('click', resetInactivityTimer);
+  window.removeEventListener('scroll', resetInactivityTimer);
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+};
+
+const autoLogout = async () => {
+  toast.error('Session Expired', { description: 'You have been logged out due to inactivity.' });
+  isLoggingOut.value = true;
+  emit('logout-started');
+  
+  try {
+    await api.post('/auth/session/terminate');
+  } catch (e) {
+    console.error('Auto logout error:', e);
+  } finally {
+    emit('logout-finished');
+    localStorage.clear();
+    router.push('/Landing/logIn');
+  }
+};
+
+const handleBeforeUnload = () => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    const baseUrl = api.defaults.baseURL;
+    const url = `${baseUrl}/auth/session/terminate?token=${token}`;
+    navigator.sendBeacon(url);
+  }
+};
+
+const applySessionTimeoutSettings = async () => {
+  try {
+    const res = await api.get('/distributor/security-settings');
+    const isTimeoutEnabled = res.data?.data?.session_timeout || res.data?.settings?.session_timeout || res.data?.session_timeout;
+    
+    if (isTimeoutEnabled) {
+      setupActivityListeners();
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+  } catch (e) {
+    console.error("Failed to fetch security settings:", e);
+  }
+};
+
 onMounted(() => {
   const data = localStorage.getItem('user_data')
   if (data) {
@@ -460,6 +526,9 @@ onMounted(() => {
 
     checkAccountStatus()
     setupWebsockets()
+
+    // Start Inactivity & Browser Close Listeners
+    applySessionTimeoutSettings()
   }
 })
 
@@ -467,6 +536,10 @@ onUnmounted(() => {
   if (echo && userId.value) {
     echo.leave(`account.status.${userId.value}`)
   }
+
+  // Clean up Session Listeners
+  removeActivityListeners()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

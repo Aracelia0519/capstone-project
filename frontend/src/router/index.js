@@ -183,6 +183,7 @@ import SupplierVehicles from '@/views/supplier/SupplierVehicles.vue'
 import notificationsSup from '@/views/supplier/notificationsSup.vue'
 import TechnicalReportsSup from '@/views/supplier/TechnicalReportsSup.vue'
 import securitySettingsSup from '@/views/supplier/securitySettingsSup.vue'
+import OrderHistory from '@/views/supplier/OrderHistory.vue'
 
 import SpecialRBACLayout from '@/layouts/SpecialRBACLayout.vue'
 import SupplierReturns from '@/views/supplier/SupplierReturns.vue'
@@ -1257,8 +1258,11 @@ const routes = [
         name: 'securitySettingsSup',
         component: securitySettingsSup
       },
-
-      
+      {
+        path: 'OrderHistory', 
+        name: 'OrderHistory',
+        component: OrderHistory
+      },   
     ]
   },
   

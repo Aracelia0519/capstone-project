@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\SessionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Client\ClientRequirementController;
@@ -49,6 +50,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'resetPassword']);
     
     Route::post('/check-email', [AuthController::class, 'checkEmail']);
+
+    Route::post('/session/terminate', [SessionController::class, 'terminate']);
 });
 
 // Public E-Commerce Client Routes - Shop
@@ -870,6 +873,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ---FETCH SUPPLIER ACCOUNT STATUS ---
         Route::get('/account-status', [\App\Http\Controllers\Api\Supplier\SupplierAccountStatusController::class, 'getStatus']);
+
+        Route::get('/dashboard', [\App\Http\Controllers\Api\Supplier\SupplierDashboardController::class, 'index']);
+        
+        Route::get('/order-history', [\App\Http\Controllers\Api\Supplier\OrderHistoryController::class, 'index']);
 
         // -----------------------------------------------------
         // SUPPLIER SECURITY SETTINGS

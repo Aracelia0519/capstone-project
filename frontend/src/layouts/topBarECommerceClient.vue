@@ -125,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits } from 'vue'
+import { ref, computed, defineProps, defineEmits, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { 
@@ -218,4 +218,85 @@ const handleLogout = async () => {
     }, 1000)
   }
 }
+
+// ==========================================
+// SESSION TERMINATION LOGIC
+// ==========================================
+const INACTIVITY_TIME = 1 * 60 * 1000; // 1 minute for testing (15 mins is 15 * 60 * 1000)
+let inactivityTimer = null;
+
+const resetInactivityTimer = () => {
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(autoLogout, INACTIVITY_TIME);
+};
+
+const setupActivityListeners = () => {
+  window.addEventListener('mousemove', resetInactivityTimer);
+  window.addEventListener('keydown', resetInactivityTimer);
+  window.addEventListener('click', resetInactivityTimer);
+  window.addEventListener('scroll', resetInactivityTimer);
+  resetInactivityTimer();
+};
+
+const removeActivityListeners = () => {
+  window.removeEventListener('mousemove', resetInactivityTimer);
+  window.removeEventListener('keydown', resetInactivityTimer);
+  window.removeEventListener('click', resetInactivityTimer);
+  window.removeEventListener('scroll', resetInactivityTimer);
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+};
+
+const autoLogout = async () => {
+  isLoggingOut.value = true;
+  emit('logout-started');
+  
+  try {
+    await api.post('/auth/session/terminate');
+  } catch (e) {
+    console.error('Auto logout error:', e);
+  } finally {
+    emit('logout-finished');
+    localStorage.clear();
+    router.push('/Landing/logIn');
+  }
+};
+
+const handleBeforeUnload = () => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    const baseUrl = api.defaults.baseURL;
+    const url = `${baseUrl}/auth/session/terminate?token=${token}`;
+    navigator.sendBeacon(url);
+  }
+};
+
+const applySessionTimeoutSettings = async () => {
+  try {
+    const res = await api.get('/client/security-settings');
+    const isTimeoutEnabled = res.data?.data?.session_timeout || res.data?.settings?.session_timeout || res.data?.session_timeout;
+    
+    if (isTimeoutEnabled) {
+      setupActivityListeners();
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+  } catch (e) {
+    console.error("Failed to fetch security settings:", e);
+  }
+};
+
+// Watch for the user prop to populate (handles async data from parent)
+watch(() => props.user, (newUser) => {
+  if (newUser) {
+    applySessionTimeoutSettings();
+  }
+}, { immediate: true });
+
+onMounted(() => {
+  // Logic safely handled by immediate watch
+});
+
+onUnmounted(() => {
+  removeActivityListeners();
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+});
 </script>
