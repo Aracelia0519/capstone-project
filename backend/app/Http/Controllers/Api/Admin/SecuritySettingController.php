@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Distributor;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -63,33 +63,13 @@ class SecuritySettingController extends Controller
                 if ($value === true) {
                     // Generate a secure 60-character token
                     $deviceToken = Str::random(60);
-                    $agent = $request->userAgent();
-
-                    // Simple parser for platform
-                    $platform = 'Unknown';
-                    if (preg_match('/windows|win32/i', $agent)) $platform = 'Windows';
-                    elseif (preg_match('/macintosh|mac os x/i', $agent)) $platform = 'Mac';
-                    elseif (preg_match('/linux/i', $agent)) $platform = 'Linux';
-                    elseif (preg_match('/android/i', $agent)) $platform = 'Android';
-                    elseif (preg_match('/iphone|ipad|ipod/i', $agent)) $platform = 'iOS';
-
-                    // Simple parser for browser
-                    $browser = 'Unknown';
-                    if (preg_match('/MSIE|Trident/i', $agent)) $browser = 'Internet Explorer';
-                    elseif (preg_match('/Edg/i', $agent)) $browser = 'Edge';
-                    elseif (preg_match('/Firefox/i', $agent)) $browser = 'Firefox';
-                    elseif (preg_match('/OPR/i', $agent)) $browser = 'Opera';
-                    elseif (preg_match('/Chrome/i', $agent)) $browser = 'Chrome';
-                    elseif (preg_match('/Safari/i', $agent)) $browser = 'Safari';
                     
                     // Store the trusted device with hashed token for database security
                     TrustedDevice::create([
                         'user_id' => $user->id,
                         'device_identifier' => hash('sha256', $deviceToken),
                         'ip_address' => $request->ip(),
-                        'user_agent' => $agent,
-                        'browser' => $browser,
-                        'platform' => $platform,
+                        'user_agent' => $request->userAgent(),
                         'expires_at' => now()->addDays(30), // Trust for 30 days
                     ]);
 
@@ -134,7 +114,7 @@ class SecuritySettingController extends Controller
         ], now()->addMinutes(10));
 
         // Log it for local debugging
-        Log::info("DISTRIBUTOR SECURITY OTP for User {$user->id} ({$targetEmail}): {$otp}");
+        Log::info("ADMIN SECURITY OTP for User {$user->id} ({$targetEmail}): {$otp}");
 
         // Send the actual email
         try {

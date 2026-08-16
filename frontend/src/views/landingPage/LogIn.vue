@@ -136,9 +136,10 @@
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {{ isLoading ? 'Signing In...' : 'Sign In to Account' }}
+              <span v-if="isLoading" class="animate-spin w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+              {{ isLoading ? 'Authenticating...' : 'Sign In to Account' }}
             </button>
 
             <div class="relative text-center">
@@ -167,6 +168,153 @@
         </div>
       </div>
     </div>
+
+    <!-- OTP CHOICES MODAL (Step 1) -->
+    <transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 scale-95"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="requiresOtpChoice" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+          <div class="w-14 h-14 bg-indigo-900/30 text-indigo-400 rounded-full flex items-center justify-center mb-6">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+          </div>
+          
+          <h3 class="text-2xl font-bold text-white mb-2">2-Step Verification</h3>
+          <p class="text-gray-400 text-sm mb-6">Unrecognized device detected. Choose where we should send your verification code.</p>
+          
+          <form @submit.prevent="handleSendOtp">
+            <div class="space-y-4 mb-6">
+              
+              <!-- Primary Email Option -->
+              <label class="flex items-center p-4 border rounded-xl cursor-pointer transition-colors"
+                :class="selectedOtpTarget === 'primary' ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50'">
+                <input type="radio" v-model="selectedOtpTarget" value="primary" class="w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900" />
+                <div class="ml-3">
+                  <span class="block text-white font-medium">Primary Email</span>
+                  <span class="block text-gray-400 text-sm">{{ otpEmails.primary }}</span>
+                </div>
+              </label>
+
+              <!-- Recovery Email Option -->
+              <label v-if="otpEmails.recovery" class="flex items-center p-4 border rounded-xl cursor-pointer transition-colors"
+                :class="selectedOtpTarget === 'recovery' ? 'border-indigo-500 bg-indigo-900/20' : 'border-gray-700 bg-gray-800 hover:bg-gray-700/50'">
+                <input type="radio" v-model="selectedOtpTarget" value="recovery" class="w-4 h-4 text-indigo-600 bg-gray-700 border-gray-600 focus:ring-indigo-500 focus:ring-offset-gray-900" />
+                <div class="ml-3">
+                  <span class="block text-white font-medium">Recovery Email</span>
+                  <span class="block text-gray-400 text-sm">{{ otpEmails.recovery }}</span>
+                </div>
+              </label>
+
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+              <button type="button" @click="requiresOtpChoice = false" class="px-5 py-2.5 text-gray-400 hover:text-white transition">
+                Cancel
+              </button>
+              <button type="submit" :disabled="sendingOtp" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition disabled:opacity-50 flex items-center">
+                <span v-if="sendingOtp" class="animate-spin w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                Send Code
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
+
+    <!-- OTP INPUT MODAL (Step 2) -->
+    <transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 scale-95"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="requiresOtpInput" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+          <div class="w-14 h-14 bg-indigo-900/30 text-indigo-400 rounded-full flex items-center justify-center mb-6">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+          </div>
+          
+          <h3 class="text-2xl font-bold text-white mb-2">Enter Verification Code</h3>
+          <p class="text-gray-400 text-sm mb-6">Enter the 6-digit code we just sent to <strong class="text-gray-200">{{ selectedOtpTarget === 'primary' ? otpEmails.primary : otpEmails.recovery }}</strong>.</p>
+          
+          <form @submit.prevent="handleVerifyOtp">
+            <div class="mb-6">
+              <input 
+                v-model="otpCode" 
+                type="text" 
+                maxlength="6"
+                required 
+                placeholder="••••••" 
+                class="w-full px-4 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white text-center text-3xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition placeholder:text-gray-600" 
+              />
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+              <button type="button" @click="requiresOtpInput = false; requiresOtpChoice = true" class="px-5 py-2.5 text-gray-400 hover:text-white transition">
+                Back
+              </button>
+              <button type="submit" :disabled="verifyingOtp || otpCode.length < 6" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition disabled:opacity-50 flex items-center">
+                <span v-if="verifyingOtp" class="animate-spin w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                Verify Code
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Security Questions Modal -->
+    <transition
+      enter-active-class="transition-all duration-300 ease-out"
+      leave-active-class="transition-all duration-200 ease-in"
+      enter-from-class="opacity-0 scale-95"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="requiresSecurityCheck" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+          <div class="w-14 h-14 bg-blue-900/30 text-blue-400 rounded-full flex items-center justify-center mb-6">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 118 0v4h8z"></path></svg>
+          </div>
+          
+          <h3 class="text-2xl font-bold text-white mb-2">Security Verification</h3>
+          <p class="text-gray-400 text-sm mb-6">Unrecognized device detected. To protect your account, please answer your security question.</p>
+          
+          <form @submit.prevent="handleSecurityVerification">
+            <div class="mb-6">
+              <label class="block text-sm font-semibold text-blue-400 mb-2">{{ securityQuestion.text }}</label>
+              <input 
+                v-model="securityAnswer" 
+                type="text" 
+                required 
+                placeholder="Type your secret answer" 
+                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" 
+              />
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+              <button 
+                type="button" 
+                @click="requiresSecurityCheck = false" 
+                class="px-5 py-2.5 text-gray-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                :disabled="verifyingSecurity" 
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50 flex items-center"
+              >
+                <span v-if="verifyingSecurity" class="animate-spin w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"></span>
+                Verify & Login
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
 
     <!-- Toast Notification (dark theme) -->
     <transition
@@ -265,8 +413,22 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 
-
 const router = useRouter()
+
+// UI Security states
+const requiresSecurityCheck = ref(false)
+const verifyingSecurity = ref(false)
+const securityQuestion = reactive({ key: '', text: '' })
+const securityAnswer = ref('')
+
+// OTP Security States
+const requiresOtpChoice = ref(false)
+const requiresOtpInput = ref(false)
+const sendingOtp = ref(false)
+const verifyingOtp = ref(false)
+const otpEmails = reactive({ primary: '', recovery: '' })
+const selectedOtpTarget = ref('primary')
+const otpCode = ref('')
 
 // Client modal state
 const showClientOptions = ref(false)
@@ -402,7 +564,30 @@ const navigateToClientRoute = (route) => {
   router.push(route)
 }
 
-// Handle login
+const proceedWithLoginSuccess = (user, token) => {
+  localStorage.setItem('auth_token', token)
+  localStorage.setItem('user_data', JSON.stringify(user))
+
+  if (user.role === 'client') {
+    showNotification('Success!', 'Login successful. Please choose your destination.', 'success')
+    setTimeout(() => { showClientOptions.value = true }, 1000)
+  } else {
+    showNotification('Success!', 'Redirecting to dashboard...', 'success')
+    setTimeout(() => {
+      const redirectRoute = getRedirectRoute(user)
+      if (!redirectRoute) {
+        showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
+        return
+      }
+      router.push(redirectRoute)
+    }, 1500)
+  }
+}
+
+// ----------------------------------------------------
+// API HANDLERS (No Device Token Logic)
+// ----------------------------------------------------
+
 const handleLogin = async () => {
   if (!validateForm()) {
     showNotification('Validation Error', 'Please check your inputs', 'error')
@@ -410,43 +595,37 @@ const handleLogin = async () => {
   }
 
   isLoading.value = true
+  requiresSecurityCheck.value = false
+  requiresOtpChoice.value = false
+  requiresOtpInput.value = false
+  otpCode.value = ''
 
   try {
-    const response = await axios.post('/auth/login', {
+    const payload = {
       email: form.email,
       password: form.password,
       remember: form.remember
-    })
+    }
+
+    const response = await axios.post('/auth/login', payload)
+
+    if (response.data.status === 'requires_otp') {
+      otpEmails.primary = response.data.emails.primary
+      otpEmails.recovery = response.data.emails.recovery
+      selectedOtpTarget.value = 'primary'
+      requiresOtpChoice.value = true
+      return
+    }
+
+    if (response.data.status === 'requires_security_questions') {
+      securityQuestion.key = response.data.question_key
+      securityQuestion.text = response.data.question_text
+      requiresSecurityCheck.value = true
+      return
+    }
 
     if (response.data.status === 'success') {
-      // Store token and user data
-      localStorage.setItem('auth_token', response.data.token)
-      localStorage.setItem('user_data', JSON.stringify(response.data.user))
-      
-      const user = response.data.user
-      
-      if (user.role === 'client') {
-        showNotification('Success!', 'Login successful. Please choose your destination.', 'success')
-        
-        // Trigger modal for client
-        setTimeout(() => {
-          showClientOptions.value = true
-        }, 1000)
-      } else {
-        showNotification('Success!', 'Redirecting to dashboard...', 'success')
-        
-        setTimeout(() => {
-          const redirectRoute = getRedirectRoute(user)
-          
-          // Handle unknown roles or departments
-          if (!redirectRoute) {
-            showNotification('Routing Error', 'Could not determine your dashboard route. Contact support.', 'error')
-            return
-          }
-          
-          router.push(redirectRoute)
-        }, 1500)
-      }
+      proceedWithLoginSuccess(response.data.user, response.data.token)
     } else {
       showNotification('Login Failed', response.data.message || 'Login failed', 'error')
     }
@@ -454,7 +633,7 @@ const handleLogin = async () => {
   } catch (error) {
     if (error.response && error.response.data) {
       const { data } = error.response
-      showNotification('Login Failed', data.message || 'Login failed', 'error')
+      showNotification('Login Failed', data.message || 'Invalid credentials or verification failed', 'error')
     } else {
       showNotification('Error', 'Network error. Please try again.', 'error')
     }
@@ -463,22 +642,111 @@ const handleLogin = async () => {
   }
 }
 
-// Handle forgot password
-const handleForgotPassword = () => {
-  showNotification('Feature Coming Soon', 'Password recovery feature is under development', 'info')
+const handleSendOtp = async () => {
+  sendingOtp.value = true
+
+  try {
+    const payload = {
+      email: form.email,
+      password: form.password,
+      target_type: selectedOtpTarget.value
+    }
+    const response = await axios.post('/auth/send-login-otp', payload)
+
+    if (response.data.status === 'success') {
+      requiresOtpChoice.value = false
+      requiresOtpInput.value = true
+      showNotification('OTP Sent', response.data.message, 'success')
+    } else {
+      showNotification('Failed', response.data.message, 'error')
+    }
+  } catch (error) {
+    showNotification('Failed', error.response?.data?.message || 'Failed to send OTP.', 'error')
+  } finally {
+    sendingOtp.value = false
+  }
 }
 
-// Handle register
+const handleVerifyOtp = async () => {
+  if (otpCode.value.length < 6) return
+  verifyingOtp.value = true
+
+  try {
+    const payload = {
+      email: form.email,
+      password: form.password,
+      otp: otpCode.value,
+      remember: form.remember
+    }
+    const response = await axios.post('/auth/verify-login-otp', payload)
+
+    if (response.data.status === 'requires_security_questions') {
+      requiresOtpInput.value = false
+      otpCode.value = ''
+      securityQuestion.key = response.data.question_key
+      securityQuestion.text = response.data.question_text
+      requiresSecurityCheck.value = true
+      showNotification('OTP Verified', response.data.message, 'success')
+      return
+    }
+
+    if (response.data.status === 'success') {
+      requiresOtpInput.value = false
+      otpCode.value = ''
+      proceedWithLoginSuccess(response.data.user, response.data.token)
+    } else {
+      showNotification('Verification Failed', response.data.message || 'Incorrect OTP.', 'error')
+    }
+  } catch (error) {
+    showNotification('Verification Failed', error.response?.data?.message || 'Failed to verify OTP.', 'error')
+  } finally {
+    verifyingOtp.value = false
+  }
+}
+
+const handleSecurityVerification = async () => {
+  if (!securityAnswer.value.trim()) return
+  verifyingSecurity.value = true
+
+  try {
+    const payload = {
+      email: form.email,
+      password: form.password,
+      question_key: securityQuestion.key,
+      answer: securityAnswer.value,
+      remember: form.remember
+    }
+
+    const response = await axios.post('/auth/verify-security-questions', payload)
+
+    if (response.data.status === 'success') {
+      requiresSecurityCheck.value = false
+      securityAnswer.value = ''
+      proceedWithLoginSuccess(response.data.user, response.data.token)
+    } else {
+      showNotification('Verification Failed', response.data.message || 'Incorrect answer', 'error')
+    }
+
+  } catch (error) {
+    if (error.response && error.response.data) {
+      showNotification('Verification Failed', error.response.data.message || 'Incorrect security answer.', 'error')
+    } else {
+      showNotification('Error', 'Network error. Please try again.', 'error')
+    }
+  } finally {
+    verifyingSecurity.value = false
+  }
+}
+
+const handleForgotPassword = () => {
+  router.push('/Landing/forgotPassword')
+}
+
 const handleRegister = () => {
   router.push('/Landing/signUp')
 }
 
-// No particle system – removed for performance
-onMounted(() => {
-  // No animations to set up
-})
-
-// No cleanup needed
+onMounted(() => {})
 onUnmounted(() => {})
 </script>
 

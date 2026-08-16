@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SecuritySetting;
 use App\Models\UserSecurityQuestion;
+use App\Models\TrustedDevice;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class SecuritySettingController extends Controller
 {
@@ -34,6 +36,7 @@ class SecuritySettingController extends Controller
         $request->validate([
             'field' => 'required|string',
             'value' => 'required|boolean',
+            'device_token' => 'nullable|string' // Needed when toggling "remember_this_device" off
         ]);
 
         $user = Auth::user();
@@ -50,7 +53,59 @@ class SecuritySettingController extends Controller
         
         if ($settings) {
             $settings->update([$field => $value]);
-            return response()->json(['message' => 'Security setting updated.']);
+            
+            $responseData = ['message' => 'Security setting updated.'];
+
+            // ---------------------------------------------------------
+            // REMEMBER THIS DEVICE LOGIC
+            // ---------------------------------------------------------
+            if ($field === 'remember_this_device') {
+                if ($value === true) {
+                    // Generate a secure 60-character token
+                    $deviceToken = Str::random(60);
+                    $agent = $request->userAgent();
+
+                    // Simple parser for platform
+                    $platform = 'Unknown';
+                    if (preg_match('/windows|win32/i', $agent)) $platform = 'Windows';
+                    elseif (preg_match('/macintosh|mac os x/i', $agent)) $platform = 'Mac';
+                    elseif (preg_match('/linux/i', $agent)) $platform = 'Linux';
+                    elseif (preg_match('/android/i', $agent)) $platform = 'Android';
+                    elseif (preg_match('/iphone|ipad|ipod/i', $agent)) $platform = 'iOS';
+
+                    // Simple parser for browser
+                    $browser = 'Unknown';
+                    if (preg_match('/MSIE|Trident/i', $agent)) $browser = 'Internet Explorer';
+                    elseif (preg_match('/Edg/i', $agent)) $browser = 'Edge';
+                    elseif (preg_match('/Firefox/i', $agent)) $browser = 'Firefox';
+                    elseif (preg_match('/OPR/i', $agent)) $browser = 'Opera';
+                    elseif (preg_match('/Chrome/i', $agent)) $browser = 'Chrome';
+                    elseif (preg_match('/Safari/i', $agent)) $browser = 'Safari';
+                    
+                    // Store the trusted device with hashed token for database security
+                    TrustedDevice::create([
+                        'user_id' => $user->id,
+                        'device_identifier' => hash('sha256', $deviceToken),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $agent,
+                        'browser' => $browser,
+                        'platform' => $platform,
+                        'expires_at' => now()->addDays(30), // Trust for 30 days
+                    ]);
+
+                    // Send the raw token back to the frontend to store in localStorage
+                    $responseData['device_token'] = $deviceToken;
+                } else {
+                    // If disabling, delete the specific device token if provided
+                    if ($request->filled('device_token')) {
+                        TrustedDevice::where('user_id', $user->id)
+                            ->where('device_identifier', hash('sha256', $request->device_token))
+                            ->delete();
+                    }
+                }
+            }
+
+            return response()->json($responseData);
         }
 
         return response()->json(['message' => 'Settings not found.'], 404);

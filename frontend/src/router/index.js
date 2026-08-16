@@ -15,6 +15,9 @@ import SystemSettings from '@/views/admin/SystemSettings.vue'
 import AuditLogs from '@/views/admin/AuditLogs.vue'
 import userReports from '@/views/admin/userReports.vue'
 import TechnicalReportsAd from '@/views/admin/TechnicalReportsAd.vue'
+import securitySettingsAd from '@/views/admin/securitySettingsAd.vue'
+
+
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
@@ -87,6 +90,8 @@ import Services from '@/views/landingPage/Services.vue'
 import LogIn from '@/views/landingPage/LogIn.vue'
 import SignUp from '@/views/landingPage/SignUp.vue'
 import PayrollLogin from '@/views/landingPage/PayrollLogin.vue'
+import forgotPassword from '@/views/landingPage/forgotPassword.vue'
+
 
 import HRLayout from '@/layouts/HRLayout.vue'
 import HRDashboard from '@/views/humanResource/HRDashboard.vue'
@@ -574,6 +579,11 @@ const routes = [
         name: 'TechnicalReportsAd',
         component: TechnicalReportsAd
       },
+      {
+        path: 'securitySettingsAd',
+        name: 'securitySettingsAd',
+        component: securitySettingsAd
+      },
     ]
   },
   {
@@ -902,6 +912,12 @@ const routes = [
         name: 'payrollLogin',
         component: PayrollLogin
       },
+      {
+        path: 'forgotPassword',
+        name: 'forgotPassword',
+        component: forgotPassword
+      },
+      
     ]
   },
 

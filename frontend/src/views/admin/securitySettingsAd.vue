@@ -12,7 +12,7 @@
         <h1 class="text-3xl font-black tracking-tight text-gray-900">Security Settings</h1>
       </div>
       <p class="text-gray-500 font-medium ml-1">
-        Manage your account security, login preferences, and recovery options to keep your account safe.
+        Manage your administrative account security, login preferences, and recovery options.
       </p>
     </div>
 
@@ -335,7 +335,7 @@ const securityAnswers = ref(['', '', '', '', '']);
 // Fetch Init
 const fetchSettings = async () => {
   try {
-    const response = await api.get('/distributor/security-settings'); 
+    const response = await api.get('/admin/security-settings'); 
     if (response.data) {
       for (const key in settings.value) {
         if (response.data[key] !== undefined) {
@@ -403,7 +403,7 @@ const confirmStandardToggle = async () => {
 
   try {
     if (field === 'security_questions' && value === false) {
-      await api.post('/distributor/security-settings/questions', { action: 'disable' });
+      await api.post('/admin/security-settings/questions', { action: 'disable' });
     } else {
       
       const payload = { field, value };
@@ -413,7 +413,7 @@ const confirmStandardToggle = async () => {
           payload.device_token = localStorage.getItem('trusted_device_token');
       }
 
-      const response = await api.put('/distributor/security-settings', payload);
+      const response = await api.put('/admin/security-settings', payload);
 
       // If enabling "Remember This Device", save the returned token to localStorage
       if (field === 'remember_this_device') {
@@ -440,7 +440,7 @@ const sendRecoveryOtp = async () => {
   const action = pendingValue.value ? 'enable' : 'disable';
   
   try {
-    await api.post('/distributor/security-settings/send-otp', {
+    await api.post('/admin/security-settings/send-otp', {
       action: action,
       recovery_email: pendingValue.value ? recoveryEmailInput.value : null
     });
@@ -458,7 +458,7 @@ const sendRecoveryOtp = async () => {
 const verifyRecoveryOtp = async () => {
   isProcessing.value = true;
   try {
-    await api.post('/distributor/security-settings/verify-otp', { otp: otpInput.value });
+    await api.post('/admin/security-settings/verify-otp', { otp: otpInput.value });
     settings.value.account_recovery_email = pendingValue.value;
     closeModal();
   } catch (error) {
@@ -473,7 +473,7 @@ const saveSecurityQuestions = async () => {
 
   isProcessing.value = true;
   try {
-    await api.post('/distributor/security-settings/questions', {
+    await api.post('/admin/security-settings/questions', {
       action: 'enable',
       answers: securityAnswers.value
     });

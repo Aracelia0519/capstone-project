@@ -298,11 +298,7 @@ const availableSettings = {
     description: 'Automatically logs the user out after a specific period of inactivity to prevent unauthorized access.',
     icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
   },
-  remember_this_device: { 
-    title: 'Remember This Device', 
-    description: 'Save this trusted device to bypass strict two-factor authentication requirements on future logins.',
-    icon: `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
-  },
+  
   account_recovery_email: { 
     title: 'Account Recovery Email', 
     description: 'Register an alternative backup email address to safely recover your account if you lose primary access.',
@@ -409,8 +405,27 @@ const confirmStandardToggle = async () => {
     if (field === 'security_questions' && value === false) {
       await api.post('/supplier/security-settings/questions', { action: 'disable' });
     } else {
-      await api.put('/supplier/security-settings', { field, value });
+      
+      const payload = { field, value };
+      
+      // If disabling "Remember This Device", send the token to the backend so it can be deleted
+      if (field === 'remember_this_device' && value === false) {
+          payload.device_token = localStorage.getItem('trusted_device_token');
+      }
+
+      const response = await api.put('/supplier/security-settings', payload);
+
+      // If enabling "Remember This Device", save the returned token to localStorage
+      if (field === 'remember_this_device') {
+          if (value === true && response.data.device_token) {
+              localStorage.setItem('trusted_device_token', response.data.device_token);
+          } else if (value === false) {
+              localStorage.removeItem('trusted_device_token');
+          }
+      }
+
     }
+    
     settings.value[field] = value;
     closeModal();
   } catch (error) {

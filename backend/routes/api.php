@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\Client\ClientRequirementController;
@@ -35,6 +36,18 @@ Broadcast::routes(['middleware' => ['auth:sanctum']]);
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    
+    // Security and OTP verifications
+    Route::post('/send-login-otp', [AuthController::class, 'sendLoginOtp']);
+    Route::post('/verify-login-otp', [AuthController::class, 'verifyLoginOtp']);
+    Route::post('/verify-security-questions', [AuthController::class, 'verifySecurityAnswers']);
+
+    // Forgot Password Flow
+    Route::post('/forgot-password/check', [ForgotPasswordController::class, 'checkAccount']);
+    Route::post('/forgot-password/send-otp', [ForgotPasswordController::class, 'sendOtp']);
+    Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+    Route::post('/forgot-password/reset', [ForgotPasswordController::class, 'resetPassword']);
+    
     Route::post('/check-email', [AuthController::class, 'checkEmail']);
 });
 
@@ -626,6 +639,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
+
+        // -----------------------------------------------------
+        // ADMIN SECURITY SETTINGS
+        // -----------------------------------------------------
+        Route::prefix('security-settings')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Admin\SecuritySettingController::class, 'show']);
+            Route::put('/', [\App\Http\Controllers\Api\Admin\SecuritySettingController::class, 'update']);
+            Route::post('/send-otp', [\App\Http\Controllers\Api\Admin\SecuritySettingController::class, 'sendRecoveryOtp']);
+            Route::post('/verify-otp', [\App\Http\Controllers\Api\Admin\SecuritySettingController::class, 'verifyRecoveryOtp']);
+            Route::post('/questions', [\App\Http\Controllers\Api\Admin\SecuritySettingController::class, 'updateSecurityQuestions']);
+        });
 
         Route::get('/login-logs', [LoginLogController::class, 'index']);
 
