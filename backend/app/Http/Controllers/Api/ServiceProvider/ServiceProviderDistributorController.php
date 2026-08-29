@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\ServiceProvider;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\ServiceProvider\ServiceProviderDistributor;
-use App\Models\UserReport; // NEW IMPORT
+use App\Models\UserReport; 
 use App\Events\Partnership\PartnershipStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Vinkla\Hashids\Facades\Hashids;
 
 class ServiceProviderDistributorController extends Controller
 {
@@ -58,6 +59,7 @@ class ServiceProviderDistributorController extends Controller
 
                     return [
                         'id' => $distributor->id,
+                        'obfuscated_id' => Hashids::encode($distributor->id),
                         'partnership_id' => $partnership ? $partnership->id : null,
                         'name' => $distributor->distributorRequirement->company_name ?? 'Unknown Distributor',
                         'location' => $locationString,

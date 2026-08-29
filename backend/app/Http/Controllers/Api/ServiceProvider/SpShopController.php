@@ -18,16 +18,24 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Events\Ecommerce\OrderPlaced;
+use Vinkla\Hashids\Facades\Hashids;
 
 class SpShopController extends Controller
 {
     public function getProducts($distributorId = null)
     {
+        // Decode the obfuscated ID back to the real integer
+        $realDistributorId = null;
+        if ($distributorId) {
+            $decoded = Hashids::decode($distributorId);
+            $realDistributorId = count($decoded) > 0 ? $decoded[0] : $distributorId;
+        }
+
         $query = DistributorInventory::with(['product'])
             ->where('ecommerce_status', 'deployed');
             
-        if ($distributorId) {
-            $query->where('distributor_id', $distributorId);
+        if ($realDistributorId) {
+            $query->where('distributor_id', $realDistributorId);
         }
         
         $inventories = $query->get()->groupBy('product_id');
@@ -40,8 +48,8 @@ class SpShopController extends Controller
             ->whereDate('end_date', '>=', $currentDate)
             ->whereRaw('used_count < usage_limit');
             
-        if ($distributorId) {
-            $promoQuery->where('distributor_id', $distributorId);
+        if ($realDistributorId) {
+            $promoQuery->where('distributor_id', $realDistributorId);
         }
         
         $promotions = $promoQuery->get();
@@ -58,8 +66,8 @@ class SpShopController extends Controller
         $paymentSettings = collect();
         if (Schema::hasTable('distributor_payment_settings')) {
             $paymentSettingsQuery = DB::table('distributor_payment_settings');
-            if ($distributorId) {
-                $paymentSettingsQuery->where('distributor_id', $distributorId);
+            if ($realDistributorId) {
+                $paymentSettingsQuery->where('distributor_id', $realDistributorId);
             }
             $paymentSettings = $paymentSettingsQuery->get()->keyBy('distributor_id');
         }
@@ -225,7 +233,9 @@ class SpShopController extends Controller
 
             $products[] = [
                 'id' => $productIds[0], // first product id as group identifier
+                'obfuscated_id' => Hashids::encode($productIds[0]), // Encode ID
                 'distributor_id' => $group['distributor_id'],
+                'obfuscated_distributor_id' => Hashids::encode($group['distributor_id']),
                 'distributor_name' => $distributorName,
                 'name' => $group['name'],
                 'brand' => $group['brand'],
@@ -263,8 +273,12 @@ class SpShopController extends Controller
 
     public function getProduct($productId)
     {
+        // Decode Hashid to support obfuscated URLs
+        $decoded = Hashids::decode($productId);
+        $realId = count($decoded) > 0 ? $decoded[0] : $productId;
+
         // Fetch the product by id to get its category, type, name
-        $baseProduct = Product::find($productId);
+        $baseProduct = Product::find($realId);
         if (!$baseProduct) {
             return response()->json(['success' => false, 'message' => 'Product not found'], 404);
         }
@@ -431,8 +445,10 @@ class SpShopController extends Controller
         $imageUrl = $firstVariantImage ? asset('storage/' . ltrim($firstVariantImage, '/')) : null;
 
         $productData = [
-            'id' => $productId,
+            'id' => $realId,
+            'obfuscated_id' => Hashids::encode($realId), // Encode ID
             'distributor_id' => $distributorId,
+            'obfuscated_distributor_id' => Hashids::encode($distributorId),
             'distributor_name' => $distributorName,
             'name' => $baseProduct->name,
             'brand' => 'Distributor Brand',
@@ -465,9 +481,6 @@ class SpShopController extends Controller
             'data' => $productData
         ]);
     }
-
-    // ----- The rest of the methods (addToCart, orderNow, verifyGcashPayment, calculateShipping, calculateDistance) remain exactly as they were -----
-    // They are not modified because they already work with specific product_id.
 
     public function addToCart(Request $request)
     {
@@ -607,6 +620,7 @@ class SpShopController extends Controller
             try {
                 $client = new \GuzzleHttp\Client();
                 $frontendOrigin = rtrim($request->headers->get('origin') ?? env('FRONTEND_URL', 'http://localhost:5173'), '/');
+                $obfuscatedDistributorId = Hashids::encode($request->distributor_id); // Encode for Return URL redirect safety
 
                 $billingDetails = [
                     'name' => trim($user->first_name . ' ' . $user->last_name),
@@ -655,8 +669,8 @@ class SpShopController extends Controller
                                         'quantity' => 1,
                                     ]
                                 ],
-                                'success_url' => $frontendOrigin . '/serviceProvider/shop/' . $request->distributor_id . '?order_number=' . $orderNumber,
-                                'cancel_url' => $frontendOrigin . '/serviceProvider/shop/' . $request->distributor_id . '?payment=cancelled'
+                                'success_url' => $frontendOrigin . '/serviceProvider/shop/' . $obfuscatedDistributorId . '?order_number=' . $orderNumber,
+                                'cancel_url' => $frontendOrigin . '/serviceProvider/shop/' . $obfuscatedDistributorId . '?payment=cancelled'
                             ]
                         ]
                     ]

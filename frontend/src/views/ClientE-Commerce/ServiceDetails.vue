@@ -300,11 +300,11 @@
       
       <div class="flex gap-6 overflow-x-auto pb-6 hide-scrollbar">
          <Card
-        v-for="service in otherServices"
-        :key="service.id"
-        @click="router.push(`/ECommerceClient/ServiceDetails/${service.id}`)"
-        class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
-        >
+  v-for="service in otherServices"
+  :key="service.id"
+  @click="router.push(`/ECommerceClient/ServiceDetails/${service.hash_id || service.id}`)"
+  class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
+>
             <div class="h-40 relative overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
               <img 
                  v-if="service.image_paths && service.image_paths.length > 0"
@@ -572,24 +572,22 @@ const formatDate = (dateString) => {
 }
 
 // Fetch main service details and the list of other services
+// Update fetchPageData function
 const fetchPageData = async (id) => {
   try {
     isLoading.value = true
     currentImageIndex.value = 0
     
-    // We fetch all services to find the current one and populate "Others"
-    // (If your backend has a show/:id route, use that instead for selectedService)
     const response = await api.get('/client/services')
     
     if (response.data.success) {
       const allServices = response.data.data
       
-      // Find the specific service by route ID
-      selectedService.value = allServices.find(s => s.id == id) || null
+      // Match by hash_id or fallback to raw id
+      selectedService.value = allServices.find(s => s.hash_id === id || s.id == id) || null
       
       if (selectedService.value) {
-         // Filter out the current service to show "Other Services"
-         otherServices.value = allServices.filter(s => s.id != id).slice(0, 8) // Show up to 8
+         otherServices.value = allServices.filter(s => s.id != selectedService.value.id).slice(0, 8)
       }
     }
   } catch (error) {

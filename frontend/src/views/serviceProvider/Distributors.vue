@@ -141,7 +141,7 @@
           </div>
 
           <div class="px-6 sm:px-8 py-4 sm:py-5 bg-slate-900/50 border-t border-slate-800/80 mt-auto">
-            <button @click="goToProducts(distributor.id)"
+            <button @click="goToProducts(distributor.obfuscated_id || distributor.id)"
               class="w-full mb-2 py-2 sm:py-2.5 px-4 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:border-indigo-500/50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
               <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
               View Products
@@ -174,7 +174,7 @@
             </div>
             
             <div v-else-if="distributor.status === 'active'" class="flex gap-2 sm:gap-3">
-               <button @click="goToShop(distributor.id)" class="flex-1 py-2.5 sm:py-3 px-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all border border-slate-600 hover:border-slate-500 flex items-center justify-center gap-1.5">
+               <button @click="goToShop(distributor.obfuscated_id || distributor.id)" class="flex-1 py-2.5 sm:py-3 px-3 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-all border border-slate-600 hover:border-slate-500 flex items-center justify-center gap-1.5">
                   <svg class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                   Order
                </button>

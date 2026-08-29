@@ -391,7 +391,7 @@
          <Card
             v-for="product in otherProducts"
             :key="product.id"
-            @click="router.push(`/ECommerceClient/ProductDetails/${product.id}`)"
+            @click="router.push(`/ECommerceClient/ProductDetails/${product.hash_id || product.id}`)"
             class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
           >
             <div class="h-40 relative overflow-hidden bg-gray-50 flex items-center justify-center shrink-0" :style="product.image_url ? {} : { backgroundColor: product.color || '#f1f5f9' }">

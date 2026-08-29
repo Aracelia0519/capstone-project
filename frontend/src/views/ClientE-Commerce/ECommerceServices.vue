@@ -1,4 +1,6 @@
+
 <template>
+  <!--ECommerceServices.vue-->
   <div class="min-h-screen relative ">
     <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
       <div class="container mx-auto px-4 py-4 md:py-6 flex justify-between items-center gap-4">
@@ -149,11 +151,11 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           <Card
-            v-for="service in filteredServices"
-            :key="service.id"
-            @click="goToServiceDetails(service.id)"
-            class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col h-full cursor-pointer"
-          >
+  v-for="service in filteredServices"
+  :key="service.id"
+  @click="goToServiceDetails(service.hash_id || service.id)"
+  class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col h-full cursor-pointer"
+>
             <div class="h-48 relative overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
               <div v-if="service.image_paths && service.image_paths.length > 0" class="w-full h-full relative group/slider">
                 <img 
@@ -494,8 +496,8 @@ const filteredServices = computed(() => {
   return filtered
 })
 
-const goToServiceDetails = (id) => {
-  router.push(`/ECommerceClient/ServiceDetails/${id}`) // <-- Changed to /ECommerceClient
+const goToServiceDetails = (hashId) => {
+  router.push(`/ECommerceClient/ServiceDetails/${hashId}`)
 }
 
 const goToMyBookings = () => {

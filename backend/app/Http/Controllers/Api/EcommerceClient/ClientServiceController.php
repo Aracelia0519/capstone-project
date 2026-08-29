@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceOffering;
 use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Events\ServiceProvider\ServiceRequestCreated;
+use Vinkla\Hashids\Facades\Hashids;
 
 class ClientServiceController extends Controller
 {
@@ -80,6 +81,7 @@ class ClientServiceController extends Controller
 
             return [
                 'id' => $service->id,
+                'hash_id' => Hashids::encode($service->id),
                 'provider_id' => $service->provider_id,
                 'provider_name' => $providerName,
                 'title' => $service->title,

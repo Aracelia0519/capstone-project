@@ -154,7 +154,7 @@
           <Card
             v-for="product in filteredProducts"
             :key="product.id"
-            @click="goToProductDetails(product.id)"
+            @click="goToProductDetails(product.obfuscated_id || product.id)"
             class="bg-slate-800/40 rounded-2xl shadow-sm border border-slate-700/60 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-500/50 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col cursor-pointer"
           >
             <div class="h-56 relative overflow-hidden flex items-center justify-center bg-slate-900/50" :style="product.image_url ? {} : { backgroundColor: product.color }">
@@ -262,7 +262,7 @@
       </div>
     </div>
 
-    <!-- DSS Modal (unchanged) -->
+    <!-- DSS Modal -->
     <Teleport to="body">
       <Dialog :open="showDssModal" @update:open="(val) => !val && (showDssModal = false)">
         <DialogContent class="bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/50 p-0 z-[10001]">
@@ -297,7 +297,7 @@
                    <Card 
                       v-for="prod in dssRecommendations.topRated" 
                       :key="prod.id"
-                      @click="goToProductDetails(prod.id); showDssModal = false;"
+                      @click="goToProductDetails(prod.obfuscated_id || prod.id); showDssModal = false;"
                       class="bg-slate-800 rounded-2xl shadow-sm border border-slate-700 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
                    >
                       <div class="w-28 h-auto bg-slate-900 flex items-center justify-center shrink-0">
@@ -324,7 +324,7 @@
                    <Card 
                       v-for="prod in dssRecommendations.trending" 
                       :key="prod.id"
-                      @click="goToProductDetails(prod.id); showDssModal = false;"
+                      @click="goToProductDetails(prod.obfuscated_id || prod.id); showDssModal = false;"
                       class="bg-slate-800 rounded-2xl shadow-sm border border-slate-700 hover:shadow-md hover:border-indigo-400 transition-all cursor-pointer flex flex-row overflow-hidden"
                    >
                       <div class="w-28 h-auto bg-slate-900 flex items-center justify-center shrink-0">
@@ -347,7 +347,7 @@
       </Dialog>
     </Teleport>
 
-    <!-- Reviews Modal (unchanged) -->
+    <!-- Reviews Modal -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isReviewsModalOpen" class="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click="closeModals">
@@ -702,7 +702,7 @@
       </transition>
     </Teleport>
 
-    <!-- Alert Dialogs (unchanged) -->
+    <!-- Alert Dialogs -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
         <div v-if="isCartAlertOpen || isOrderAlertOpen" class="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md pointer-events-none"></div>
@@ -790,7 +790,7 @@ const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
 const showDssModal = ref(false)
 const selectedProduct = ref(null)
-const selectedVariant = ref(null) // selected variant object
+const selectedVariant = ref(null) 
 
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
@@ -860,7 +860,6 @@ const openCartModal = (product) => {
     return;
   }
   selectedProduct.value = product
-  // Select first available variant by default
   const firstAvailable = product.variants?.find(v => v.stock > 0)
   selectedVariant.value = firstAvailable || null
   orderQuantity.value = 1
@@ -1244,12 +1243,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {

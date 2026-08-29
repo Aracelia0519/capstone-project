@@ -58,8 +58,8 @@
             <span class="text-xs mt-1">No image</span>
           </div>
           <!-- Only show "in stock" badge when stock > 0 -->
-          <Badge v-if="product.inventory_quantity !== undefined && product.inventory_quantity > 0" class="absolute top-2 right-2 bg-emerald-500/80 text-white border-emerald-400">
-            {{ product.inventory_quantity }} in stock
+          <Badge v-if="product.stock !== undefined && product.stock > 0" class="absolute top-2 right-2 bg-emerald-500/80 text-white border-emerald-400">
+            {{ product.stock }} in stock
           </Badge>
           <!-- "Out of stock" badge removed -->
         </div>
@@ -71,7 +71,7 @@
           <div class="flex flex-wrap gap-1 text-xs text-slate-400">
             <Badge variant="outline" class="border-slate-600 text-slate-300">{{ product.category }}</Badge>
             <Badge variant="outline" class="border-slate-600 text-slate-300">{{ product.type }}</Badge>
-            <Badge variant="outline" class="border-slate-600 text-slate-300">{{ product.size }}</Badge>
+            <Badge variant="outline" class="border-slate-600 text-slate-300">{{ product.size || 'Standard' }}</Badge>
           </div>
           <p v-if="product.description" class="text-sm text-slate-400 line-clamp-2">{{ product.description }}</p>
         </CardContent>

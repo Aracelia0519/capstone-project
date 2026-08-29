@@ -189,7 +189,7 @@
             class="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col cursor-pointer"
           >
             <template v-for="variant in group.variants" :key="variant.id">
-              <div v-if="selectedGroupVariants[group.id] === variant.id.toString()" class="flex flex-col h-full relative" @click="goToProductDetails(variant.id)">
+              <div v-if="selectedGroupVariants[group.id] === variant.id.toString()" class="flex flex-col h-full relative" @click="goToProductDetails(variant.hash_id || variant.id)">
                 
                 <div class="h-56 relative overflow-hidden flex items-center justify-center bg-gray-50" :style="variant.image_url ? {} : { backgroundColor: variant.color }">
                   <img v-if="variant.image_url" :src="getImageUrl(variant.image_url)" alt="Product Image" 
@@ -349,11 +349,11 @@
                 </h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <Card 
-                      v-for="prod in dssRecommendations.topRated" 
-                      :key="prod.id"
-                      @click="goToProductDetails(prod.id); showDssModal = false;"
-                      class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
-                   >
+   v-for="prod in dssRecommendations.topRated" 
+   :key="prod.id"
+   @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
+   class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+>
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
                          <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
@@ -376,11 +376,11 @@
                 </h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <Card 
-                      v-for="prod in dssRecommendations.trending" 
-                      :key="prod.id"
-                      @click="goToProductDetails(prod.id); showDssModal = false;"
-                      class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
-                   >
+   v-for="prod in dssRecommendations.trending" 
+   :key="prod.id"
+   @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
+   class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+>
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
                          <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>

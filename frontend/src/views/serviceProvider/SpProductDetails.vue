@@ -154,7 +154,7 @@
         </div>
       </div>
 
-      <!-- Reviews (unchanged) -->
+      <!-- Reviews -->
       <div class="mt-16 border-t border-slate-800 pt-10">
         <div class="flex gap-8 border-b border-slate-800 mb-8">
           <button @click="activeTab = 'reviews'" :class="['pb-4 text-lg font-bold border-b-2 transition-all', activeTab === 'reviews' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300']">
