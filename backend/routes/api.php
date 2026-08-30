@@ -1023,7 +1023,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/start', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'startDelivery']);
         Route::post('/{id}/arrive', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'arrive']);
         Route::post('/{id}/remit', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'remit']); 
-        Route::post('/{id}/reject', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'rejectDelivery']); // <--- ADDED THIS HERE
+        Route::post('/{id}/reject', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'rejectDelivery']); 
+
+        Route::post('/{id}/return-to-hq', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'returnToHq']);
+        Route::post('/{id}/handover-failed', [\App\Http\Controllers\Api\DistributorDelivery\ECommerceDeliveryController::class, 'handoverFailed']);
     });
 
     Route::prefix('operation-distributor')->group(function () {

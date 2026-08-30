@@ -162,6 +162,19 @@
         <p class="text-gray-500 font-medium">Processing your request...</p>
       </div>
 
+      <div v-else-if="shopDisabled" class="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm mt-6 p-8 max-w-2xl mx-auto">
+        <div class="w-20 h-20 mx-auto mb-4 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">Shop Access Restricted</h3>
+        <p class="text-gray-600 leading-relaxed mb-6">{{ shopDisabledMessage }}</p>
+        <div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-500 border border-gray-200">
+          Please contact store administration or customer support if you believe this restriction was applied in error.
+        </div>
+      </div>
+
       <div v-else>
         <div class="flex justify-between items-center mb-6">
           <p class="text-gray-500 font-medium">{{ sortedGroups.length }} product groups ({{ filteredProducts.length }} variants)</p>
@@ -349,11 +362,11 @@
                 </h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <Card 
-   v-for="prod in dssRecommendations.topRated" 
-   :key="prod.id"
-   @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
-   class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
->
+                     v-for="prod in dssRecommendations.topRated" 
+                     :key="prod.id"
+                     @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
+                     class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-amber-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+                   >
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
                          <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
@@ -376,11 +389,11 @@
                 </h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                    <Card 
-   v-for="prod in dssRecommendations.trending" 
-   :key="prod.id"
-   @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
-   class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
->
+                     v-for="prod in dssRecommendations.trending" 
+                     :key="prod.id"
+                     @click="goToProductDetails(prod.hash_id || prod.id); showDssModal = false;"
+                     class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+                   >
                       <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
                          <img v-if="prod.image_url" :src="getImageUrl(prod.image_url)" class="object-cover w-full h-full" />
                          <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: prod.color }"></div>
@@ -849,11 +862,15 @@ const products = ref([])
 const isLoading = ref(true)
 const isProcessing = ref(false)
 
+// Shop Disabled State
+const shopDisabled = ref(false)
+const shopDisabledMessage = ref('')
+
 // Custom Modal States
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
-const showDssModal = ref(false) // NEW DSS Modal State
+const showDssModal = ref(false)
 const selectedProduct = ref(null)
 
 // Group variant tracking
@@ -910,7 +927,14 @@ const fetchProducts = async () => {
     isLoading.value = true
     const response = await api.get('/client/shop/products')
     if (response.data.success) {
-      products.value = response.data.data
+      if (response.data.shop_disabled) {
+        shopDisabled.value = true
+        shopDisabledMessage.value = response.data.message
+        products.value = []
+      } else {
+        shopDisabled.value = false
+        products.value = response.data.data
+      }
     }
   } catch (error) {
     toast.error('Error fetching products')
@@ -924,16 +948,12 @@ const fetchProducts = async () => {
 // DSS (DECISION SUPPORT SYSTEM) COMPUTED LOGIC
 // =========================================================================
 const dssRecommendations = computed(() => {
-  // Only consider products that have reviews and are in stock
   const ratedProducts = products.value.filter(p => p.review_count > 0 && p.stock > 0);
 
-  // Top Rated: Sorted by highest rating, then by review count to break ties
   const topRated = [...ratedProducts]
     .sort((a, b) => b.rating - a.rating || b.review_count - a.review_count)
     .slice(0, 4);
 
-  // Trending: Sorted by highest interaction (review_count)
-  // Exclude those already in the "Top Rated" so we don't show duplicates
   const trending = [...ratedProducts]
     .sort((a, b) => b.review_count - a.review_count)
     .filter(p => !topRated.find(t => t.id === p.id))
@@ -1199,9 +1219,6 @@ const confirmOrderNow = async () => {
   }
 }
 
-// ==========================================
-// GCASH SESSION VERIFIER HOOK
-// ==========================================
 const verifyGcashPayment = async (orderNumber) => {
   isLoading.value = true
   toast.info('Verifying GCash Payment... Please wait.')
@@ -1217,7 +1234,7 @@ const verifyGcashPayment = async (orderNumber) => {
         downloadReceipt(response.data.receipt_data)
       }
       
-      router.replace({ query: {} }) // Strip the params from the URL
+      router.replace({ query: {} })
     }
   } catch (error) {
     toast.error('Payment Verification Failed', { description: error.response?.data?.message || 'The payment session could not be verified or was already processed.' })
@@ -1301,12 +1318,10 @@ const filteredProducts = computed(() => {
   return filtered
 })
 
-// GROUP AND SORT LOGIC
 const groupedProducts = computed(() => {
   const groups = {}
   
   filteredProducts.value.forEach(p => {
-    // Generate a unique key mapping visually identical parent items
     const key = `${p.distributor_id}|${p.category}|${p.type}|${p.name}`
     
     if (!groups[key]) {
@@ -1360,7 +1375,6 @@ const sortedGroups = computed(() => {
   
   return res
 })
-
 
 const toggleFilter = (filterId) => {
   const index = activeFilters.value.indexOf(filterId)

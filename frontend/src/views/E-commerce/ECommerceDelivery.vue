@@ -44,7 +44,8 @@ import {
   Hourglass,
   ShieldAlert,
   AlertCircle,
-  Mail // <-- new import added
+  Mail,
+  UserX
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -64,7 +65,7 @@ interface Delivery {
   status: string
   client_name: string
   client_phone: string
-  client_email: string // <-- added
+  client_email: string
   delivery_address: string
   target_lat: number | null
   target_lng: number | null
@@ -97,6 +98,10 @@ const bypassLocation = ref(false)
 const showRejectForm = ref(false)
 const rejectReason = ref('')
 
+// Failed Delivery State
+const showFailedForm = ref(false)
+const failedReason = ref('')
+
 // Proof File States
 const proofFile = ref<File | null>(null)
 const proofPreview = ref<string | null>(null)
@@ -117,7 +122,7 @@ const targetMarkers: L.Marker[] = []
 
 // --- Computed ---
 const pendingDeliveries = computed(() => 
-  deliveries.value.filter(d => ['assigned', 'in_transit', 'remitting'].includes(d.status))
+  deliveries.value.filter(d => ['assigned', 'in_transit', 'remitting', 'returning_to_hq'].includes(d.status))
 )
 
 const activeDelivery = computed(() => 
@@ -131,12 +136,12 @@ const currentCoordsDisplay = computed(() => {
 
 const activeTargetLat = computed(() => {
   if (!activeDelivery.value) return null
-  return activeDelivery.value.status === 'remitting' ? activeDelivery.value.distributor_lat : activeDelivery.value.target_lat
+  return (activeDelivery.value.status === 'remitting' || activeDelivery.value.status === 'returning_to_hq') ? activeDelivery.value.distributor_lat : activeDelivery.value.target_lat
 })
 
 const activeTargetLng = computed(() => {
   if (!activeDelivery.value) return null
-  return activeDelivery.value.status === 'remitting' ? activeDelivery.value.distributor_lng : activeDelivery.value.target_lng
+  return (activeDelivery.value.status === 'remitting' || activeDelivery.value.status === 'returning_to_hq') ? activeDelivery.value.distributor_lng : activeDelivery.value.target_lng
 })
 
 // Calculate distance in meters
@@ -232,8 +237,8 @@ const drawRoute = async (force = false) => {
 
   lastRoutedPosition = { lat: currentPosition.value.lat, lng: currentPosition.value.lng }
 
-  const isRemitting = activeDelivery.value?.status === 'remitting'
-  const color = isRemitting ? '#a855f7' : '#3b82f6'
+  const isReturning = activeDelivery.value?.status === 'remitting' || activeDelivery.value?.status === 'returning_to_hq'
+  const color = isReturning ? '#a855f7' : '#3b82f6'
 
   try {
     const startLng = currentPosition.value.lng
@@ -298,7 +303,7 @@ const updateMapMarkers = () => {
     let tLat = delivery.target_lat
     let tLng = delivery.target_lng
 
-    if (delivery.status === 'remitting') {
+    if (delivery.status === 'remitting' || delivery.status === 'returning_to_hq') {
       tLat = delivery.distributor_lat
       tLng = delivery.distributor_lng
     }
@@ -308,6 +313,7 @@ const updateMapMarkers = () => {
       
       let iconColor = 'bg-red-500'
       if (delivery.status === 'remitting') iconColor = 'bg-purple-500'
+      if (delivery.status === 'returning_to_hq') iconColor = 'bg-orange-500'
       if (isTarget) iconColor = 'bg-green-500'
 
       const iconHtml = isTarget 
@@ -318,7 +324,8 @@ const updateMapMarkers = () => {
         icon: L.divIcon({ html: iconHtml, className: '', iconSize: isTarget ? [24,24] : [16,16], iconAnchor: isTarget ? [12,12] : [8,8] })
       }).addTo(leafletMap!)
       
-      marker.bindPopup(`<b class="text-gray-900">${delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
+      const label = (delivery.status === 'remitting' || delivery.status === 'returning_to_hq') ? 'Return to HQ' : delivery.client_name
+      marker.bindPopup(`<b class="text-gray-900">${label}</b><br><span class="text-gray-600">${delivery.order_number}</span>`)
       targetMarkers.push(marker)
     }
   })
@@ -490,6 +497,51 @@ const arriveAndComplete = async () => {
   }
 }
 
+const reportFailedDelivery = async () => {
+  if (!failedReason.value.trim() || !activeDeliveryId.value) return
+  
+  isProcessing.value = true
+  try {
+    const res = await api.post(`/distributor-delivery/${activeDeliveryId.value}/return-to-hq`, {
+      reason: failedReason.value
+    })
+    toast.warning(res.data.message || 'Delivery marked as failed. Returning to HQ.')
+    showFailedForm.value = false
+    failedReason.value = ''
+    await fetchDeliveries(true)
+    focusDelivery(activeDeliveryId.value) // refocus to update target to HQ
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to report failed delivery')
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const handoverFailedDelivery = async () => {
+  if (!activeDelivery.value || !currentPosition.value) return
+
+  isProcessing.value = true
+  try {
+    const res = await api.post(`/distributor-delivery/${activeDelivery.value.id}/handover-failed`, {
+      latitude: currentPosition.value.lat,
+      longitude: currentPosition.value.lng,
+      bypass_location: bypassLocation.value
+    })
+    
+    toast.success(res.data.message || 'Returned items handed over successfully!')
+    clearActiveDelivery()
+    await fetchDeliveries(true)
+  } catch (error: any) {
+    if(error.response && error.response.status === 400) {
+       toast.error(error.response.data.message || 'Distance validation failed.')
+    } else {
+       toast.error('Failed to handover items.')
+    }
+  } finally {
+    isProcessing.value = false
+  }
+}
+
 const remitAndComplete = async () => {
   if (!activeDelivery.value || !currentPosition.value) return
   if (!remittanceFile.value) {
@@ -550,14 +602,16 @@ const focusDelivery = (id: number) => {
   isDrawerOpen.value = true 
   showRejectForm.value = false
   rejectReason.value = ''
+  showFailedForm.value = false
+  failedReason.value = ''
   
   updateMapMarkers()
   drawRoute(true) 
   
   nextTick(() => {
     const delivery = deliveries.value.find(d => d.id === id)
-    const tLat = delivery?.status === 'remitting' ? delivery.distributor_lat : delivery?.target_lat
-    const tLng = delivery?.status === 'remitting' ? delivery.distributor_lng : delivery?.target_lng
+    const tLat = (delivery?.status === 'remitting' || delivery?.status === 'returning_to_hq') ? delivery.distributor_lat : delivery?.target_lat
+    const tLng = (delivery?.status === 'remitting' || delivery?.status === 'returning_to_hq') ? delivery.distributor_lng : delivery?.target_lng
 
     if (leafletMap && tLat && tLng) {
       if (currentPosition.value) {
@@ -579,6 +633,8 @@ const clearActiveDelivery = () => {
   lastRoutedPosition = null
   showRejectForm.value = false
   rejectReason.value = ''
+  showFailedForm.value = false
+  failedReason.value = ''
 
   updateMapMarkers()
   drawRoute(true) 
@@ -764,17 +820,20 @@ onUnmounted(() => {
               <div class="flex justify-between items-start mb-2">
                 <div class="pr-2">
                   <h3 class="font-bold text-gray-100 text-lg flex items-center gap-2">
-                    {{ delivery.status === 'remitting' ? 'Return to HQ' : delivery.client_name }}
+                    {{ (delivery.status === 'remitting' || delivery.status === 'returning_to_hq') ? 'Return to HQ' : delivery.client_name }}
                     <Badge v-if="delivery.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
                   </h3>
                   <p class="text-xs text-gray-500 font-mono mt-0.5">{{ delivery.order_number }}</p>
                 </div>
                 <Badge :class="{
                   'bg-purple-500/20 text-purple-400 border-0': delivery.status === 'remitting',
+                  'bg-orange-500/20 text-orange-400 border-0': delivery.status === 'returning_to_hq',
                   'bg-emerald-500/20 text-emerald-400 border-0': delivery.status === 'in_transit',
                   'bg-amber-500/20 text-amber-400 border-0': delivery.status === 'assigned'
                 }">
-                  {{ delivery.status === 'remitting' ? 'Remitting' : (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned') }}
+                  {{ delivery.status === 'remitting' ? 'Remitting' : 
+                     (delivery.status === 'returning_to_hq' ? 'Failed - Returning' : 
+                     (delivery.status === 'in_transit' ? 'Out for Delivery' : 'Assigned')) }}
                 </Badge>
               </div>
 
@@ -789,8 +848,8 @@ onUnmounted(() => {
               </div>
 
               <p class="text-sm text-gray-400 mt-2 flex items-start gap-2">
-                <MapPin class="h-4 w-4 shrink-0 mt-0.5" :class="delivery.status === 'remitting' ? 'text-purple-400' : 'text-gray-500'" /> 
-                <span class="line-clamp-2">{{ delivery.status === 'remitting' ? 'Return collected funds to Distributor Base' : delivery.delivery_address }}</span>
+                <MapPin class="h-4 w-4 shrink-0 mt-0.5" :class="(delivery.status === 'remitting' || delivery.status === 'returning_to_hq') ? 'text-purple-400' : 'text-gray-500'" /> 
+                <span class="line-clamp-2">{{ (delivery.status === 'remitting' || delivery.status === 'returning_to_hq') ? 'Return collected items/funds to Distributor Base' : delivery.delivery_address }}</span>
               </p>
             </button>
           </div>
@@ -801,7 +860,7 @@ onUnmounted(() => {
             <div class="flex justify-between items-start">
                <div>
                   <h2 class="text-2xl font-black text-white leading-tight flex items-center gap-2">
-                    {{ activeDelivery.status === 'remitting' ? 'HQ Turnover' : activeDelivery.client_name }}
+                    {{ (activeDelivery.status === 'remitting' || activeDelivery.status === 'returning_to_hq') ? 'HQ Turnover' : activeDelivery.client_name }}
                     <Badge v-if="activeDelivery.order_type === 'sp'" class="text-[9px] px-1.5 py-0 h-4 bg-purple-500/20 text-purple-400 border-0">SP</Badge>
                   </h2>
                   <div class="flex items-center gap-2 mt-1">
@@ -815,7 +874,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Recipient Personal Information Grid -->
-            <div v-if="activeDelivery.status !== 'remitting'" class="grid grid-cols-2 gap-3">
+            <div v-if="activeDelivery.status !== 'remitting' && activeDelivery.status !== 'returning_to_hq'" class="grid grid-cols-2 gap-3">
               <div class="bg-gray-800/40 rounded-xl p-3 border border-gray-700/50">
                 <p class="text-xs text-gray-500 mb-1 flex items-center gap-1"><Phone class="h-3 w-3"/> Contact</p>
                 <p class="text-sm font-medium text-gray-200 truncate">{{ activeDelivery.client_phone }}</p>
@@ -832,15 +891,16 @@ onUnmounted(() => {
 
             <div class="bg-gray-800/40 rounded-xl p-3.5 border border-gray-700/50">
                 <p class="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
-                  <MapPin class="h-3.5 w-3.5" :class="activeDelivery.status === 'remitting' ? 'text-purple-400' : ''"/> 
-                  {{ activeDelivery.status === 'remitting' ? 'Distributor Headquarters' : 'Delivery Destination' }}
+                  <MapPin class="h-3.5 w-3.5" :class="(activeDelivery.status === 'remitting' || activeDelivery.status === 'returning_to_hq') ? 'text-purple-400' : ''"/> 
+                  {{ (activeDelivery.status === 'remitting' || activeDelivery.status === 'returning_to_hq') ? 'Distributor Headquarters' : 'Delivery Destination' }}
                 </p>
                 <p class="text-sm font-medium text-gray-200 leading-relaxed">
-                  {{ activeDelivery.status === 'remitting' ? 'Please return to base to remit collected COD.' : activeDelivery.delivery_address }}
+                  {{ activeDelivery.status === 'remitting' ? 'Please return to base to remit collected COD.' : 
+                     (activeDelivery.status === 'returning_to_hq' ? 'Return the failed delivery items back to the inventory.' : activeDelivery.delivery_address) }}
                 </p>
             </div>
 
-            <div v-if="activeDelivery.payment_method.toLowerCase() === 'cod' && activeDelivery.status !== 'remitting'" class="bg-green-900/20 rounded-xl p-4 border border-green-800/50">
+            <div v-if="activeDelivery.payment_method.toLowerCase() === 'cod' && activeDelivery.status !== 'remitting' && activeDelivery.status !== 'returning_to_hq'" class="bg-green-900/20 rounded-xl p-4 border border-green-800/50">
                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                  <span class="text-sm font-semibold text-green-400 flex items-center gap-2">
                     <Banknote class="h-4 w-4"/> Cash on Delivery (COD)
@@ -851,7 +911,6 @@ onUnmounted(() => {
 
             <!-- Assigned delivery actions (Start / Reject) -->
             <div v-if="activeDelivery.status === 'assigned'" class="pt-4 space-y-3">
-                <!-- Waiting vs Ready status -->
                 <div v-if="!activeDelivery.is_ready_to_go" class="p-3 bg-amber-900/30 border border-amber-800/50 rounded-xl text-amber-300 text-sm flex items-start gap-3">
                   <AlertCircle class="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
                   <div class="leading-snug">
@@ -901,7 +960,7 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- In-transit actions (arrive) -->
+            <!-- In-transit actions (arrive or fail) -->
             <div v-if="activeDelivery.status === 'in_transit'" class="space-y-5 pt-2">
                 
                 <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
@@ -949,10 +1008,33 @@ onUnmounted(() => {
                   class="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 mt-4 rounded-xl h-14 text-lg font-semibold" 
                   size="lg"
                 >
-                    <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
+                    <Loader2 v-if="isProcessing && !showFailedForm" class="mr-2 h-5 w-5 animate-spin" />
                     <CheckCircle2 v-else class="mr-2 h-5 w-5" /> 
                     {{ activeDelivery.payment_method.toLowerCase() === 'cod' ? 'Confirm Arrival & Payment' : 'Complete Delivery' }}
                 </Button>
+
+                <!-- Failed Delivery Option -->
+                <div v-if="!showFailedForm" class="mt-4">
+                  <Button variant="outline" @click="showFailedForm = true" class="w-full border-orange-900/40 text-orange-400 hover:bg-orange-900/20 hover:text-orange-300 rounded-xl h-12">
+                    <UserX class="mr-2 h-4 w-4" /> Report Failed Delivery (No Receiver)
+                  </Button>
+                </div>
+                <div v-else class="bg-orange-900/10 p-4 rounded-xl border border-orange-900/30 space-y-3 mt-4">
+                  <label class="text-sm font-semibold text-orange-400">Reason for Failure <span class="text-orange-500">*</span></label>
+                  <textarea 
+                    v-model="failedReason" 
+                    class="w-full bg-gray-900 border border-orange-900/50 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-orange-500" 
+                    rows="3" 
+                    placeholder="e.g., Customer not at home, unreachable, refused to pay..."></textarea>
+                  
+                  <div class="flex gap-2 pt-1">
+                    <Button variant="ghost" @click="showFailedForm = false" class="flex-1 text-gray-400 hover:text-white hover:bg-gray-800">Cancel</Button>
+                    <Button variant="destructive" @click="reportFailedDelivery" :disabled="isProcessing || !failedReason.trim()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white">
+                        <Loader2 v-if="isProcessing" class="mr-2 h-4 w-4 animate-spin" />
+                        Confirm Failure
+                    </Button>
+                  </div>
+                </div>
             </div>
 
             <!-- Remitting actions -->
@@ -987,6 +1069,28 @@ onUnmounted(() => {
                 >
                     <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
                     <Banknote v-else class="mr-2 h-5 w-5" /> Complete HQ Turnover
+                </Button>
+            </div>
+
+            <!-- Returning Failed Items actions -->
+            <div v-if="activeDelivery.status === 'returning_to_hq'" class="space-y-5 pt-2">
+                <Alert v-if="!isWithinRange && !bypassLocation" variant="destructive" class="bg-yellow-900/20 border-yellow-700/50 text-yellow-300 py-3">
+                   <AlertTriangle class="h-5 w-5" />
+                   <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the HQ to handover products.</AlertDescription>
+                </Alert>
+
+                <div class="bg-orange-900/20 border border-orange-800/50 rounded-xl p-4 text-orange-300 mb-4">
+                  <p class="text-sm font-medium">Please return the items listed above back to the warehouse staff. The inventory will be automatically restored once you confirm handover.</p>
+                </div>
+
+                <Button 
+                  @click="handoverFailedDelivery" 
+                  :disabled="(!isWithinRange && !bypassLocation) || isProcessing" 
+                  class="w-full bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-900/20 mt-2 rounded-xl h-14 text-lg font-semibold" 
+                  size="lg"
+                >
+                    <Loader2 v-if="isProcessing" class="mr-2 h-5 w-5 animate-spin" />
+                    <Package v-else class="mr-2 h-5 w-5" /> Handover Returned Products
                 </Button>
             </div>
 

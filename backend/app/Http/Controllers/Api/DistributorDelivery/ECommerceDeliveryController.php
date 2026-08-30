@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\ServiceProvider\SpOrder;
 use App\Models\OperationDistributor\ECOrderDelivery;
+use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\DistributorDelivery\ECDeliveryRemittance;
 use App\Models\HR\Employee;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ class ECommerceDeliveryController extends Controller
         }
 
         $deliveries = ECOrderDelivery::where('delivery_personnel_id', $employee->id)
-            ->whereIn('status', ['assigned', 'in_transit', 'remitting'])
+            ->whereIn('status', ['assigned', 'in_transit', 'remitting', 'returning_to_hq'])
             ->get()
             ->map(function ($delivery) use ($distLat, $distLng) {
                 
@@ -431,6 +432,181 @@ class ECommerceDeliveryController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Failed to reject delivery: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function returnToHq(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:1000'
+        ]);
+
+        $delivery = ECOrderDelivery::findOrFail($id);
+
+        if ($delivery->status !== 'in_transit') {
+            return response()->json(['message' => 'Only in transit deliveries can be marked as failed.'], 400);
+        }
+
+        $user = $request->user();
+        $employee = Employee::where('user_id', $user->id)->first();
+        if (!$employee) return response()->json(['message' => 'Unauthorized access.'], 403);
+
+        DB::beginTransaction();
+        try {
+            $delivery->update(['status' => 'returning_to_hq']);
+
+            $clientName = 'Unknown';
+            $deliveryAddress = 'Unknown Address';
+            $targetUserId = null;
+
+            if ($delivery->order_id) {
+                $order = ClientOrder::with('client')->find($delivery->order_id);
+                if ($order) {
+                    $targetUserId = $order->client_id;
+                    $clientName = $order->client->full_name ?? 'Unknown Client';
+                    $deliveryAddress = $order->delivery_address;
+                }
+            } else if ($delivery->sp_order_id) {
+                $order = SpOrder::find($delivery->sp_order_id);
+                if ($order) {
+                    $targetUserId = $order->service_provider_id;
+                    $spUser = DB::table('users')->where('id', $order->service_provider_id)->first();
+                    $clientName = $spUser ? ($spUser->first_name . ' ' . $spUser->last_name) : 'Unknown Provider';
+                    $deliveryAddress = $order->delivery_address;
+                }
+            }
+
+            // Record the failure
+            DB::table('failed_deliveries')->insert([
+                'ec_order_delivery_id' => $delivery->id,
+                'order_id' => $delivery->order_id,
+                'sp_order_id' => $delivery->sp_order_id,
+                'delivery_personnel_id' => $employee->id,
+                'user_id' => $targetUserId,
+                'client_name' => $clientName,
+                'delivery_address' => $deliveryAddress,
+                'reason' => $request->reason,
+                'failed_attempts' => 1,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            event(new DeliveryUpdated($employee->parent_distributor_id));
+
+            return response()->json(['message' => 'Delivery marked as failed. Please return the products to HQ.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to record failed delivery attempt: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function handoverFailed(Request $request, $id)
+    {
+        $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+        ]);
+
+        $delivery = ECOrderDelivery::findOrFail($id);
+
+        if ($delivery->status !== 'returning_to_hq') {
+            return response()->json(['message' => 'Delivery is not in returning to HQ status.'], 400);
+        }
+
+        $bypassLocation = filter_var($request->input('bypass_location', false), FILTER_VALIDATE_BOOLEAN);
+
+        $user = $request->user();
+        $employee = Employee::where('user_id', $user->id)->first();
+
+        $distReq = DB::table('distributor_requirements')->where('user_id', $employee->parent_distributor_id)->first();
+        if ($distReq) {
+            $distAddr = DB::table('distributor_addresses')->where('distributor_requirements_id', $distReq->id)->first();
+            
+            if (!$bypassLocation && $distAddr && $distAddr->latitude && $distAddr->longitude) {
+                $distance = $this->calculateDistance($request->latitude, $request->longitude, $distAddr->latitude, $distAddr->longitude);
+                if ($distance > 0.5) {
+                    return response()->json(['message' => 'You are too far from the Distributor HQ to handover the returned products. Distance: ' . round($distance * 1000) . ' meters'], 400);
+                }
+            }
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $delivery->status = 'failed_delivery';
+            $delivery->save();
+
+            if ($delivery->order_id) {
+                DB::table('client_orders')
+                    ->where('id', $delivery->order_id)
+                    ->update([
+                        'status' => 'failed_delivery',
+                        'rejection_reason' => 'Delivery Failed: Returned to HQ by delivery personnel.'
+                    ]);
+                
+                $items = DB::table('client_order_items')->where('order_id', $delivery->order_id)->get();
+                foreach($items as $item) {
+                    $inv = DistributorInventory::where('distributor_id', $item->distributor_id)
+                        ->where('product_id', $item->product_id)
+                        ->where('ecommerce_status', 'deployed')
+                        ->first();
+                    if ($inv) {
+                        $inv->increment('quantity', $item->quantity);
+                    } else {
+                        DistributorInventory::create([
+                            'distributor_id' => $item->distributor_id,
+                            'product_id' => $item->product_id,
+                            'quantity' => $item->quantity,
+                            'ecommerce_status' => 'deployed'
+                        ]);
+                    }
+                }
+                
+                $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
+                if ($cOrder) event(new OrderUpdated($cOrder->client_id, null));
+
+            } elseif ($delivery->sp_order_id) {
+                DB::table('sp_orders')
+                    ->where('id', $delivery->sp_order_id)
+                    ->update([
+                        'status' => 'failed_delivery',
+                        'rejection_reason' => 'Delivery Failed: Returned to HQ by delivery personnel.'
+                    ]);
+                
+                $items = DB::table('sp_order_items')->where('sp_order_id', $delivery->sp_order_id)->get();
+                foreach($items as $item) {
+                    $inv = DistributorInventory::where('distributor_id', $item->distributor_id)
+                        ->where('product_id', $item->product_id)
+                        ->where('ecommerce_status', 'deployed')
+                        ->first();
+                    if ($inv) {
+                        $inv->increment('quantity', $item->quantity);
+                    } else {
+                        DistributorInventory::create([
+                            'distributor_id' => $item->distributor_id,
+                            'product_id' => $item->product_id,
+                            'quantity' => $item->quantity,
+                            'ecommerce_status' => 'deployed'
+                        ]);
+                    }
+                }
+
+                $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();
+                if ($spOrder) event(new OrderUpdated(null, $spOrder->service_provider_id));
+            }
+
+            DB::commit();
+
+            if ($employee) {
+                event(new DeliveryUpdated($employee->parent_distributor_id));
+            }
+
+            return response()->json(['message' => 'Products handed over successfully. Inventory restored.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to process handover: ' . $e->getMessage()], 500);
         }
     }
 

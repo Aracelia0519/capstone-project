@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Vinkla\Hashids\Facades\Hashids; // <-- Required Hashids Facade[cite: 3]
+use Vinkla\Hashids\Facades\Hashids;
 
 class EcommerceProductController extends Controller
 {
@@ -16,31 +16,47 @@ class EcommerceProductController extends Controller
     public function getProducts(Request $request)
     {
         try {
+            $user = $request->user('sanctum') ?? auth('sanctum')->user();
+            if ($user) {
+                $failedDeliveriesCount = DB::table('failed_deliveries')
+                    ->where('user_id', $user->id)
+                    ->count();
+
+                if ($failedDeliveriesCount >= 3) {
+                    return response()->json([
+                        'success' => true,
+                        'shop_disabled' => true,
+                        'message' => 'Access to the e-commerce shop has been restricted. Due to multiple failed delivery attempts associated with your account, ordering privileges and product visibility have been temporarily disabled.',
+                        'data' => []
+                    ]);
+                }
+            }
+
             // 1. Fetch strictly terminated distributors
             $terminatedIds = DB::table('account_terminations')
                 ->where('status', 'terminated')
                 ->whereIn('role', ['distributor', 'operational_distributor'])
                 ->pluck('account_id')
-                ->toArray(); //[cite: 3]
+                ->toArray();
 
             // 2. Safely query the base products without complex address joins
             $query = DB::table('distributor_products as dp')
                 ->join('users as u', 'dp.distributor_id', '=', 'u.id')
                 ->leftJoin('distributor_inventories as di', 'dp.id', '=', 'di.product_id')
                 ->where('dp.is_active', 1)
-                ->where('di.ecommerce_status', 'deployed'); //[cite: 3]
+                ->where('di.ecommerce_status', 'deployed');
             
             // Apply restriction block if records exist
             if (!empty($terminatedIds)) {
                 $query->whereNotIn('dp.distributor_id', $terminatedIds);
-            } //[cite: 3]
+            }
 
             $products = $query->select(
                 'dp.id', 'dp.distributor_id', 'dp.name', 'dp.category', 'dp.type', 
                 'dp.size', 'dp.color_code as color', 'dp.price', 'dp.image_url',
                 'u.full_name as distributor_name',
                 'di.quantity as stock'
-            )->get(); //[cite: 3]
+            )->get();
 
             // 3. Independent safe mapping for Distributor Addresses to prevent LeftJoin NULL crashes
             $distributorIds = $products->pluck('distributor_id')->unique();
@@ -57,7 +73,7 @@ class EcommerceProductController extends Controller
                         ];
                     }
                 }
-            } //[cite: 3]
+            }
 
             // 4. Attach Promotions & Reviews Data
             $productIds = $products->pluck('id')->toArray();
@@ -68,7 +84,7 @@ class EcommerceProductController extends Controller
                 ->whereDate('start_date', '<=', now())
                 ->whereDate('end_date', '>=', now())
                 ->get()
-                ->keyBy('product_id'); //[cite: 3]
+                ->keyBy('product_id');
 
             $reviews = DB::table('product_reviews')
                 ->whereIn('product_id', $productIds)
@@ -76,7 +92,7 @@ class EcommerceProductController extends Controller
                 ->select('product_id', DB::raw('AVG(rating) as avg_rating'), DB::raw('COUNT(id) as review_count'))
                 ->groupBy('product_id')
                 ->get()
-                ->keyBy('product_id'); //[cite: 3]
+                ->keyBy('product_id');
 
             // 5. Format Output for Vue (Injecting Coordinates & Hashids cleanly)
             $formatted = $products->map(function($p) use ($promotions, $reviews, $addresses) {
@@ -84,7 +100,7 @@ class EcommerceProductController extends Controller
                 $review = $reviews->get($p->id);
                 
                 $originalPrice = $p->price;
-                $currentPrice = $p->price; //[cite: 3]
+                $currentPrice = $p->price;
 
                 if ($promo) {
                     if ($promo->type === 'percentage_discount') {
@@ -92,15 +108,15 @@ class EcommerceProductController extends Controller
                     } elseif (in_array($promo->type, ['fixed_discount', 'fixed_amount'])) {
                         $currentPrice = max(0, $originalPrice - $promo->discount_value);
                     }
-                } //[cite: 3]
+                }
 
                 // Default coordinates to 0 to bypass validation crashes securely
                 $lat = $addresses[$p->distributor_id]['lat'] ?? 0;
-                $lng = $addresses[$p->distributor_id]['lng'] ?? 0; //[cite: 3]
+                $lng = $addresses[$p->distributor_id]['lng'] ?? 0;
 
                 return [
                     'id' => $p->id,
-                    'hash_id' => Hashids::encode($p->id), // <-- Generates obfuscated ID for URL
+                    'hash_id' => Hashids::encode($p->id),
                     'distributor_id' => $p->distributor_id,
                     'name' => $p->name,
                     'brand' => $p->distributor_name, 
@@ -123,10 +139,11 @@ class EcommerceProductController extends Controller
                         'discount_value' => $promo->discount_value
                     ] : null,
                 ];
-            }); //[cite: 3]
+            });
 
             return response()->json([
                 'success' => true,
+                'shop_disabled' => false,
                 'data' => $formatted
             ]);
             
@@ -142,6 +159,20 @@ class EcommerceProductController extends Controller
     public function getProduct($id)
     {
         try {
+            $user = auth('sanctum')->user();
+            if ($user) {
+                $failedDeliveriesCount = DB::table('failed_deliveries')
+                    ->where('user_id', $user->id)
+                    ->count();
+
+                if ($failedDeliveriesCount >= 3) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Access to product details is restricted. Your shop ordering privileges have been disabled due to accumulated failed deliveries.'
+                    ], 403);
+                }
+            }
+
             // Decode the Hashid back to the real database ID integer
             $decoded = Hashids::decode($id);
             $realId = !empty($decoded) ? $decoded[0] : $id;
@@ -150,13 +181,13 @@ class EcommerceProductController extends Controller
                 ->where('status', 'terminated')
                 ->whereIn('role', ['distributor', 'operational_distributor'])
                 ->pluck('account_id')
-                ->toArray(); //[cite: 3]
+                ->toArray();
 
             $query = DB::table('distributor_products as dp')
                 ->join('users as u', 'dp.distributor_id', '=', 'u.id')
                 ->leftJoin('distributor_inventories as di', 'dp.id', '=', 'di.product_id')
                 ->leftJoin('distributor_payment_settings as dps', 'dp.distributor_id', '=', 'dps.distributor_id')
-                ->where('dp.id', $realId) // <-- Uses the decoded real database ID
+                ->where('dp.id', $realId)
                 ->where('dp.is_active', 1)
                 ->select(
                     'dp.*', 
@@ -164,25 +195,25 @@ class EcommerceProductController extends Controller
                     'di.quantity as stock',
                     'dps.is_gcash_enabled',
                     'dps.is_pickup_enabled'
-                ); //[cite: 3]
+                );
 
             if (!empty($terminatedIds)) {
                 $query->whereNotIn('dp.distributor_id', $terminatedIds);
             }
 
-            $p = $query->first(); //[cite: 3]
+            $p = $query->first();
 
             // Deny if unavailable
             if (!$p) {
                 return response()->json(['success' => false, 'message' => 'Product is currently unavailable or has been removed.'], 404);
-            } //[cite: 3]
+            }
 
             // Independent explicit safe fetch for address mapping
             $req = DB::table('distributor_requirements')->where('user_id', $p->distributor_id)->first();
             $addr = $req ? DB::table('distributor_addresses')->where('distributor_requirements_id', $req->id)->first() : null;
             
             $lat = $addr ? $addr->latitude : 0;
-            $lng = $addr ? $addr->longitude : 0; //[cite: 3]
+            $lng = $addr ? $addr->longitude : 0;
 
             // Variants Query
             $variantsQuery = DB::table('distributor_products as dp')
@@ -191,22 +222,22 @@ class EcommerceProductController extends Controller
                 ->where('dp.name', $p->name)
                 ->where('dp.category', $p->category)
                 ->where('dp.is_active', 1)
-                ->select('dp.id', 'dp.name', 'dp.size', 'dp.color_code as color', 'dp.price', 'di.quantity as stock', 'dp.image_url'); //[cite: 3]
+                ->select('dp.id', 'dp.name', 'dp.size', 'dp.color_code as color', 'dp.price', 'di.quantity as stock', 'dp.image_url');
             
             if (!empty($terminatedIds)) {
                 $variantsQuery->whereNotIn('dp.distributor_id', $terminatedIds);
-            } //[cite: 3]
+            }
 
             $variants = $variantsQuery->get()->map(function($v) use ($lat, $lng) {
-                $v->hash_id = Hashids::encode($v->id); // <-- Encodes variant IDs safely
+                $v->hash_id = Hashids::encode($v->id);
                 $v->distributor_lat = (float)$lat;
                 $v->distributor_lng = (float)$lng;
                 return $v;
-            }); //[cite: 3]
+            });
 
             $reviews = DB::table('product_reviews as pr')
                 ->leftJoin('users as u', 'pr.client_id', '=', 'u.id')
-                ->where('pr.product_id', $realId) // <-- Uses the decoded real database ID
+                ->where('pr.product_id', $realId)
                 ->where('pr.status', 'published')
                 ->select(
                     'pr.id', 'pr.rating', 'pr.comment', 'pr.response', 'pr.response_date', 
@@ -216,9 +247,9 @@ class EcommerceProductController extends Controller
                     DB::raw('"Client" as reviewerType')
                 )
                 ->orderBy('pr.created_at', 'desc')
-                ->get(); //[cite: 3]
+                ->get();
 
-            $ratingAvg = $reviews->avg('rating'); //[cite: 3]
+            $ratingAvg = $reviews->avg('rating');
 
             $data = [
                 'id' => $p->id,
@@ -242,7 +273,7 @@ class EcommerceProductController extends Controller
                 'review_count' => $reviews->count(),
                 'variants' => $variants,
                 'reviews' => $reviews
-            ]; //[cite: 3]
+            ];
 
             return response()->json(['success' => true, 'data' => $data]);
             

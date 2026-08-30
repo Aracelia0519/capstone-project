@@ -72,6 +72,13 @@ class SpShopController extends Controller
             $paymentSettings = $paymentSettingsQuery->get()->keyBy('distributor_id');
         }
 
+        // Fetch failed deliveries count for the authenticated user
+        $user = Auth::guard('sanctum')->user();
+        $failedDeliveriesCount = 0;
+        if ($user) {
+            $failedDeliveriesCount = DB::table('failed_deliveries')->where('user_id', $user->id)->count();
+        }
+
         // Group products by (category, type, name)
         $grouped = [];
         foreach ($inventories as $productId => $items) {
@@ -270,7 +277,8 @@ class SpShopController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $products
+            'data' => $products,
+            'failed_deliveries_count' => $failedDeliveriesCount
         ]);
     }
 
@@ -309,6 +317,13 @@ class SpShopController extends Controller
         // Get distributor id from first inventory
         $firstItem = $inventories->first()->first();
         $distributorId = $firstItem->distributor_id;
+
+        // Fetch failed deliveries count for the authenticated user
+        $user = Auth::guard('sanctum')->user();
+        $failedDeliveriesCount = 0;
+        if ($user) {
+            $failedDeliveriesCount = DB::table('failed_deliveries')->where('user_id', $user->id)->count();
+        }
 
         // Build combined data similar to getProducts for a single group
         $totalStock = 0;
@@ -482,7 +497,8 @@ class SpShopController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $productData
+            'data' => $productData,
+            'failed_deliveries_count' => $failedDeliveriesCount
         ]);
     }
 
@@ -495,6 +511,14 @@ class SpShopController extends Controller
         ]);
 
         $user = Auth::user();
+
+        $failedCount = DB::table('failed_deliveries')->where('user_id', $user->id)->count();
+        if ($failedCount >= 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is restricted from ordering due to multiple failed deliveries.'
+            ], 403);
+        }
 
         $cartItem = SpCart::where('service_provider_id', $user->id)
             ->where('product_id', $request->product_id)
@@ -532,6 +556,14 @@ class SpShopController extends Controller
         ]);
 
         $user = Auth::user();
+
+        $failedCount = DB::table('failed_deliveries')->where('user_id', $user->id)->count();
+        if ($failedCount >= 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account is restricted from ordering due to multiple failed deliveries.'
+            ], 403);
+        }
 
         // Enforce validation based on distributor payment settings
         if (Schema::hasTable('distributor_payment_settings')) {

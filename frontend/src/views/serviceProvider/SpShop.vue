@@ -9,6 +9,7 @@
 
         <div class="hidden md:flex items-center gap-3">
           <Button 
+            v-if="failedDeliveriesCount < 3"
             @click="showDssModal = true"
             class="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 border-0 shadow-lg shadow-amber-500/20 rounded-xl font-medium"
           >
@@ -16,10 +17,11 @@
             Smart Picks
           </Button>
 
-          <Button @click="router.push('/serviceProvider/cart')" variant="outline" class="rounded-xl border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-colors font-medium">
+          <Button v-if="failedDeliveriesCount < 3" @click="handleCartNavigation" variant="outline" class="rounded-xl border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-colors font-medium">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
             Cart
           </Button>
+          
           <Button @click="router.push('/serviceProvider/Distributors')" variant="outline" class="rounded-xl border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors font-medium">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             Back to Partners
@@ -28,7 +30,8 @@
       </div>
     </div>
 
-    <div class="bg-slate-900/50 border-b border-slate-800/60 shadow-sm relative z-20">
+    <!-- Product Filters: Hide if restricted -->
+    <div v-if="!isLoading && failedDeliveriesCount < 3" class="bg-slate-900/50 border-b border-slate-800/60 shadow-sm relative z-20">
       <div class="container mx-auto px-4 py-4">
         <div class="flex flex-col lg:flex-row gap-4">
           <div class="flex-1">
@@ -124,12 +127,32 @@
       </div>
     </div>
 
+    <!-- Main Content Area -->
     <div class="container mx-auto px-4 py-10">
       <div v-if="isLoading" class="text-center py-20 flex flex-col items-center">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-4"></div>
         <p class="text-slate-400 font-medium">Processing your request...</p>
       </div>
 
+      <!-- Formal Restriction Message (if 3 or more failed deliveries) -->
+      <div v-else-if="failedDeliveriesCount >= 3" class="flex justify-center py-10">
+        <div class="bg-slate-900 border border-red-900/50 rounded-3xl p-10 max-w-2xl text-center shadow-2xl shadow-red-900/10">
+          <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+            <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h2 class="text-3xl font-black text-white mb-4 tracking-tight">Purchasing Privileges Suspended</h2>
+          <p class="text-slate-400 text-lg leading-relaxed mb-8">
+            We regret to inform you that your account's access to the shop has been temporarily disabled due to multiple unfulfilled or failed delivery attempts. We maintain these standards to ensure quality service across our network.
+          </p>
+          <p class="text-slate-500 text-sm">
+            Please contact the administrative team or your distributor headquarters to review your account status and request reactivation.
+          </p>
+        </div>
+      </div>
+
+      <!-- Standard Product View (if < 3 failed deliveries) -->
       <div v-else>
         <div class="flex justify-between items-center mb-6">
           <p class="text-slate-400 font-medium">{{ filteredProducts.length }} products found</p>
@@ -782,6 +805,7 @@ const route = useRoute()
 const distributorId = route.params.distributor_id
 
 const products = ref([])
+const failedDeliveriesCount = ref(0)
 const isLoading = ref(true)
 const isProcessing = ref(false)
 
@@ -825,6 +849,7 @@ const fetchProducts = async () => {
     const response = await api.get(`/service-provider/shop/products/${distributorId}`)
     if (response.data.success) {
       products.value = response.data.data
+      failedDeliveriesCount.value = response.data.failed_deliveries_count || 0
     }
   } catch (error) {
     toast.error('Error fetching products')
@@ -855,6 +880,10 @@ const goToProductDetails = (id) => {
 }
 
 const openCartModal = (product) => {
+  if (failedDeliveriesCount.value >= 3) {
+    toast.error('Your account is restricted from ordering due to multiple failed deliveries.');
+    return;
+  }
   if (product.stock <= 0) {
     toast.error('Cannot add to cart. This product is out of stock.');
     return;
@@ -867,6 +896,10 @@ const openCartModal = (product) => {
 }
 
 const openOrderModal = (product) => {
+  if (failedDeliveriesCount.value >= 3) {
+    toast.error('Your account is restricted from ordering due to multiple failed deliveries.');
+    return;
+  }
   if (product.stock <= 0) {
     toast.error('Cannot order. This product is out of stock.');
     return;
@@ -880,6 +913,14 @@ const openOrderModal = (product) => {
   paymentMethod.value = 'cod'
   isOrderModalOpen.value = true
   calculateLiveShipping()
+}
+
+const handleCartNavigation = () => {
+  if (failedDeliveriesCount.value >= 3) {
+    toast.error('Your account is restricted due to multiple failed deliveries.');
+    return;
+  }
+  router.push('/serviceProvider/cart');
 }
 
 watch(selectedVariant, (newVariant) => {
