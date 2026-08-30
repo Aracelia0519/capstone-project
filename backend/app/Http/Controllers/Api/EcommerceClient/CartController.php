@@ -96,6 +96,7 @@ class CartController extends Controller
             }
 
             $distSettings = $paymentSettings->get($item->distributor_id);
+            $codEnabled = $distSettings ? (bool)$distSettings->is_cod_enabled : true;
             $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
             $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
 
@@ -119,6 +120,7 @@ class CartController extends Controller
                 'image_url' => $item->product->image_url ? asset('storage/' . ltrim($item->product->image_url, '/')) : null,
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
+                'distributor_cod_enabled' => $codEnabled,
                 'distributor_gcash_enabled' => $gcashEnabled,
                 'distributor_pickup_enabled' => $pickupEnabled,
             ];
@@ -181,6 +183,28 @@ class CartController extends Controller
             return response()->json(['success' => false, 'message' => 'No valid items selected for checkout. Items may belong to a restricted distributor.'], 400);
         }
 
+        // Validate distributor payment method capability
+        $distributorIds = $cartItems->pluck('distributor_id')->unique();
+        if (Schema::hasTable('distributor_payment_settings')) {
+            $settings = DB::table('distributor_payment_settings')
+                ->whereIn('distributor_id', $distributorIds)
+                ->get()
+                ->keyBy('distributor_id');
+
+            foreach ($distributorIds as $distId) {
+                $distSetting = $settings->get($distId);
+                if ($request->payment_method === 'cod' && $distSetting && !$distSetting->is_cod_enabled) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not accept Cash on Delivery (COD).'], 422);
+                }
+                if ($request->payment_method === 'gcash' && (!$distSetting || !$distSetting->is_gcash_enabled)) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not accept GCash payment.'], 422);
+                }
+                if ($request->payment_method === 'pick-up' && (!$distSetting || !$distSetting->is_pickup_enabled)) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not support Store Pick-up.'], 422);
+                }
+            }
+        }
+
         $clientAddress = DB::table('client_addresses')
             ->join('client_requirements', 'client_addresses.client_requirements_id', '=', 'client_requirements.id')
             ->where('client_requirements.user_id', $user->id)
@@ -229,7 +253,6 @@ class CartController extends Controller
         $groupedItems = $cartItems->groupBy('distributor_id');
 
         foreach ($groupedItems as $distId => $items) {
-            $firstItem = $items->first();
             $distAddress = DB::table('distributor_addresses')
                 ->join('distributor_requirements', 'distributor_addresses.distributor_requirements_id', '=', 'distributor_requirements.id')
                 ->where('distributor_requirements.user_id', $distId)
@@ -304,9 +327,7 @@ class CartController extends Controller
         $orderNumber = 'ORD-' . strtoupper(Str::random(10));
         $checkoutUrl = null;
 
-        // =========================================================================
-        // 1. CALL PAYMONGO FIRST (Cart Version)
-        // =========================================================================
+        // 1. PayMongo GCash Flow
         if ($request->payment_method === 'gcash') {
             try {
                 $client = new \GuzzleHttp\Client();
@@ -414,9 +435,7 @@ class CartController extends Controller
             }
         }
 
-        // =========================================================================
-        // 2. DB TRANSACTION - COD & PICK-UP
-        // =========================================================================
+        // 2. COD & Store Pick-up Flow
         DB::beginTransaction();
         try {
             $order = ClientOrder::create([
@@ -497,12 +516,9 @@ class CartController extends Controller
 
             DB::commit();
 
-            // =========================================================================
-            // 3. BROADCAST REAL-TIME NOTIFICATIONS TO INVOLVED DISTRIBUTORS
-            // =========================================================================
             if ($orderStatus === 'confirmed') {
-                $distributorIds = array_unique($cartItems->pluck('distributor_id')->toArray());
-                foreach ($distributorIds as $distId) {
+                $involvedDistributorIds = array_unique($cartItems->pluck('distributor_id')->toArray());
+                foreach ($involvedDistributorIds as $distId) {
                     event(new EcommerceOrderPlaced($distId, [
                         'order_number' => $orderNumber,
                         'status' => $orderStatus
@@ -534,9 +550,6 @@ class CartController extends Controller
         }
     }
 
-    // =========================================================================
-    // SPECIFIC GCASH VERIFIER FOR CART CHECKOUTS WITH MULTIPLE DISTRIBUTORS
-    // =========================================================================
     public function verifyGcashPayment(Request $request)
     {
         $request->validate(['order_number' => 'required|string']);
@@ -740,9 +753,6 @@ class CartController extends Controller
             DB::commit();
             Storage::disk('local')->delete($filePath);
 
-            // =========================================================================
-            // BROADCAST REAL-TIME NOTIFICATIONS (GCASH)
-            // =========================================================================
             if ($cacheData['order_status'] === 'confirmed') {
                 $distributorIds = array_keys($distributorTotals);
                 foreach ($distributorIds as $distId) {

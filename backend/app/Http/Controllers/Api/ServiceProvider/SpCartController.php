@@ -83,8 +83,10 @@ class SpCartController extends Controller
             }
 
             $distSettings = $paymentSettings->get($item->distributor_id);
-            $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
-            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
+            // Strict casting to ensure JSON encoding uses pure boolean types
+            $codEnabled = $distSettings ? boolval($distSettings->is_cod_enabled) : true;
+            $gcashEnabled = $distSettings ? boolval($distSettings->is_gcash_enabled) : false;
+            $pickupEnabled = $distSettings ? boolval($distSettings->is_pickup_enabled) : false;
 
             $formattedItems[] = [
                 'id' => $item->id,
@@ -106,6 +108,7 @@ class SpCartController extends Controller
                 'image_url' => $item->product->image_url ? asset('storage/' . ltrim($item->product->image_url, '/')) : null,
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
+                'distributor_cod_enabled' => $codEnabled,
                 'distributor_gcash_enabled' => $gcashEnabled,
                 'distributor_pickup_enabled' => $pickupEnabled,
             ];
@@ -155,6 +158,28 @@ class SpCartController extends Controller
 
         if ($cartItems->isEmpty()) {
             return response()->json(['success' => false, 'message' => 'No valid items selected for checkout.'], 400);
+        }
+
+        // Validate distributor payment method capability
+        $distributorIds = $cartItems->pluck('distributor_id')->unique();
+        if (Schema::hasTable('distributor_payment_settings')) {
+            $settings = DB::table('distributor_payment_settings')
+                ->whereIn('distributor_id', $distributorIds)
+                ->get()
+                ->keyBy('distributor_id');
+
+            foreach ($distributorIds as $distId) {
+                $distSetting = $settings->get($distId);
+                if ($request->payment_method === 'cod' && $distSetting && !boolval($distSetting->is_cod_enabled)) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not accept Cash on Delivery (COD).'], 422);
+                }
+                if ($request->payment_method === 'gcash' && (!$distSetting || !boolval($distSetting->is_gcash_enabled))) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not accept GCash payment.'], 422);
+                }
+                if ($request->payment_method === 'pick-up' && (!$distSetting || !boolval($distSetting->is_pickup_enabled))) {
+                    return response()->json(['success' => false, 'message' => 'One or more selected distributors do not support Store Pick-up.'], 422);
+                }
+            }
         }
 
         $spAddress = DB::table('service_provider_addresses')

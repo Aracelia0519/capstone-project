@@ -39,6 +39,7 @@
       
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
+        <!-- Left Side: Product Info & Reviews -->
         <div class="lg:col-span-7 space-y-8">
           
           <div class="bg-white rounded-3xl p-2 border border-gray-100 shadow-sm overflow-hidden">
@@ -153,6 +154,7 @@
           </div>
         </div>
 
+        <!-- Right Side: Order Summary & Actions -->
         <div class="lg:col-span-5">
           <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-xl sticky top-24">
             
@@ -256,31 +258,55 @@
                 <!-- Payment Method -->
                 <div>
                   <Label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <label class="flex flex-col items-start gap-2 p-3 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !selectedProduct?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'gcash' ? 'border-blue-500 bg-blue-50/30 cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
+                        !isCodAvailable ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'cod' ? 'border-green-500 bg-green-50/30 cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
                       ]">
-                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!selectedProduct?.distributor_gcash_enabled" />
+                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" :disabled="!isCodAvailable" />
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-gray-900 flex items-center gap-1 text-sm">COD</span>
+                        <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-green-500' : 'border-gray-300'">
+                          <div v-if="paymentMethod === 'cod'" class="w-2 h-2 bg-green-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div v-if="!isCodAvailable" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                        Unavailable
+                      </div>
+                    </label>
+
+                    <label class="flex flex-col items-start gap-2 p-3 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
+                        !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'gcash' ? 'border-blue-500 bg-blue-50/30 cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
+                      ]">
+                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!isGcashAvailable" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-gray-900 flex items-center gap-1 text-sm">GCash</span>
                         <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'gcash' ? 'border-blue-500' : 'border-gray-300'">
                           <div v-if="paymentMethod === 'gcash'" class="w-2 h-2 bg-blue-500 rounded-full"></div>
                         </div>
                       </div>
+                      <div v-if="!isGcashAvailable" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                        Unavailable
+                      </div>
                     </label>
 
                     <label class="flex flex-col items-start gap-2 p-3 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[
-                        !selectedProduct?.distributor_pickup_enabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-50/30 cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
+                        !isPickupAvailable ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50 grayscale' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-50/30 cursor-pointer' : 'border-gray-100 hover:border-gray-200 cursor-pointer')
                       ]">
-                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!selectedProduct?.distributor_pickup_enabled" />
+                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!isPickupAvailable" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-gray-900 flex items-center gap-1 text-sm">Pick-Up</span>
                         <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'pick-up' ? 'border-amber-500' : 'border-gray-300'">
                           <div v-if="paymentMethod === 'pick-up'" class="w-2 h-2 bg-amber-500 rounded-full"></div>
                         </div>
                       </div>
+                      <div v-if="!isPickupAvailable" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase">
+                        Unavailable
+                      </div>
                     </label>
                   </div>
+                  <p v-if="!isCodAvailable || !isGcashAvailable || !isPickupAvailable" class="text-xs text-amber-600 mt-2 italic font-medium">
+                    * Some payment/delivery methods are disabled because this seller does not support them.
+                  </p>
                 </div>
 
                 <!-- Delivery Address -->
@@ -470,9 +496,10 @@
         <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
-              <svg v-if="paymentMethod === 'gcash'" class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+              <svg v-if="paymentMethod === 'cod'" class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg v-else-if="paymentMethod === 'gcash'" class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
               <svg v-else class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-              Confirm {{ paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up' }} Order
+              Confirm {{ paymentMethod === 'cod' ? 'COD' : (paymentMethod === 'gcash' ? 'GCash' : 'Pick-Up') }} Order
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3 leading-relaxed">
               <div class="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1">
@@ -490,14 +517,17 @@
               <span v-if="paymentMethod === 'gcash'" class="text-blue-600 text-sm font-semibold mt-2 block">
                 You will be redirected to complete your GCash payment securely.
               </span>
-              <span v-else class="text-amber-600 text-sm mt-2 block font-semibold">
+              <span v-else-if="paymentMethod === 'pick-up'" class="text-amber-600 text-sm mt-2 block font-semibold">
                 You will pay for and pick up your items at the physical store.
+              </span>
+              <span v-else class="text-sm mt-2 block">
+                This will be collected upon delivery.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
             <AlertDialogCancel @click="isOrderAlertOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction @click="confirmOrderNow" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md" :class="paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'">
+            <AlertDialogAction @click="confirmOrderNow" :disabled="isProcessing" class="rounded-xl font-bold text-white h-11 px-6 shadow-md" :class="paymentMethod === 'cod' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : (paymentMethod === 'pick-up' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20')">
               {{ isProcessing ? 'Processing...' : (paymentMethod === 'gcash' ? 'Proceed to GCash' : 'Place Order') }}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -583,6 +613,12 @@ const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
+// Helper to safely determine boolean states from backend
+const checkAvailability = (val, defaultVal = false) => {
+  if (val === undefined || val === null) return defaultVal;
+  return val === true || val === 1 || val === '1';
+}
+
 // Group variants by size
 const groupedVariants = computed(() => {
   if (!selectedProduct.value || !selectedProduct.value.variants) return {}
@@ -593,6 +629,33 @@ const groupedVariants = computed(() => {
     groups[size].push(v)
   })
   return groups
+})
+
+// Distributor Payment Verification Computing
+const isCodAvailable = computed(() => checkAvailability(selectedProduct.value?.distributor_cod_enabled, true))
+const isGcashAvailable = computed(() => checkAvailability(selectedProduct.value?.distributor_gcash_enabled, false))
+const isPickupAvailable = computed(() => checkAvailability(selectedProduct.value?.distributor_pickup_enabled, false))
+
+// Dynamic fallback when unselecting an option makes the current one invalid
+watch(isCodAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'cod') {
+    if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
+  }
+})
+
+watch(isGcashAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'gcash') {
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
+  }
+})
+
+watch(isPickupAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'pick-up') {
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+  }
 })
 
 // Robust Dynamic Image URL Generator
@@ -635,6 +698,7 @@ const fetchProductDetails = async (id) => {
     const response = await api.get(`/client/shop/product/${id}`)
     if (response.data.success) {
       selectedProduct.value = response.data.data
+      
       // Set default variant: first size, first available variant
       const sizes = Object.keys(groupedVariants.value)
       if (sizes.length > 0) {
@@ -643,8 +707,18 @@ const fetchProductDetails = async (id) => {
         const firstAvailable = groupedVariants.value[firstSize].find(v => v.stock > 0) || groupedVariants.value[firstSize][0]
         selectedVariant.value = firstAvailable || null
       }
+      
       orderQuantity.value = 1
-      paymentMethod.value = 'gcash'
+      
+      // Determine default payment method based on availability
+      if (isCodAvailable.value) {
+        paymentMethod.value = 'cod'
+      } else if (isGcashAvailable.value) {
+        paymentMethod.value = 'gcash'
+      } else if (isPickupAvailable.value) {
+        paymentMethod.value = 'pick-up'
+      }
+      
       addressMode.value = 'default'
       customAddress.value = ''
       calculateLiveShipping()
@@ -902,7 +976,7 @@ const confirmOrderNow = async () => {
           window.location.href = response.data.checkout_url
         }, 1500)
       } else {
-        toast.success('Order placed successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'GCash') + ')')
+        toast.success('Order placed successfully! (' + (paymentMethod.value === 'pick-up' ? 'Store Pick-Up' : 'Cash on Delivery') + ')')
         if (response.data.receipt_data) {
           downloadReceipt(response.data.receipt_data);
         }
@@ -962,6 +1036,7 @@ onMounted(() => {
     verifyGcashPayment(route.query.order_number) 
   } else if (route.params.id) {
     fetchProductDetails(route.params.id)
+    fetchOtherProducts() // Fetch carousel
   }
 })
 </script>

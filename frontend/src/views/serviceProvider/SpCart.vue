@@ -233,8 +233,10 @@
                 
                 <div class="mt-8 pt-6 border-t border-slate-700">
                   <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">Accepted Payment Methods</h3>
-                  <div class="grid grid-cols-2 gap-2">
-                    
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
+                      <span class="text-[10px] sm:text-xs font-bold text-white">COD</span>
+                    </div>
                     <div class="h-10 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700 hover:bg-slate-800 transition-colors">
                       <span class="text-[10px] sm:text-xs font-bold text-white">GCash</span>
                     </div>
@@ -267,7 +269,7 @@
                 <div class="flex items-center gap-4 mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 shadow-sm">
                   <div class="w-16 h-16 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/30 shadow-sm">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                   </div>
                   <div class="flex-1">
@@ -278,9 +280,25 @@
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     
-                    
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden bg-slate-800" :class="[
+                        !isCodAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900 grayscale' : (paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 cursor-pointer')
+                      ]">
+                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" :disabled="!isCodAvailable" />
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-white flex items-center gap-2">
+                          <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                          COD
+                        </span>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-emerald-500' : 'border-slate-600'">
+                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div v-if="!isCodAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
+                        Unavailable
+                      </div>
+                    </label>
 
                     <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden bg-slate-800" :class="[
                         !isGcashAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-900 grayscale' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 hover:border-slate-600 cursor-pointer')
@@ -319,7 +337,7 @@
                     </label>
 
                   </div>
-                  <p v-if="!isGcashAvailable || !isPickupAvailable" class="text-xs text-amber-500/80 mt-2 italic font-medium">
+                  <p v-if="!isCodAvailable || !isGcashAvailable || !isPickupAvailable" class="text-xs text-amber-500/80 mt-2 italic font-medium">
                     * Some payment/delivery methods are disabled because one or more selected distributors do not support them.
                   </p>
                 </div>
@@ -467,6 +485,14 @@ const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
+// Helper to safely determine boolean states from backend string/int/bool payloads
+const checkAvailability = (val, defaultVal = false) => {
+  if (val === undefined || val === null) return defaultVal;
+  if (val === true || val === 1 || val === '1' || String(val).toLowerCase() === 'true') return true;
+  if (val === false || val === 0 || val === '0' || String(val).toLowerCase() === 'false') return false;
+  return Boolean(val);
+}
+
 // Computed Values
 const productItems = computed(() => cartItems.value.filter(item => item.type === 'product' || !item.type))
 
@@ -489,25 +515,41 @@ const totalItems = computed(() => selectedItems.value.reduce((sum, item) => sum 
 const subtotal = computed(() => selectedItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0))
 const totalAmount = computed(() => subtotal.value + (paymentMethod.value === 'pick-up' ? 0 : shippingFeeEst.value))
 
+// Strict computed evaluations for availability
+const isCodAvailable = computed(() => {
+  if (selectedItems.value.length === 0) return false;
+  return selectedItems.value.every(item => checkAvailability(item.distributor_cod_enabled, true));
+})
+
 const isGcashAvailable = computed(() => {
   if (selectedItems.value.length === 0) return false;
-  return selectedItems.value.every(item => item.distributor_gcash_enabled);
+  return selectedItems.value.every(item => checkAvailability(item.distributor_gcash_enabled, false));
 })
 
 const isPickupAvailable = computed(() => {
   if (selectedItems.value.length === 0) return false;
-  return selectedItems.value.every(item => item.distributor_pickup_enabled);
+  return selectedItems.value.every(item => checkAvailability(item.distributor_pickup_enabled, false));
+})
+
+// Enforce fallback rules
+watch(isCodAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'cod') {
+    if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
+  }
 })
 
 watch(isGcashAvailable, (avail) => {
   if (!avail && paymentMethod.value === 'gcash') {
-    paymentMethod.value = 'cod'
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
   }
 })
 
 watch(isPickupAvailable, (avail) => {
   if (!avail && paymentMethod.value === 'pick-up') {
-    paymentMethod.value = 'cod'
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isGcashAvailable.value) paymentMethod.value = 'gcash'
   }
 })
 
@@ -531,7 +573,7 @@ const calculateLiveShipping = () => {
         distributor_lng: item.distributor_lng
       }))
 
-      const response = await api.post('/service-provider/shop/shipping-fee', {
+      const response = await api.post('/service-provider/shop/cart-items/calculate-shipping', {
         cart_items: payloadItems
       })
 
@@ -636,7 +678,16 @@ const openCheckoutModal = () => {
   }
   addressMode.value = 'default'
   customAddress.value = ''
-  paymentMethod.value = 'cod'
+
+  // Fallback default on load based on availability
+  if (isCodAvailable.value) {
+    paymentMethod.value = 'cod'
+  } else if (isGcashAvailable.value) {
+    paymentMethod.value = 'gcash'
+  } else if (isPickupAvailable.value) {
+    paymentMethod.value = 'pick-up'
+  }
+
   isCheckoutModalOpen.value = true
 }
 

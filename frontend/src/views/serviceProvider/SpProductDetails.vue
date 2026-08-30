@@ -55,9 +55,7 @@
             </div>
           </div>
 
-          <!-- Variant Selection: Group by Size, then Colors -->
           <div v-if="groupedVariants && Object.keys(groupedVariants).length > 0" class="mb-6">
-            <!-- Size selection -->
             <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Size</Label>
             <div class="flex flex-wrap gap-2 mb-4">
               <button
@@ -75,7 +73,6 @@
               </button>
             </div>
 
-            <!-- Color selection for selected size -->
             <div v-if="selectedSize && groupedVariants[selectedSize] && groupedVariants[selectedSize].length > 0">
               <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select Color</Label>
               <div class="flex flex-wrap gap-3">
@@ -136,8 +133,9 @@
             <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50">
               <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Support</p>
               <div class="flex gap-1">
-                <span v-if="product.distributor_gcash_enabled" class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">GCASH</span>
-                <span v-if="product.distributor_pickup_enabled" class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">PICK-UP</span>
+                <span v-if="isCodAvailable" class="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">COD</span>
+                <span v-if="isGcashAvailable" class="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded">GCASH</span>
+                <span v-if="isPickupAvailable" class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">PICK-UP</span>
               </div>
             </div>
           </div>
@@ -154,7 +152,6 @@
         </div>
       </div>
 
-      <!-- Reviews -->
       <div class="mt-16 border-t border-slate-800 pt-10">
         <div class="flex gap-8 border-b border-slate-800 mb-8">
           <button @click="activeTab = 'reviews'" :class="['pb-4 text-lg font-bold border-b-2 transition-all', activeTab === 'reviews' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300']">
@@ -289,24 +286,43 @@
 
                 <div class="mb-8">
                   <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">Payment Method</Label>
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!product?.distributor_gcash_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
-                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!product?.distributor_gcash_enabled" />
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!isCodAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'cod' ? 'border-emerald-500 bg-emerald-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
+                      <input type="radio" v-model="paymentMethod" value="cod" class="hidden" :disabled="!isCodAvailable" />
+                      <div class="flex items-center justify-between w-full">
+                        <span class="font-bold text-white">COD</span>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'cod' ? 'border-emerald-500' : 'border-slate-600'">
+                          <div v-if="paymentMethod === 'cod'" class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div v-if="!isCodAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
+                        Unavailable
+                      </div>
+                    </label>
+
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!isGcashAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'gcash' ? 'border-indigo-500 bg-indigo-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
+                      <input type="radio" v-model="paymentMethod" value="gcash" class="hidden" :disabled="!isGcashAvailable" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white">GCash</span>
                         <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'gcash' ? 'border-indigo-500' : 'border-slate-600'">
                           <div v-if="paymentMethod === 'gcash'" class="w-2.5 h-2.5 bg-indigo-500 rounded-full"></div>
                         </div>
                       </div>
+                      <div v-if="!isGcashAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
+                        Unavailable
+                      </div>
                     </label>
 
-                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!product?.distributor_pickup_enabled ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
-                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!product?.distributor_pickup_enabled" />
+                    <label class="flex flex-col items-start gap-2 p-4 border-2 rounded-xl transition-all duration-200 relative overflow-hidden" :class="[!isPickupAvailable ? 'opacity-50 cursor-not-allowed border-slate-700 bg-slate-800/50' : (paymentMethod === 'pick-up' ? 'border-amber-500 bg-amber-500/10 shadow-sm cursor-pointer' : 'border-slate-700 bg-slate-800 cursor-pointer')]">
+                      <input type="radio" v-model="paymentMethod" value="pick-up" class="hidden" :disabled="!isPickupAvailable" />
                       <div class="flex items-center justify-between w-full">
                         <span class="font-bold text-white">Pick-Up</span>
                         <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center" :class="paymentMethod === 'pick-up' ? 'border-amber-500' : 'border-slate-600'">
                           <div v-if="paymentMethod === 'pick-up'" class="w-2.5 h-2.5 bg-amber-500 rounded-full"></div>
                         </div>
+                      </div>
+                      <div v-if="!isPickupAvailable" class="absolute top-0 right-0 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase backdrop-blur-sm">
+                        Unavailable
                       </div>
                     </label>
                   </div>
@@ -420,6 +436,38 @@ const formatCurrency = (value) => Number(value || 0).toLocaleString('en-PH', { m
 const getVatableSales = (total) => total / 1.12
 const getVatAmount = (total) => total - getVatableSales(total)
 
+const checkAvailability = (val, defaultVal = false) => {
+  if (val === undefined || val === null) return defaultVal;
+  if (val === true || val === 1 || val === '1' || String(val).toLowerCase() === 'true') return true;
+  if (val === false || val === 0 || val === '0' || String(val).toLowerCase() === 'false') return false;
+  return Boolean(val);
+}
+
+const isCodAvailable = computed(() => checkAvailability(product.value?.distributor_cod_enabled, true));
+const isGcashAvailable = computed(() => checkAvailability(product.value?.distributor_gcash_enabled, false));
+const isPickupAvailable = computed(() => checkAvailability(product.value?.distributor_pickup_enabled, false));
+
+watch(isCodAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'cod') {
+    if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
+  }
+})
+
+watch(isGcashAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'gcash') {
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
+  }
+})
+
+watch(isPickupAvailable, (avail) => {
+  if (!avail && paymentMethod.value === 'pick-up') {
+    if (isCodAvailable.value) paymentMethod.value = 'cod'
+    else if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+  }
+})
+
 // Group variants by size
 const groupedVariants = computed(() => {
   if (!product.value || !product.value.variants) return {}
@@ -477,7 +525,9 @@ const selectVariant = (variant) => {
 const openCartModal = () => { isCartModalOpen.value = true }
 const openOrderModal = () => { 
   orderQuantity.value = 1
-  paymentMethod.value = 'cod'
+  if (isCodAvailable.value) paymentMethod.value = 'cod'
+  else if (isGcashAvailable.value) paymentMethod.value = 'gcash'
+  else if (isPickupAvailable.value) paymentMethod.value = 'pick-up'
   isOrderModalOpen.value = true
   calculateLiveShipping()
 }

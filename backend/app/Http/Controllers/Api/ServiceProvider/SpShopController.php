@@ -88,6 +88,7 @@ class SpShopController extends Controller
                     'distributor_name' => null,
                     'distributor_lat' => null,
                     'distributor_lng' => null,
+                    'distributor_cod_enabled' => true,
                     'distributor_gcash_enabled' => false,
                     'distributor_pickup_enabled' => false,
                     'category' => $productModel->category,
@@ -121,8 +122,9 @@ class SpShopController extends Controller
             $distributorName = $distributorInfo ? ($distributorInfo->company_name ?? $distributorInfo->business_name ?? 'Distributor') : 'Distributor';
 
             $distSettings = $paymentSettings->get($group['distributor_id']);
-            $gcashEnabled = $distSettings ? (bool)$distSettings->is_gcash_enabled : false;
-            $pickupEnabled = $distSettings ? (bool)$distSettings->is_pickup_enabled : false;
+            $codEnabled = $distSettings ? boolval($distSettings->is_cod_enabled) : true;
+            $gcashEnabled = $distSettings ? boolval($distSettings->is_gcash_enabled) : false;
+            $pickupEnabled = $distSettings ? boolval($distSettings->is_pickup_enabled) : false;
 
             // Aggregate reviews across all product_ids
             $allReviews = collect();
@@ -259,6 +261,7 @@ class SpShopController extends Controller
                 'image_url' => $imageUrl,
                 'distributor_lat' => $distAddress->latitude ?? null,
                 'distributor_lng' => $distAddress->longitude ?? null,
+                'distributor_cod_enabled' => $codEnabled,
                 'distributor_gcash_enabled' => $gcashEnabled,
                 'distributor_pickup_enabled' => $pickupEnabled,
                 'variants' => $variants,
@@ -471,8 +474,9 @@ class SpShopController extends Controller
             'image_url' => $imageUrl,
             'distributor_lat' => $distAddress->latitude ?? null,
             'distributor_lng' => $distAddress->longitude ?? null,
-            'distributor_gcash_enabled' => $paymentSettings ? (bool)$paymentSettings->is_gcash_enabled : false,
-            'distributor_pickup_enabled' => $paymentSettings ? (bool)$paymentSettings->is_pickup_enabled : false,
+            'distributor_cod_enabled' => $paymentSettings ? boolval($paymentSettings->is_cod_enabled) : true,
+            'distributor_gcash_enabled' => $paymentSettings ? boolval($paymentSettings->is_gcash_enabled) : false,
+            'distributor_pickup_enabled' => $paymentSettings ? boolval($paymentSettings->is_pickup_enabled) : false,
             'variants' => $variants,
         ];
 
@@ -528,6 +532,21 @@ class SpShopController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // Enforce validation based on distributor payment settings
+        if (Schema::hasTable('distributor_payment_settings')) {
+            $distSetting = DB::table('distributor_payment_settings')->where('distributor_id', $request->distributor_id)->first();
+            
+            if ($request->payment_method === 'cod' && $distSetting && !boolval($distSetting->is_cod_enabled)) {
+                return response()->json(['success' => false, 'message' => 'Distributor does not accept Cash on Delivery (COD).'], 422);
+            }
+            if ($request->payment_method === 'gcash' && (!$distSetting || !boolval($distSetting->is_gcash_enabled))) {
+                return response()->json(['success' => false, 'message' => 'Distributor does not accept GCash payment.'], 422);
+            }
+            if ($request->payment_method === 'pick-up' && (!$distSetting || !boolval($distSetting->is_pickup_enabled))) {
+                return response()->json(['success' => false, 'message' => 'Distributor does not support Store Pick-up.'], 422);
+            }
+        }
 
         $spAddress = DB::table('service_provider_addresses')
             ->join('service_provider_requirements', 'service_provider_addresses.service_provider_requirements_id', '=', 'service_provider_requirements.id')

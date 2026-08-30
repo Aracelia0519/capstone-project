@@ -1,0 +1,97 @@
+﻿
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/1999/xhtml'>
+    <head>
+      <meta charset="utf-8">
+      <title>Order Receipt - ORD-L1K5IZL08K</title>
+      <style>
+        body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; margin: 1.5cm; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 15px; }
+        .company-name { font-size: 16pt; font-weight: bold; text-transform: uppercase; }
+        .meta-table { width: 100%; margin-bottom: 20px; border: none; }
+        .meta-table td { padding: 5px; vertical-align: top; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th { border-bottom: 2px solid #000; border-top: 2px solid #000; padding: 8px 5px; text-align: left; background-color: #f9f9f9; font-weight: bold; }
+        .items-table td { border-bottom: 1px dashed #ddd; padding: 8px 5px; }
+        .footer { margin-top: 50px; text-align: center; font-size: 9pt; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company-name">E-COMMERCE MULTI-VENDOR RECEIPT</div>
+        <br/>
+        <div style="font-size: 14pt; font-weight: bold; letter-spacing: 2px;">OFFICIAL RECEIPT</div>
+      </div>
+
+      <table class="meta-table">
+        <tr>
+          <td width="60%">
+            <strong>BILL TO:</strong><br/>
+            Julian Namoc<br/>
+            Payment Method: COD<br/>
+            Status: Confirmed
+          </td>
+          <td width="40%" style="text-align: right;">
+            <strong>ORDER #:</strong> ORD-L1K5IZL08K<br/>
+            <strong>DATE:</strong> 2026-08-30 23:31:37<br/>
+          </td>
+        </tr>
+      </table>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Item Description</th>
+            <th style="text-align: right;">Qty</th>
+            <th style="text-align: right;">Unit Price</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+    <tr>
+      <td>Amber Diaz <br/><small style="color:gray;">Seller: Juji's Corp</small></td>
+      <td style="text-align: right;">1</td>
+      <td style="text-align: right;">₱325.00</td>
+      <td style="text-align: right;">₱325.00</td>
+    </tr>
+  
+          <tr>
+            <td>Shipping Fee</td>
+            <td></td>
+            <td></td>
+            <td style="text-align: right;">₱55.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table style="width: 100%; margin-top: 20px;">
+        <tr>
+          <td width="50%">
+            <p style="font-size: 9pt; color: #555;">Notes/Remarks: Thank you for your purchase. This document serves as your official e-receipt.</p>
+          </td>
+          <td width="50%">
+            <table style="width: 100%; border-top: 2px solid #000; padding-top: 5px;">
+              <tr>
+                <td style="padding: 3px 0; color: #444;">VATable Sales:</td>
+                <td style="padding: 3px 0; text-align: right;">₱339.29</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 0; color: #444;">VAT Amount (12%):</td>
+                <td style="padding: 3px 0; text-align: right; border-bottom: 1px solid #ccc;">₱40.71</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; font-size: 14pt; padding-top: 10px;">TOTAL AMOUNT:</td>
+                <td style="font-weight: bold; font-size: 14pt; text-align: right; padding-top: 10px;">₱380.00</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <div class="footer">
+        This is a system-generated receipt.<br/>
+        Generated on 8/30/2026, 11:31:37 PM
+      </div>
+    </body>
+    </html>
+  
