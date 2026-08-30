@@ -123,6 +123,7 @@
               <TableHead class="py-5 px-6 font-bold text-slate-500 uppercase tracking-wider text-xs">Reported User</TableHead>
               <TableHead class="font-bold text-slate-500 uppercase tracking-wider text-xs">Account Role</TableHead>
               <TableHead class="text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Total Reports</TableHead>
+              <TableHead class="text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Risk Hierarchy</TableHead>
               <TableHead class="text-center font-bold text-slate-500 uppercase tracking-wider text-xs">Status</TableHead>
               <TableHead class="font-bold text-slate-500 uppercase tracking-wider text-xs">Last Incident</TableHead>
               <TableHead class="text-right py-5 px-6 font-bold text-slate-500 uppercase tracking-wider text-xs">Action</TableHead>
@@ -130,7 +131,7 @@
           </TableHeader>
           <TableBody>
             <TableRow v-if="isLoading">
-              <TableCell colspan="6" class="h-64 text-center">
+              <TableCell colspan="7" class="h-64 text-center">
                 <div class="flex flex-col items-center justify-center text-slate-400">
                   <Loader2 class="w-10 h-10 animate-spin mb-4 text-blue-500" />
                   <p class="font-medium text-lg">Fetching reports database...</p>
@@ -138,7 +139,7 @@
               </TableCell>
             </TableRow>
             <TableRow v-else-if="filteredSummaries.length === 0">
-              <TableCell colspan="6" class="h-64 text-center">
+              <TableCell colspan="7" class="h-64 text-center">
                 <div class="flex flex-col items-center justify-center text-slate-400">
                   <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <ShieldCheck class="w-10 h-10 text-emerald-400" />
@@ -169,6 +170,14 @@
                 <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 font-black text-slate-700 shadow-sm">
                   {{ item.total_reports }}
                 </span>
+              </TableCell>
+              <TableCell class="text-center w-40">
+                <div class="flex flex-col items-center gap-1.5">
+                  <Badge :class="getRiskBadgeClass(item.risk_color)">{{ item.risk_level }}</Badge>
+                  <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                    <div class="h-full rounded-full transition-all duration-500" :class="getRiskBarClass(item.risk_color)" :style="{ width: item.threshold_percent + '%' }"></div>
+                  </div>
+                </div>
               </TableCell>
               <TableCell class="text-center">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" 
@@ -213,6 +222,10 @@
               </DialogTitle>
               <DialogDescription class="mt-2 text-slate-300 text-base font-medium flex items-center gap-2">
                 Registered Role: <strong class="text-white capitalize">{{ selectedUser.role.replace('_', ' ') }}</strong>
+                <template v-if="selectedUserAnalytics">
+                  <span class="mx-2 text-slate-500">|</span>
+                  Hierarchy: <Badge :class="getRiskBadgeClass(selectedUserAnalytics.risk_color)">{{ selectedUserAnalytics.risk_level }}</Badge>
+                </template>
               </DialogDescription>
             </div>
             
@@ -644,6 +657,27 @@ const terminationTypes = [
   { value: 'business_closure', label: 'Business Closure' },
   { value: 'other', label: 'Other Reason' }
 ]
+
+// --- Hierarchy Theme Handling ---
+const getRiskBadgeClass = (color) => {
+  const map = {
+    emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm',
+    amber: 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm',
+    orange: 'bg-orange-100 text-orange-700 border-orange-200 shadow-sm',
+    rose: 'bg-rose-100 text-rose-700 border-rose-200 shadow-sm animate-pulse'
+  }
+  return map[color] || 'bg-slate-100 text-slate-700 border-slate-200 shadow-sm'
+}
+
+const getRiskBarClass = (color) => {
+  const map = {
+    emerald: 'bg-emerald-500',
+    amber: 'bg-amber-500',
+    orange: 'bg-orange-500',
+    rose: 'bg-rose-500'
+  }
+  return map[color] || 'bg-slate-500'
+}
 
 // --- Template Handling Methods ---
 const applyWarningTemplate = (val) => {

@@ -31,11 +31,11 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'role' => ['required', Rule::in(['client', 'distributor', 'service_provider', 'supplier'])]
         ]);
 
@@ -100,9 +100,9 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
-            'password' => 'required|string',
-            'remember' => 'boolean'
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
+            'remember' => ['boolean']
         ]);
 
         if ($validator->fails()) {
@@ -128,10 +128,42 @@ class AuthController extends Controller
                 ['full_name' => trim($user->first_name . ' ' . $user->last_name), 'role' => $user->role]
             );
 
+            // ==========================================
+            // BRUTE FORCE THRESHOLD LOGIC (Max 5 Attempts)
+            // ==========================================
+            $failedRecord = DB::table('failed_login_attempts')->where('email', $request->email)->first();
+            $attempts = $failedRecord ? $failedRecord->attempts : 0;
+
+            if ($attempts >= 5) {
+                if (!Hash::check($request->password, $user->password)) {
+                    $this->logFailedAttempt($request->email, $browser, 'Locked account: Incorrect password attempt', $user);
+                    return response()->json(['status' => 'error', 'message' => 'Account is locked due to too many failed attempts. Please enter your correct password to trigger the OTP unlock process.'], 403);
+                }
+
+                // Password is correct, but account is locked. Force OTP to unlock.
+                $this->logFailedAttempt($request->email, $browser, 'Locked account: Correct password, forcing OTP', $user, 'Pending Verification');
+                return response()->json([
+                    'status' => 'requires_otp',
+                    'message' => 'Account locked due to 5 failed login attempts. Please verify your identity via OTP to unlock your account.',
+                    'emails' => [
+                        'primary' => $this->maskEmail($user->email),
+                        'recovery' => $user->recovery_email ? $this->maskEmail($user->recovery_email) : null,
+                    ]
+                ]);
+            }
+
             if (!Hash::check($request->password, $user->password)) {
+                $this->incrementFailedAttempts($request->email);
+                $newAttempts = $attempts + 1;
+                
                 $this->logFailedAttempt($request->email, $browser, 'Incorrect password / Possible brute force', $user);
                 $this->sendLoginAlert($user, $settings, false, $request);
-                return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
+
+                if ($newAttempts >= 5) {
+                    return response()->json(['status' => 'error', 'message' => 'Account is now locked due to 5 failed attempts. Next time you enter the correct password, you will be required to verify via OTP.'], 403);
+                }
+
+                return response()->json(['status' => 'error', 'message' => 'Invalid credentials. Attempts remaining: ' . (5 - $newAttempts)], 401);
             }
 
             if ($user->status === 'inactive') {
@@ -140,28 +172,37 @@ class AuthController extends Controller
             }
 
             // ==========================================
-            // ONE DEVICE LOGIN (Strict Enforcement)
+            // ONE DEVICE LOGIN (Auto-logout & Force OTP)
             // ==========================================
-            if ($settings->one_device_login && $user->tokens()->count() > 0) {
-                $this->logFailedAttempt($request->email, $browser, 'Blocked: Account already active on another device', $user);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Access Denied: This account is currently logged in on another device. Please log out from the other session first.'
-                ], 403);
+            $forcedOtpDueToOneDevice = false;
+            if ($settings->one_device_login) {
+                if ($user->tokens()->count() > 0) {
+                    $user->tokens()->delete(); 
+                    $forcedOtpDueToOneDevice = true;
+                }
             }
 
             // ==========================================
             // 2FA CHALLENGES (Strict Enforcement)
             // ==========================================
-            $requiresOtp = $settings->email_login_alerts;
-            $requiresSq = $settings->security_questions && UserSecurityQuestion::where('user_id', $user->id)->exists();
+            $requiresOtp = $settings->email_login_alerts ? true : $forcedOtpDueToOneDevice;
+            
+            $requiresSq = false;
+            if ($settings->security_questions) {
+                if (UserSecurityQuestion::where('user_id', $user->id)->exists()) {
+                    $requiresSq = true;
+                }
+            }
 
             // 1. Prioritize Account Recovery Email (OTP)
             if ($requiresOtp) {
-                $this->logFailedAttempt($request->email, $browser, 'Requires OTP Authentication', $user, 'Pending Verification');
+                $logMsg = $forcedOtpDueToOneDevice ? 'Requires OTP (Device Takeover)' : 'Requires OTP Authentication';
+                $this->logFailedAttempt($request->email, $browser, $logMsg, $user, 'Pending Verification');
                 return response()->json([
                     'status' => 'requires_otp',
-                    'message' => 'Unrecognized device detected. Please choose where to send your verification code.',
+                    'message' => $forcedOtpDueToOneDevice 
+                        ? 'Active session terminated. To secure your account, please verify via OTP.' 
+                        : 'Unrecognized device detected. Please choose where to send your verification code.',
                     'emails' => [
                         'primary' => $this->maskEmail($user->email),
                         'recovery' => $user->recovery_email ? $this->maskEmail($user->recovery_email) : null,
@@ -199,14 +240,18 @@ class AuthController extends Controller
     public function sendLoginOtp(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'target_type' => 'required|in:primary,recovery'
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+            'target_type' => ['required', 'in:primary,recovery']
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }
 
@@ -239,15 +284,19 @@ class AuthController extends Controller
     public function verifyLoginOtp(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'otp' => 'required|string'
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+            'otp' => ['required', 'string']
         ]);
 
         $user = User::where('email', $request->email)->first();
         $browser = $request->header('User-Agent');
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
+        }
+        
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }
 
@@ -257,22 +306,26 @@ class AuthController extends Controller
 
         $settings = SecuritySetting::where('user_id', $user->id)->first();
 
-        // One Device Login Strict Check
-        if ($settings && $settings->one_device_login && $user->tokens()->count() > 0) {
-            $this->logFailedAttempt($request->email, $browser, 'Blocked: Account already active on another device', $user);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access Denied: This account is currently logged in on another device. Please log out from the other session first.'
-            ], 403);
+        if ($settings) {
+            if ($settings->one_device_login) {
+                if ($user->tokens()->count() > 0) {
+                    $user->tokens()->delete();
+                }
+            }
         }
 
         $cachedOtp = Cache::get('login_otp_' . $user->id);
 
-        if (!$cachedOtp || $cachedOtp != $request->otp) {
-            $this->logFailedAttempt($request->email, $browser, 'Failed OTP Verification', $user);
+        if (!$cachedOtp) {
+            $this->logFailedAttempt($request->email, $browser, 'Failed OTP Verification (Expired)', $user);
             $this->sendLoginAlert($user, $settings, false, $request);
-            
             return response()->json(['status' => 'error', 'message' => 'Invalid or expired verification code.'], 401);
+        }
+
+        if ((string)$cachedOtp !== (string)$request->otp) {
+            $this->logFailedAttempt($request->email, $browser, 'Failed OTP Verification (Mismatch)', $user);
+            $this->sendLoginAlert($user, $settings, false, $request);
+            return response()->json(['status' => 'error', 'message' => 'Invalid verification code.'], 401);
         }
 
         Cache::forget('login_otp_' . $user->id);
@@ -280,7 +333,14 @@ class AuthController extends Controller
         // ==========================================
         // CHAINING: If Security Questions are ALSO enabled, trigger them now.
         // ==========================================
-        $requiresSq = $settings && $settings->security_questions && UserSecurityQuestion::where('user_id', $user->id)->exists();
+        $requiresSq = false;
+        if ($settings) {
+            if ($settings->security_questions) {
+                if (UserSecurityQuestion::where('user_id', $user->id)->exists()) {
+                    $requiresSq = true;
+                }
+            }
+        }
 
         if ($requiresSq) {
             $sq = UserSecurityQuestion::where('user_id', $user->id)->first();
@@ -305,16 +365,20 @@ class AuthController extends Controller
     public function verifySecurityAnswers(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'question_key' => 'required|string',
-            'answer' => 'required|string'
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+            'question_key' => ['required', 'string'],
+            'answer' => ['required', 'string']
         ]);
 
         $user = User::where('email', $request->email)->first();
         $browser = $request->header('User-Agent');
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
             return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }
 
@@ -324,23 +388,26 @@ class AuthController extends Controller
 
         $settings = SecuritySetting::where('user_id', $user->id)->first();
 
-        // One Device Login Strict Check
-        if ($settings && $settings->one_device_login && $user->tokens()->count() > 0) {
-            $this->logFailedAttempt($request->email, $browser, 'Blocked: Account already active on another device', $user);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access Denied: This account is currently logged in on another device. Please log out from the other session first.'
-            ], 403);
+        if ($settings) {
+            if ($settings->one_device_login) {
+                if ($user->tokens()->count() > 0) {
+                    $user->tokens()->delete();
+                }
+            }
         }
 
         $sq = UserSecurityQuestion::where('user_id', $user->id)->first();
-        
         $answerField = str_replace('question', 'answer', $request->question_key);
 
-        if (!$sq || strtolower(trim($sq->$answerField)) !== strtolower(trim($request->answer))) {
+        if (!$sq) {
             $this->logFailedAttempt($request->email, $browser, 'Failed Security Question Answer', $user);
             $this->sendLoginAlert($user, $settings, false, $request);
-            
+            return response()->json(['status' => 'error', 'message' => 'Security questions not set.'], 401);
+        }
+
+        if (strtolower(trim($sq->$answerField)) !== strtolower(trim($request->answer))) {
+            $this->logFailedAttempt($request->email, $browser, 'Failed Security Question Answer', $user);
+            $this->sendLoginAlert($user, $settings, false, $request);
             return response()->json(['status' => 'error', 'message' => 'Incorrect security answer.'], 401);
         }
 
@@ -349,11 +416,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Finalize the login, manage tokens, employee data, and send success alerts.
+     * Finalize the login, manage tokens, employee data, clear blocks, and send success alerts.
      */
-    private function finalizeLogin(User $user, SecuritySetting $settings, Request $request)
+    private function finalizeLogin(User $user, ?SecuritySetting $settings, Request $request)
     {
         $browser = $request->header('User-Agent');
+
+        // Clear failed login attempts upon successful verification
+        $this->clearFailedAttempts($user->email);
 
         // Initialize employee data
         $employeeData = null;
@@ -373,8 +443,10 @@ class AuthController extends Controller
                     
                     if ($accessibilitySettings->count() > 0) {
                         $accessibilityKeys = $accessibilitySettings->pluck('permission_key')->toArray();
-                    } elseif ($position->requirements && isset($position->requirements['accessibility'])) {
-                        $accessibilityKeys = $position->requirements['accessibility'];
+                    } elseif ($position->requirements) {
+                        if (isset($position->requirements['accessibility'])) {
+                            $accessibilityKeys = $position->requirements['accessibility'];
+                        }
                     }
                 }
 
@@ -440,9 +512,12 @@ class AuthController extends Controller
     /**
      * Send System Notification for Login Alert (Websocket & DB)
      */
-    private function sendLoginAlert($user, $settings, $isSuccess, Request $request)
+    private function sendLoginAlert(User $user, ?SecuritySetting $settings, bool $isSuccess, Request $request)
     {
-        if (!$settings || !$settings->email_login_alerts) {
+        if (!$settings) {
+            return;
+        }
+        if (!$settings->email_login_alerts) {
             return;
         }
 
@@ -471,7 +546,7 @@ class AuthController extends Controller
     /**
      * Helper to mask emails (e.g. j****c@gmail.com)
      */
-    private function maskEmail($email)
+    private function maskEmail(?string $email)
     {
         if (!$email) return null;
         
@@ -493,7 +568,7 @@ class AuthController extends Controller
     /**
      * Reusable Logging Helper
      */
-    private function logFailedAttempt($email, $browser, $reason, ?User $user = null, $status = 'Failed')
+    private function logFailedAttempt(string $email, ?string $browser, string $reason, ?User $user = null, string $status = 'Failed')
     {
         $log = LoginLog::create([
             'email' => $email,
@@ -508,12 +583,41 @@ class AuthController extends Controller
     }
 
     /**
+     * Manage Database Threshold Log
+     */
+    private function incrementFailedAttempts(string $email)
+    {
+        $record = DB::table('failed_login_attempts')->where('email', $email)->first();
+        if ($record) {
+            DB::table('failed_login_attempts')->where('email', $email)->update([
+                'attempts' => $record->attempts + 1,
+                'updated_at' => now()
+            ]);
+        } else {
+            DB::table('failed_login_attempts')->insert([
+                'email' => $email,
+                'attempts' => 1,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+    }
+
+    /**
+     * Clear Database Threshold Log
+     */
+    private function clearFailedAttempts(string $email)
+    {
+        DB::table('failed_login_attempts')->where('email', $email)->delete();
+    }
+
+    /**
      * Check if email exists
      */
     public function checkEmail(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email'
+            'email' => ['required', 'string', 'email']
         ]);
 
         if ($validator->fails()) {
@@ -550,8 +654,10 @@ class AuthController extends Controller
                         ->get();
                     if ($accessibilitySettings->count() > 0) {
                         $accessibilityKeys = $accessibilitySettings->pluck('permission_key')->toArray();
-                    } elseif ($position->requirements && isset($position->requirements['accessibility'])) {
-                        $accessibilityKeys = $position->requirements['accessibility'];
+                    } elseif ($position->requirements) {
+                        if (isset($position->requirements['accessibility'])) {
+                            $accessibilityKeys = $position->requirements['accessibility'];
+                        }
                     }
                 }
                 

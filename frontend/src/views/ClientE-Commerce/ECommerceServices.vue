@@ -1,4 +1,3 @@
-
 <template>
   <!--ECommerceServices.vue-->
   <div class="min-h-screen relative ">
@@ -10,6 +9,10 @@
         </div>
         
         <div class="hidden md:flex items-center gap-3">
+          <Button @click="openTutorial" variant="outline" class="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-colors font-medium">
+            <HelpCircle class="w-4 h-4 mr-2" />
+            How it works
+          </Button>
            <Button @click="goToMyBookings" variant="outline" class="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium">
             <ClipboardList class="w-4 h-4 mr-2" />
             Manage My Bookings
@@ -23,13 +26,17 @@
                 <Menu class="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" class="w-[85%] sm:w-80 p-0 z-[10005]">
+            <SheetContent side="right" class="w-[85%] sm:w-80 p-0 z-10005">
               <div class="flex flex-col h-full bg-white">
                 <div class="p-6 border-b border-gray-100">
                   <h2 class="text-lg font-bold text-gray-900 tracking-tight">Menu</h2>
                   <p class="text-sm text-gray-500 mt-1">Professional Services</p>
                 </div>
                 <div class="p-4 flex-1 flex flex-col gap-3">
+                  <Button @click="() => { showMobileMenu = false; openTutorial(); }" variant="outline" class="w-full justify-start rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition-colors font-medium h-12">
+                    <HelpCircle class="w-5 h-5 mr-3" />
+                    How it works
+                  </Button>
                   <Button @click="goToMyBookingsMobile" variant="outline" class="w-full justify-start rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium h-12">
                     <ClipboardList class="w-5 h-5 mr-3" />
                     Manage My Bookings
@@ -151,11 +158,11 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           <Card
-  v-for="service in filteredServices"
-  :key="service.id"
-  @click="goToServiceDetails(service.hash_id || service.id)"
-  class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col h-full cursor-pointer"
->
+            v-for="service in filteredServices"
+            :key="service.id"
+            @click="goToServiceDetails(service.hash_id || service.id)"
+            class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col h-full cursor-pointer"
+          >
             <div class="h-48 relative overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
               <div v-if="service.image_paths && service.image_paths.length > 0" class="w-full h-full relative group/slider">
                 <img 
@@ -204,7 +211,7 @@
 
                 <div class="flex items-center text-sm text-gray-600 mb-3 bg-gray-50 px-2.5 py-1.5 rounded-lg w-max border border-gray-100">
                   <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
-                  <span class="font-medium truncate max-w-[150px]">{{ service.provider_name }}</span>
+                  <span class="font-medium truncate max-w-37.5">{{ service.provider_name }}</span>
                 </div>
                 
                 <p class="text-sm text-gray-500 line-clamp-3 leading-relaxed mb-4">
@@ -256,12 +263,102 @@
     </div>
 
     <Teleport to="body">
+      <!-- High-End Tutorial Dialog -->
+      <transition enter-active-class="transition duration-500 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-300 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        <div v-if="showTutorial" class="fixed inset-0 z-10000 flex items-center justify-center p-4 sm:p-6 bg-slate-900/90 backdrop-blur-md">
+          <div class="bg-white rounded-4xl shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden relative">
+            
+            <!-- Floating Close Button -->
+            <button @click="closeTutorial" class="absolute top-5 right-5 z-50 bg-white/80 hover:bg-gray-100 text-gray-500 hover:text-gray-900 rounded-full p-2.5 backdrop-blur-sm shadow-sm transition-all border border-gray-200">
+              <X class="w-5 h-5" />
+            </button>
+
+            <div class="flex-1 flex flex-col h-full bg-gray-50/30">
+              <!-- Animated Progress Bar -->
+              <div class="w-full h-1.5 bg-gray-100">
+                <div class="h-full bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-500 ease-out" :style="{ width: `${((currentTutorialStep + 1) / tutorialSteps.length) * 100}%` }"></div>
+              </div>
+
+              <!-- Main Tutorial Content -->
+              <div class="flex-1 overflow-y-auto flex flex-col items-center justify-start p-8 sm:p-12 text-center">
+                <!-- Step Indicator -->
+                <div class="inline-flex items-center justify-center px-5 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 font-black text-xs tracking-widest mb-6 uppercase shadow-sm">
+                  Step {{ currentTutorialStep + 1 }} of {{ tutorialSteps.length }}
+                </div>
+
+                <!-- Descriptive Text -->
+                <h3 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-8 max-w-4xl tracking-tight">
+                  {{ tutorialSteps[currentTutorialStep].text }}
+                </h3>
+
+                <!-- Image Showcase (Clickable for Fullscreen) -->
+                <div class="relative w-full max-w-5xl flex-1 flex items-center justify-center min-h-[400px] group/img cursor-pointer" @click="isFullscreen = true">
+                  <transition name="slide-fade" mode="out-in">
+                    <img 
+                      :key="currentTutorialStep"
+                      :src="tutorialSteps[currentTutorialStep].image" 
+                      :alt="'Step ' + (currentTutorialStep + 1)" 
+                      class="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-2xl border border-gray-200/80 bg-white ring-4 ring-gray-50 transition-transform duration-300 group-hover/img:scale-[1.02]" 
+                    />
+                  </transition>
+                  <!-- Hover Overlay for Image -->
+                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <div class="bg-black/60 p-4 rounded-full text-white backdrop-blur-sm shadow-xl transform scale-90 group-hover/img:scale-100 transition-transform">
+                      <ZoomIn class="w-8 h-8" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sleek Footer Controls -->
+              <div class="p-6 bg-white border-t border-gray-100 flex justify-between items-center shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)] z-10 shrink-0">
+                <Button @click="prevTutorialStep" :disabled="currentTutorialStep === 0" variant="outline" class="rounded-2xl font-bold h-14 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all text-base">
+                  <ChevronLeft class="w-5 h-5 mr-2" />
+                  Previous
+                </Button>
+                
+                <!-- Interactive Dots -->
+                <div class="hidden md:flex gap-3">
+                  <button v-for="(_, index) in tutorialSteps" :key="index" @click="currentTutorialStep = index" :class="['w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out', currentTutorialStep === index ? 'bg-indigo-600 w-10 shadow-md shadow-indigo-200' : 'bg-gray-200 hover:bg-gray-300']"></button>
+                </div>
+
+                <Button v-if="currentTutorialStep < tutorialSteps.length - 1" @click="nextTutorialStep" class="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white h-14 px-8 shadow-lg shadow-indigo-600/30 transition-all text-base group">
+                  Next Step
+                  <ChevronRight class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                <Button v-else @click="closeTutorial" class="rounded-2xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-14 px-8 shadow-lg shadow-blue-600/30 transition-all text-base group">
+                  Got It, Let's Go!
+                  <Check class="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Fullscreen Image Viewer Modal -->
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-[9990] bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
+        <div v-if="isFullscreen" class="fixed inset-0 z-11000 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8" @click="isFullscreen = false" style="z-index: 11000;">
+          <button @click.stop="isFullscreen = false" class="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-50">
+            <X class="w-8 h-8" />
+          </button>
+          <img 
+            :src="tutorialSteps[currentTutorialStep].image" 
+            :alt="'Fullscreen Step ' + (currentTutorialStep + 1)" 
+            class="w-full h-full object-contain select-none cursor-zoom-out drop-shadow-2xl"
+            style="image-rendering: high-quality;"
+            @click.stop="isFullscreen = false"
+          />
+        </div>
+      </transition>
+
+      <!-- Auth Modal -->
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isAuthAlertOpen" class="fixed inset-0 z-9990 bg-gray-900/60 backdrop-blur-sm pointer-events-none"></div>
       </transition>
 
       <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
-        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-10000">
           <AlertDialogHeader>
             <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
               <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -284,7 +381,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, defineProps } from 'vue' 
+import { ref, onMounted, computed, defineProps } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
@@ -297,7 +394,13 @@ import {
   ClipboardList,
   Search,
   Star,
-  Menu
+  Menu,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  ZoomIn
 } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
@@ -344,6 +447,50 @@ const showMobileMenu = ref(false)
 
 // Authentication Modal State
 const isAuthAlertOpen = ref(false)
+
+// Tutorial Modal State
+const showTutorial = ref(false)
+const currentTutorialStep = ref(0)
+const isFullscreen = ref(false)
+
+const tutorialSteps = ref([
+  { image: '/ClientTutorial/001.png', text: 'Select a service that aligns with your specific requirements and needs.' },
+  { image: '/ClientTutorial/002.png', text: 'Complete the service request form by providing all necessary information.' },
+  { image: '/ClientTutorial/003.png', text: 'Await official confirmation from the selected service provider.' },
+  { image: '/ClientTutorial/004.png', text: 'Review and sign the survey agreement to authorize the service provider to inspect the requested area.' },
+  { image: '/ClientTutorial/005.png', text: 'Upon completion of the survey, navigate to your messages to proceed with the service fulfillment process.' },
+  { image: '/ClientTutorial/006.png', text: 'Carefully review the formal request details sent by the service provider to ensure they match your original requirements.' },
+  { image: '/ClientTutorial/007.png', text: 'Accept or negotiate the official service terms with the provider until an agreement is reached. (Note: Fixed-price services are non-negotiable.)' },
+  { image: '/ClientTutorial/008.png', text: 'Finalize the payment method and terms by accepting or negotiating the conditions set by the service provider.' },
+  { image: '/ClientTutorial/009.png', text: 'Return to the Service Request dashboard to monitor the progress and completion of the agreed-upon work.' },
+  { image: '/ClientTutorial/010.png', text: 'Once the service provider submits a completion request, review the work. You may approve it to finalize the job, or decline and request revisions if any requirements were not met.' },
+  { image: '/ClientTutorial/011.png', text: 'Ensure timely compliance with the payment terms. (Note: The payment process is dictated by the conditions agreed upon during the negotiation phase.)' }
+])
+
+const openTutorial = () => {
+  currentTutorialStep.value = 0
+  showTutorial.value = true
+}
+
+const closeTutorial = () => {
+  showTutorial.value = false
+  isFullscreen.value = false
+  setTimeout(() => {
+    currentTutorialStep.value = 0
+  }, 300) // Wait for transition to finish before resetting
+}
+
+const nextTutorialStep = () => {
+  if (currentTutorialStep.value < tutorialSteps.value.length - 1) {
+    currentTutorialStep.value++
+  }
+}
+
+const prevTutorialStep = () => {
+  if (currentTutorialStep.value > 0) {
+    currentTutorialStep.value--
+  }
+}
 
 // Filters State
 const searchQuery = ref('')
@@ -525,5 +672,21 @@ onMounted(() => {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Tutorial Slide Transitions */
+.slide-fade-enter-active {
+  transition: all 0.4s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from {
+  transform: translateX(20px) scale(0.98);
+  opacity: 0;
+}
+.slide-fade-leave-to {
+  transform: translateX(-20px) scale(0.98);
+  opacity: 0;
 }
 </style>

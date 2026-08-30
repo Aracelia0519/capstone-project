@@ -93,9 +93,6 @@
           </div>
           
           <div class="flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">
-            <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-400 hover:bg-blue-900/20 rounded-full h-8 w-8 md:h-9 md:w-9">
-              <Phone class="w-3.5 h-3.5 md:w-4 md:h-4" />
-            </Button>
             <div class="w-px h-5 md:h-6 bg-slate-800 mx-0.5 md:mx-1 hidden sm:block"></div>
             <Button variant="ghost" size="icon" class="hidden sm:inline-flex text-slate-400 hover:text-white hover:bg-slate-800 rounded-full h-8 w-8 md:h-9 md:w-9">
               <Info class="w-4 h-4 md:w-5 md:h-5" />

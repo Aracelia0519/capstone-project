@@ -1,277 +1,3 @@
-<script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router' // NEW: Added router for navigation
-import { toast } from 'vue-sonner'
-import api from '@/utils/axios'
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Image as ImageIcon, 
-  Clock, 
-  Briefcase,
-  PaintRoller,
-  UploadCloud,
-  Images // NEW: Added icon for portfolio
-} from 'lucide-vue-next'
-
-// Shadcn UI Components
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-
-// --- State ---
-const router = useRouter() // NEW: Initialize router
-const services = ref([])
-const isLoading = ref(true)
-const isSubmitting = ref(false)
-
-const isModalOpen = ref(false)
-const isEditing = ref(false)
-const currentEditId = ref(null)
-
-// File Upload State
-const fileInput = ref(null)
-const selectedFiles = ref([])
-
-// Confirmation Dialog States
-const deleteAlert = ref({ isOpen: false, id: null })
-const toggleAlert = ref({ isOpen: false, service: null })
-
-const form = ref({
-  title: '',
-  category: '',
-  price: '',
-  priceType: 'Base Rate',
-  duration: '',
-  description: '',
-  active: true
-})
-
-const categories = ['Interior', 'Exterior', 'Commercial', 'Specialty', 'Maintenance']
-
-// --- Methods ---
-
-// FIX: Robust Dynamic Image URL Generator
-const getImageUrl = (path) => {
-  if (!path) return '';
-  
-  // 1. Get the true base URL from .env, fallback to localhost
-  const baseUrl = import.meta.env.VITE_API_URL 
-      ? import.meta.env.VITE_API_URL.replace('/api', '') 
-      : 'http://localhost:8000';
-  
-  // 2. Fix old DB records that accidentally hardcoded localhost:8000
-  if (path.includes('localhost:8000')) {
-      path = path.replace('http://localhost:8000', baseUrl);
-  }
-  
-  // 3. If it's already a full HTTP URL, return it directly
-  if (path.startsWith('http')) return path;
-  
-  // 4. Handle new DB records that correctly only saved the relative path ('service_offerings/xyz.jpg')
-  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
-  return `${baseUrl}/storage/${cleanPath}`;
-}
-
-const fetchServices = async () => {
-  isLoading.value = true
-  try {
-    const response = await api.get('/service-provider/services')
-    if (response.data.success) {
-      services.value = response.data.data
-    }
-  } catch (error) {
-    console.error("Error fetching services:", error)
-    toast.error('Failed to load services')
-  } finally {
-    isLoading.value = false
-  }
-}
-
-onMounted(() => {
-  fetchServices()
-})
-
-const openAddModal = () => {
-  isEditing.value = false
-  currentEditId.value = null
-  selectedFiles.value = []
-  form.value = {
-    title: '',
-    category: '',
-    price: '',
-    priceType: 'Base Rate',
-    duration: '',
-    description: '',
-    active: true
-  }
-  isModalOpen.value = true
-}
-
-const openEditModal = (service) => {
-  isEditing.value = true
-  currentEditId.value = service.id
-  selectedFiles.value = []
-  
-  form.value = { 
-    title: service.title,
-    category: service.category,
-    price: service.price.toString().replace(/,/g, ''),
-    priceType: service.price_type,
-    duration: service.duration,
-    description: service.description,
-    active: service.is_active
-  }
-  isModalOpen.value = true
-}
-
-const handleFileChange = (event) => {
-  const files = event.target.files
-  if (files && files.length > 0) {
-    selectedFiles.value = Array.from(files)
-  }
-}
-
-const triggerFileInput = () => {
-  fileInput.value?.click()
-}
-
-// Block mathematical symbols & negative signs on keydown
-const preventInvalidChars = (e) => {
-  if (['e', 'E', '+', '-'].includes(e.key)) {
-    e.preventDefault()
-  }
-}
-
-const saveService = async () => {
-  if (!form.value.title || !form.value.category || !form.value.price) {
-    toast.error('Please fill in all required fields.')
-    return
-  }
-
-  if (Number(form.value.price) < 0) {
-    toast.error('Price cannot be a negative value.')
-    return
-  }
-
-  isSubmitting.value = true
-
-  const formData = new FormData()
-  formData.append('title', form.value.title)
-  formData.append('category', form.value.category)
-  formData.append('price', form.value.price)
-  formData.append('price_type', form.value.priceType)
-  formData.append('duration', form.value.duration)
-  formData.append('description', form.value.description)
-  formData.append('is_active', form.value.active ? 1 : 0)
-  
-  // Append images if selected
-  selectedFiles.value.forEach((file, index) => {
-    formData.append(`images[${index}]`, file)
-  })
-
-  try {
-    if (isEditing.value) {
-      const response = await api.post(`/service-provider/services/${currentEditId.value}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      if (response.data.success) {
-        toast.success('Service updated successfully!')
-      }
-    } else {
-      const response = await api.post('/service-provider/services', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      if (response.data.success) {
-        toast.success('New service posted successfully!')
-      }
-    }
-    isModalOpen.value = false
-    fetchServices() // Refresh the list
-  } catch (error) {
-    console.error("Save error:", error)
-    toast.error(error.response?.data?.message || 'Failed to save service')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// Delete Logic
-const openDeleteConfirm = (id) => {
-  deleteAlert.value = { isOpen: true, id }
-}
-
-const proceedDelete = async () => {
-  try {
-    const response = await api.delete(`/service-provider/services/${deleteAlert.value.id}`)
-    if (response.data.success) {
-      services.value = services.value.filter(s => s.id !== deleteAlert.value.id)
-      toast.success('Service removed from your offerings.')
-    }
-  } catch (error) {
-    toast.error('Failed to delete service')
-  } finally {
-    deleteAlert.value.isOpen = false
-  }
-}
-
-// Toggle Visibility Logic
-const openToggleConfirm = (service) => {
-  toggleAlert.value = { isOpen: true, service }
-}
-
-const proceedToggle = async () => {
-  const service = toggleAlert.value.service
-  if (service) {
-    try {
-      const response = await api.patch(`/service-provider/services/${service.id}/toggle`)
-      if (response.data.success) {
-        service.is_active = !service.is_active
-        const statusText = service.is_active ? 'published and visible' : 'hidden from clients'
-        toast.success(`Service is now ${statusText}.`)
-      }
-    } catch (error) {
-      toast.error('Failed to update status')
-    }
-  }
-  toggleAlert.value.isOpen = false
-}
-
-// NEW: Navigate to Portfolio Setup
-const goToPortfolio = () => {
-  router.push('/ServiceProvider/PortfolioSetup') // Make sure this path exists in your Vue Router
-}
-</script>
-
 <template>
   <div class="min-h-screen text-gray-100 p-4 md:p-8">
     
@@ -286,6 +12,12 @@ const goToPortfolio = () => {
       
       <!-- NEW: Added flex container and Set-up Portfolio Button -->
       <div class="flex flex-wrap items-center gap-3">
+        <!-- Tutorial Button -->
+        <Button @click="openTutorial" variant="outline" class="border-indigo-500/50 bg-gray-900 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white font-bold px-6 py-6 rounded-xl shadow-lg transition-all hover:-translate-y-0.5">
+          <HelpCircle class="w-5 h-5 mr-2" />
+          How it works
+        </Button>
+
         <Button @click="goToPortfolio" variant="outline" class="border-blue-500/50 bg-gray-900 text-blue-400 hover:bg-blue-600 hover:border-blue-600 hover:text-white font-bold px-6 py-6 rounded-xl shadow-lg transition-all hover:-translate-y-0.5">
           <Images class="w-5 h-5 mr-2" />
           Set-up Portfolio
@@ -377,8 +109,9 @@ const goToPortfolio = () => {
       </Card>
     </div>
 
+    <!-- Forms Modal -->
     <Dialog :open="isModalOpen" @update:open="isModalOpen = $event">
-      <DialogContent class="sm:max-w-[600px] bg-gray-900 border-gray-800 text-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden">
+      <DialogContent class="sm:max-w-[600px] bg-gray-900 border-gray-800 text-gray-100 rounded-2xl shadow-2xl p-0 overflow-hidden z-[10000]">
         <div class="px-6 py-5 border-b border-gray-800 bg-gray-900/50">
           <DialogTitle class="text-xl font-bold text-white flex items-center gap-2">
             <PaintRoller class="w-5 h-5 text-blue-500" />
@@ -484,8 +217,9 @@ const goToPortfolio = () => {
       </DialogContent>
     </Dialog>
 
+    <!-- Delete Alert -->
     <AlertDialog :open="deleteAlert.isOpen" @update:open="deleteAlert.isOpen = $event">
-      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white rounded-2xl shadow-2xl">
+      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white rounded-2xl shadow-2xl z-[10000]">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
             <Trash2 class="w-5 h-5 text-red-500" />
@@ -506,8 +240,9 @@ const goToPortfolio = () => {
       </AlertDialogContent>
     </AlertDialog>
 
+    <!-- Visibility Alert -->
     <AlertDialog :open="toggleAlert.isOpen" @update:open="toggleAlert.isOpen = $event">
-      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white rounded-2xl shadow-2xl">
+      <AlertDialogContent class="bg-gray-900 border-gray-800 text-white rounded-2xl shadow-2xl z-[10000]">
         <AlertDialogHeader>
           <AlertDialogTitle class="text-xl font-bold">Change Visibility</AlertDialogTitle>
           <AlertDialogDescription class="text-gray-400 text-base mt-2">
@@ -528,8 +263,407 @@ const goToPortfolio = () => {
       </AlertDialogContent>
     </AlertDialog>
 
+    <!-- Tutorial System -->
+    <Teleport to="body">
+      <!-- High-End Tutorial Dialog (Dark Mode) -->
+      <transition enter-active-class="transition duration-500 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-300 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        <div v-if="showTutorial" class="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 bg-slate-900/90 backdrop-blur-md">
+          <div class="bg-gray-900 rounded-4xl border border-gray-800 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden relative">
+            
+            <!-- Floating Close Button -->
+            <button @click="closeTutorial" class="absolute top-5 right-5 z-50 bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-gray-100 rounded-full p-2.5 backdrop-blur-sm shadow-sm transition-all border border-gray-700">
+              <X class="w-5 h-5" />
+            </button>
+
+            <div class="flex-1 flex flex-col h-full bg-gray-900/50">
+              <!-- Animated Progress Bar -->
+              <div class="w-full h-1.5 bg-gray-800">
+                <div class="h-full bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-500 ease-out" :style="{ width: `${((currentTutorialStep + 1) / tutorialSteps.length) * 100}%` }"></div>
+              </div>
+
+              <!-- Main Tutorial Content -->
+              <div class="flex-1 overflow-y-auto flex flex-col items-center justify-start p-8 sm:p-12 text-center">
+                <!-- Step Indicator -->
+                <div class="inline-flex items-center justify-center px-5 py-2 rounded-full bg-gray-800 border border-gray-700 text-indigo-400 font-black text-xs tracking-widest mb-6 uppercase shadow-sm">
+                  Step {{ currentTutorialStep + 1 }} of {{ tutorialSteps.length }}
+                </div>
+
+                <!-- Descriptive Text -->
+                <h3 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-8 max-w-4xl tracking-tight">
+                  {{ tutorialSteps[currentTutorialStep].text }}
+                </h3>
+
+                <!-- Image Showcase (Clickable for Fullscreen) -->
+                <div class="relative w-full max-w-5xl flex-1 flex items-center justify-center min-h-[400px] group/img cursor-pointer" @click="isFullscreen = true">
+                  <transition name="slide-fade" mode="out-in">
+                    <img 
+                      :key="currentTutorialStep"
+                      :src="tutorialSteps[currentTutorialStep].image" 
+                      :alt="'Step ' + (currentTutorialStep + 1)" 
+                      class="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-2xl border border-gray-700/80 bg-gray-800 ring-4 ring-gray-800/50 transition-transform duration-300 group-hover/img:scale-[1.02]" 
+                    />
+                  </transition>
+                  <!-- Hover Overlay for Image -->
+                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <div class="bg-black/60 p-4 rounded-full text-white backdrop-blur-sm shadow-xl transform scale-90 group-hover/img:scale-100 transition-transform">
+                      <ZoomIn class="w-8 h-8" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sleek Footer Controls -->
+              <div class="p-6 bg-gray-900 border-t border-gray-800 flex justify-between items-center shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.2)] z-10 shrink-0">
+                <Button @click="prevTutorialStep" :disabled="currentTutorialStep === 0" variant="outline" class="rounded-2xl font-bold h-14 px-6 border-gray-700 text-gray-300 bg-gray-800 hover:bg-gray-700 hover:text-white transition-all text-base">
+                  <ChevronLeft class="w-5 h-5 mr-2" />
+                  Previous
+                </Button>
+                
+                <!-- Interactive Dots -->
+                <div class="hidden md:flex gap-3">
+                  <button v-for="(_, index) in tutorialSteps" :key="index" @click="currentTutorialStep = index" :class="['w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out', currentTutorialStep === index ? 'bg-indigo-500 w-10 shadow-md shadow-indigo-500/50' : 'bg-gray-700 hover:bg-gray-600']"></button>
+                </div>
+
+                <Button v-if="currentTutorialStep < tutorialSteps.length - 1" @click="nextTutorialStep" class="rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white h-14 px-8 shadow-lg shadow-indigo-600/30 transition-all text-base group">
+                  Next Step
+                  <ChevronRight class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                <Button v-else @click="closeTutorial" class="rounded-2xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-14 px-8 shadow-lg shadow-blue-600/30 transition-all text-base group">
+                  Got It, Let's Go!
+                  <Check class="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Fullscreen Image Viewer Modal -->
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isFullscreen" class="fixed inset-0 z-[11000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8" @click="isFullscreen = false">
+          <button @click.stop="isFullscreen = false" class="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-50">
+            <X class="w-8 h-8" />
+          </button>
+          <img 
+            :src="tutorialSteps[currentTutorialStep].image" 
+            :alt="'Fullscreen Step ' + (currentTutorialStep + 1)" 
+            class="w-full h-full object-contain select-none cursor-zoom-out drop-shadow-2xl"
+            style="image-rendering: high-quality;"
+            @click.stop="isFullscreen = false"
+          />
+        </div>
+      </transition>
+    </Teleport>
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router' 
+import { toast } from 'vue-sonner'
+import api from '@/utils/axios'
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Image as ImageIcon, 
+  Clock, 
+  Briefcase,
+  PaintRoller,
+  UploadCloud,
+  Images, 
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  ZoomIn
+} from 'lucide-vue-next'
+
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+
+const router = useRouter() 
+const services = ref([])
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+
+const isModalOpen = ref(false)
+const isEditing = ref(false)
+const currentEditId = ref(null)
+
+const fileInput = ref(null)
+const selectedFiles = ref([])
+
+const deleteAlert = ref({ isOpen: false, id: null })
+const toggleAlert = ref({ isOpen: false, service: null })
+
+// Tutorial State
+const showTutorial = ref(false)
+const currentTutorialStep = ref(0)
+const isFullscreen = ref(false)
+
+const tutorialSteps = ref([
+  { image: '/SPTutorial/001.png', text: 'Formulate a comprehensive service offering that accurately represents your professional capabilities.' },
+  { image: '/SPTutorial/002.png', text: 'Complete the service listing form by providing all required and relevant information.' },
+  { image: '/SPTutorial/003.png', text: 'Await service requests or bookings from prospective clients.' },
+  { image: '/SPTutorial/004.png', text: 'Generate a formal survey agreement to establish legal authorization for inspecting the client\'s premises.' },
+  { image: '/SPTutorial/005.png', text: 'Affix your digital signature to validate the survey agreement.' },
+  { image: '/SPTutorial/006.png', text: 'Await the client\'s countersignature and approval of the survey agreement.' },
+  { image: '/SPTutorial/007.png', text: 'Upon client approval, initiate the official survey by clicking "Start Survey" in the system before conducting the physical inspection, and ensure you click "End Survey" upon completion.' },
+  { image: '/SPTutorial/008.png', text: 'Evaluate the survey results and determine whether to accept or decline the requested service.' },
+  { image: '/SPTutorial/009.png', text: 'Utilize the integrated messaging system to coordinate further details regarding the service fulfillment.' },
+  { image: '/SPTutorial/010.png', text: 'Transmit the finalized request details to the client for mutual understanding.' },
+  { image: '/SPTutorial/011.png', text: 'Draft an Official Deal and engage in negotiations until a mutually agreeable price is established. (Note: Fixed-Price services are non-negotiable).' },
+  { image: '/SPTutorial/012.png', text: 'Select the appropriate payment method and clearly define the payment conditions.' },
+  { image: '/SPTutorial/013.png', text: 'Navigate to the Service Jobs dashboard to monitor the progress and oversee the fulfillment of the agreed-upon work.' },
+  { image: '/SPTutorial/014.png', text: 'Submit official proof of completion once the service is rendered. Note: Any incomplete tasks may result in the client declining the completion request, requiring you to fulfill the remaining obligations.' },
+  { image: '/SPTutorial/015.png', text: 'If the service is completed but payment is pending, you may issue an email reminder. Should the maximum reminder attempts be reached, a formal document will be generated to assist you in pursuing legal recourse.' }
+])
+
+const openTutorial = () => {
+  currentTutorialStep.value = 0
+  showTutorial.value = true
+}
+
+const closeTutorial = () => {
+  showTutorial.value = false
+  isFullscreen.value = false
+  setTimeout(() => {
+    currentTutorialStep.value = 0
+  }, 300) 
+}
+
+const nextTutorialStep = () => {
+  if (currentTutorialStep.value < tutorialSteps.value.length - 1) {
+    currentTutorialStep.value++
+  }
+}
+
+const prevTutorialStep = () => {
+  if (currentTutorialStep.value > 0) {
+    currentTutorialStep.value--
+  }
+}
+
+const form = ref({
+  title: '',
+  category: '',
+  price: '',
+  priceType: 'Base Rate',
+  duration: '',
+  description: '',
+  active: true
+})
+
+const categories = ['Interior', 'Exterior', 'Commercial', 'Specialty', 'Maintenance']
+
+const getImageUrl = (path) => {
+  if (!path) return '';
+  const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'http://localhost:8000';
+  if (path.includes('localhost:8000')) {
+      path = path.replace('http://localhost:8000', baseUrl);
+  }
+  if (path.startsWith('http')) return path;
+  const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+  return `${baseUrl}/storage/${cleanPath}`;
+}
+
+const fetchServices = async () => {
+  isLoading.value = true
+  try {
+    const response = await api.get('/service-provider/services')
+    if (response.data.success) {
+      services.value = response.data.data
+    }
+  } catch (error) {
+    console.error("Error fetching services:", error)
+    toast.error('Failed to load services')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchServices()
+})
+
+const openAddModal = () => {
+  isEditing.value = false
+  currentEditId.value = null
+  selectedFiles.value = []
+  form.value = {
+    title: '',
+    category: '',
+    price: '',
+    priceType: 'Base Rate',
+    duration: '',
+    description: '',
+    active: true
+  }
+  isModalOpen.value = true
+}
+
+const openEditModal = (service) => {
+  isEditing.value = true
+  currentEditId.value = service.id
+  selectedFiles.value = []
+  
+  form.value = { 
+    title: service.title,
+    category: service.category,
+    price: service.price.toString().replace(/,/g, ''),
+    priceType: service.price_type,
+    duration: service.duration,
+    description: service.description,
+    active: service.is_active
+  }
+  isModalOpen.value = true
+}
+
+const handleFileChange = (event) => {
+  const files = event.target.files
+  if (files && files.length > 0) {
+    selectedFiles.value = Array.from(files)
+  }
+}
+
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const preventInvalidChars = (e) => {
+  if (['e', 'E', '+', '-'].includes(e.key)) {
+    e.preventDefault()
+  }
+}
+
+const saveService = async () => {
+  if (!form.value.title || !form.value.category || !form.value.price) {
+    toast.error('Please fill in all required fields.')
+    return
+  }
+
+  if (Number(form.value.price) < 0) {
+    toast.error('Price cannot be a negative value.')
+    return
+  }
+
+  isSubmitting.value = true
+
+  const formData = new FormData()
+  formData.append('title', form.value.title)
+  formData.append('category', form.value.category)
+  formData.append('price', form.value.price)
+  formData.append('price_type', form.value.priceType)
+  formData.append('duration', form.value.duration)
+  formData.append('description', form.value.description)
+  formData.append('is_active', form.value.active ? 1 : 0)
+  
+  selectedFiles.value.forEach((file, index) => {
+    formData.append(`images[${index}]`, file)
+  })
+
+  try {
+    if (isEditing.value) {
+      const response = await api.post(`/service-provider/services/${currentEditId.value}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (response.data.success) {
+        toast.success('Service updated successfully!')
+      }
+    } else {
+      const response = await api.post('/service-provider/services', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (response.data.success) {
+        toast.success('New service posted successfully!')
+      }
+    }
+    isModalOpen.value = false
+    fetchServices() 
+  } catch (error) {
+    console.error("Save error:", error)
+    toast.error(error.response?.data?.message || 'Failed to save service')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const openDeleteConfirm = (id) => {
+  deleteAlert.value = { isOpen: true, id }
+}
+
+const proceedDelete = async () => {
+  try {
+    const response = await api.delete(`/service-provider/services/${deleteAlert.value.id}`)
+    if (response.data.success) {
+      services.value = services.value.filter(s => s.id !== deleteAlert.value.id)
+      toast.success('Service removed from your offerings.')
+    }
+  } catch (error) {
+    toast.error('Failed to delete service')
+  } finally {
+    deleteAlert.value.isOpen = false
+  }
+}
+
+const openToggleConfirm = (service) => {
+  toggleAlert.value = { isOpen: true, service }
+}
+
+const proceedToggle = async () => {
+  const service = toggleAlert.value.service
+  if (service) {
+    try {
+      const response = await api.patch(`/service-provider/services/${service.id}/toggle`)
+      if (response.data.success) {
+        service.is_active = !service.is_active
+        const statusText = service.is_active ? 'published and visible' : 'hidden from clients'
+        toast.success(`Service is now ${statusText}.`)
+      }
+    } catch (error) {
+      toast.error('Failed to update status')
+    }
+  }
+  toggleAlert.value.isOpen = false
+}
+
+const goToPortfolio = () => {
+  router.push('/ServiceProvider/PortfolioSetup') 
+}
+</script>
 
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar {
@@ -554,5 +688,21 @@ input[type=number]::-webkit-outer-spin-button {
 }
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+/* Tutorial Slide Transitions */
+.slide-fade-enter-active {
+  transition: all 0.4s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from {
+  transform: translateX(20px) scale(0.98);
+  opacity: 0;
+}
+.slide-fade-leave-to {
+  transform: translateX(-20px) scale(0.98);
+  opacity: 0;
 }
 </style>

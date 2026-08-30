@@ -16,10 +16,6 @@
       <!-- Sleeker Gradient Fade -->
       <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent pointer-events-none z-10"></div>
 
-      
-
-      <!-- Floating Scroll Indicator -->
-    
     </section>
 
     <!-- Main Content Area with Ambient Lighting -->
@@ -185,10 +181,22 @@
       <section class="max-w-5xl mx-auto py-24 px-8 relative z-20 w-full overflow-hidden">
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-        <div class="mb-16 text-center flex flex-col items-center relative z-10">
+        <div class="mb-10 text-center flex flex-col items-center relative z-10">
           <span class="px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400 mb-6 shadow-[0_0_15px_rgba(34,211,238,0.2)]">Knowledge Base</span>
           <h2 class="text-4xl md:text-6xl font-black mt-2 text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-500 tracking-tight">System FAQ</h2>
           <p class="text-sm md:text-base text-slate-400 mt-4 max-w-lg">Everything you need to know about the system features, products, and support procedures.</p>
+        </div>
+
+        <!-- NEW: Tutorial Buttons Section -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center mt-6 mb-16 relative z-10">
+          <button @click="openTutorial('client')" class="px-6 py-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-bold hover:bg-cyan-500/20 hover:scale-105 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all flex items-center justify-center gap-3">
+            <PlayCircle class="w-6 h-6" />
+            How to Book a Service (Client)
+          </button>
+          <button @click="openTutorial('sp')" class="px-6 py-4 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold hover:bg-purple-500/20 hover:scale-105 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] transition-all flex items-center justify-center gap-3">
+            <PlayCircle class="w-6 h-6" />
+            How to Offer Services (Provider)
+          </button>
         </div>
         
         <div class="space-y-4 relative z-10 max-w-4xl mx-auto">
@@ -242,11 +250,105 @@
       </div>
       
     </div>
+
+    <!-- NEW: Global Tutorial System -->
+    <Teleport to="body">
+      <!-- High-End Tutorial Dialog (Dark Mode) -->
+      <transition enter-active-class="transition duration-500 ease-out" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-300 ease-in" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        <div v-if="showTutorial" class="fixed inset-0 z-10000 flex items-center justify-center p-4 sm:p-6 bg-slate-950/90 backdrop-blur-md" style="z-index: 10000;">
+          <div class="bg-slate-900 rounded-4xl border border-white/10 shadow-[0_0_50px_-12px_rgba(34,211,238,0.15)] max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden relative">
+            
+            <!-- Floating Close Button -->
+            <button @click="closeTutorial" class="absolute top-5 right-5 z-50 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full p-2.5 backdrop-blur-sm shadow-sm transition-all border border-white/10">
+              <X class="w-5 h-5" />
+            </button>
+
+            <div class="flex-1 flex flex-col h-full bg-slate-900/50">
+              <!-- Animated Progress Bar -->
+              <div class="w-full h-1.5 bg-slate-800">
+                <div class="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 transition-all duration-500 ease-out" :style="{ width: `${((currentTutorialStep + 1) / activeTutorialData.length) * 100}%` }"></div>
+              </div>
+
+              <!-- Main Tutorial Content -->
+              <div class="flex-1 overflow-y-auto flex flex-col items-center justify-start p-8 sm:p-12 text-center relative z-10">
+                <!-- Step Indicator -->
+                <div class="inline-flex items-center justify-center px-5 py-2 rounded-full bg-slate-800 border border-slate-700 text-cyan-400 font-black text-xs tracking-widest mb-6 uppercase shadow-sm">
+                  Step {{ currentTutorialStep + 1 }} of {{ activeTutorialData.length }}
+                </div>
+
+                <!-- Descriptive Text -->
+                <h3 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight mb-8 max-w-4xl tracking-tight">
+                  {{ activeTutorialData[currentTutorialStep]?.text }}
+                </h3>
+
+                <!-- Image Showcase (Clickable for Fullscreen) -->
+                <div class="relative w-full max-w-5xl flex-1 flex items-center justify-center min-h-[400px] group/img cursor-pointer" @click="isFullscreen = true">
+                  <transition name="cool-fade" mode="out-in">
+                    <img 
+                      :key="currentTutorialStep"
+                      :src="activeTutorialData[currentTutorialStep]?.image" 
+                      :alt="'Step ' + (currentTutorialStep + 1)" 
+                      class="max-w-full max-h-[65vh] object-contain rounded-2xl shadow-2xl border border-white/10 bg-slate-800 ring-4 ring-slate-800/50 transition-transform duration-300 group-hover/img:scale-[1.02]" 
+                    />
+                  </transition>
+                  <!-- Hover Overlay for Image -->
+                  <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <div class="bg-black/60 p-4 rounded-full text-white backdrop-blur-sm shadow-xl transform scale-90 group-hover/img:scale-100 transition-transform">
+                      <ZoomIn class="w-8 h-8" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sleek Footer Controls -->
+              <div class="p-6 bg-slate-950 border-t border-white/5 flex justify-between items-center shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-20 shrink-0">
+                <button @click="prevTutorialStep" :disabled="currentTutorialStep === 0" class="flex items-center rounded-2xl font-bold h-14 px-6 border border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed">
+                  <ChevronLeft class="w-5 h-5 mr-2" />
+                  Previous
+                </button>
+                
+                <!-- Interactive Dots -->
+                <div class="hidden md:flex gap-3">
+                  <button v-for="(_, index) in activeTutorialData" :key="index" @click="currentTutorialStep = index" :class="['w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out', currentTutorialStep === index ? 'bg-cyan-500 w-10 shadow-md shadow-cyan-500/50' : 'bg-slate-700 hover:bg-slate-600']"></button>
+                </div>
+
+                <button v-if="currentTutorialStep < activeTutorialData.length - 1" @click="nextTutorialStep" class="flex items-center rounded-2xl font-bold bg-cyan-600 hover:bg-cyan-500 text-slate-950 h-14 px-8 shadow-lg shadow-cyan-600/30 transition-all text-base group">
+                  Next Step
+                  <ChevronRight class="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button v-else @click="closeTutorial" class="flex items-center rounded-2xl font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 h-14 px-8 shadow-lg shadow-cyan-500/30 transition-all text-base group">
+                  Got It, Let's Go!
+                  <Check class="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Fullscreen Image Viewer Modal -->
+      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="isFullscreen" class="fixed inset-0 z-11000 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 md:p-8" @click="isFullscreen = false" style="z-index: 11000;">
+          <button @click.stop="isFullscreen = false" class="absolute top-6 right-6 text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition-colors z-50">
+            <X class="w-8 h-8" />
+          </button>
+          <img 
+            :src="activeTutorialData[currentTutorialStep]?.image" 
+            :alt="'Fullscreen Step ' + (currentTutorialStep + 1)" 
+            class="w-full h-full object-contain select-none cursor-zoom-out drop-shadow-2xl"
+            style="image-rendering: high-quality;"
+            @click.stop="isFullscreen = false"
+          />
+        </div>
+      </transition>
+    </Teleport>
+
   </main>
 </template>
 
 <script setup>
 import { h, ref, onMounted, onUnmounted } from 'vue';
+import { X, ChevronLeft, ChevronRight, Check, ZoomIn, PlayCircle } from 'lucide-vue-next';
 
 // Hero Tag Definitions
 const heroTags = [
@@ -272,7 +374,7 @@ const extraModules = [
   { tag: 'E-Commerce', title: 'Online Store', desc: 'Browse products, check availability, and place orders online.', action: 'Shop', img: '/ecommerce-store.jpg', hoverBorder: 'hover:border-pink-500/30 hover:shadow-[0_20px_40px_-15px_rgba(236,72,153,0.2)]', textColor: 'text-pink-400', glowBg: 'bg-pink-600' }
 ];
 
-// FAQs Array (Retained previous upgrades)
+// FAQs Array 
 const faqs = ref([
   { 
     question: 'General Information: What is this platform?', 
@@ -323,6 +425,71 @@ const toggleFaq = (index) => {
     if (i !== index) faq.open = false;
   });
   faqs.value[index].open = !faqs.value[index].open;
+};
+
+// NEW: Global Tutorial State and Handlers
+const showTutorial = ref(false);
+const currentTutorialStep = ref(0);
+const isFullscreen = ref(false);
+const activeTutorialData = ref([]);
+
+const clientTutorialSteps = [
+  { image: '/ClientTutorial/001.png', text: 'Select a service that aligns with your specific requirements and needs.' },
+  { image: '/ClientTutorial/002.png', text: 'Complete the service request form by providing all necessary information.' },
+  { image: '/ClientTutorial/003.png', text: 'Await official confirmation from the selected service provider.' },
+  { image: '/ClientTutorial/004.png', text: 'Review and sign the survey agreement to authorize the service provider to inspect the requested area.' },
+  { image: '/ClientTutorial/005.png', text: 'Upon completion of the survey, navigate to your messages to proceed with the service fulfillment process.' },
+  { image: '/ClientTutorial/006.png', text: 'Carefully review the formal request details sent by the service provider to ensure they match your original requirements.' },
+  { image: '/ClientTutorial/007.png', text: 'Accept or negotiate the official service terms with the provider until an agreement is reached. (Note: Fixed-price services are non-negotiable.)' },
+  { image: '/ClientTutorial/008.png', text: 'Finalize the payment method and terms by accepting or negotiating the conditions set by the service provider.' },
+  { image: '/ClientTutorial/009.png', text: 'Return to the Service Request dashboard to monitor the progress and completion of the agreed-upon work.' },
+  { image: '/ClientTutorial/010.png', text: 'Once the service provider submits a completion request, review the work. You may approve it to finalize the job, or decline and request revisions if any requirements were not met.' },
+  { image: '/ClientTutorial/011.png', text: 'Ensure timely compliance with the payment terms. (Note: The payment process is dictated by the conditions agreed upon during the negotiation phase.)' }
+];
+
+const spTutorialSteps = [
+  { image: '/SPTutorial/001.png', text: 'Formulate a comprehensive service offering that accurately represents your professional capabilities.' },
+  { image: '/SPTutorial/002.png', text: 'Complete the service listing form by providing all required and relevant information.' },
+  { image: '/SPTutorial/003.png', text: 'Await service requests or bookings from prospective clients.' },
+  { image: '/SPTutorial/004.png', text: 'Generate a formal survey agreement to establish legal authorization for inspecting the client\'s premises.' },
+  { image: '/SPTutorial/005.png', text: 'Affix your digital signature to validate the survey agreement.' },
+  { image: '/SPTutorial/006.png', text: 'Await the client\'s countersignature and approval of the survey agreement.' },
+  { image: '/SPTutorial/007.png', text: 'Upon client approval, initiate the official survey by clicking "Start Survey" in the system before conducting the physical inspection, and ensure you click "End Survey" upon completion.' },
+  { image: '/SPTutorial/008.png', text: 'Evaluate the survey results and determine whether to accept or decline the requested service.' },
+  { image: '/SPTutorial/009.png', text: 'Utilize the integrated messaging system to coordinate further details regarding the service fulfillment.' },
+  { image: '/SPTutorial/010.png', text: 'Transmit the finalized request details to the client for mutual understanding.' },
+  { image: '/SPTutorial/011.png', text: 'Draft an Official Deal and engage in negotiations until a mutually agreeable price is established. (Note: Fixed-Price services are non-negotiable).' },
+  { image: '/SPTutorial/012.png', text: 'Select the appropriate payment method and clearly define the payment conditions.' },
+  { image: '/SPTutorial/013.png', text: 'Navigate to the Service Jobs dashboard to monitor the progress and oversee the fulfillment of the agreed-upon work.' },
+  { image: '/SPTutorial/014.png', text: 'Submit official proof of completion once the service is rendered. Note: Any incomplete tasks may result in the client declining the completion request, requiring you to fulfill the remaining obligations.' },
+  { image: '/SPTutorial/015.png', text: 'If the service is completed but payment is pending, you may issue an email reminder. Should the maximum reminder attempts be reached, a formal document will be generated to assist you in pursuing legal recourse.' }
+];
+
+const openTutorial = (type) => {
+  activeTutorialData.value = type === 'client' ? clientTutorialSteps : spTutorialSteps;
+  currentTutorialStep.value = 0;
+  showTutorial.value = true;
+};
+
+const closeTutorial = () => {
+  showTutorial.value = false;
+  isFullscreen.value = false;
+  setTimeout(() => {
+    currentTutorialStep.value = 0;
+    activeTutorialData.value = [];
+  }, 300);
+};
+
+const nextTutorialStep = () => {
+  if (currentTutorialStep.value < activeTutorialData.value.length - 1) {
+    currentTutorialStep.value++;
+  }
+};
+
+const prevTutorialStep = () => {
+  if (currentTutorialStep.value > 0) {
+    currentTutorialStep.value--;
+  }
 };
 
 // Scroll handling for Spline

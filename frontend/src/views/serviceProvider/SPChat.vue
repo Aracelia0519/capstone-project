@@ -96,9 +96,6 @@
           </div>
           
           <div class="flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">
-            <Button variant="ghost" size="icon" class="text-slate-400 hover:text-blue-400 hover:bg-blue-900/20 rounded-full h-8 w-8 md:h-9 md:w-9">
-              <Phone class="w-3.5 h-3.5 md:w-4 md:h-4" />
-            </Button>
             <div class="w-px h-5 md:h-6 bg-slate-800 mx-0.5 md:mx-1 hidden sm:block"></div>
             <Button variant="ghost" size="icon" class="hidden sm:inline-flex text-slate-400 hover:text-white hover:bg-slate-800 rounded-full h-8 w-8 md:h-9 md:w-9">
               <Info class="w-4 h-4 md:w-5 md:h-5" />
@@ -382,8 +379,11 @@
                    step="any"
                    v-model="dealForm.price" 
                    @keydown="preventInvalidChars"
-                   class="bg-slate-950 border-blue-800/50 focus:border-blue-500 focus:ring-blue-500 text-lg font-bold w-48 h-12 rounded-xl" 
+                   :readonly="dealForm.is_fixed_price"
+                   :class="dealForm.is_fixed_price ? 'bg-slate-800 text-slate-400 cursor-not-allowed' : 'bg-slate-950'"
+                   class="border-blue-800/50 focus:border-blue-500 focus:ring-blue-500 text-lg font-bold w-48 h-12 rounded-xl" 
                  />
+                 <p v-if="dealForm.is_fixed_price" class="text-[10px] text-emerald-400 mt-1 italic">Fixed price service. Negotiation disabled.</p>
               </div>
            </div>
 
@@ -600,7 +600,8 @@ const dealForm = ref({
   contact_number: '', 
   address: '', 
   description: '',
-  colors: '' 
+  colors: '',
+  is_fixed_price: false
 })
 
 // Payment Terms Modal Form State
@@ -1051,6 +1052,8 @@ const sendRequestSummary = async () => {
 
 const openOfficialDealModal = () => {
   const req = activeContact.value.requestContext || {}
+  const isFixed = req.service_offering?.price_type?.toLowerCase() === 'fixed price'
+  
   dealForm.value = {
     price: req.service_offering?.price || '',
     preferred_date: req.preferred_date || '',
@@ -1058,7 +1061,8 @@ const openOfficialDealModal = () => {
     contact_number: req.contact_number || '',
     address: req.address || '',
     description: `Official agreement for ${req.service_offering?.title || activeContact.value.service_title}.\n\nClient Notes: ${req.description || 'None'}`,
-    colors: '' 
+    colors: '',
+    is_fixed_price: isFixed 
   }
   showDealModal.value = true
 }

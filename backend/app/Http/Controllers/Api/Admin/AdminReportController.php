@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\AccountTermination;
 use App\Models\SystemNotification;
 use App\Events\Notification\NotificationEvent; 
-use App\Events\Account\AccountStatusUpdated; // NEW EVENT IMPORTED
+use App\Events\Account\AccountStatusUpdated; 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -38,7 +38,29 @@ class AdminReportController extends Controller
                 ->groupBy('user_reports.reported_user_id', 'user_reports.reported_user_role', 'users.first_name', 'users.last_name', 'users.email')
                 ->orderBy('pending_reports', 'desc') 
                 ->orderBy('last_report_date', 'desc')
-                ->get();
+                ->get()
+                ->map(function ($item) {
+                    // DYNAMIC THRESHOLD HIERARCHY LOGIC
+                    $total = (int) $item->total_reports;
+                    if ($total <= 2) {
+                        $item->risk_level = 'Low Risk';
+                        $item->risk_color = 'emerald';
+                    } elseif ($total <= 5) {
+                        $item->risk_level = 'Medium Risk';
+                        $item->risk_color = 'amber';
+                    } elseif ($total <= 9) {
+                        $item->risk_level = 'High Risk';
+                        $item->risk_color = 'orange';
+                    } else {
+                        $item->risk_level = 'Severe';
+                        $item->risk_color = 'rose';
+                    }
+                    
+                    // Progress bar threshold based on a max ceiling of 10 reports
+                    $item->threshold_percent = min(100, ($total / 10) * 100);
+                    
+                    return $item;
+                });
 
             return response()->json([
                 'success' => true,
@@ -93,6 +115,19 @@ class AdminReportController extends Controller
             }
             arsort($reasonStats);
 
+            // DYNAMIC THRESHOLD FOR MODAL VIEW
+            $totalReports = count($reports);
+            if ($totalReports <= 2) {
+                $riskLevel = 'Low Risk'; $riskColor = 'emerald';
+            } elseif ($totalReports <= 5) {
+                $riskLevel = 'Medium Risk'; $riskColor = 'amber';
+            } elseif ($totalReports <= 9) {
+                $riskLevel = 'High Risk'; $riskColor = 'orange';
+            } else {
+                $riskLevel = 'Severe'; $riskColor = 'rose';
+            }
+            $thresholdPercent = min(100, ($totalReports / 10) * 100);
+
             return response()->json([
                 'success' => true,
                 'user' => $user,
@@ -101,7 +136,10 @@ class AdminReportController extends Controller
                 'analytics' => [
                     'reasons' => $reasonStats,
                     'statuses' => $statusStats,
-                    'total' => count($reports)
+                    'total' => $totalReports,
+                    'risk_level' => $riskLevel,
+                    'risk_color' => $riskColor,
+                    'threshold_percent' => $thresholdPercent
                 ]
             ]);
 
@@ -247,9 +285,6 @@ class AdminReportController extends Controller
                 ]);
             }
 
-            // NOTE: The 'users' table structure and status column are intentionally left UNTOUCHED.
-            // Control is purely handled via the AccountTermination log.
-
             $notification = SystemNotification::create([
                 'receiver_id' => $user->id,
                 'type' => 'Alert', 
@@ -300,8 +335,6 @@ class AdminReportController extends Controller
                     'reversed_at' => now()
                 ]);
             }
-
-            // NOTE: The 'users' table structure and status column are intentionally left UNTOUCHED.
             
             $notification = SystemNotification::create([
                 'receiver_id' => $user->id,
