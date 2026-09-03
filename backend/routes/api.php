@@ -128,6 +128,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Client Requirements - ID Verification & Ecommerce
     Route::prefix('client')->group(function () {
 
+        // =====================================================
+        // PWD DISCOUNT APPLICATION
+        // =====================================================
+        Route::get('/pwd-application', [\App\Http\Controllers\Api\Client\PwdApplicationController::class, 'show']);
+        Route::post('/pwd-application', [\App\Http\Controllers\Api\Client\PwdApplicationController::class, 'store']);
+
         // -----------------------------------------------------
         // CLIENT SECURITY SETTINGS
         // -----------------------------------------------------
@@ -642,6 +648,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
+
+        // --- ADMIN PWD APPLICATIONS MANAGEMENT ---
+        Route::prefix('pwd-applications')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Admin\PwdApplicationAdminController::class, 'index']);
+            Route::post('/{id}/verify', [\App\Http\Controllers\Api\Admin\PwdApplicationAdminController::class, 'verify']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\Api\Admin\PwdApplicationAdminController::class, 'reject']);
+        });
 
         // -----------------------------------------------------
         // ADMIN SECURITY SETTINGS

@@ -16,8 +16,7 @@ import AuditLogs from '@/views/admin/AuditLogs.vue'
 import userReports from '@/views/admin/userReports.vue'
 import TechnicalReportsAd from '@/views/admin/TechnicalReportsAd.vue'
 import securitySettingsAd from '@/views/admin/securitySettingsAd.vue'
-
-
+import CardsAndRenewal from '@/views/admin/CardsAndRenewal.vue'
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
 import DistributorDashboard from '@/views/distributor/Dashboard.vue'
@@ -81,6 +80,7 @@ import ProfileC from '@/views/client/ProfileC.vue'
 import notificationsC from '@/views/client/notificationsC.vue'
 import TechnicalReportsC from '@/views/client/TechnicalReportsC.vue'
 import securitySettingsC from '@/views/client/securitySettingsC.vue'
+import PwdCardApplication from '@/views/client/PwdCardApplication.vue'
 
 import LandingLayout from '@/layouts/LandingLayout.vue'
 import homeLanding from '@/views/landingPage/homeLanding.vue'
@@ -585,6 +585,11 @@ const routes = [
         name: 'securitySettingsAd',
         component: securitySettingsAd
       },
+      {
+        path: 'CardsAndRenewal',
+        name: 'CardsAndRenewal',
+        component: CardsAndRenewal
+      },
     ]
   },
   {
@@ -869,6 +874,11 @@ const routes = [
         path: 'securitySettingsC',
         name: 'securitySettingsC',
         component: securitySettingsC
+      }, 
+      {
+        path: 'PwdCardApplication',
+        name: 'PwdCardApplication',
+        component: PwdCardApplication
       }, 
     ]
   },

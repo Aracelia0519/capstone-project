@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Vinkla\Hashids\Facades\Hashids;
 
 class SupplierProductController extends Controller
 {
@@ -62,6 +63,13 @@ class SupplierProductController extends Controller
     public function index($supplierId)
     {
         try {
+            // Decode the hashed ID
+            $decoded = Hashids::decode($supplierId);
+            if (empty($decoded)) {
+                return response()->json(['success' => false, 'message' => 'Invalid supplier ID format.'], 400);
+            }
+            $realSupplierId = $decoded[0];
+
             $user = Auth::user();
 
             // Get permissions and check Level-Based RBAC Read Access
@@ -72,18 +80,18 @@ class SupplierProductController extends Controller
             }
 
             // Fetch the Supplier details
-            $supplier = DB::table('users')->where('id', $supplierId)->where('role', 'supplier')->first();
+            $supplier = DB::table('users')->where('id', $realSupplierId)->where('role', 'supplier')->first();
             
             if (!$supplier) {
                 return response()->json(['success' => false, 'message' => 'Supplier not found.'], 404);
             }
 
             $supplierName = $supplier->first_name . ' ' . $supplier->last_name;
-            $companyName = DB::table('supplier_requirements')->where('user_id', $supplierId)->value('company_name');
+            $companyName = DB::table('supplier_requirements')->where('user_id', $realSupplierId)->value('company_name');
 
             // Fetch the products (supplier_raw_materials)
             $products = DB::table('supplier_raw_materials')
-                ->where('user_id', $supplierId)
+                ->where('user_id', $realSupplierId)
                 ->get();
 
             return response()->json([

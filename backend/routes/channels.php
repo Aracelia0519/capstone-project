@@ -371,4 +371,13 @@ Broadcast::channel('user.{id}.technical_reports', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+// ------------- PWD APPLICATION REAL-TIME CHANNEL -------------
+Broadcast::channel('pwd.application.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
+// ------------- ADMIN PWD APPLICATIONS REAL-TIME CHANNEL -------------
+Broadcast::channel('admin.pwd-applications', function ($user) {
+    return $user->role === 'admin';
+});
 

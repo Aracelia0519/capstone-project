@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Events\Partnership\PartnershipRequestCreated;
+use Vinkla\Hashids\Facades\Hashids;
 
 class PartnerSupplierController extends Controller
 {
@@ -143,6 +144,7 @@ class PartnerSupplierController extends Controller
                     // Prepare Response Object
                     return [
                         'id' => $supplier->id,
+                        'hashed_id' => Hashids::encode($supplier->id),
                         'name' => $companyName,
                         'contact_person' => $supplier->full_name,
                         'email' => $supplier->email,

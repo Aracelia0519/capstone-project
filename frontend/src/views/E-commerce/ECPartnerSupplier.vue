@@ -142,7 +142,7 @@
            </Button>
 
            <Button 
-              @click="viewSupplierProducts(supplier.id)"
+              @click="viewSupplierProducts(supplier.hashed_id)"
               variant="outline"
               class="w-full border-blue-900/50 text-blue-400 bg-blue-900/10 hover:bg-blue-900/30 hover:text-blue-300 transition-all"
            >
@@ -565,7 +565,7 @@ const formatCurrency = (value) => {
   }).format(value);
 }
 
-// NEW METHOD: Route to Supplier Products Page
+// ROUTE TO SUPPLIER PRODUCTS PAGE USING HASHED ID
 const viewSupplierProducts = (id) => {
     router.push(`/ECommerce/PartnerSuppliers/${id}/Products`);
 }
@@ -734,7 +734,7 @@ const executePartnershipRequest = async () => {
   isProcessing.value = true;
   try {
     const response = await api.post('/partners/request', {
-       supplier_id: selectedSupplier.value.id,
+       supplier_id: selectedSupplier.value.id, // Retains integer ID for standard database requests
        message: requestMessage.value
     });
 

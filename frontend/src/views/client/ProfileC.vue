@@ -99,51 +99,81 @@
         </CardContent>
       </Card>
 
-      <Card class="col-span-1 lg:col-span-2 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm h-min">
-        <CardHeader>
-          <CardTitle class="flex items-center gap-2 text-white">
-            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-            </svg>
-            Personal & Contact Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form @submit.prevent="updatePersonalAndContactInfo" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <Label class="text-slate-300">First Name</Label>
-                <Input v-model="user.first_name" @input="markChanged" placeholder="Enter your first name" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
-                <p v-if="validationErrors.first_name" class="text-xs text-red-400">{{ validationErrors.first_name[0] }}</p>
+      <div class="col-span-1 lg:col-span-2 flex flex-col gap-6">
+        <Card class="col-span-1 lg:col-span-2 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm h-min">
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2 text-white">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+              </svg>
+              Personal & Contact Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="updatePersonalAndContactInfo" class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                  <Label class="text-slate-300">First Name</Label>
+                  <Input v-model="user.first_name" @input="markChanged" placeholder="Enter your first name" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                  <p v-if="validationErrors.first_name" class="text-xs text-red-400">{{ validationErrors.first_name[0] }}</p>
+                </div>
+                <div class="space-y-2">
+                  <Label class="text-slate-300">Last Name</Label>
+                  <Input v-model="user.last_name" @input="markChanged" placeholder="Enter your last name" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                  <p v-if="validationErrors.last_name" class="text-xs text-red-400">{{ validationErrors.last_name[0] }}</p>
+                </div>
+                <div class="space-y-2">
+                  <Label class="text-slate-300">Email Address</Label>
+                  <Input type="email" v-model="user.email" @input="markChanged" placeholder="Enter your email" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                  <p v-if="validationErrors.email" class="text-xs text-red-400">{{ validationErrors.email[0] }}</p>
+                </div>
+                <div class="space-y-2">
+                  <Label class="text-slate-300">Phone Number</Label>
+                  <Input type="tel" v-model="user.phone" @input="markChanged" placeholder="Enter your phone number" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                  <p v-if="validationErrors.phone" class="text-xs text-red-400">{{ validationErrors.phone[0] }}</p>
+                </div>
+                <div class="space-y-2 md:col-span-2">
+                  <Label class="text-slate-300">Address (Overview)</Label>
+                  <Textarea v-model="user.address" @input="markChanged" placeholder="Enter your basic address" rows="3" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
+                  <p v-if="validationErrors.address" class="text-xs text-red-400">{{ validationErrors.address[0] }}</p>
+                </div>
               </div>
-              <div class="space-y-2">
-                <Label class="text-slate-300">Last Name</Label>
-                <Input v-model="user.last_name" @input="markChanged" placeholder="Enter your last name" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
-                <p v-if="validationErrors.last_name" class="text-xs text-red-400">{{ validationErrors.last_name[0] }}</p>
+              <div class="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" @click="resetPersonalAndContactInfo" :disabled="loading" class="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
+                <Button type="submit" :disabled="!hasChanges || loading" class="bg-indigo-600 hover:bg-indigo-700 text-white">{{ loading ? 'Updating...' : 'Update Information' }}</Button>
               </div>
-              <div class="space-y-2">
-                <Label class="text-slate-300">Email Address</Label>
-                <Input type="email" v-model="user.email" @input="markChanged" placeholder="Enter your email" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
-                <p v-if="validationErrors.email" class="text-xs text-red-400">{{ validationErrors.email[0] }}</p>
-              </div>
-              <div class="space-y-2">
-                <Label class="text-slate-300">Phone Number</Label>
-                <Input type="tel" v-model="user.phone" @input="markChanged" placeholder="Enter your phone number" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
-                <p v-if="validationErrors.phone" class="text-xs text-red-400">{{ validationErrors.phone[0] }}</p>
-              </div>
-              <div class="space-y-2 md:col-span-2">
-                <Label class="text-slate-300">Address (Overview)</Label>
-                <Textarea v-model="user.address" @input="markChanged" placeholder="Enter your basic address" rows="3" class="bg-slate-900/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus-visible:ring-indigo-500/50" />
-                <p v-if="validationErrors.address" class="text-xs text-red-400">{{ validationErrors.address[0] }}</p>
-              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card 
+          class="mt-auto bg-slate-800/40 border-slate-700/30 backdrop-blur-sm cursor-pointer hover:bg-slate-800/60 hover:border-indigo-500/50 transition-all group"
+          @click="$router.push('/Clients/PwdCardApplication')"
+        >
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2 text-white group-hover:text-indigo-400 transition-colors">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              PWD Discount Verification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p class="text-sm text-slate-400 mb-4">
+              Apply for your PWD discount by registering your valid ID. Click here to manage your application.
+            </p>
+            <div class="flex items-center text-indigo-400 text-sm font-medium">
+              Proceed to application
+              <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
-            <div class="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" @click="resetPersonalAndContactInfo" :disabled="loading" class="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white">Cancel</Button>
-              <Button type="submit" :disabled="!hasChanges || loading" class="bg-indigo-600 hover:bg-indigo-700 text-white">{{ loading ? 'Updating...' : 'Update Information' }}</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      
 
       <div class="col-span-1 flex flex-col gap-6">
         <Card class="bg-slate-800/40 border-slate-700/30 backdrop-blur-sm">
@@ -259,6 +289,7 @@
             </form>
           </CardContent>
         </Card>
+        
       </div>
 
       <Card class="col-span-1 lg:col-span-3 bg-slate-800/40 border-slate-700/30 backdrop-blur-sm mt-2">

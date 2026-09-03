@@ -1220,12 +1220,16 @@ const deleteProduct = async (id) => {
   }
 };
 
-// Helpers
 const getFullImageUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    return `http://localhost:8000/storage/${path}`;
-}; 
+    
+    // Extract the base URL from the axios instance and remove the '/api' suffix
+    const baseUrl = api.defaults.baseURL.replace(/\/api\/?$/, '');
+    
+    return `${baseUrl}/storage/${path}`;
+};
+
 const handleImageError = (e) => e.target.style.display = 'none';
 
 const formatPrice = (p) => {

@@ -5,14 +5,32 @@
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">User Management</h1>
         <p class="text-slate-500 mt-1">Control system access and manage user roles.</p>
       </div>
-      <Button 
-        @click="showAddUserModal = true" 
-        class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg transition-all hover:-translate-y-0.5"
-      >
-        <i class="fas fa-plus mr-2"></i>
-        Add New User
-      </Button>
+      
+      <!-- New Action Buttons Container -->
+      <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        
+        <!-- New Renewals Button -->
+        <Button 
+          @click="$router.push('/admin/CardsAndRenewal')"
+          variant="outline"
+          class="flex-1 sm:flex-none border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 shadow-sm transition-all hover:-translate-y-0.5"
+        >
+          <i class="fas fa-file-signature mr-2"></i>
+          Manage Renewals
+        </Button>
+
+        <!-- Existing Add User Button -->
+        <Button 
+          @click="showAddUserModal = true" 
+          class="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg transition-all hover:-translate-y-0.5"
+        >
+          <i class="fas fa-plus mr-2"></i>
+          Add New User
+        </Button>
+        
+      </div>
     </div>
+    
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
       <Card 
