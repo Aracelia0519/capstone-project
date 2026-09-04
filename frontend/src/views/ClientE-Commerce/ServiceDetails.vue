@@ -143,13 +143,13 @@
                <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-tight mb-2">{{ selectedService.title }}</h1>
                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
                  
-                 <!-- NEW: Adjusted Flex Layout to accommodate the 'View Profile' button -->
                  <div class="flex flex-wrap items-center gap-3">
                    <div class="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                       <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
                       <span class="font-bold">{{ selectedService.provider_name }}</span>
                    </div>
-                   <Button @click="router.push(`/ECommerceClient/ProviderProfile/${selectedService.provider_id}`)" variant="outline" size="sm" class="h-8 text-xs font-bold text-blue-600 border-blue-200 hover:bg-blue-50 bg-white">
+                   <!-- Button updated to use the hash ID, safely defaulting back to regular ID if necessary -->
+                   <Button @click="router.push(`/ECommerceClient/ProviderProfile/${selectedService.provider_hash_id || selectedService.provider_id}`)" variant="outline" size="sm" class="h-8 text-xs font-bold text-blue-600 border-blue-200 hover:bg-blue-50 bg-white">
                       View Profile
                    </Button>
                  </div>

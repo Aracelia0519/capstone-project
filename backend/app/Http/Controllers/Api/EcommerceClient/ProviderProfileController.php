@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\ServiceProvider\ServiceProviderPortfolio;
+use Vinkla\Hashids\Facades\Hashids; // Import Hashids 
 
 class ProviderProfileController extends Controller
 {
     public function show(Request $request, $id)
     {
-        $provider = User::where('id', $id)->where('role', 'service_provider')->first();
+        // Decode the incoming hashid, falling back to the raw $id if decoding is empty
+        $decoded = Hashids::decode($id);
+        $providerId = !empty($decoded) ? $decoded[0] : $id;
+
+        $provider = User::where('id', $providerId)->where('role', 'service_provider')->first();
 
         if (!$provider) {
             return response()->json([
@@ -20,7 +25,7 @@ class ProviderProfileController extends Controller
             ], 404);
         }
 
-        $portfolio = ServiceProviderPortfolio::where('provider_id', $id)->first();
+        $portfolio = ServiceProviderPortfolio::where('provider_id', $providerId)->first();
         
         $providerName = trim($provider->first_name . ' ' . $provider->last_name);
 

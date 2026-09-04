@@ -83,6 +83,7 @@ class ClientServiceController extends Controller
                 'id' => $service->id,
                 'hash_id' => Hashids::encode($service->id),
                 'provider_id' => $service->provider_id,
+                'provider_hash_id' => Hashids::encode($service->provider_id), // Hash generation for Provider ID added here
                 'provider_name' => $providerName,
                 'title' => $service->title,
                 'category' => $service->category,
