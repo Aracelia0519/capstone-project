@@ -259,6 +259,33 @@
                     <span v-else-if="message.payload?.term_status === 'declined'">❌ You Declined these Terms.</span>
                  </div>
               </div>
+
+              <div v-else-if="message.type === 'invoice'" class="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 border border-purple-500/50 rounded-xl p-4 shadow-lg shadow-purple-900/20 w-full max-w-sm sm:max-w-md" :class="message.sender === 'me' ? 'rounded-tr-sm' : 'rounded-tl-sm'">
+                 <div class="flex items-center justify-between mb-3 border-b border-purple-500/30 pb-2">
+                    <div class="flex items-center gap-2">
+                        <ClipboardList class="w-5 h-5 text-purple-400" />
+                        <span class="text-sm font-bold text-white uppercase tracking-wider">Official Invoice</span>
+                    </div>
+                 </div>
+                 <div class="space-y-2 text-xs text-slate-200 bg-slate-900/50 p-3 rounded-lg border border-slate-800 shadow-inner">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-slate-400 font-medium">Original Price</span> 
+                        <span class="font-medium text-slate-200">₱{{ Number(message.payload?.original_price || 0).toLocaleString() }}</span>
+                    </div>
+                    <div v-if="message.payload?.is_pwd" class="flex justify-between items-center mb-1">
+                        <span class="text-pink-400 font-medium">PWD Discount (20%)</span> 
+                        <span class="font-medium text-pink-400">- ₱{{ Number(message.payload?.discount_amount || 0).toLocaleString() }}</span>
+                    </div>
+                    <div class="h-px bg-slate-700/50 my-1"></div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-slate-300 font-bold">Grand Total</span> 
+                        <span class="font-black text-emerald-400 text-xl tracking-tight">₱{{ Number(message.payload?.final_price || 0).toLocaleString() }}</span>
+                    </div>
+                    <div class="h-px bg-slate-700/50 my-1"></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Payment Method</span> <span class="font-medium uppercase">{{ message.payload?.payment_method?.replace('_', ' ') || 'N/A' }}</span></div>
+                    <div class="flex flex-col mt-2"><span class="text-slate-400">Payment Term</span> <span class="font-medium">{{ message.payload?.payment_term || 'N/A' }}</span></div>
+                 </div>
+              </div>
               
               <div class="flex items-center mt-1 space-x-1" :class="message.sender === 'me' ? 'justify-end' : 'justify-start sm:ml-1'">
                 <span class="text-[9px] md:text-[10px] text-slate-500">{{ message.time }}</span>

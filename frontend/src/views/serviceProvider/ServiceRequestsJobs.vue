@@ -357,6 +357,12 @@
                    </div>
                  </div>
 
+                 <!-- Invoice PWD Discount Visibility Block -->
+                 <div v-if="selectedJob.originalData.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl mt-3">
+                     <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> PWD DISCOUNT APPLIED</p>
+                     <p class="text-xs text-gray-300 mt-1">{{ selectedJob.originalData.invoice_details.pwd_discount_text }}</p>
+                 </div>
+
                  <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mt-4 border-t border-blue-800/30 pt-4">
                     <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
                     <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
@@ -400,6 +406,15 @@
                      </div>
                  </div>
 
+                 <!-- System Native Invoices & Receipts -->
+                 <div class="flex gap-2 flex-wrap mt-4 border-t border-blue-800/30 pt-4">
+                     <Button v-if="selectedJob.originalData.invoice_details" variant="secondary" size="sm" @click="openInvoiceModal(selectedJob)" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> View Invoice
+                     </Button>
+                     <Button v-if="selectedJob.originalData.receipt_details" variant="secondary" size="sm" @click="openReceiptModal(selectedJob)" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-4 8l6-6M5 8h.01M5 12h.01M5 16h.01M3 21l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2v-16a2 2 0 00-2-2h-14a2 2 0 00-2 2v16z"/></svg> View Receipt
+                     </Button>
+                 </div>
              </div>
 
              <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
@@ -569,6 +584,107 @@
        </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="showInvoiceModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]">
+          <DialogTitle class="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Official Invoice
+          </DialogTitle>
+          <div v-if="selectedInvoiceReq" class="py-2 space-y-4">
+             <div class="flex justify-between items-start border-b border-slate-800 pb-4">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Invoice No.</p>
+                    <p class="text-sm font-bold text-white">{{ selectedInvoiceReq.originalData.invoice_details.invoice_number }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500 uppercase">Status</p>
+                    <Badge :class="selectedInvoiceReq.originalData.invoice_details.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'">
+                        {{ selectedInvoiceReq.originalData.invoice_details.status.toUpperCase() }}
+                    </Badge>
+                </div>
+             </div>
+
+             <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Client</span>
+                    <span class="font-medium">{{ selectedInvoiceReq.client }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Service</span>
+                    <span class="font-medium">{{ selectedInvoiceReq.serviceDetails.title }}</span>
+                </div>
+                <div class="flex justify-between text-sm border-b border-slate-800 pb-2">
+                    <span class="text-gray-400">Date Issued</span>
+                    <span class="font-medium">{{ new Date(selectedInvoiceReq.originalData.invoice_details.issued_date).toLocaleDateString() }}</span>
+                </div>
+
+                <div v-if="selectedInvoiceReq.originalData.invoice_details.pwd_discount_applied" class="flex justify-between text-sm text-indigo-400 bg-indigo-900/20 p-2 rounded-lg border border-indigo-500/30">
+                    <span>Discount</span>
+                    <span class="font-medium font-mono text-xs">{{ selectedInvoiceReq.originalData.invoice_details.pwd_discount_text }}</span>
+                </div>
+
+                <div class="flex justify-between text-base pt-2 font-bold text-white">
+                    <span>Total Amount</span>
+                    <span>₱{{ Number(selectedInvoiceReq.originalData.invoice_details.total_amount).toLocaleString() }}</span>
+                </div>
+                <div class="flex justify-between text-sm text-emerald-400">
+                    <span>Amount Paid</span>
+                    <span>₱{{ Number(selectedInvoiceReq.originalData.invoice_details.amount_paid).toLocaleString() }}</span>
+                </div>
+                <div class="flex justify-between text-sm text-red-400">
+                    <span>Balance Due</span>
+                    <span>₱{{ Number(selectedInvoiceReq.originalData.invoice_details.balance).toLocaleString() }}</span>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showInvoiceModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             <Button @click="downloadInvoice" class="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Download Invoice
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showReceiptModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[400px]">
+          <DialogTitle class="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-4 8l6-6M5 8h.01M5 12h.01M5 16h.01M3 21l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2v-16a2 2 0 00-2-2h-14a2 2 0 00-2 2v16z"/></svg> Official Receipt
+          </DialogTitle>
+          <div v-if="selectedReceiptReq" class="py-2 space-y-4">
+             <div class="text-center border-b border-slate-800 pb-4">
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <p class="text-xs text-gray-500 uppercase">Receipt No.</p>
+                <p class="text-sm font-mono text-white mb-2">{{ selectedReceiptReq.originalData.receipt_details.receipt_number }}</p>
+                <h3 class="text-2xl font-bold text-emerald-400">₱{{ Number(selectedReceiptReq.originalData.receipt_details.total_paid).toLocaleString() }}</h3>
+                <p class="text-xs text-gray-400 mt-1">Successfully Collected</p>
+             </div>
+
+             <div class="space-y-2 text-sm bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Date Completed</span>
+                    <span class="font-medium">{{ new Date(selectedReceiptReq.originalData.receipt_details.completion_date).toLocaleDateString() }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Service</span>
+                    <span class="font-medium text-right max-w-[150px] truncate">{{ selectedReceiptReq.originalData.receipt_details.service_name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Client</span>
+                    <span class="font-medium">{{ selectedReceiptReq.originalData.receipt_details.client_name }}</span>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showReceiptModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             <Button @click="downloadReceipt" class="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Download Receipt
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
     <Dialog v-model:open="showGcashModal">
        <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[400px]">
           <DialogHeader>
@@ -633,7 +749,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner' 
 import api from '@/utils/axios' 
-import echo from '@/utils/websocket' // Implemented echo
+import echo from '@/utils/websocket' 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
@@ -657,42 +773,51 @@ const router = useRouter()
 const showDetailsModal = ref(false)
 const selectedJob = ref(null)
 
-// Provider State for WebSockets
 const activeProviderId = ref(null)
 
-// Confirm Dialog States
 const showConfirmDialog = ref(false)
 const actionType = ref('') 
 const isProcessing = ref(false)
 const isApprovingProof = ref(false)
 
-// Completion Proof states
 const showCompleteModal = ref(false)
 const completionProofInput = ref(null)
 const isCompleting = ref(false)
 const jobToComplete = ref(null)
 
-// Reminder & Report states
 const isSendingReminder = ref(false)
 const isGeneratingReport = ref(false)
 
-// GCash Modal States
 const showGcashModal = ref(false)
 const gcashDetails = ref(null)
 
-// Survey State Flags
 const isGeneratingAgreement = ref(false)
 const isSurveyProcessing = ref(false)
 const showGenerateAgreementModal = ref(false)
 const showViewAgreementModal = ref(false)
 
-// --- Signature Pad Logic
+const showInvoiceModal = ref(false)
+const selectedInvoiceReq = ref(null)
+
+const showReceiptModal = ref(false)
+const selectedReceiptReq = ref(null)
+
 const signaturePad = ref(null)
 const isDrawing = ref(false)
 let ctx = null
 
 const openGenerateModal = () => {
     showGenerateAgreementModal.value = true
+}
+
+const openInvoiceModal = (job) => {
+    selectedInvoiceReq.value = job
+    showInvoiceModal.value = true
+}
+
+const openReceiptModal = (job) => {
+    selectedReceiptReq.value = job
+    showReceiptModal.value = true
 }
 
 const initCanvas = () => {
@@ -839,13 +964,11 @@ const fetchJobRequests = async (isBackground = false) => {
         };
       })
 
-      // Silently update the modal view if it is open
       if (selectedJob.value) {
           const updated = jobs.value.find(j => j.id === selectedJob.value.id);
           if(updated) selectedJob.value = updated;
       }
 
-      // Initialize WebSocket connection only if not a background update
       if (!isBackground) {
         setupWebSocket()
       }
@@ -856,7 +979,6 @@ const fetchJobRequests = async (isBackground = false) => {
   }
 }
 
-// --- WEBSOCKET LOGIC ---
 const setupWebSocket = () => {
     if (activeProviderId.value) {
         echo.private(`provider.${activeProviderId.value}.requests`)
@@ -866,7 +988,6 @@ const setupWebSocket = () => {
                     description: 'A client has just booked one of your services.'
                 })
             })
-            // Added listener for the updated events
             .listen('.request.updated', (e) => {
                 fetchJobRequests(true)
                 toast.info('Job Status Updated', {
@@ -891,7 +1012,6 @@ const viewJobDetails = (job) => {
   showDetailsModal.value = true
 }
 
-// --- Survey Actions ---
 const generateSurveyAgreement = async () => {
     if(!selectedJob.value) return;
     
@@ -916,6 +1036,91 @@ const generateSurveyAgreement = async () => {
     } finally {
         isGeneratingAgreement.value = false;
     }
+}
+
+const printDocument = (title, htmlContent) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #000; }
+                h2, h3 { text-align: center; margin-bottom: 10px; }
+                .details { margin-bottom: 30px; }
+                .details p { margin: 5px 0; }
+                .table-container { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                th { background-color: #f4f4f4; }
+                .total { font-weight: bold; font-size: 1.2em; text-align: right; }
+                .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
+                .discount { color: #d9534f; font-weight: bold; font-size: 0.9em;}
+            </style>
+        </head>
+        <body>
+            ${htmlContent}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 750);
+}
+
+const downloadInvoice = () => {
+    if(!selectedInvoiceReq.value) return;
+    const inv = selectedInvoiceReq.value.originalData.invoice_details;
+    const content = `
+        <h2>SERVICE INVOICE</h2>
+        <h3>${inv.invoice_number}</h3>
+        <div class="details">
+            <p><strong>Provider:</strong> You</p>
+            <p><strong>Client:</strong> ${selectedInvoiceReq.value.client}</p>
+            <p><strong>Status:</strong> ${inv.status.toUpperCase()}</p>
+            <p><strong>Issued Date:</strong> ${new Date(inv.issued_date).toLocaleDateString()}</p>
+        </div>
+        <table class="table-container">
+            <tr><th>Description</th><th>Amount</th></tr>
+            <tr>
+                <td>${selectedInvoiceReq.value.serviceDetails.title}</td>
+                <td>P${Number(inv.total_amount).toLocaleString()}</td>
+            </tr>
+        </table>
+        ${inv.pwd_discount_applied ? `<p class="discount">(${inv.pwd_discount_text})</p>` : ''}
+        <p class="total">Total Due: P${Number(inv.total_amount).toLocaleString()}</p>
+        <p class="total">Amount Paid: P${Number(inv.amount_paid).toLocaleString()}</p>
+        <p class="total" style="color: #d9534f;">Balance: P${Number(inv.balance).toLocaleString()}</p>
+        <div class="footer">Thank you for your business.</div>
+    `;
+    printDocument('Invoice - ' + inv.invoice_number, content);
+}
+
+const downloadReceipt = () => {
+    if(!selectedReceiptReq.value) return;
+    const rec = selectedReceiptReq.value.originalData.receipt_details;
+    const content = `
+        <h2>OFFICIAL RECEIPT</h2>
+        <h3>${rec.receipt_number}</h3>
+        <div class="details">
+            <p><strong>Provider:</strong> You</p>
+            <p><strong>Client:</strong> ${rec.client_name}</p>
+            <p><strong>Service:</strong> ${rec.service_name}</p>
+            <p><strong>Completion Date:</strong> ${new Date(rec.completion_date).toLocaleDateString()}</p>
+        </div>
+        <table class="table-container">
+            <tr><th>Description</th><th>Total Collected</th></tr>
+            <tr>
+                <td>Full Payment for ${rec.service_name}</td>
+                <td>P${Number(rec.total_paid).toLocaleString()}</td>
+            </tr>
+        </table>
+        <p class="total">Grand Total Collected: P${Number(rec.total_paid).toLocaleString()}</p>
+        <div class="footer">This serves as your official collection receipt. Thank you!</div>
+    `;
+    printDocument('Receipt - ' + rec.receipt_number, content);
 }
 
 const downloadAgreement = () => {

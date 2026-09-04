@@ -95,6 +95,44 @@ class ClientServiceRequestController extends Controller
             $req->latest_completion = $latestCompletion;
             $req->service_review = $review;
             $req->survey_agreement = $surveyAgreement;
+
+            // --- INVOICE, PWD DISCOUNT & RECEIPT LOGIC ---
+            $pwd_discount_applied = false;
+            $pwd_discount_text = null;
+            if ($deal && !empty($deal->description) && str_contains($deal->description, 'PWD Discount Applied')) {
+                $pwd_discount_applied = true;
+                if (preg_match('/\[System Note:\s*(.*?)\]/i', $deal->description, $matches)) {
+                    $pwd_discount_text = $matches[1];
+                } else {
+                    $pwd_discount_text = 'PWD Discount Applied';
+                }
+            }
+
+            if ($deal && $paymentTerm && in_array($paymentTerm->status, ['agreed', 'awaiting_proof_approval', 'paid'])) {
+                $req->invoice_details = [
+                    'invoice_number' => 'INV-' . date('Y') . '-' . str_pad($deal->id, 5, '0', STR_PAD_LEFT),
+                    'issued_date' => $paymentTerm->created_at,
+                    'paid_date' => $paymentTerm->status === 'paid' ? $paymentTerm->updated_at : null,
+                    'pwd_discount_applied' => $pwd_discount_applied,
+                    'pwd_discount_text' => $pwd_discount_text,
+                    'total_amount' => $deal->price,
+                    'amount_paid' => $paymentTerm->total_paid ?? 0,
+                    'balance' => $paymentTerm->balance ?? 0,
+                    'payment_method' => strtoupper(str_replace('_', ' ', $paymentTerm->payment_method)),
+                    'status' => $paymentTerm->status
+                ];
+            }
+
+            if ($req->status === 'completed') {
+                $req->receipt_details = [
+                    'receipt_number' => 'OR-' . date('Y') . '-' . str_pad($req->id, 5, '0', STR_PAD_LEFT),
+                    'completion_date' => $req->updated_at,
+                    'total_paid' => $paymentTerm ? ($paymentTerm->total_paid ?? $deal->price) : ($deal ? $deal->price : 0),
+                    'service_name' => $service ? $service->title : 'Custom Service',
+                    'provider_name' => $req->provider ? $req->provider->first_name . ' ' . $req->provider->last_name : 'N/A'
+                ];
+            }
+            // ---------------------------------------------
             
             return $req;
         });

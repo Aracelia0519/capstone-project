@@ -9,7 +9,7 @@ use App\Models\ServiceProvider\SPMessage;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm; 
 use App\Events\MessageSent;
-use App\Events\Chat\MessageUpdated; // <--- NEW EVENT IMPORTED
+use App\Events\Chat\MessageUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -114,11 +114,14 @@ class SPChatController extends Controller
         $payload = $request->payload ?? [];
 
         if ($request->type === 'official_deal') {
+            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+
             $deal = OfficialDeal::create([
                 'provider_id' => Auth::id(),
                 'client_id' => $request->receiver_id,
                 'client_service_request_id' => $request->service_request_id,
-                'price' => $payload['price'],
+                'service_offering_id' => $serviceRequest ? $serviceRequest->service_offering_id : null,
+                'price' => str_replace(',', '', $payload['price']),
                 'description' => $payload['description'],
                 'colors' => isset($payload['colors']) && !empty($payload['colors']) ? json_encode($payload['colors']) : null,
                 'status' => 'pending'
@@ -204,7 +207,6 @@ class SPChatController extends Controller
 
         if ($message->type === 'text') {
             $message->update(['message' => $request->message]);
-            // Broadcast the edit
             broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
         }
 
@@ -223,7 +225,6 @@ class SPChatController extends Controller
             'payload' => $payload
         ]);
 
-        // Broadcast the delete
         broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
 
         return response()->json(['success' => true]);

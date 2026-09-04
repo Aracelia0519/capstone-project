@@ -99,7 +99,7 @@
               </div>
             </div>
             
-            <div class="flex justify-end sm:justify-start mt-3 sm:mt-0 sm:self-center gap-2">
+            <div class="flex flex-wrap justify-end sm:justify-start mt-3 sm:mt-0 sm:self-center gap-2">
               <Button 
                 v-if="request.status === 'completion_review'"
                 variant="default" 
@@ -153,6 +153,28 @@
               >
                 <CreditCard class="w-4 h-4" />
                 Payment Actions
+              </Button>
+
+              <Button 
+                v-if="request.raw.invoice_details"
+                variant="secondary" 
+                size="sm"
+                @click="openInvoiceModal(request)"
+                class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-xl gap-2 shadow-lg"
+              >
+                <FileText class="w-4 h-4" />
+                Invoice
+              </Button>
+
+              <Button 
+                v-if="request.raw.receipt_details"
+                variant="secondary" 
+                size="sm"
+                @click="openReceiptModal(request)"
+                class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl gap-2 shadow-lg"
+              >
+                <Receipt class="w-4 h-4" />
+                Receipt
               </Button>
             </div>
           </div>
@@ -299,6 +321,11 @@
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
                  <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
                </div>
+             </div>
+
+             <div v-if="selectedRequest.raw.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl">
+                 <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><CheckCircle2 class="w-4 h-4"/> PWD DISCOUNT APPLIED</p>
+                 <p class="text-xs text-gray-300 mt-1">{{ selectedRequest.raw.invoice_details.pwd_discount_text }}</p>
              </div>
 
              <div v-if="selectedRequest.raw.payment_term.legal_report_path" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
@@ -605,6 +632,107 @@
        </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="showInvoiceModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]">
+          <DialogTitle class="text-indigo-400 font-bold mb-2 flex items-center gap-2">
+             <FileText class="w-5 h-5" /> Official Invoice
+          </DialogTitle>
+          <div v-if="selectedInvoiceReq" class="py-2 space-y-4">
+             <div class="flex justify-between items-start border-b border-slate-800 pb-4">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Invoice No.</p>
+                    <p class="text-sm font-bold text-white">{{ selectedInvoiceReq.raw.invoice_details.invoice_number }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500 uppercase">Status</p>
+                    <Badge :class="selectedInvoiceReq.raw.invoice_details.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'">
+                        {{ selectedInvoiceReq.raw.invoice_details.status.toUpperCase() }}
+                    </Badge>
+                </div>
+             </div>
+
+             <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Service</span>
+                    <span class="font-medium">{{ selectedInvoiceReq.projectName }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Provider</span>
+                    <span class="font-medium">{{ selectedInvoiceReq.serviceProvider }}</span>
+                </div>
+                <div class="flex justify-between text-sm border-b border-slate-800 pb-2">
+                    <span class="text-gray-400">Date Issued</span>
+                    <span class="font-medium">{{ new Date(selectedInvoiceReq.raw.invoice_details.issued_date).toLocaleDateString() }}</span>
+                </div>
+
+                <div v-if="selectedInvoiceReq.raw.invoice_details.pwd_discount_applied" class="flex justify-between text-sm text-indigo-400 bg-indigo-900/20 p-2 rounded-lg border border-indigo-500/30">
+                    <span>Discount</span>
+                    <span class="font-medium font-mono text-xs">{{ selectedInvoiceReq.raw.invoice_details.pwd_discount_text }}</span>
+                </div>
+
+                <div class="flex justify-between text-base pt-2 font-bold text-white">
+                    <span>Total Amount</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.total_amount).toLocaleString() }}</span>
+                </div>
+                <div class="flex justify-between text-sm text-emerald-400">
+                    <span>Amount Paid</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.amount_paid).toLocaleString() }}</span>
+                </div>
+                <div class="flex justify-between text-sm text-red-400">
+                    <span>Balance Due</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.balance).toLocaleString() }}</span>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showInvoiceModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             <Button @click="downloadInvoice" class="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20">
+                <Download class="w-4 h-4 mr-2" /> Download Invoice
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showReceiptModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[400px]">
+          <DialogTitle class="text-emerald-400 font-bold mb-2 flex items-center gap-2">
+             <Receipt class="w-5 h-5" /> Official Receipt
+          </DialogTitle>
+          <div v-if="selectedReceiptReq" class="py-2 space-y-4">
+             <div class="text-center border-b border-slate-800 pb-4">
+                <div class="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle2 class="w-6 h-6 text-emerald-400" />
+                </div>
+                <p class="text-xs text-gray-500 uppercase">Receipt No.</p>
+                <p class="text-sm font-mono text-white mb-2">{{ selectedReceiptReq.raw.receipt_details.receipt_number }}</p>
+                <h3 class="text-2xl font-bold text-emerald-400">₱{{ Number(selectedReceiptReq.raw.receipt_details.total_paid).toLocaleString() }}</h3>
+                <p class="text-xs text-gray-400 mt-1">Successfully Paid</p>
+             </div>
+
+             <div class="space-y-2 text-sm bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Date Completed</span>
+                    <span class="font-medium">{{ new Date(selectedReceiptReq.raw.receipt_details.completion_date).toLocaleDateString() }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Service</span>
+                    <span class="font-medium text-right max-w-[150px] truncate">{{ selectedReceiptReq.raw.receipt_details.service_name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Provider</span>
+                    <span class="font-medium">{{ selectedReceiptReq.raw.receipt_details.provider_name }}</span>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+             <Button variant="ghost" @click="showReceiptModal = false" class="text-gray-400 hover:text-white">Close</Button>
+             <Button @click="downloadReceipt" class="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
+                <Download class="w-4 h-4 mr-2" /> Download Receipt
+             </Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -613,7 +741,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
-import echo from '@/utils/websocket' // Implemented echo
+import echo from '@/utils/websocket' 
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -622,9 +750,8 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-// --- Added AlertCircle and AlertTriangle imports
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -634,7 +761,6 @@ const activeFilter = ref('all')
 const serviceRequests = ref([])
 const isLoading = ref(true)
 
-// Client State for WebSockets
 const activeClientId = ref(null)
 
 const isModalOpen = ref(false)
@@ -657,11 +783,15 @@ const isSubmittingReview = ref(false)
 const clientReplyText = ref('')
 const isSubmittingReply = ref(false)
 
-// --- Survey Agreement State
 const showSignAgreementModal = ref(false)
 const isSigningAgreement = ref(false)
 
-// --- Signature Pad Logic
+const showInvoiceModal = ref(false)
+const selectedInvoiceReq = ref(null)
+
+const showReceiptModal = ref(false)
+const selectedReceiptReq = ref(null)
+
 const signaturePad = ref(null)
 const isDrawing = ref(false)
 let ctx = null
@@ -675,7 +805,6 @@ const initCanvas = () => {
    clearSignature()
 }
 
-// --- FIX: Wait for the modal to open before initializing canvas ---
 watch(showSignAgreementModal, async (isOpen) => {
   if (isOpen) {
     await nextTick()
@@ -701,7 +830,6 @@ const getPos = (e) => {
 
 const startDrawing = (e) => {
    e.preventDefault()
-   // FAIL-SAFE: If pen is missing, try initializing again
    if (!ctx) initCanvas()
    if (!ctx) return 
 
@@ -775,7 +903,6 @@ const fetchRequests = async (isBackground = false) => {
         }
       })
 
-      // Silently update the modal view if it is open
       if (selectedRequest.value) {
          const updatedReq = serviceRequests.value.find(r => r.id === selectedRequest.value.id)
          if(updatedReq) selectedRequest.value = updatedReq
@@ -792,7 +919,6 @@ const fetchRequests = async (isBackground = false) => {
   }
 }
 
-// --- WEBSOCKET LOGIC ---
 const setupWebSocket = () => {
     if (activeClientId.value) {
         echo.private(`client.${activeClientId.value}.requests`)
@@ -803,7 +929,7 @@ const setupWebSocket = () => {
 }
 
 const handleClientUpdate = () => {
-    fetchRequests(true) // Fetch in background
+    fetchRequests(true) 
     toast.info('Service Request Updated', {
         description: 'Your service provider has just updated your request details.'
     })
@@ -822,6 +948,16 @@ onUnmounted(() => {
         echo.leave(`client.${activeClientId.value}.requests`)
     }
 })
+
+const openInvoiceModal = (req) => {
+    selectedInvoiceReq.value = req
+    showInvoiceModal.value = true
+}
+
+const openReceiptModal = (req) => {
+    selectedReceiptReq.value = req
+    showReceiptModal.value = true
+}
 
 const openSignAgreementModal = () => {
     showSignAgreementModal.value = true
@@ -853,7 +989,90 @@ const signAgreement = async () => {
     }
 }
 
-// --- NEW DOWNLOAD FUNCTION ---
+const printDocument = (title, htmlContent) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #000; }
+                h2, h3 { text-align: center; margin-bottom: 10px; }
+                .details { margin-bottom: 30px; }
+                .details p { margin: 5px 0; }
+                .table-container { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                th { background-color: #f4f4f4; }
+                .total { font-weight: bold; font-size: 1.2em; text-align: right; }
+                .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
+                .discount { color: #d9534f; font-weight: bold; font-size: 0.9em;}
+            </style>
+        </head>
+        <body>
+            ${htmlContent}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 750);
+}
+
+const downloadInvoice = () => {
+    if(!selectedInvoiceReq.value) return;
+    const inv = selectedInvoiceReq.value.raw.invoice_details;
+    const content = `
+        <h2>SERVICE INVOICE</h2>
+        <h3>${inv.invoice_number}</h3>
+        <div class="details">
+            <p><strong>Provider:</strong> ${selectedInvoiceReq.value.serviceProvider}</p>
+            <p><strong>Client:</strong> You</p>
+            <p><strong>Status:</strong> ${inv.status.toUpperCase()}</p>
+            <p><strong>Issued Date:</strong> ${new Date(inv.issued_date).toLocaleDateString()}</p>
+        </div>
+        <table class="table-container">
+            <tr><th>Description</th><th>Amount</th></tr>
+            <tr>
+                <td>${selectedInvoiceReq.value.projectName}</td>
+                <td>P${Number(inv.total_amount).toLocaleString()}</td>
+            </tr>
+        </table>
+        ${inv.pwd_discount_applied ? `<p class="discount">(${inv.pwd_discount_text})</p>` : ''}
+        <p class="total">Total Due: P${Number(inv.total_amount).toLocaleString()}</p>
+        <p class="total">Amount Paid: P${Number(inv.amount_paid).toLocaleString()}</p>
+        <p class="total" style="color: #d9534f;">Balance: P${Number(inv.balance).toLocaleString()}</p>
+        <div class="footer">Thank you for your business.</div>
+    `;
+    printDocument('Invoice - ' + inv.invoice_number, content);
+}
+
+const downloadReceipt = () => {
+    if(!selectedReceiptReq.value) return;
+    const rec = selectedReceiptReq.value.raw.receipt_details;
+    const content = `
+        <h2>OFFICIAL RECEIPT</h2>
+        <h3>${rec.receipt_number}</h3>
+        <div class="details">
+            <p><strong>Provider:</strong> ${rec.provider_name}</p>
+            <p><strong>Service:</strong> ${rec.service_name}</p>
+            <p><strong>Completion Date:</strong> ${new Date(rec.completion_date).toLocaleDateString()}</p>
+        </div>
+        <table class="table-container">
+            <tr><th>Description</th><th>Total Paid</th></tr>
+            <tr>
+                <td>Full Payment for ${rec.service_name}</td>
+                <td>P${Number(rec.total_paid).toLocaleString()}</td>
+            </tr>
+        </table>
+        <p class="total">Grand Total Paid: P${Number(rec.total_paid).toLocaleString()}</p>
+        <div class="footer">This serves as your official receipt. Thank you!</div>
+    `;
+    printDocument('Receipt - ' + rec.receipt_number, content);
+}
+
 const downloadAgreement = () => {
     if (!selectedRequest.value?.raw?.survey_agreement) return;
     const agreement = selectedRequest.value.raw.survey_agreement;
@@ -890,13 +1109,11 @@ const downloadAgreement = () => {
     `);
     printWindow.document.close();
     printWindow.focus();
-    // Allow images time to load before printing/saving to PDF
     setTimeout(() => {
         printWindow.print();
         printWindow.close();
     }, 750);
 }
-// ------------------------------
 
 const uploadProofOfPayment = async (termId) => {
   if (!proofInput.value || !proofInput.value.files[0]) {
