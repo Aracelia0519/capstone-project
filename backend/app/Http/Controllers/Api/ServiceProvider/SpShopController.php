@@ -1157,4 +1157,53 @@ class SpShopController extends Controller
         $distance = $earthRadius * $c;
         return $distance;
     }
+
+    public function submitPetition(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please log in to submit a petition.'
+            ], 401);
+        }
+
+        $petitionCount = DB::table('service_provider_restriction_petitions')
+            ->where('service_provider_id', $user->id)
+            ->count();
+
+        if ($petitionCount >= 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have reached the maximum limit of 3 petition submissions.'
+            ], 400);
+        }
+
+        $request->validate([
+            'reason' => 'required|string',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf,doc,docx|max:5120',
+        ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $attachmentPath = $file->storeAs('sp_petitions', $filename, 'public');
+        }
+
+        DB::table('service_provider_restriction_petitions')->insert([
+            'service_provider_id' => $user->id,
+            'reason' => $request->reason,
+            'attachment_path' => $attachmentPath,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Petition submitted successfully for review.'
+        ]);
+    }
 }

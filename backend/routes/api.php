@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\OperationDistributor\ReviewManagementController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceOfferingController;
 use App\Http\Controllers\Api\ServiceProvider\ServiceJobController;
 use App\Http\Controllers\Api\LoginLogController;
+use App\Http\Controllers\Api\Admin\ECBannedUserController;
 
 use Illuminate\Support\Facades\Broadcast;
 
@@ -240,6 +241,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('shop')->group(function () {
             // --- FETCH ECOMMERCE ACCOUNT STATUS ---
             Route::get('/account-status', [\App\Http\Controllers\Api\EcommerceClient\EcommerceAccountStatusController::class, 'getStatus']);
+
+            // petition route HERE:
+            Route::post('/submit-petition', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'submitPetition']);
             // Protected Shop Endpoints (Actions)
             Route::post('/shipping-fee', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'calculateShipping']);
             Route::post('/cart', [\App\Http\Controllers\Api\EcommerceClient\ShopController::class, 'addToCart']);
@@ -344,6 +348,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::prefix('shop')->group(function () {
             Route::get('/products/{distributor_id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProducts']);
+            Route::post('/submit-petition', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'submitPetition']);
             Route::get('/product/{id}', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'getProduct']);
             Route::post('/cart', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'addToCart']);
             Route::post('/order-now', [\App\Http\Controllers\Api\ServiceProvider\SpShopController::class, 'orderNow']);
@@ -648,6 +653,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin User Management Routes
     Route::prefix('admin')->group(function () {
+
+        // --- ADMIN SHOP RESTRICTION PETITIONS MANAGEMENT ---
+        Route::prefix('banned-users')->group(function () {
+            Route::get('/', [ECBannedUserController::class, 'index']);
+            Route::post('/revoke', [ECBannedUserController::class, 'revoke']);
+            Route::post('/deny', [ECBannedUserController::class, 'deny']);
+        });
 
         // --- ADMIN PWD APPLICATIONS MANAGEMENT ---
         Route::prefix('pwd-applications')->group(function () {

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-8">
+  <div class="min-h-screen  p-4 md:p-8">
     
     <!-- Header -->
     <div class="max-w-[90rem] mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

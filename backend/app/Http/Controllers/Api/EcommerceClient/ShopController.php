@@ -452,9 +452,6 @@ class ShopController extends Controller
         ]);
     }
 
-    // ----- The rest of the methods (addToCart, orderNow, verifyGcashPayment, calculateShipping, calculateDistance) remain exactly as they were -----
-    // They are not modified because they already work with specific product_id.
-
     public function addToCart(Request $request)
     {
         $request->validate([
@@ -1114,5 +1111,56 @@ class ShopController extends Controller
             sin($dLon / 2) * sin($dLon / 2);
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
         return $earthRadius * $c;
+    }
+
+    public function submitPetition(Request $request)
+    {
+        $user = Auth::user();
+
+        // Safety check to prevent "Attempt to read property id on null"
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated. Please log in to submit a petition.'
+            ], 401);
+        }
+
+        // Check if the user has already submitted 3 petitions
+        $petitionCount = DB::table('client_restriction_petitions')
+            ->where('client_id', $user->id)
+            ->count();
+
+        if ($petitionCount >= 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have reached the maximum limit of 3 petition submissions.'
+            ], 400);
+        }
+
+        $request->validate([
+            'reason' => 'required|string',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf,doc,docx|max:5120',
+        ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $attachmentPath = $file->storeAs('client_petitions', $filename, 'public');
+        }
+
+        DB::table('client_restriction_petitions')->insert([
+            'client_id' => $user->id,
+            'reason' => $request->reason,
+            'attachment_path' => $attachmentPath,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Petition submitted successfully for review.'
+        ]);
     }
 }

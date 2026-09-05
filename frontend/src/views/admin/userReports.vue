@@ -22,15 +22,28 @@
             Monitor, investigate, and resolve community incident reports securely.
           </p>
         </div>
-        <Button 
-          @click="fetchSummaries" 
-          variant="outline" 
-          class="bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-md shadow-lg transition-all hover:scale-105 h-12 px-6 rounded-xl"
-          :disabled="isLoading"
-        >
-          <RefreshCw class="w-4 h-4 mr-2" :class="{'animate-spin text-blue-400': isLoading}" /> 
-          <span class="font-bold">Sync Data</span>
-        </Button>
+        
+        <div class="flex flex-col sm:flex-row gap-3">
+          <!-- New Shop Restrictions Button -->
+          <Button 
+            @click="router.push('/admin/ECBannedUser')" 
+            variant="outline" 
+            class="bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-100 backdrop-blur-md shadow-lg transition-all hover:scale-105 h-12 px-6 rounded-xl"
+          >
+            <Ban class="w-4 h-4 mr-2 text-rose-400" /> 
+            <span class="font-bold">Shop Restrictions</span>
+          </Button>
+
+          <Button 
+            @click="fetchSummaries" 
+            variant="outline" 
+            class="bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-md shadow-lg transition-all hover:scale-105 h-12 px-6 rounded-xl"
+            :disabled="isLoading"
+          >
+            <RefreshCw class="w-4 h-4 mr-2" :class="{'animate-spin text-blue-400': isLoading}" /> 
+            <span class="font-bold">Sync Data</span>
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -590,6 +603,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 import { 
@@ -605,6 +619,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+
+const router = useRouter()
 
 // Main State
 const summaries = ref([])

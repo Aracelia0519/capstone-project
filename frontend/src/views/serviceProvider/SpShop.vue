@@ -146,9 +146,15 @@
           <p class="text-slate-400 text-lg leading-relaxed mb-8">
             We regret to inform you that your account's access to the shop has been temporarily disabled due to multiple unfulfilled or failed delivery attempts. We maintain these standards to ensure quality service across our network.
           </p>
-          <p class="text-slate-500 text-sm">
-            Please contact the administrative team or your distributor headquarters to review your account status and request reactivation.
-          </p>
+          <div class="bg-slate-800/50 p-4 rounded-xl text-sm text-slate-400 border border-slate-700/50 mb-6">
+            If you believe this restriction was applied in error, you may formally submit a petition for review by the administration.
+          </div>
+          <Button 
+            @click="showPetitionModal = true" 
+            class="rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 h-12 shadow-md shadow-indigo-600/20 transition-all border-0"
+          >
+            Submit Petition for Restriction
+          </Button>
         </div>
       </div>
 
@@ -284,6 +290,48 @@
         </div>
       </div>
     </div>
+
+    <!-- Petition Modal -->
+    <Teleport to="body">
+      <Dialog :open="showPetitionModal" @update:open="val => !val && (showPetitionModal = false)">
+        <DialogContent class="bg-slate-900 border border-slate-700 shadow-2xl rounded-3xl w-full max-w-lg p-0 z-[10001] overflow-hidden">
+          <div class="px-6 py-5 border-b border-slate-800 bg-slate-900 z-10 flex justify-between items-center">
+            <DialogTitle class="text-xl font-bold text-white">Formal Petition Request</DialogTitle>
+            <button @click="showPetitionModal = false" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-200 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+          <div class="p-6">
+            <p class="text-sm text-slate-400 mb-4">
+              Please state your reason for appealing this restriction. You may attach a supporting document or image (optional).
+            </p>
+            <div class="mb-4">
+              <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Reason / Explanation</Label>
+              <textarea 
+                v-model="petitionReason" 
+                class="w-full p-3 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-800 text-white resize-none h-32 placeholder:text-slate-500" 
+                placeholder="Explain why the restriction should be lifted..."
+              ></textarea>
+            </div>
+            <div class="mb-6">
+              <Label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Supporting File (Optional)</Label>
+              <input 
+                type="file" 
+                @change="handlePetitionFileUpload" 
+                accept="image/*,.pdf,.doc,.docx"
+                class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-800 file:text-indigo-400 hover:file:bg-slate-700 transition-all" 
+              />
+            </div>
+            <div class="flex gap-3">
+              <Button variant="outline" @click="showPetitionModal = false" class="flex-1 rounded-xl h-12 border-slate-700 text-slate-300 font-bold hover:bg-slate-800 hover:text-white">Cancel</Button>
+              <Button @click="submitPetition" :disabled="isSubmittingPetition || !petitionReason.trim()" class="flex-[2] rounded-xl h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/20 border-0 transition-all">
+                {{ isSubmittingPetition ? 'Submitting...' : 'Submit Petition' }}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Teleport>
 
     <!-- DSS Modal -->
     <Teleport to="body">
@@ -809,6 +857,11 @@ const failedDeliveriesCount = ref(0)
 const isLoading = ref(true)
 const isProcessing = ref(false)
 
+const showPetitionModal = ref(false)
+const petitionReason = ref('')
+const petitionFile = ref(null)
+const isSubmittingPetition = ref(false)
+
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
@@ -827,6 +880,41 @@ const paymentMethod = ref('cod')
 const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
+
+const handlePetitionFileUpload = (event) => {
+  petitionFile.value = event.target.files[0] || null
+}
+
+const submitPetition = async () => {
+  if (!petitionReason.value.trim()) {
+    toast.error('Please provide a reason for your petition.')
+    return
+  }
+
+  try {
+    isSubmittingPetition.value = true
+    const formData = new FormData()
+    formData.append('reason', petitionReason.value)
+    if (petitionFile.value) {
+      formData.append('attachment', petitionFile.value)
+    }
+
+    const response = await api.post('/service-provider/shop/submit-petition', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    if (response.data.success) {
+      toast.success('Your petition has been submitted successfully and is pending review.')
+      showPetitionModal.value = false
+      petitionReason.value = ''
+      petitionFile.value = null
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to submit petition.')
+  } finally {
+    isSubmittingPetition.value = false
+  }
+}
 
 const formatCurrency = (value) => {
   return Number(value || 0).toLocaleString('en-PH', { 
