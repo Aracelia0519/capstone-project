@@ -167,7 +167,7 @@
           </div>
 
           <div v-else class="space-y-6">
-            <div v-for="review in product.reviews" :key="review.id" class="bg-slate-900 p-6 rounded-3xl border border-slate-800">
+            <div v-for="review in displayedReviews" :key="review.id" class="bg-slate-900 p-6 rounded-3xl border border-slate-800">
               <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-4">
                   <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
@@ -192,6 +192,15 @@
                 {{ review.comment }}
               </p>
 
+              <div v-if="review.image || review.image_path" class="mt-4">
+                <img 
+                  :src="getFullImageUrl(review.image || review.image_path)" 
+                  alt="Review Attachment" 
+                  class="h-28 w-28 object-cover rounded-xl border border-slate-700 cursor-pointer hover:shadow-md transition-all" 
+                  @click.stop="openImageInNewTab(getFullImageUrl(review.image || review.image_path))" 
+                />
+              </div>
+
               <div v-if="review.response" class="mt-6 bg-slate-800/50 rounded-2xl p-5 border border-slate-700/50">
                 <div class="flex items-center text-xs font-bold text-indigo-400 mb-2 uppercase tracking-wider">
                   <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
@@ -200,6 +209,12 @@
                 </div>
                 <p class="text-slate-300 whitespace-pre-wrap">{{ review.response }}</p>
               </div>
+            </div>
+
+            <div v-if="product?.reviews && product.reviews.length > visibleReviewsCount" class="mt-6 text-center border-t border-slate-800 pt-6">
+              <Button variant="outline" @click="showMoreReviews" class="rounded-xl border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white font-bold px-8 transition-colors">
+                See More Reviews
+              </Button>
             </div>
           </div>
         </div>
@@ -421,6 +436,7 @@ const isLoading = ref(true)
 const isProcessing = ref(false)
 
 const activeTab = ref('reviews')
+const visibleReviewsCount = ref(3)
 const orderQuantity = ref(1)
 const paymentMethod = ref('cod')
 const addressMode = ref('default')
@@ -432,6 +448,14 @@ let shippingCalcTimeout = null
 const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
 
+const displayedReviews = computed(() => {
+  return product.value?.reviews?.slice(0, visibleReviewsCount.value) || []
+})
+
+const showMoreReviews = () => {
+  visibleReviewsCount.value += 3
+}
+
 const formatCurrency = (value) => Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const getVatableSales = (total) => total / 1.12
 const getVatAmount = (total) => total - getVatableSales(total)
@@ -441,6 +465,17 @@ const checkAvailability = (val, defaultVal = false) => {
   if (val === true || val === 1 || val === '1' || String(val).toLowerCase() === 'true') return true;
   if (val === false || val === 0 || val === '0' || String(val).toLowerCase() === 'false') return false;
   return Boolean(val);
+}
+
+const getFullImageUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http') || path.startsWith('data:')) return path
+  const baseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/?$/, '') : 'http://127.0.0.1:8000'
+  return `${baseUrl}/${path.startsWith('/') ? path.substring(1) : path}`
+}
+
+const openImageInNewTab = (url) => {
+  if (url) window.open(url, '_blank')
 }
 
 const isCodAvailable = computed(() => checkAvailability(product.value?.distributor_cod_enabled, true));
@@ -486,6 +521,7 @@ const fetchProductDetails = async () => {
     const res = await api.get(`/service-provider/shop/product/${productId}`)
     if (res.data.success) {
       product.value = res.data.data
+      visibleReviewsCount.value = 3
       // Set default: first size with available variants, first color in that size
       const sizes = Object.keys(groupedVariants.value)
       if (sizes.length > 0) {

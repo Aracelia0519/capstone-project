@@ -55,7 +55,8 @@ const isAuthAlertOpen = ref(false)
 
 const isReviewModalOpen = ref(false)
 const isSubmittingReview = ref(false)
-const reviewForm = ref({ order_id: null, product_id: null, product_name: '', rating: 5, comment: '' })
+const reviewForm = ref({ order_id: null, product_id: null, product_name: '', rating: 5, comment: '', image: null })
+const reviewImagePreview = ref(null)
 
 // Pick-Up Logic 
 const isPickUpTrackingActive = ref(false)
@@ -462,34 +463,67 @@ const trackOrder = (orderId) => { if (!props.user) { isAuthAlertOpen.value = tru
 const downloadInvoice = () => { if (!props.user) { isAuthAlertOpen.value = true; return }; toast.info('Generating PDF invoice...') }
 
 // --- Reviews Logic ---
+const handleReviewImageUpload = (e) => {
+  const target = e.target
+  if (target.files && target.files[0]) {
+    reviewForm.value.image = target.files[0]
+    reviewImagePreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+
+const removeReviewImage = () => {
+  reviewForm.value.image = null
+  if (reviewImagePreview.value) {
+    URL.revokeObjectURL(reviewImagePreview.value)
+    reviewImagePreview.value = null
+  }
+}
+
 const openReviewModal = (orderId, item) => {
   if (!props.user) { isAuthAlertOpen.value = true; return }
   reviewForm.value = {
     order_id: orderId, product_id: item.product?.id || null, product_name: item.product?.name || 'Product',
-    rating: item.review_rating || 5, comment: item.review_comment || ''
+    rating: item.review_rating || 5, comment: item.review_comment || '', image: null
   }
+  reviewImagePreview.value = item.review_image ? getFullImageUrl(item.review_image) : null
   isReviewModalOpen.value = true
 }
+
 const setRating = (rating) => { reviewForm.value.rating = rating }
+
 const submitReview = async () => {
   if (!reviewForm.value.order_id || !reviewForm.value.product_id) return
   isSubmittingReview.value = true
   try {
-    const response = await api.post('/service-provider/orders/reviews', {
-      order_id: reviewForm.value.order_id, product_id: reviewForm.value.product_id, rating: reviewForm.value.rating, comment: reviewForm.value.comment
+    const formData = new FormData()
+    formData.append('order_id', reviewForm.value.order_id)
+    formData.append('product_id', reviewForm.value.product_id)
+    formData.append('rating', reviewForm.value.rating)
+    if (reviewForm.value.comment) formData.append('comment', reviewForm.value.comment)
+    if (reviewForm.value.image) formData.append('image', reviewForm.value.image)
+
+    const response = await api.post('/service-provider/orders/reviews', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
+    
     if (response.data.success) {
       toast.success('Review submitted successfully!')
       isReviewModalOpen.value = false
       if (selectedOrder.value) {
         const itemToUpdate = selectedOrder.value.items.find(i => i.product?.id === reviewForm.value.product_id)
         if (itemToUpdate) {
-          itemToUpdate.is_reviewed = true; itemToUpdate.review_rating = reviewForm.value.rating; itemToUpdate.review_comment = reviewForm.value.comment
+          itemToUpdate.is_reviewed = true
+          itemToUpdate.review_rating = reviewForm.value.rating
+          itemToUpdate.review_comment = reviewForm.value.comment
         }
       }
       fetchOrders(true)
     }
-  } catch (error) { toast.error('Failed to submit review.') } finally { isSubmittingReview.value = false }
+  } catch (error) { 
+    toast.error('Failed to submit review.') 
+  } finally { 
+    isSubmittingReview.value = false 
+  }
 }
 
 // --- Return Chat Helper Functions ---
@@ -1078,6 +1112,7 @@ const submitTrackingInfo = async () => {
                             </div>
                           </div>
                           <p v-if="item.review_comment" class="text-sm text-slate-400 italic mt-1">"{{ item.review_comment }}"</p>
+                          <img v-if="item.review_image" :src="getFullImageUrl(item.review_image)" class="h-16 w-16 mt-2 rounded-lg object-cover cursor-pointer hover:opacity-90 border border-slate-700" @click="openImageInNewTab(getFullImageUrl(item.review_image))" />
                         </div>
                         
                         <Button variant="outline" size="sm" @click="confirmAddToInventory(item)" :disabled="item.added_to_inventory || item.has_active_return" class="text-indigo-400 border-indigo-900/50 hover:bg-indigo-900/30 bg-slate-900 shrink-0 h-10 px-4 w-full sm:w-auto sm:flex-1">
@@ -1141,6 +1176,22 @@ const submitTrackingInfo = async () => {
           <div>
             <label class="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Write your comment (Optional)</label>
             <textarea v-model="reviewForm.comment" rows="4" placeholder="Share your thoughts..." class="w-full p-4 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all shadow-inner"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Attach Photo (Optional)</label>
+            <div class="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900/50 cursor-pointer relative transition-colors" :class="{'bg-transparent': reviewImagePreview}">
+              <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleReviewImageUpload" />
+              <div v-if="!reviewImagePreview">
+                <Camera class="mx-auto h-8 w-8 text-slate-600 mb-2" />
+                <p class="text-sm text-slate-400">Tap to upload image</p>
+              </div>
+              <div v-else class="relative inline-block">
+                <img :src="reviewImagePreview" class="max-h-40 rounded-lg shadow-sm object-cover" />
+                <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 w-6 h-6 rounded-full" @click.stop.prevent="removeReviewImage">
+                  <X class="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-slate-800">

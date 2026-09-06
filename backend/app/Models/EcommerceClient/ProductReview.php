@@ -17,6 +17,7 @@ class ProductReview extends Model
         'order_id',
         'rating',
         'comment',
+        'image_path',
         'status',
         'response',
         'response_date'

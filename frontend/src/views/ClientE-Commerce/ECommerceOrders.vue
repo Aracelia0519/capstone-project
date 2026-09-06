@@ -438,6 +438,7 @@
                               <Button variant="link" size="sm" class="text-xs text-blue-500 h-auto p-0 m-0" @click="openReviewModal(selectedOrder.id, item)">Edit</Button>
                             </div>
                             <p v-if="item.review_comment" class="text-sm text-gray-600 dark:text-gray-300 italic mt-1">"{{ item.review_comment }}"</p>
+                            <img v-if="item.review_image" :src="getFullImageUrl(item.review_image)" class="h-16 w-16 mt-2 rounded-lg object-cover cursor-pointer hover:opacity-90 border border-gray-200 dark:border-gray-700" @click="openImageInNewTab(getFullImageUrl(item.review_image))" />
                           </div>
 
                           <Button v-if="isReturnable(selectedOrder)" variant="outline" size="sm" @click="openReturnChat(item)" class="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0 h-10 px-4">
@@ -532,6 +533,22 @@
           <div>
             <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Write your comment (Optional)</label>
             <textarea v-model="reviewForm.comment" rows="4" placeholder="Share your thoughts, what you liked or disliked..." class="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none transition-all shadow-inner"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">Attach Photo (Optional)</label>
+            <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer relative transition-colors" :class="{'bg-transparent': reviewImagePreview}">
+              <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleReviewImageUpload" />
+              <div v-if="!reviewImagePreview">
+                <Camera class="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                <p class="text-sm text-gray-500">Tap to upload image</p>
+              </div>
+              <div v-else class="relative inline-block">
+                <img :src="reviewImagePreview" class="max-h-40 rounded-lg shadow-sm object-cover" />
+                <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 w-6 h-6 rounded-full" @click.stop.prevent="removeReviewImage">
+                  <X class="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
@@ -829,7 +846,8 @@ const isAuthAlertOpen = ref(false)
 
 const isReviewModalOpen = ref(false)
 const isSubmittingReview = ref(false)
-const reviewForm = ref({ order_id: null, product_id: null, product_name: '', rating: 5, comment: '' })
+const reviewForm = ref({ order_id: null, product_id: null, product_name: '', rating: 5, comment: '', image: null })
+const reviewImagePreview = ref(null)
 
 // Report Shop State
 const isReportModalOpen = ref(false)
@@ -1368,6 +1386,22 @@ const isReturnable = (order) => {
 }
 
 // --- Reviews Logic ---
+const handleReviewImageUpload = (e) => {
+  const target = e.target
+  if (target.files && target.files[0]) {
+    reviewForm.value.image = target.files[0]
+    reviewImagePreview.value = URL.createObjectURL(target.files[0])
+  }
+}
+
+const removeReviewImage = () => {
+  reviewForm.value.image = null
+  if (reviewImagePreview.value) {
+    URL.revokeObjectURL(reviewImagePreview.value)
+    reviewImagePreview.value = null
+  }
+}
+
 const openReviewModal = (orderId, item) => {
   if (!props.user) { isAuthAlertOpen.value = true; return }
   reviewForm.value = {
@@ -1375,8 +1409,10 @@ const openReviewModal = (orderId, item) => {
     product_id: item.product?.id || null,
     product_name: item.product?.name || 'Product',
     rating: item.review_rating || 5,
-    comment: item.review_comment || ''
+    comment: item.review_comment || '',
+    image: null
   }
+  reviewImagePreview.value = item.review_image ? getFullImageUrl(item.review_image) : null
   isReviewModalOpen.value = true
 }
 
@@ -1388,12 +1424,17 @@ const submitReview = async () => {
   if (!reviewForm.value.order_id || !reviewForm.value.product_id) return
   isSubmittingReview.value = true
   try {
-    const response = await api.post('/client/orders/reviews', {
-      order_id: reviewForm.value.order_id,
-      product_id: reviewForm.value.product_id,
-      rating: reviewForm.value.rating,
-      comment: reviewForm.value.comment
+    const formData = new FormData()
+    formData.append('order_id', reviewForm.value.order_id)
+    formData.append('product_id', reviewForm.value.product_id)
+    formData.append('rating', reviewForm.value.rating)
+    if (reviewForm.value.comment) formData.append('comment', reviewForm.value.comment)
+    if (reviewForm.value.image) formData.append('image', reviewForm.value.image)
+
+    const response = await api.post('/client/orders/reviews', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
+    
     if (response.data.success) {
       toast.success('Review submitted successfully!')
       isReviewModalOpen.value = false

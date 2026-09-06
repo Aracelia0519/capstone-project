@@ -11,7 +11,7 @@ use App\Models\ServiceProvider\SpReturnMessage;
 use App\Events\SpReturnMessageSent; 
 use App\Events\Ecommerce\OrderPlaced; 
 use App\Events\Ecommerce\ReviewUpdated; 
-use App\Events\ServiceProvider\SpReturnUpdated; // <--- NEW EVENT IMPORTED
+use App\Events\ServiceProvider\SpReturnUpdated; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -53,6 +53,7 @@ class SpOrderController extends Controller
                 $item->is_reviewed = $review ? true : false;
                 $item->review_rating = $review ? $review->rating : null;
                 $item->review_comment = $review ? $review->comment : null;
+                $item->review_image = $review ? $review->image_path : null;
 
                 $item->has_active_return = SpReturnRequest::where('order_item_id', $item->id)
                     ->whereNotIn('status', ['rejected', 'cancelled'])->exists();
@@ -150,10 +151,34 @@ class SpOrderController extends Controller
             'order_id' => 'required|exists:sp_orders,id',
             'product_id' => 'required|exists:distributor_products,id',
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000'
+            'comment' => 'nullable|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120'
         ]);
 
         $user = $request->user();
+
+        $data = [
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+            'client_id' => null, 
+            'order_id' => null, 
+            'updated_at' => now()
+        ];
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('product_reviews', 'public');
+            $data['image_path'] = 'storage/' . $path;
+        }
+
+        $exists = DB::table('product_reviews')->where([
+            'service_provider_id' => $user->id,
+            'sp_order_id' => $request->order_id, 
+            'product_id' => $request->product_id,
+        ])->exists();
+
+        if (!$exists) {
+            $data['created_at'] = now();
+        }
 
         DB::table('product_reviews')->updateOrInsert(
             [
@@ -161,14 +186,7 @@ class SpOrderController extends Controller
                 'sp_order_id' => $request->order_id, 
                 'product_id' => $request->product_id,
             ],
-            [
-                'rating' => $request->rating,
-                'comment' => $request->comment,
-                'client_id' => null, 
-                'order_id' => null, 
-                'created_at' => now(),
-                'updated_at' => now()
-            ]
+            $data
         );
 
         $distributorId = DB::table('distributor_products')->where('id', $request->product_id)->value('distributor_id');

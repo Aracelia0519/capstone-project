@@ -45,6 +45,7 @@ class ECommerceOrderController extends Controller
                 $item->is_reviewed = $review ? true : false;
                 $item->review_rating = $review ? $review->rating : null;
                 $item->review_comment = $review ? $review->comment : null;
+                $item->review_image = $review ? $review->image_path : null;
 
                 if ($item->product && $item->product->image_url) {
                     if (!filter_var($item->product->image_url, FILTER_VALIDATE_URL) && !str_starts_with($item->product->image_url, 'data:')) {
@@ -193,7 +194,8 @@ class ECommerceOrderController extends Controller
             'order_id' => 'required|exists:client_orders,id',
             'product_id' => 'required|exists:distributor_products,id',
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:1000'
+            'comment' => 'nullable|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120'
         ]);
 
         $user = $request->user();
@@ -207,16 +209,23 @@ class ECommerceOrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Order not found or not eligible for review.'], 403);
         }
 
+        $data = [
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+        ];
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('product_reviews', 'public');
+            $data['image_path'] = 'storage/' . $path;
+        }
+
         $review = ProductReview::updateOrCreate(
             [
                 'client_id' => $user->id,
                 'order_id' => $request->order_id,
                 'product_id' => $request->product_id,
             ],
-            [
-                'rating' => $request->rating,
-                'comment' => $request->comment,
-            ]
+            $data
         );
 
         $distributorId = DB::table('distributor_products')->where('id', $request->product_id)->value('distributor_id');
@@ -384,7 +393,6 @@ class ECommerceOrderController extends Controller
         return response()->json(['success' => true, 'request' => $returnReq, 'message' => $msg]);
     }
 
-    // --- NEW: Submit a Report Against a Distributor ---
     public function submitReport(Request $request, $distributorId)
     {
         try {
@@ -400,7 +408,6 @@ class ECommerceOrderController extends Controller
                 'evidence' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:5120'
             ]);
 
-            // Enforce limit: Maximum 3 reports per day for this client
             $reportsToday = UserReport::where('reported_by_id', $user->id)
                 ->whereDate('created_at', now()->toDateString())
                 ->count();

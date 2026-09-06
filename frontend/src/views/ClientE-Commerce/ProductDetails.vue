@@ -114,7 +114,7 @@
             </div>
             
             <div v-else class="space-y-6">
-              <div v-for="review in selectedProduct.reviews" :key="review.id" class="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+              <div v-for="review in displayedReviews" :key="review.id" class="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
                 <div class="flex justify-between items-start mb-3">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold shadow-inner">
@@ -139,6 +139,10 @@
                   {{ review.comment }}
                 </p>
 
+                <div v-if="review.image_path" class="mt-3">
+                  <img :src="getImageUrl(review.image_path)" alt="Review Attachment" class="h-24 w-24 object-cover rounded-xl border border-gray-200 cursor-pointer hover:shadow-md transition-all" @click.stop="openImage(getImageUrl(review.image_path))" />
+                </div>
+
                 <div v-if="review.response" class="mt-4 bg-white border border-blue-100 rounded-xl p-4 relative ml-4 shadow-sm">
                   <div class="absolute -left-4 top-4 text-blue-200"><CornerDownRight class="w-6 h-6" /></div>
                   <div class="flex items-center justify-between mb-1.5">
@@ -150,6 +154,12 @@
                   <p class="text-sm text-gray-700 leading-relaxed">{{ review.response }}</p>
                 </div>
               </div>
+            </div>
+
+            <div v-if="selectedProduct?.reviews && selectedProduct.reviews.length > visibleReviewsCount" class="mt-6 text-center border-t border-gray-100 pt-6">
+              <Button variant="outline" @click="showMoreReviews" class="rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-8">
+                See More Reviews
+              </Button>
             </div>
           </div>
         </div>
@@ -613,6 +623,17 @@ const shippingFeeEst = ref(0)
 const isCalculatingShipping = ref(false)
 let shippingCalcTimeout = null
 
+// Pagination for Reviews
+const visibleReviewsCount = ref(3)
+
+const displayedReviews = computed(() => {
+  return selectedProduct.value?.reviews?.slice(0, visibleReviewsCount.value) || []
+})
+
+const showMoreReviews = () => {
+  visibleReviewsCount.value += 3
+}
+
 // Helper to safely determine boolean states from backend
 const checkAvailability = (val, defaultVal = false) => {
   if (val === undefined || val === null) return defaultVal;
@@ -676,6 +697,10 @@ const handleImageError = (e) => {
   e.target.style.display = 'none'
 }
 
+const openImage = (url) => {
+  if (url) window.open(url, '_blank')
+}
+
 const formatCurrency = (value) => {
   return Number(value || 0).toLocaleString('en-PH', { 
     minimumFractionDigits: 2, 
@@ -698,6 +723,7 @@ const fetchProductDetails = async (id) => {
     const response = await api.get(`/client/shop/product/${id}`)
     if (response.data.success) {
       selectedProduct.value = response.data.data
+      visibleReviewsCount.value = 3 
       
       // Set default variant: first size, first available variant
       const sizes = Object.keys(groupedVariants.value)

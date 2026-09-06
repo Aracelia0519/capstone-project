@@ -235,12 +235,13 @@ class EcommerceProductController extends Controller
                 return $v;
             });
 
+            // FIX: Added 'pr.image_path' and mapped it dynamically
             $reviews = DB::table('product_reviews as pr')
                 ->leftJoin('users as u', 'pr.client_id', '=', 'u.id')
                 ->where('pr.product_id', $realId)
                 ->where('pr.status', 'published')
                 ->select(
-                    'pr.id', 'pr.rating', 'pr.comment', 'pr.response', 'pr.response_date', 
+                    'pr.id', 'pr.rating', 'pr.comment', 'pr.response', 'pr.response_date', 'pr.image_path as image', 'pr.image_path',
                     DB::raw('DATE_FORMAT(pr.created_at, "%b %d, %Y") as date'),
                     DB::raw('COALESCE(u.full_name, "Anonymous") as client'),
                     DB::raw('SUBSTRING(COALESCE(u.first_name, "A"), 1, 1) as clientInitials'),

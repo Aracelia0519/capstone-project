@@ -138,6 +138,7 @@ class ReviewManagementController extends Controller
                 'rating' => (int) $review->rating,
                 'date' => Carbon::parse($review->created_at)->format('Y-m-d'),
                 'comment' => $review->comment,
+                'image' => $review->image_path,
                 'status' => $review->status ?? 'pending',
                 'response' => $review->response,
                 'responseDate' => $review->response_date,

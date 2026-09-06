@@ -170,8 +170,7 @@
               
               <div class="flex items-center p-2.5 bg-gray-800/50 rounded-xl border border-gray-700/50">
                 <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3 overflow-hidden shrink-0 shadow-sm">
-                  <img v-if="review.productImage" :src="review.productImage" class="w-full h-full object-cover" />
-                  <Package v-else class="w-5 h-5 text-gray-400" />
+                  <Package class="w-5 h-5 text-gray-400" />
                 </div>
                 <div class="min-w-0">
                   <div class="text-sm text-gray-200 font-bold truncate">{{ review.product }}</div>
@@ -220,7 +219,8 @@
                 
                 <div class="mt-3.5 text-gray-300 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
                   <p v-if="review.comment" class="italic font-medium">"{{ review.comment }}"</p>
-                  <p v-else class="text-white-500 italic">No written comment provided.</p>
+                  <p v-else class="text-gray-500 italic">No written comment provided.</p>
+                  <img v-if="review.image" :src="getFullImageUrl(review.image)" class="h-20 w-20 mt-3 rounded-lg object-cover cursor-pointer hover:opacity-90 border border-gray-700" @click="openImageInNewTab(getFullImageUrl(review.image))" />
                 </div>
               </div>
               
@@ -262,6 +262,7 @@
               </Badge>
             </div>
             <p class="text-sm text-gray-300 italic break-words font-medium">"{{ respondingToReview?.comment }}"</p>
+            <img v-if="respondingToReview?.image" :src="getFullImageUrl(respondingToReview.image)" class="h-16 w-16 mt-2 rounded-lg object-cover border border-gray-700" />
           </div>
           
           <div class="space-y-2">
@@ -526,6 +527,17 @@ const setupWebSocket = () => {
             });
         isSubscribed = true;
     }
+}
+
+const getFullImageUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http') || path.startsWith('data:')) return path
+  const baseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/?$/, '') : 'http://127.0.0.1:8000'
+  return `${baseUrl}/${path.startsWith('/') ? path.substring(1) : path}`
+}
+
+const openImageInNewTab = (url) => {
+  if (url) window.open(url, '_blank')
 }
 
 onMounted(() => {

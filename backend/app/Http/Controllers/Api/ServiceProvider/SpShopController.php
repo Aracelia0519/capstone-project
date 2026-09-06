@@ -433,6 +433,8 @@ class SpShopController extends Controller
                 'reviewerType' => $reviewerType,
                 'rating' => (int)$rev->rating,
                 'comment' => $rev->comment,
+                'image' => $rev->image_path, 
+                'image_path' => $rev->image_path, 
                 'response' => $rev->response,
                 'response_date' => $rev->response_date ? \Carbon\Carbon::parse($rev->response_date)->format('M d, Y') : null,
                 'date' => \Carbon\Carbon::parse($rev->created_at)->format('M d, Y')
