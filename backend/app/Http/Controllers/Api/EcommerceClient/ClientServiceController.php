@@ -17,7 +17,7 @@ class ClientServiceController extends Controller
     {
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
 
-        // Fetch visible reviews grouped by service_offering_id including client_id and client_reply
+        // Fetch visible reviews grouped by service_offering_id including client_id, client_reply, and image_path
         $reviews = DB::table('service_reviews')
             ->join('client_service_requests', 'service_reviews.client_service_request_id', '=', 'client_service_requests.id')
             ->join('users', 'service_reviews.client_id', '=', 'users.id')
@@ -27,6 +27,7 @@ class ClientServiceController extends Controller
                 'service_reviews.client_id',
                 'service_reviews.rating',
                 'service_reviews.comment',
+                'service_reviews.image_path',
                 'service_reviews.reply',
                 'service_reviews.client_reply',
                 'service_reviews.created_at',
@@ -66,13 +67,21 @@ class ClientServiceController extends Controller
             $serviceReviews = $reviews->get($service->id, collect());
             $avgRating = $serviceReviews->count() > 0 ? round($serviceReviews->avg('rating'), 1) : 0;
             
-            $mappedReviews = $serviceReviews->map(function($r) {
+            $mappedReviews = $serviceReviews->map(function($r) use ($baseUrl) {
+                $imageUrl = null;
+                if (!empty($r->image_path)) {
+                    $cleanImgPath = preg_replace('/^\/?storage\//', '', $r->image_path);
+                    $imageUrl = $baseUrl . '/storage/' . ltrim($cleanImgPath, '/');
+                }
+
                 return [
                     'id' => $r->id,
                     'client_id' => $r->client_id,
                     'client_name' => trim($r->first_name . ' ' . $r->last_name),
                     'rating' => (int) $r->rating,
                     'comment' => $r->comment,
+                    'image' => $imageUrl,
+                    'image_path' => $imageUrl,
                     'reply' => $r->reply,
                     'client_reply' => $r->client_reply,
                     'created_at' => $r->created_at
@@ -167,8 +176,7 @@ class ClientServiceController extends Controller
             }
         }
 
-        // NEW: Compile the SQM and Total Estimated price into the description. 
-        // This solves the database constraint issue while fully answering the client's calculations.
+        // Compile the SQM and Total Estimated price into the description. 
         $finalDescription = $validated['description'];
         if (!empty($validated['sqm']) && !empty($validated['calculated_total'])) {
             $finalDescription .= "\n\n--- Service Details ---\nArea Size: " . $validated['sqm'] . " sqm\nEstimated Total Price: ₱" . number_format($validated['calculated_total'], 2);

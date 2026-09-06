@@ -76,6 +76,10 @@ class ClientServiceRequestController extends Controller
             }
 
             $review = ServiceReview::where('client_service_request_id', $req->id)->first();
+            if ($review && !empty($review->image_path)) {
+                $cleanReviewPath = preg_replace('/^\/?storage\//', '', $review->image_path);
+                $review->image_url = $baseUrl . '/storage/' . ltrim($cleanReviewPath, '/');
+            }
 
             $surveyAgreement = DB::table('service_survey_agreements')
                 ->where('client_service_request_id', $req->id)
@@ -518,7 +522,8 @@ class ClientServiceRequestController extends Controller
     {
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string'
+            'comment' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
         ]);
 
         $job = ClientServiceRequest::where('client_id', Auth::id())->findOrFail($id);
@@ -532,12 +537,18 @@ class ClientServiceRequestController extends Controller
             return response()->json(['success' => false, 'message' => 'You have already reviewed this service.'], 400);
         }
 
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('service_reviews', 'public');
+        }
+
         ServiceReview::create([
             'client_service_request_id' => $job->id,
             'provider_id' => $job->provider_id,
             'client_id' => Auth::id(),
             'rating' => $request->rating,
-            'comment' => $request->comment
+            'comment' => $request->comment,
+            'image_path' => $imagePath
         ]);
 
         // Broadcast Event

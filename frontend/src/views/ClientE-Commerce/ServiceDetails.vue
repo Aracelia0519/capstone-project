@@ -111,6 +111,16 @@
                 </div>
                 <p class="text-[15px] text-gray-700 leading-relaxed">"{{ review.comment || 'No specific comment provided.' }}"</p>
                 
+                <!-- Review Image Attachment Display -->
+                <div v-if="review.image || review.image_path" class="mt-3">
+                  <img 
+                    :src="getImageUrl(review.image || review.image_path)" 
+                    alt="Review Attachment" 
+                    class="h-28 w-28 object-cover rounded-xl border border-gray-200 cursor-pointer hover:shadow-md transition-all"
+                    @click.stop="openImageInNewTab(getImageUrl(review.image || review.image_path))"
+                  />
+                </div>
+
                 <div v-if="review.reply" class="mt-4 bg-white border border-blue-100 rounded-xl p-4 relative ml-4 shadow-sm">
                   <div class="absolute -left-4 top-4 text-blue-200"><CornerDownRight class="w-6 h-6" /></div>
                   <p class="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
@@ -148,7 +158,6 @@
                       <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
                       <span class="font-bold">{{ selectedService.provider_name }}</span>
                    </div>
-                   <!-- Button updated to use the hash ID, safely defaulting back to regular ID if necessary -->
                    <Button @click="router.push(`/ECommerceClient/ProviderProfile/${selectedService.provider_hash_id || selectedService.provider_id}`)" variant="outline" size="sm" class="h-8 text-xs font-bold text-blue-600 border-blue-200 hover:bg-blue-50 bg-white">
                       View Profile
                    </Button>
@@ -300,11 +309,11 @@
       
       <div class="flex gap-6 overflow-x-auto pb-6 hide-scrollbar">
          <Card
-  v-for="service in otherServices"
-  :key="service.id"
-  @click="router.push(`/ECommerceClient/ServiceDetails/${service.hash_id || service.id}`)"
-  class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
->
+            v-for="service in otherServices"
+            :key="service.id"
+            @click="router.push(`/ECommerceClient/ServiceDetails/${service.hash_id || service.id}`)"
+            class="min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 overflow-hidden group cursor-pointer shrink-0"
+          >
             <div class="h-40 relative overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
               <img 
                  v-if="service.image_paths && service.image_paths.length > 0"
@@ -511,7 +520,7 @@ const bookingForm = ref({
   preferred_date: '',
   time_preference: '',
   contact_number: '',
-  sqm: null // NEW: Square Meter Field
+  sqm: null
 })
 
 // Current Date for input min
@@ -521,7 +530,7 @@ const minDate = computed(() => {
   return today.toISOString().split('T')[0]
 })
 
-// NEW: Dynamically compute total cost based on the Price Type
+// Dynamically compute total cost based on the Price Type
 const calculatedTotal = computed(() => {
   if (!selectedService.value) return 0;
   
@@ -532,7 +541,7 @@ const calculatedTotal = computed(() => {
   return selectedService.value.price;
 })
 
-// FIX: Robust Dynamic Image URL Generator
+// Robust Dynamic Image URL Generator
 const getImageUrl = (path) => {
   if (!path) return '';
   const baseUrl = import.meta.env.VITE_API_URL 
@@ -544,6 +553,10 @@ const getImageUrl = (path) => {
   if (path.startsWith('http')) return path;
   const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
   return `${baseUrl}/storage/${cleanPath}`;
+}
+
+const openImageInNewTab = (url) => {
+  if (url) window.open(url, '_blank')
 }
 
 const handleImageError = (e) => {
@@ -572,7 +585,6 @@ const formatDate = (dateString) => {
 }
 
 // Fetch main service details and the list of other services
-// Update fetchPageData function
 const fetchPageData = async (id) => {
   try {
     isLoading.value = true
@@ -667,16 +679,14 @@ const confirmSubmission = () => {
     return
   }
 
-  // If validation passes, show the confirmation dialog
   showConfirmDialog.value = true;
 }
 
 const submitServiceRequest = async () => {
   try {
     isSubmitting.value = true
-    showConfirmDialog.value = false // Hide dialog immediately after confirming
+    showConfirmDialog.value = false
     
-    // UPDATED PAYLOAD: Append the SQM and Calculated Total
     const payload = {
       service_offering_id: selectedService.value.id,
       provider_id: selectedService.value.provider_id,
@@ -696,10 +706,8 @@ const submitServiceRequest = async () => {
         description: 'The provider has been notified and will contact you soon.'
       })
       
-      // Reset form
       bookingForm.value = { description: '', preferred_date: '', time_preference: '', contact_number: '', sqm: null }
       
-      // Redirect to bookings
       setTimeout(() => {
          router.push('/Clients/myServiceRequest')
       }, 1000)
@@ -714,10 +722,9 @@ const submitServiceRequest = async () => {
   }
 }
 
-// Re-fetch if they click a service from the "Other Services" carousel
+// Re-fetch if clicking a service from the carousel
 watch(() => route.params.id, (newId) => {
   if (newId) {
-    // Scroll to top when changing services
     window.scrollTo({ top: 0, behavior: 'smooth' });
     fetchPageData(newId);
   }

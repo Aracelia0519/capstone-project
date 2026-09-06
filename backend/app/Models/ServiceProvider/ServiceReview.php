@@ -17,6 +17,7 @@ class ServiceReview extends Model
         'client_id',
         'rating',
         'comment',
+        'image_path',
         'reply',
         'is_hidden',
         'client_reply'

@@ -315,11 +315,11 @@
              <div class="grid grid-cols-2 gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700 mb-4 shadow-sm">
                <div>
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid So Far</p>
-                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
+                 <p class="text-sm text-emerald-400 font-bold tracking-tight">鈧眥{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
                </div>
                <div>
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
+                 <p class="text-sm text-red-400 font-bold tracking-tight">鈧眥{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
                </div>
              </div>
 
@@ -400,6 +400,10 @@
                  <span class="text-xs font-bold text-amber-500 ml-2 bg-amber-500/10 px-2 py-0.5 rounded-full">{{ selectedRequest.raw.service_review.rating }}.0</span>
               </div>
               <p class="text-sm text-gray-300 italic bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">"{{ selectedRequest.raw.service_review.comment || 'No specific comment provided.' }}"</p>
+              
+              <div v-if="selectedRequest.raw.service_review.image_url" class="mt-3">
+                  <img :src="selectedRequest.raw.service_review.image_url" class="h-32 w-32 object-cover rounded-xl border border-slate-700 hover:shadow-md transition-all cursor-pointer" @click.stop="openImageInNewTab(selectedRequest.raw.service_review.image_url)" />
+              </div>
 
               <div v-if="selectedRequest.raw.service_review.reply" class="mt-4 bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 relative ml-4">
                  <div class="absolute -left-3 top-3 text-blue-500"><CornerDownRight class="w-4 h-4" /></div>
@@ -449,7 +453,7 @@
                    <div>
                      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
                      <p class="text-xs text-emerald-400 font-bold">
-                       ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
+                       鈧眥{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
                        <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
                      </p>
                    </div>
@@ -604,6 +608,11 @@
                 <p class="text-[10px] text-gray-500 uppercase tracking-wider">Additional Feedback (Optional)</p>
                 <textarea v-model="reviewForm.comment" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-amber-500/50 shadow-inner" placeholder="Tell us more about what you liked or how they can improve..."></textarea>
              </div>
+
+             <div class="space-y-1 mt-4">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Attach Photo (Optional)</p>
+                <input type="file" ref="reviewImageInput" @change="onReviewImageChange" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-amber-500/10 file:text-amber-400 hover:file:bg-amber-500/20 cursor-pointer" />
+             </div>
           </div>
           <div class="flex justify-end gap-2 mt-4">
              <Button variant="ghost" @click="showReviewModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
@@ -672,15 +681,15 @@
 
                 <div class="flex justify-between text-base pt-2 font-bold text-white">
                     <span>Total Amount</span>
-                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.total_amount).toLocaleString() }}</span>
+                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.total_amount).toLocaleString() }}</span>
                 </div>
                 <div class="flex justify-between text-sm text-emerald-400">
                     <span>Amount Paid</span>
-                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.amount_paid).toLocaleString() }}</span>
+                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.amount_paid).toLocaleString() }}</span>
                 </div>
                 <div class="flex justify-between text-sm text-red-400">
                     <span>Balance Due</span>
-                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.balance).toLocaleString() }}</span>
+                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.balance).toLocaleString() }}</span>
                 </div>
              </div>
           </div>
@@ -705,7 +714,7 @@
                 </div>
                 <p class="text-xs text-gray-500 uppercase">Receipt No.</p>
                 <p class="text-sm font-mono text-white mb-2">{{ selectedReceiptReq.raw.receipt_details.receipt_number }}</p>
-                <h3 class="text-2xl font-bold text-emerald-400">₱{{ Number(selectedReceiptReq.raw.receipt_details.total_paid).toLocaleString() }}</h3>
+                <h3 class="text-2xl font-bold text-emerald-400">鈧眥{ Number(selectedReceiptReq.raw.receipt_details.total_paid).toLocaleString() }}</h3>
                 <p class="text-xs text-gray-400 mt-1">Successfully Paid</p>
              </div>
 
@@ -778,6 +787,8 @@ const isRejectingWork = ref(false)
 const showReviewModal = ref(false)
 const jobToReview = ref(null)
 const reviewForm = ref({ rating: 5, comment: '' })
+const reviewImageInput = ref(null)
+const reviewImageFile = ref(null)
 const isSubmittingReview = ref(false)
 
 const clientReplyText = ref('')
@@ -854,6 +865,10 @@ const stopDrawing = () => {
 const clearSignature = () => {
    if(!ctx || !signaturePad.value) return
    ctx.clearRect(0, 0, signaturePad.value.width, signaturePad.value.height)
+}
+
+const openImageInNewTab = (url) => {
+    if (url) window.open(url, '_blank')
 }
 
 const fetchRequests = async (isBackground = false) => {
@@ -1209,9 +1224,18 @@ const rejectCompletion = async () => {
    }
 }
 
+const onReviewImageChange = (e) => {
+  if(e.target.files && e.target.files[0]) {
+    reviewImageFile.value = e.target.files[0]
+  } else {
+    reviewImageFile.value = null
+  }
+}
+
 const openReviewModal = (request) => {
   jobToReview.value = request
   reviewForm.value = { rating: 5, comment: '' }
+  reviewImageFile.value = null
   showReviewModal.value = true
 }
 
@@ -1219,7 +1243,15 @@ const submitReview = async () => {
   if (!jobToReview.value) return
   isSubmittingReview.value = true
   try {
-    const res = await api.post(`/client/services/requests/${jobToReview.value.id}/review`, reviewForm.value)
+    const formData = new FormData()
+    formData.append('rating', reviewForm.value.rating)
+    if (reviewForm.value.comment) formData.append('comment', reviewForm.value.comment)
+    if (reviewImageFile.value) formData.append('image', reviewImageFile.value)
+
+    const res = await api.post(`/client/services/requests/${jobToReview.value.id}/review`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    
     if (res.data.success) {
       toast.success(res.data.message)
       showReviewModal.value = false
@@ -1393,7 +1425,7 @@ const goToChat = () => {
 * { transition: all 0.2s ease-in-out; }
 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(30, 41, 59, 0.3); border-radius: 3px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #38bdf8, #0ea5e9); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #06b6d4, #0891b2); border-radius: 3px; }
 
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
