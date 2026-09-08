@@ -481,10 +481,17 @@ export default {
         })
 
         if (response.data.status === 'success') {
-          this.form.status = 'pending'
-          this.form.rejectionReason = ''
-          this.steps[3].completed = true
-          toast.success('Application resubmitted successfully!');
+          this.form.status = response.data.application_status;
+          this.form.rejectionReason = response.data.rejection_reason || '';
+          this.steps[3].completed = true;
+          
+          if (this.form.status === 'verified') {
+            toast.success('Application verified automatically by our system!');
+          } else if (this.form.status === 'rejected') {
+            toast.error('Application rejected automatically. Please check your details.');
+          } else {
+            toast.success('Application submitted successfully!');
+          }
         }
       } catch (error) {
         alert(error.response?.data?.message || 'An error occurred while submitting.')
