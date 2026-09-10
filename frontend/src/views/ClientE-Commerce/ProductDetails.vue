@@ -680,16 +680,27 @@ watch(isPickupAvailable, (avail) => {
 })
 
 // Robust Dynamic Image URL Generator
+// Robust Dynamic Image URL Generator based on Axios config
 const getImageUrl = (path) => {
   if (!path) return '';
-  const baseUrl = import.meta.env.VITE_API_URL 
-      ? import.meta.env.VITE_API_URL.replace('/api', '') 
-      : 'http://localhost:8000';
-  if (path.includes('localhost:8000')) {
+
+  // Extract the baseURL from the Axios instance[cite: 5]
+  let baseUrl = api.defaults.baseURL || 'http://localhost:8000/api';
+
+  // Remove the '/api' suffix to get the root domain for the storage folder
+  baseUrl = baseUrl.replace(/\/api\/?$/, '');
+
+  // Replace hardcoded localhost strings from old database entries
+  if (path.includes('http://localhost:8000')) {
       path = path.replace('http://localhost:8000', baseUrl);
   }
+
+  // If it's already a full valid URL, return it[cite: 3]
   if (path.startsWith('http')) return path;
+
+  // Clean the path to prevent duplicate 'storage/' segments[cite: 3]
   const cleanPath = path.startsWith('storage/') ? path.replace('storage/', '') : path;
+
   return `${baseUrl}/storage/${cleanPath}`;
 }
 
