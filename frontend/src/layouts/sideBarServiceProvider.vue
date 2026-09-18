@@ -273,11 +273,12 @@ const userName = ref('Paint Pro')
 const userId = ref(null)
 
 const isTerminated = ref(false)
+const hasActiveJobs = ref(false)
 const terminationDetails = ref(null)
 
 const isVerified = computed(() => verificationStatus.value === 'verified' || verificationStatus.value === 'approved')
 
-// Master Navigation Array utilizing hideOnTerminate
+// Master Navigation Array utilizing hideOnTerminate and allowIfActiveJobs
 const baseNavigation = [
   {
     title: 'Dashboard',
@@ -285,9 +286,9 @@ const baseNavigation = [
       { name: 'Dashboard', path: '/serviceProvider/dashboardSP', icon: LayoutDashboard, color: 'text-cyan-400', badge: 'New', requiresVerify: false },
       { name: 'Clients', path: '/serviceProvider/Clients', icon: Users, color: 'text-emerald-400', badge: '24', requiresVerify: true, hideOnTerminate: true },
       { name: 'CRM', path: '/serviceProvider/SPCRM', icon: UserCog, color: 'text-pink-400', badge: '3', requiresVerify: true, hideOnTerminate: true },
-      { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12', requiresVerify: true, hideOnTerminate: true },
+      { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12', requiresVerify: true, hideOnTerminate: true, allowIfActiveJobs: true },
       { name: 'Offer Jobs', path: '/serviceProvider/OfferJobs', icon: Briefcase, color: 'text-purple-400', requiresVerify: true, hideOnTerminate: true },
-      { name: 'Chat Clients', path: '/serviceProvider/SPChat', icon: MessageCircle, color: 'text-blue-400', badge: '5', requiresVerify: true, hideOnTerminate: true }
+      { name: 'Chat Clients', path: '/serviceProvider/SPChat', icon: MessageCircle, color: 'text-blue-400', badge: '5', requiresVerify: true, hideOnTerminate: true, allowIfActiveJobs: true }
     ]
   },
   {
@@ -333,16 +334,21 @@ const baseNavigation = [
   }
 ]
 
-// Dynamically compute the navigation using the hideOnTerminate flag
+// Dynamically compute the navigation using the hideOnTerminate and allowIfActiveJobs flags
 const filteredNavigation = computed(() => {
     if (!isTerminated.value) return baseNavigation;
 
     return baseNavigation.map(section => {
-        if (section.hideOnTerminate) return null;
-        
-        const filteredItems = section.items.filter(item => !item.hideOnTerminate);
+        const filteredItems = section.items.filter(item => {
+            if (item.allowIfActiveJobs && hasActiveJobs.value) return true;
+            return !item.hideOnTerminate;
+        });
+
         if (filteredItems.length === 0) return null;
         
+        // Exclude entire section if its designated to hide and nothing inside was specifically allowed bypass
+        if (section.hideOnTerminate && filteredItems.every(item => !item.allowIfActiveJobs || !hasActiveJobs.value)) return null;
+
         return { ...section, items: filteredItems };
     }).filter(Boolean);
 })
@@ -354,9 +360,15 @@ const checkAccountStatus = async () => {
         if (res.data.success) {
             isTerminated.value = res.data.is_terminated
             terminationDetails.value = res.data.termination_details || null
+            hasActiveJobs.value = res.data.has_active_jobs || false
 
             if (isTerminated.value) {
                 const allowedPaths = ['/serviceProvider/dashboardSP', '/serviceProvider/notificationsSP', '/serviceProvider/ProfileSettingsSP']
+                
+                if (hasActiveJobs.value) {
+                    allowedPaths.push('/serviceProvider/ServiceRequestsJobs', '/serviceProvider/SPChat')
+                }
+
                 if (!allowedPaths.includes(router.currentRoute.value.path)) {
                     router.push('/serviceProvider/dashboardSP')
                 }
@@ -372,16 +384,11 @@ const setupWebsockets = () => {
     if (!userId.value) return
 
     echo.private(`account.status.${userId.value}`)
-        .listen('.AccountStatusUpdated', (e) => {
-            isTerminated.value = e.status === 'terminated'
-            terminationDetails.value = e.terminationData || null
+        .listen('.AccountStatusUpdated', async (e) => {
+            await checkAccountStatus()
             
             if (isTerminated.value) {
                 toast.error('Account Restricted', { description: 'Your account has been limited by an administrator.' })
-                const allowedPaths = ['/serviceProvider/dashboardSP', '/serviceProvider/notificationsSP', '/serviceProvider/ProfileSettingsSP']
-                if (!allowedPaths.includes(router.currentRoute.value.path)) {
-                    router.push('/serviceProvider/dashboardSP')
-                }
             } else {
                 toast.success('Account Restored', { description: 'Your standard account access has been fully restored.' })
                 showTerminationModal.value = false // Auto-close if restored
