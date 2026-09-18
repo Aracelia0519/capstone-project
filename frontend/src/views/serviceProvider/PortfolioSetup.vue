@@ -5,7 +5,6 @@ import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
 import { 
   ArrowLeft,
-  UploadCloud,
   Trash2,
   CheckCircle2,
   Briefcase,
@@ -31,12 +30,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 const router = useRouter()
 
 const isLoading = ref(false)
 const isSaving = ref(false)
-const isPreviewMode = ref(false) // Toggle state for client view
+const isPreviewMode = ref(false)
 
 const form = ref({
   motto: '',
@@ -45,16 +45,17 @@ const form = ref({
   specialties: ''
 })
 
-// Image Upload States
-const galleryInput = ref(null)
-const selectedFiles = ref([]) // Actual files to be uploaded
-const galleryPreviewUrls = ref([]) // URLs for displaying previews
+// Gallery States
+const availableImages = ref([]) // Images fetched from completed jobs
+const selectedGalleryImages = ref([]) // Array of { path, url }
+const isSelectionModalOpen = ref(false)
+const tempSelectedPaths = ref(new Set()) // Temporarily holds paths during selection
 
 // Lightbox State Variables
 const isImageModalOpen = ref(false)
 const currentImageIndex = ref(0)
 
-// Vibrant gradients for the paint swatches (Used in Preview Mode)
+// Vibrant gradients for the paint swatches
 const swatchGradients = [
   'bg-gradient-to-br from-rose-400 to-orange-500',
   'bg-gradient-to-br from-cyan-400 to-blue-600',
@@ -67,53 +68,10 @@ const getSwatchGradient = (index) => {
   return swatchGradients[index % swatchGradients.length]
 }
 
-// Computed property to neatly split specialties into an array for the preview chips
 const specialtiesList = computed(() => {
   if (!form.value.specialties) return []
   return form.value.specialties.split(',').map(s => s.trim()).filter(s => s.length > 0)
 })
-
-// Generate local previews for uploaded images
-const handleGalleryChange = (event) => {
-  const files = event.target.files
-  if (files && files.length > 0) {
-    const newFiles = Array.from(files)
-    
-    // Add to selected files array
-    selectedFiles.value = [...selectedFiles.value, ...newFiles]
-    
-    // Generate object URLs for immediate preview
-    newFiles.forEach(file => {
-      galleryPreviewUrls.value.push({
-        file: file,
-        url: URL.createObjectURL(file),
-        isExisting: false
-      })
-    })
-  }
-}
-
-const triggerGalleryUpload = () => {
-  galleryInput.value?.click()
-}
-
-const removeImage = (index) => {
-  const image = galleryPreviewUrls.value[index]
-  
-  if (!image.isExisting) {
-    // Revoke object URL to prevent memory leaks for newly uploaded files
-    URL.revokeObjectURL(image.url)
-    
-    // Find the corresponding file in selectedFiles and remove it
-    const fileIndex = selectedFiles.value.findIndex(f => f === image.file)
-    if (fileIndex !== -1) {
-      selectedFiles.value.splice(fileIndex, 1)
-    }
-  }
-  
-  // Remove from preview array
-  galleryPreviewUrls.value.splice(index, 1)
-}
 
 // Prevent negative years of experience
 const preventInvalidChars = (e) => {
@@ -122,27 +80,24 @@ const preventInvalidChars = (e) => {
   }
 }
 
-// Fetch existing portfolio data if any
 const fetchPortfolioData = async () => {
   isLoading.value = true
   try {
     const response = await api.get('/service-provider/portfolio')
-    if (response.data.success && response.data.data) {
+    if (response.data.success) {
       const data = response.data.data
-      form.value = {
-        motto: data.motto || '',
-        bio: data.bio || '',
-        experience_years: data.experience_years || '',
-        specialties: data.specialties || ''
+      
+      if (data) {
+        form.value = {
+          motto: data.motto || '',
+          bio: data.bio || '',
+          experience_years: data.experience_years || '',
+          specialties: data.specialties || ''
+        }
+        selectedGalleryImages.value = data.gallery_data || []
       }
       
-      // Load existing images from DB into previews
-      if (data.gallery_urls && data.gallery_urls.length > 0) {
-        galleryPreviewUrls.value = data.gallery_urls.map(url => ({
-          url: url,
-          isExisting: true
-        }))
-      }
+      availableImages.value = response.data.available_images || []
     }
   } catch (error) {
     if (error.response?.status !== 404) {
@@ -153,6 +108,31 @@ const fetchPortfolioData = async () => {
   }
 }
 
+// Modal Selection Methods
+const openSelectionModal = () => {
+  // Pre-fill Set with currently selected image paths
+  tempSelectedPaths.value = new Set(selectedGalleryImages.value.map(img => img.path))
+  isSelectionModalOpen.value = true
+}
+
+const toggleImageSelection = (imagePath) => {
+  if (tempSelectedPaths.value.has(imagePath)) {
+    tempSelectedPaths.value.delete(imagePath)
+  } else {
+    tempSelectedPaths.value.add(imagePath)
+  }
+}
+
+const confirmSelection = () => {
+  // Map selected paths back to their full objects
+  selectedGalleryImages.value = availableImages.value.filter(img => tempSelectedPaths.value.has(img.path))
+  isSelectionModalOpen.value = false
+}
+
+const removeImage = (index) => {
+  selectedGalleryImages.value.splice(index, 1)
+}
+
 const savePortfolio = async () => {
   if (!form.value.motto || !form.value.bio || !form.value.experience_years) {
     toast.error('Please fill in your Motto, Bio, and Years of Experience.')
@@ -160,22 +140,18 @@ const savePortfolio = async () => {
   }
 
   isSaving.value = true
-  const formData = new FormData()
   
-  formData.append('motto', form.value.motto)
-  formData.append('bio', form.value.bio)
-  formData.append('experience_years', form.value.experience_years)
-  formData.append('specialties', form.value.specialties)
-
-  // Append new images
-  selectedFiles.value.forEach((file, index) => {
-    formData.append(`gallery_images[${index}]`, file)
-  })
+  // Directly submit JSON payload since we don't handle physical file uploads anymore
+  const payload = {
+    motto: form.value.motto,
+    bio: form.value.bio,
+    experience_years: form.value.experience_years,
+    specialties: form.value.specialties,
+    gallery_images: selectedGalleryImages.value.map(img => img.path)
+  }
 
   try {
-    const response = await api.post('/service-provider/portfolio', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const response = await api.post('/service-provider/portfolio', payload)
     
     if (response.data.success) {
       toast.success('Portfolio successfully updated!')
@@ -185,7 +161,7 @@ const savePortfolio = async () => {
     }
   } catch (error) {
     console.error("Error saving portfolio:", error)
-    toast.error(error.response?.data?.message || 'Failed to save portfolio. Make sure backend endpoint exists.')
+    toast.error(error.response?.data?.message || 'Failed to save portfolio.')
   } finally {
     isSaving.value = false
   }
@@ -196,7 +172,6 @@ const togglePreview = () => {
     toast.info("Add some details first to see the preview!")
     return
   }
-  // Scroll to top when toggling
   window.scrollTo({ top: 0, behavior: 'smooth' })
   isPreviewMode.value = !isPreviewMode.value
 }
@@ -212,24 +187,24 @@ const handleKeydown = (e) => {
 const openImageModal = (index) => {
   currentImageIndex.value = index
   isImageModalOpen.value = true
-  document.body.style.overflow = 'hidden' // Prevent background scrolling
+  document.body.style.overflow = 'hidden'
 }
 
 const closeImageModal = () => {
   isImageModalOpen.value = false
-  document.body.style.overflow = 'auto' // Restore background scrolling
+  document.body.style.overflow = 'auto'
 }
 
 const nextImage = () => {
-  if (galleryPreviewUrls.value.length) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % galleryPreviewUrls.value.length
+  if (selectedGalleryImages.value.length) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % selectedGalleryImages.value.length
   }
 }
 
 const prevImage = () => {
-  if (galleryPreviewUrls.value.length) {
+  if (selectedGalleryImages.value.length) {
     currentImageIndex.value = currentImageIndex.value === 0 
-      ? galleryPreviewUrls.value.length - 1 
+      ? selectedGalleryImages.value.length - 1 
       : currentImageIndex.value - 1
   }
 }
@@ -360,7 +335,7 @@ onUnmounted(() => {
         </Card>
       </div>
 
-      <!-- Right Column: Gallery Upload -->
+      <!-- Right Column: Gallery Selection -->
       <div class="lg:col-span-5 space-y-6">
         <Card class="bg-gray-900/50 backdrop-blur-sm border-gray-800 shadow-xl overflow-hidden rounded-2xl h-full flex flex-col">
           <div class="bg-gray-800/80 px-6 py-4 border-b border-gray-800 flex justify-between items-center">
@@ -368,23 +343,22 @@ onUnmounted(() => {
               <Images class="w-5 h-5 text-blue-400" />
               Work Gallery
             </h2>
-            <Badge class="bg-gray-700 text-gray-300 border-0">{{ galleryPreviewUrls.length }} Photos</Badge>
+            <Badge class="bg-gray-700 text-gray-300 border-0">{{ selectedGalleryImages.length }} Photos</Badge>
           </div>
           <CardContent class="p-6 flex-1 flex flex-col">
             
             <p class="text-sm text-gray-400 mb-4">
-              Upload high-quality images of your past painting projects. Visual evidence is the strongest tool to get hired!
+              Showcase your past projects! Only images from your approved and completed Service Jobs can be displayed to guarantee authenticity.
             </p>
 
-            <div @click="triggerGalleryUpload" class="w-full h-32 border-2 border-dashed border-gray-600 rounded-xl bg-gray-800 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-blue-500 hover:bg-blue-500/10 hover:text-blue-400 transition-colors shadow-inner mb-6 shrink-0">
-              <input type="file" multiple ref="galleryInput" @change="handleGalleryChange" accept="image/*" class="hidden" />
-              <UploadCloud class="w-8 h-8 mb-2" />
-              <span class="text-sm font-bold uppercase tracking-wider">Click to Upload Work Photos</span>
+            <div @click="openSelectionModal" class="w-full h-32 border-2 border-dashed border-gray-600 rounded-xl bg-gray-800 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-blue-500 hover:bg-blue-500/10 hover:text-blue-400 transition-colors shadow-inner mb-6 shrink-0">
+              <Images class="w-8 h-8 mb-2" />
+              <span class="text-sm font-bold uppercase tracking-wider text-center px-4">Select from Completed Jobs</span>
             </div>
 
             <!-- Previews -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto custom-scrollbar flex-1 pb-2">
-               <div v-for="(preview, index) in galleryPreviewUrls" :key="index" class="relative group aspect-square rounded-xl overflow-hidden border border-gray-700 bg-gray-800">
+               <div v-for="(preview, index) in selectedGalleryImages" :key="index" class="relative group aspect-square rounded-xl overflow-hidden border border-gray-700 bg-gray-800">
                   <img :src="preview.url" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                      <button @click.stop="removeImage(index)" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transform scale-90 group-hover:scale-100 transition-all">
@@ -393,7 +367,7 @@ onUnmounted(() => {
                   </div>
                </div>
                
-               <div v-if="galleryPreviewUrls.length === 0" class="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
+               <div v-if="selectedGalleryImages.length === 0" class="col-span-full flex flex-col items-center justify-center py-10 opacity-50">
                   <Images class="w-12 h-12 mb-3 text-gray-600" />
                   <p class="text-sm font-medium">Your gallery is currently empty.</p>
                </div>
@@ -475,12 +449,12 @@ onUnmounted(() => {
             <Images class="w-8 h-8 text-cyan-500" />
             Masterpiece Gallery
           </h2>
-          <p class="text-slate-500 font-medium" v-if="galleryPreviewUrls.length > 0">Click any canvas to view full size.</p>
+          <p class="text-slate-500 font-medium" v-if="selectedGalleryImages.length > 0">Click any canvas to view full size.</p>
         </div>
         
-        <div v-if="galleryPreviewUrls.length > 0" class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+        <div v-if="selectedGalleryImages.length > 0" class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
           <div 
-             v-for="(preview, index) in galleryPreviewUrls" 
+             v-for="(preview, index) in selectedGalleryImages" 
              :key="index" 
              @click="openImageModal(index)"
              class="group relative rounded-2xl overflow-hidden shadow-lg border-4 border-white cursor-pointer break-inside-avoid bg-slate-100"
@@ -512,6 +486,55 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- SELECTION MODAL FOR COMPLETED JOBS -->
+    <Dialog :open="isSelectionModalOpen" @update:open="isSelectionModalOpen = $event">
+      <DialogContent class="bg-slate-900 border-slate-800 text-white max-w-4xl max-h-[85vh] flex flex-col p-6 rounded-2xl shadow-2xl">
+        <DialogHeader class="shrink-0 mb-4">
+          <DialogTitle class="text-2xl font-black flex items-center gap-2">
+            <CheckCircle2 class="w-6 h-6 text-emerald-400" /> Select Portfolio Images
+          </DialogTitle>
+          <DialogDescription class="text-slate-400">
+            Choose images exclusively from your completed and approved service jobs. This verifies the authenticity of your work.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-[300px]">
+          <div v-if="availableImages.length === 0" class="flex flex-col items-center justify-center h-full text-slate-500">
+            <Droplet class="w-12 h-12 mb-4 opacity-20" />
+            <p>No completed job images found.</p>
+            <p class="text-sm">Complete some service requests and upload proofs first!</p>
+          </div>
+
+          <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div 
+              v-for="(img, idx) in availableImages" 
+              :key="idx"
+              @click="toggleImageSelection(img.path)"
+              class="relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200"
+              :class="tempSelectedPaths.has(img.path) ? 'border-emerald-500 scale-95 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-700 hover:border-slate-500'"
+            >
+              <img :src="img.url" class="w-full h-full object-cover" />
+              
+              <div v-if="tempSelectedPaths.has(img.path)" class="absolute inset-0 bg-emerald-500/20 flex items-center justify-center backdrop-blur-[2px] transition-all">
+                <div class="bg-emerald-500 text-white rounded-full p-1.5 shadow-lg animate-in zoom-in duration-200">
+                  <CheckCircle2 class="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="shrink-0 mt-6 pt-4 border-t border-slate-800 flex justify-end gap-3">
+          <Button variant="outline" class="border-slate-700 text-slate-300 hover:bg-slate-800" @click="isSelectionModalOpen = false">
+            Cancel
+          </Button>
+          <Button class="bg-emerald-600 hover:bg-emerald-700 text-white" @click="confirmSelection">
+            Confirm Selection ({{ tempSelectedPaths.size }})
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <!-- FULL-SCREEN IMAGE MODAL LIGHTBOX -->
     <Teleport to="body">
       <transition 
@@ -531,7 +554,7 @@ onUnmounted(() => {
           
           <!-- Left Arrow Navigation -->
           <button 
-             v-if="galleryPreviewUrls?.length > 1"
+             v-if="selectedGalleryImages?.length > 1"
              @click.stop="prevImage" 
              class="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-white/5 hover:bg-white/20 p-4 rounded-full transition-all z-50 border border-white/10 hover:border-white/30 hover:-translate-x-1"
           >
@@ -540,14 +563,14 @@ onUnmounted(() => {
 
           <!-- Current Image -->
           <img 
-             :src="galleryPreviewUrls[currentImageIndex]?.url" 
+             :src="selectedGalleryImages[currentImageIndex]?.url" 
              class="max-w-[90vw] max-h-[85vh] object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-500 rounded-xl border-2 border-white/10" 
              @click.stop 
           />
 
           <!-- Right Arrow Navigation -->
           <button 
-             v-if="galleryPreviewUrls?.length > 1"
+             v-if="selectedGalleryImages?.length > 1"
              @click.stop="nextImage" 
              class="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-white/5 hover:bg-white/20 p-4 rounded-full transition-all z-50 border border-white/10 hover:border-white/30 hover:translate-x-1"
           >
@@ -557,13 +580,13 @@ onUnmounted(() => {
           <!-- Image Counter -->
           <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
             <div class="text-white font-black tracking-widest text-sm bg-black/40 px-5 py-2 rounded-full backdrop-blur-md border border-white/10">
-              CANVAS {{ currentImageIndex + 1 }} OF {{ galleryPreviewUrls.length }}
+              CANVAS {{ currentImageIndex + 1 }} OF {{ selectedGalleryImages.length }}
             </div>
             
             <!-- Thumbnail Navigation Dots -->
             <div class="flex gap-2 mt-2">
               <button 
-                v-for="(_, idx) in galleryPreviewUrls" 
+                v-for="(_, idx) in selectedGalleryImages" 
                 :key="'dot-'+idx"
                 @click.stop="currentImageIndex = idx"
                 class="w-2 h-2 rounded-full transition-all duration-300"
