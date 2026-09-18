@@ -45,7 +45,8 @@ import {
   ShieldAlert,
   AlertCircle,
   Mail,
-  UserX
+  UserX,
+  Camera
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -112,6 +113,13 @@ const paymentPreview = ref<string | null>(null)
 const remittanceFile = ref<File | null>(null)
 const remittancePreview = ref<string | null>(null)
 
+// Live Camera States
+const isCameraOpen = ref(false)
+const cameraTarget = ref<'proof' | 'payment' | 'remittance' | null>(null)
+const videoRef = ref<HTMLVideoElement | null>(null)
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+let stream: MediaStream | null = null
+
 // Map Variables
 let leafletMap: L.Map | null = null
 let userMarker: L.Marker | null = null
@@ -177,6 +185,66 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
   return R * c 
+}
+
+// --- Live Camera Logic ---
+const openCamera = async (target: 'proof' | 'payment' | 'remittance') => {
+  cameraTarget.value = target
+  isCameraOpen.value = true
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    })
+    nextTick(() => {
+      if (videoRef.value) {
+        videoRef.value.srcObject = stream
+      }
+    })
+  } catch (err) {
+    toast.error('Could not access camera. Please check permissions.')
+    closeCamera()
+  }
+}
+
+const closeCamera = () => {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop())
+    stream = null
+  }
+  isCameraOpen.value = false
+  cameraTarget.value = null
+}
+
+const takePhoto = () => {
+  if (!videoRef.value || !canvasRef.value || !cameraTarget.value) return
+
+  const video = videoRef.value
+  const canvas = canvasRef.value
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+  
+  if (ctx) {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      
+      const file = new File([blob], `live_capture_${Date.now()}.jpg`, { type: 'image/jpeg' })
+      const previewUrl = URL.createObjectURL(file)
+
+      if (cameraTarget.value === 'proof') {
+        proofFile.value = file
+        proofPreview.value = previewUrl
+      } else if (cameraTarget.value === 'payment') {
+        paymentFile.value = file
+        paymentPreview.value = previewUrl
+      } else if (cameraTarget.value === 'remittance') {
+        remittanceFile.value = file
+        remittancePreview.value = previewUrl
+      }
+      closeCamera()
+    }, 'image/jpeg', 0.8) // 0.8 quality compression to ensure it stays within backend size limits
+  }
 }
 
 // --- Map Initialization ---
@@ -690,6 +758,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  closeCamera()
   if (watchId !== null) navigator.geolocation.clearWatch(watchId)
   if (leafletMap) leafletMap.remove()
   if (activePersonnelId.value) {
@@ -701,6 +770,26 @@ onUnmounted(() => {
 <template>
   <div class="absolute inset-0 flex flex-col overflow-hidden bg-transparent text-gray-100 font-sans">
     
+    <!-- Live Camera Overlay -->
+    <div v-if="isCameraOpen" class="fixed inset-0 z-[100] bg-black flex flex-col">
+       <video ref="videoRef" class="flex-1 w-full h-full object-cover" autoplay playsinline></video>
+       <canvas ref="canvasRef" class="hidden"></canvas>
+       
+       <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent flex justify-center pointer-events-none">
+          <p class="text-white font-medium shadow-sm drop-shadow-md">Capture Image</p>
+       </div>
+       
+       <div class="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-center pb-12">
+          <Button @click="closeCamera" variant="ghost" class="rounded-full bg-gray-800/50 hover:bg-gray-700 text-white h-14 w-14 p-0 backdrop-blur-md">
+             <X class="w-6 h-6"/>
+          </Button>
+          <Button @click="takePhoto" class="rounded-full bg-white text-black hover:bg-gray-200 h-20 w-20 p-0 shadow-[0_0_0_6px_rgba(255,255,255,0.3)] flex items-center justify-center transition-transform active:scale-95">
+             <Camera class="w-8 h-8"/>
+          </Button>
+          <div class="w-14 h-14"></div> <!-- Spacer to center the camera button -->
+       </div>
+    </div>
+
     <div v-if="!locationGranted" class="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gray-900/60 p-4">
       <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto text-center space-y-6">
         <div class="relative">
@@ -968,34 +1057,52 @@ onUnmounted(() => {
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the destination to complete this delivery.</AlertDescription>
                 </Alert>
 
+                <!-- LIVE CAMERA PROOF OF DELIVERY -->
                 <div>
                    <label class="text-sm font-semibold text-gray-300 mb-2 block">Upload Proof of Goods Delivered <span class="text-red-400">*</span></label>
-                   <div class="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="proofPreview ? 'bg-transparent' : 'bg-gray-800/30 hover:bg-gray-800'">
-                      <input v-if="!proofPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleProofUpload" />
-                      <div v-if="!proofPreview" class="text-center pointer-events-none">
-                         <ImageIcon class="h-8 w-8 text-gray-500 mx-auto mb-3" />
-                         <p class="text-sm font-medium text-gray-300">Tap to snap Package</p>
+                   <div class="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="proofPreview ? 'bg-transparent' : 'bg-gray-800/30'">
+                      
+                      <div v-if="!proofPreview" class="flex w-full items-center justify-center gap-3 z-10">
+                         <Button @click.prevent.stop="openCamera('proof')" type="button" variant="outline" class="flex-1 h-20 flex flex-col gap-1.5 bg-gray-900 border-gray-700 hover:bg-gray-800 text-emerald-400 rounded-xl">
+                            <Camera class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Live Camera</span>
+                         </Button>
+                         <div class="flex-1 h-20 relative flex flex-col gap-1.5 items-center justify-center border rounded-xl bg-gray-900 border-gray-700 hover:bg-gray-800 text-gray-400 cursor-pointer">
+                            <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleProofUpload" />
+                            <ImageIcon class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Gallery File</span>
+                         </div>
                       </div>
+
                       <div v-else class="relative w-full flex justify-center">
                          <img :src="proofPreview" class="max-h-56 rounded-xl border border-gray-700 object-cover shadow-lg" />
-                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removeProof">
+                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg z-20" @click.prevent.stop="removeProof">
                             <X class="h-4 w-4" />
                          </Button>
                       </div>
                    </div>
                 </div>
 
+                <!-- LIVE CAMERA PROOF OF PAYMENT -->
                 <div v-if="activeDelivery.payment_method.toLowerCase() === 'cod'">
                    <label class="text-sm font-semibold text-green-400 mb-2 block">Upload Proof of Payment Received <span class="text-red-400">*</span></label>
-                   <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="paymentPreview ? 'bg-transparent' : 'bg-green-900/10 hover:bg-green-900/20'">
-                      <input v-if="!paymentPreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" />
-                      <div v-if="!paymentPreview" class="text-center pointer-events-none">
-                         <Banknote class="h-8 w-8 text-green-600/50 mx-auto mb-3" />
-                         <p class="text-sm font-medium text-green-400">Tap to snap Cash received</p>
+                   <div class="border-2 border-dashed border-green-800/50 rounded-2xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="paymentPreview ? 'bg-transparent' : 'bg-green-900/10'">
+                      
+                      <div v-if="!paymentPreview" class="flex w-full items-center justify-center gap-3 z-10">
+                         <Button @click.prevent.stop="openCamera('payment')" type="button" variant="outline" class="flex-1 h-20 flex flex-col gap-1.5 bg-green-950 border-green-800 hover:bg-green-900 text-green-400 rounded-xl">
+                            <Camera class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Live Camera</span>
+                         </Button>
+                         <div class="flex-1 h-20 relative flex flex-col gap-1.5 items-center justify-center border rounded-xl bg-gray-900 border-gray-700 hover:bg-gray-800 text-gray-400 cursor-pointer">
+                            <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handlePaymentUpload" />
+                            <Banknote class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Gallery File</span>
+                         </div>
                       </div>
+
                       <div v-else class="relative w-full flex justify-center">
                          <img :src="paymentPreview" class="max-h-56 rounded-xl border border-green-800/50 object-cover shadow-lg" />
-                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removePayment">
+                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg z-20" @click.prevent.stop="removePayment">
                             <X class="h-4 w-4" />
                          </Button>
                       </div>
@@ -1044,17 +1151,26 @@ onUnmounted(() => {
                    <AlertDescription class="text-sm ml-2 leading-tight">You are too far from the HQ to remit funds.</AlertDescription>
                 </Alert>
 
+                <!-- LIVE CAMERA PROOF OF REMITTANCE -->
                 <div>
                    <label class="text-sm font-semibold text-purple-400 mb-2 block">Upload Proof of HQ Handover <span class="text-red-400">*</span></label>
-                   <div class="border-2 border-dashed border-purple-800/50 rounded-2xl flex flex-col items-center justify-center p-6 transition-colors relative" :class="remittancePreview ? 'bg-transparent' : 'bg-purple-900/10 hover:bg-purple-900/20'">
-                      <input v-if="!remittancePreview" type="file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleRemittanceUpload" />
-                      <div v-if="!remittancePreview" class="text-center pointer-events-none">
-                         <UploadCloud class="h-8 w-8 text-purple-600/50 mx-auto mb-3" />
-                         <p class="text-sm font-medium text-purple-400">Tap to snap Turnover Receipt</p>
+                   <div class="border-2 border-dashed border-purple-800/50 rounded-2xl flex flex-col items-center justify-center p-4 transition-colors relative" :class="remittancePreview ? 'bg-transparent' : 'bg-purple-900/10'">
+                      
+                      <div v-if="!remittancePreview" class="flex w-full items-center justify-center gap-3 z-10">
+                         <Button @click.prevent.stop="openCamera('remittance')" type="button" variant="outline" class="flex-1 h-20 flex flex-col gap-1.5 bg-purple-950 border-purple-800 hover:bg-purple-900 text-purple-400 rounded-xl">
+                            <Camera class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Live Camera</span>
+                         </Button>
+                         <div class="flex-1 h-20 relative flex flex-col gap-1.5 items-center justify-center border rounded-xl bg-gray-900 border-gray-700 hover:bg-gray-800 text-gray-400 cursor-pointer">
+                            <input type="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleRemittanceUpload" />
+                            <UploadCloud class="h-6 w-6" />
+                            <span class="text-xs font-semibold">Gallery File</span>
+                         </div>
                       </div>
+
                       <div v-else class="relative w-full flex justify-center">
                          <img :src="remittancePreview" class="max-h-56 rounded-xl border border-purple-800/50 object-cover shadow-lg" />
-                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg" @click.prevent.stop="removeRemittance">
+                         <Button size="icon" variant="destructive" class="absolute -top-3 -right-3 h-8 w-8 rounded-full shadow-lg z-20" @click.prevent.stop="removeRemittance">
                             <X class="h-4 w-4" />
                          </Button>
                       </div>

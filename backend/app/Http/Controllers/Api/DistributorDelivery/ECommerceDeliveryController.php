@@ -207,14 +207,15 @@ class ECommerceDeliveryController extends Controller
 
         $isCOD = (strtolower($paymentMethod) === 'cod');
 
+        // Increased max bounds to support Live Camera Blob creations cleanly
         $rules = [
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
+            'proof_file' => 'required|image|mimes:jpeg,png,jpg|max:10240'
         ];
 
         if ($isCOD) {
-            $rules['payment_file'] = 'required|image|mimes:jpeg,png,jpg|max:5120';
+            $rules['payment_file'] = 'required|image|mimes:jpeg,png,jpg|max:10240';
         }
 
         $request->validate($rules);
@@ -279,7 +280,7 @@ class ECommerceDeliveryController extends Controller
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'remittance_file' => 'required|image|mimes:jpeg,png,jpg|max:5120'
+            'remittance_file' => 'required|image|mimes:jpeg,png,jpg|max:10240'
         ]);
 
         $delivery = ECOrderDelivery::findOrFail($id);

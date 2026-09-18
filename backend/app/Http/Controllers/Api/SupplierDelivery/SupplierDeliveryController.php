@@ -198,14 +198,15 @@ class SupplierDeliveryController extends Controller
         $isReplacement = $activeReturn ? true : str_contains($delivery->notes ?? '', '[REPLACEMENT DELIVERY]');
         $isCOD = (!$isReplacement && $req && strtoupper($req->payment_terms) === 'COD');
 
+        // Allow up to 10MB to accommodate native camera outputs smoothly
         $rules = [
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'proof_image' => 'required|image|mimes:jpeg,png,jpg|max:5120'
+            'proof_image' => 'required|image|mimes:jpeg,png,jpg|max:10240'
         ];
 
         if ($isCOD) {
-            $rules['payment_image'] = 'required|image|mimes:jpeg,png,jpg|max:5120';
+            $rules['payment_image'] = 'required|image|mimes:jpeg,png,jpg|max:10240';
         }
 
         $request->validate($rules);
@@ -284,7 +285,7 @@ class SupplierDeliveryController extends Controller
         $request->validate([
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'remittance_image' => 'required|image|mimes:jpeg,png,jpg|max:5120'
+            'remittance_image' => 'required|image|mimes:jpeg,png,jpg|max:10240'
         ]);
 
         $delivery = SupplierDelivery::findOrFail($id);
