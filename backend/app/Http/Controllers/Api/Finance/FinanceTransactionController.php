@@ -9,12 +9,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Contracts\Auth\Authenticatable;
 use App\Events\Finance\TransactionUpdated; 
 use App\Events\Ecommerce\ReturnRequestUpdated; 
+use App\Events\Notification\NotificationEvent;
+use App\Models\SystemNotification;
 
 class FinanceTransactionController extends Controller
 {
-    private function getDistributorId($user)
+    private function getDistributorId(Authenticatable $user)
     {
         if ($user->role === 'employee') {
             $employee = DB::table('hr_employees')->where('user_id', $user->id)->first();
@@ -30,7 +33,7 @@ class FinanceTransactionController extends Controller
         return null;
     }
 
-    private function getPermissions($user)
+    private function getPermissions(Authenticatable $user)
     {
         $defaultPermissions = [
             'can_view' => true,
@@ -149,7 +152,7 @@ class FinanceTransactionController extends Controller
         ]);
     }
 
-    public function processRefund(Request $request, $id)
+    public function processRefund(Request $request, int $id)
     {
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
@@ -360,15 +363,19 @@ class FinanceTransactionController extends Controller
             $refundRecord = DB::table('ec_refund_requests')->where('id', $cacheData['refund_id'])->first();
             $userEmail = null;
             $userName = null;
+            $receiverId = null;
+            $receiverRole = null;
 
             if ($refundRecord) {
                 if ($refundRecord->return_request_id) {
                     $clientData = DB::table('client_return_requests')
                         ->join('users', 'client_return_requests.client_id', '=', 'users.id')
                         ->where('client_return_requests.id', $refundRecord->return_request_id)
-                        ->select('users.email', 'users.first_name', 'users.last_name')
+                        ->select('users.id', 'users.role', 'users.email', 'users.first_name', 'users.last_name')
                         ->first();
                     if ($clientData) {
+                        $receiverId = $clientData->id;
+                        $receiverRole = $clientData->role;
                         $userEmail = $clientData->email;
                         $userName = trim($clientData->first_name . ' ' . $clientData->last_name);
                     }
@@ -376,13 +383,34 @@ class FinanceTransactionController extends Controller
                     $spData = DB::table('sp_return_requests')
                         ->join('users', 'sp_return_requests.sp_id', '=', 'users.id')
                         ->where('sp_return_requests.id', $refundRecord->sp_return_request_id)
-                        ->select('users.email', 'users.first_name', 'users.last_name')
+                        ->select('users.id', 'users.role', 'users.email', 'users.first_name', 'users.last_name')
                         ->first();
                     if ($spData) {
+                        $receiverId = $spData->id;
+                        $receiverRole = $spData->role;
                         $userEmail = $spData->email;
                         $userName = trim($spData->first_name . ' ' . $spData->last_name);
                     }
                 }
+            }
+
+            // Create Notification and Dispatch Event
+            if ($receiverId && $receiverRole) {
+                $notificationId = DB::table('system_notifications')->insertGetId([
+                    'type' => 'Success',
+                    'title' => 'Refund Processed Successfully',
+                    'message' => 'Your refund request (' . $transactionCode . ') amounting to ₱' . number_format($cacheData['amount'], 2) . ' has been successfully processed and transferred to your GCash account.',
+                    'is_read' => 0,
+                    'sender_id' => $cacheData['approved_by'] ?? null,
+                    'receiver_id' => $receiverId,
+                    'sender_role' => 'finance_manager',
+                    'receiver_role' => $receiverRole,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $notification = SystemNotification::find($notificationId);
+                event(new NotificationEvent($notification));
             }
 
             if ($userEmail && $userName) {
@@ -420,7 +448,7 @@ class FinanceTransactionController extends Controller
         }
     }
 
-    public function rejectRefund(Request $request, $id)
+    public function rejectRefund(Request $request, int $id)
     {
         $user = Auth::user();
         $permissions = $this->getPermissions($user);
@@ -446,6 +474,8 @@ class FinanceTransactionController extends Controller
 
         $userEmail = null;
         $userName = null;
+        $receiverId = null;
+        $receiverRole = null;
         $transactionCode = 'REF-' . str_pad($id, 5, '0', STR_PAD_LEFT);
 
         if ($refundRecord) {
@@ -453,9 +483,11 @@ class FinanceTransactionController extends Controller
                 $clientData = DB::table('client_return_requests')
                     ->join('users', 'client_return_requests.client_id', '=', 'users.id')
                     ->where('client_return_requests.id', $refundRecord->return_request_id)
-                    ->select('users.email', 'users.first_name', 'users.last_name')
+                    ->select('users.id', 'users.role', 'users.email', 'users.first_name', 'users.last_name')
                     ->first();
                 if ($clientData) {
+                    $receiverId = $clientData->id;
+                    $receiverRole = $clientData->role;
                     $userEmail = $clientData->email;
                     $userName = trim($clientData->first_name . ' ' . $clientData->last_name);
                 }
@@ -463,13 +495,34 @@ class FinanceTransactionController extends Controller
                 $spData = DB::table('sp_return_requests')
                     ->join('users', 'sp_return_requests.sp_id', '=', 'users.id')
                     ->where('sp_return_requests.id', $refundRecord->sp_return_request_id)
-                    ->select('users.email', 'users.first_name', 'users.last_name')
+                    ->select('users.id', 'users.role', 'users.email', 'users.first_name', 'users.last_name')
                     ->first();
                 if ($spData) {
+                    $receiverId = $spData->id;
+                    $receiverRole = $spData->role;
                     $userEmail = $spData->email;
                     $userName = trim($spData->first_name . ' ' . $spData->last_name);
                 }
             }
+        }
+
+        // Create Notification and Dispatch Event
+        if ($receiverId && $receiverRole && $refundRecord) {
+            $notificationId = DB::table('system_notifications')->insertGetId([
+                'type' => 'Warning',
+                'title' => 'Refund Request Rejected',
+                'message' => 'Your refund request (' . $transactionCode . ') amounting to ₱' . number_format($refundRecord->amount, 2) . ' has been rejected by the Finance Team.',
+                'is_read' => 0,
+                'sender_id' => $user->id,
+                'receiver_id' => $receiverId,
+                'sender_role' => 'finance_manager',
+                'receiver_role' => $receiverRole,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            $notification = SystemNotification::find($notificationId);
+            event(new NotificationEvent($notification));
         }
 
         if ($userEmail && $userName && $refundRecord) {
