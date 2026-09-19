@@ -113,13 +113,70 @@ class ClientChatController extends Controller
             'payload' => 'nullable|array'
         ]);
 
+        $payload = $request->payload ?? [];
+
+        // ------------------------------------------------------------------
+        // Client-initiated Official Deal (vice-versa negotiation)
+        // Mirrors SPChatController::sendMessage() 'official_deal' handling,
+        // but with provider/client roles reversed since the Client is the
+        // one sending the offer here.
+        // ------------------------------------------------------------------
+        if ($request->type === 'official_deal') {
+            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+
+            $deal = OfficialDeal::create([
+                'provider_id' => $request->receiver_id,
+                'client_id' => Auth::id(),
+                'client_service_request_id' => $request->service_request_id,
+                'service_offering_id' => $serviceRequest ? $serviceRequest->service_offering_id : null,
+                'price' => str_replace(',', '', $payload['price']),
+                'description' => $payload['description'],
+                'colors' => isset($payload['colors']) && !empty($payload['colors']) ? json_encode($payload['colors']) : null,
+                'status' => 'pending'
+            ]);
+
+            $payload['deal_id'] = $deal->id;
+            $payload['deal_status'] = 'pending';
+        }
+
+        // ------------------------------------------------------------------
+        // Client-initiated Payment Term (vice-versa negotiation)
+        // Mirrors SPChatController::sendMessage() 'payment_term' handling,
+        // but with provider/client roles reversed since the Client is the
+        // one sending the terms here.
+        // ------------------------------------------------------------------
+        if ($request->type === 'payment_term') {
+            $activeDeal = OfficialDeal::where('provider_id', $request->receiver_id)
+                                      ->where('client_id', Auth::id())
+                                      ->where('client_service_request_id', $request->service_request_id)
+                                      ->latest()
+                                      ->first();
+
+            if (!$activeDeal) {
+                return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);
+            }
+
+            $term = OfficialPaymentTerm::create([
+                'official_deal_id' => $activeDeal->id,
+                'provider_id' => $request->receiver_id,
+                'client_id' => Auth::id(),
+                'payment_method' => $payload['payment_method'],
+                'payment_term' => $payload['payment_term'],
+                'status' => 'pending'
+            ]);
+
+            $payload['deal_id'] = $activeDeal->id;
+            $payload['term_id'] = $term->id;
+            $payload['term_status'] = 'pending';
+        }
+
         $message = SPMessage::create([
             'sender_id' => Auth::id(),
             'receiver_id' => $request->receiver_id,
             'service_request_id' => $request->service_request_id,
             'message' => $request->message ?? 'Attachment',
             'type' => $request->type,
-            'payload' => $request->payload,
+            'payload' => $payload,
             'is_read' => false
         ]);
 
@@ -266,6 +323,9 @@ class ClientChatController extends Controller
 
         // ------------------------------------------------------------------
         // PWD Verification & Invoice generation triggers when Client agrees
+        // NOTE: keyed off the deal's client_id (not Auth::id()) so this stays
+        // correct whether the Client or the Service Provider initiated the
+        // official deal/payment term (vice-versa negotiation support).
         // ------------------------------------------------------------------
         if ($request->action === 'agree') {
             $deal = OfficialDeal::find($term->official_deal_id);
@@ -273,7 +333,7 @@ class ClientChatController extends Controller
             if ($deal) {
                 // Check if client is verified for PWD
                 $pwdVerified = DB::table('pwd_applications')
-                    ->where('user_id', Auth::id())
+                    ->where('user_id', $deal->client_id)
                     ->where('status', 'verified')
                     ->exists();
 

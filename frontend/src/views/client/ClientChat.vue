@@ -320,6 +320,17 @@
               <DropdownMenuContent class="bg-slate-800 border-slate-700 text-slate-200 mb-2 ml-2 w-56 rounded-xl shadow-xl shadow-black/50">
                  <div class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-800/50 rounded-t-xl border-b border-slate-700">Quick Actions</div>
                  <div class="p-1">
+                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg" @click="openOfficialDealModal">
+                      <ShieldCheck class="w-4 h-4 mr-2 text-emerald-400" /> 
+                      <span class="font-medium text-sm">Create Official Deal</span>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openPaymentTermModal" v-if="hasOngoingDeal">
+                      <CreditCard class="w-4 h-4 mr-2 text-yellow-400" /> 
+                      <span class="font-medium text-sm">Send Payment Terms</span>
+                   </DropdownMenuItem>
+                 </div>
+                 <div class="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-800/50 border-y border-slate-700 mt-1">Media & Share</div>
+                 <div class="p-1">
                    <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg" @click="$refs.imageInput.click()">
                       <ImageIcon class="w-4 h-4 mr-2 text-blue-400" /> 
                       <span class="font-medium text-sm">Upload Image</span>
@@ -359,6 +370,146 @@
 
       </div>
     </div>
+
+    <Dialog v-model:open="showDealModal">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[600px] rounded-3xl overflow-hidden p-0 max-h-[90vh] flex flex-col shadow-2xl shadow-black/80">
+        
+        <div class="px-6 py-6 border-b border-slate-800 bg-slate-950/50 shrink-0">
+          <DialogTitle class="text-xl md:text-2xl font-bold flex items-center gap-2 tracking-tight">
+             <ShieldCheck class="w-6 h-6 text-emerald-400" />
+             Create Official Deal Offer
+          </DialogTitle>
+          <p class="text-slate-400 text-sm mt-2">Review and finalize the service details below to send the official contract terms to <span class="font-semibold text-white">{{ activeContact?.name }}</span>.</p>
+        </div>
+        
+        <div class="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+           
+           <div class="bg-blue-900/20 border border-blue-800/50 p-4 rounded-2xl flex items-center justify-between">
+              <div>
+                 <p class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1.5">Final Price / Cost (₱) <span class="text-red-500">*</span></p>
+                 <Input 
+                   type="number" 
+                   min="0"
+                   step="any"
+                   v-model="dealForm.price" 
+                   @keydown="preventInvalidChars"
+                   :readonly="dealForm.is_fixed_price"
+                   :class="dealForm.is_fixed_price ? 'bg-slate-800 text-slate-400 cursor-not-allowed' : 'bg-slate-950'"
+                   class="border-blue-800/50 focus:border-blue-500 focus:ring-blue-500 text-lg font-bold w-48 h-12 rounded-xl" 
+                 />
+                 <p v-if="dealForm.is_fixed_price" class="text-[10px] text-emerald-400 mt-1 italic">Fixed price service. Negotiation disabled.</p>
+              </div>
+           </div>
+
+           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div class="space-y-2">
+                 <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Execution Date <span class="text-red-500">*</span></Label>
+                 <Input type="date" v-model="dealForm.preferred_date" class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 block w-full h-12 rounded-xl" />
+              </div>
+              <div class="space-y-2">
+                 <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Arrival Time <span class="text-red-500">*</span></Label>
+                 <Select v-model="dealForm.time_preference">
+                    <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 h-12 rounded-xl">
+                      <SelectValue placeholder="Select timeframe" />
+                    </SelectTrigger>
+                    <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
+                      <SelectItem value="Morning (8AM - 12PM)">Morning (8AM - 12PM)</SelectItem>
+                      <SelectItem value="Afternoon (1PM - 5PM)">Afternoon (1PM - 5PM)</SelectItem>
+                      <SelectItem value="Flexible">Flexible / Anytime</SelectItem>
+                    </SelectContent>
+                 </Select>
+              </div>
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Contact Number <span class="text-red-500">*</span></Label>
+              <Input type="text" v-model="dealForm.contact_number" class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 h-12 rounded-xl" />
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Complete Address <span class="text-red-500">*</span></Label>
+              <Textarea v-model="dealForm.address" rows="2" class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 resize-none rounded-xl"></Textarea>
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Target Color(s) <span class="text-slate-500 italic font-normal lowercase">(Optional)</span></Label>
+              <Input type="text" v-model="dealForm.colors" placeholder="e.g., Ocean Blue, Sunset Orange" class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 h-12 rounded-xl" />
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Final Agreement Notes</Label>
+              <Textarea v-model="dealForm.description" rows="3" class="bg-slate-950 border-slate-700 focus:border-blue-500 focus:ring-blue-500 resize-none rounded-xl" placeholder="Included materials, specific terms, preparation instructions..."></Textarea>
+           </div>
+        </div>
+
+        <div class="px-6 py-5 bg-slate-950/80 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+           <Button variant="outline" class="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl font-bold h-12 px-6" @click="showDealModal = false">Cancel</Button>
+           <Button class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold h-12 px-8 shadow-lg shadow-emerald-900/20 transition-all" @click="sendOfficialDeal" :disabled="isSending">
+              <span v-if="isSending" class="flex items-center">
+                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+              </span>
+              <span v-else>Send Deal Offer</span>
+           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="showPaymentTermModal">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[500px] rounded-3xl overflow-hidden p-0 max-h-[90vh] flex flex-col shadow-2xl shadow-black/80">
+        
+        <div class="px-6 py-6 border-b border-slate-800 bg-slate-950/50 shrink-0">
+          <DialogTitle class="text-xl md:text-2xl font-bold flex items-center gap-2 tracking-tight">
+             <CreditCard class="w-6 h-6 text-yellow-400" />
+             Set Payment Terms
+          </DialogTitle>
+          <p class="text-slate-400 text-sm mt-2">Specify the payment method and terms for the ongoing official deal.</p>
+        </div>
+        
+        <div class="px-6 py-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Payment Method <span class="text-red-500">*</span></Label>
+              <Select v-model="paymentTermForm.payment_method">
+                 <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl">
+                   <SelectValue placeholder="Select payment method" />
+                 </SelectTrigger>
+                 <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
+                   <SelectItem v-if="paymentSettings.is_gcash_enabled" value="gcash">GCash</SelectItem>
+                   <SelectItem value="on_hand">On Hand (Cash)</SelectItem>
+                 </SelectContent>
+               </Select>
+               <p v-if="!paymentSettings.is_gcash_enabled" class="text-xs text-slate-500">You don't have a registered GCash number yet, so only "On Hand (Cash)" is available. Add a GCash number in your payment settings to offer GCash as well.</p>
+           </div>
+
+           <div class="space-y-2">
+              <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Payment Terms <span class="text-red-500">*</span></Label>
+              <Select v-model="paymentTermForm.payment_term">
+                 <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl">
+                   <SelectValue placeholder="Select terms condition" />
+                 </SelectTrigger>
+                 <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
+                   <SelectItem value="100% payment first">100% payment first</SelectItem>
+                   <SelectItem value="50% payment first">50% payment first</SelectItem>
+                   <SelectItem value="40% payment first">40% payment first</SelectItem>
+                   <SelectItem value="30% payment first">30% payment first</SelectItem>
+                   <SelectItem value="20% payment first">20% payment first</SelectItem>
+                   <SelectItem value="10% payment first">10% payment first</SelectItem>
+                   <SelectItem value="Service first before payment">Service first before payment</SelectItem>
+                 </SelectContent>
+               </Select>
+           </div>
+        </div>
+
+        <div class="px-6 py-5 bg-slate-950/80 border-t border-slate-800 flex justify-end gap-3 shrink-0">
+           <Button variant="outline" class="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl font-bold h-12 px-6" @click="showPaymentTermModal = false">Cancel</Button>
+           <Button class="bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-bold h-12 px-8 shadow-lg shadow-yellow-900/20 transition-all" @click="sendPaymentTerm" :disabled="isSending">
+              <span v-if="isSending" class="flex items-center">
+                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+              </span>
+              <span v-else>Send Terms</span>
+           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="showColorShareModal">
       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 max-w-md rounded-2xl">
@@ -419,6 +570,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 // State
 const currentUser = ref(null)
@@ -433,6 +586,32 @@ const isSending = ref(false)
 const contacts = ref([])
 const activeContact = ref(null)
 const messages = ref([])
+
+// Deal Modal Form State (vice-versa negotiation: Client can offer Official Deals too)
+const showDealModal = ref(false)
+const dealForm = ref({ 
+  price: '', 
+  preferred_date: '', 
+  time_preference: '', 
+  contact_number: '', 
+  address: '', 
+  description: '',
+  colors: '',
+  is_fixed_price: false
+})
+
+// Payment Terms Modal Form State (vice-versa negotiation: Client can offer Payment Terms too)
+const showPaymentTermModal = ref(false)
+const paymentTermForm = ref({
+  payment_method: '',
+  payment_term: ''
+})
+const paymentSettings = ref({
+  is_on_hand_enabled: true, // On Hand (Cash) has no registration requirement, so it's always available to the client
+  is_gcash_enabled: false,
+  gcash_number: null
+})
+const currentDealId = ref(null)
 
 // New Feature States
 const showAttachmentMenu = ref(false)
@@ -546,6 +725,10 @@ const filteredContacts = computed(() => {
 
 const activeMessages = computed(() => messages.value)
 
+const hasOngoingDeal = computed(() => {
+  return messages.value.some(m => m.type === 'official_deal' && m.payload?.deal_status === 'ongoing')
+})
+
 const fetchCurrentUser = async () => {
   try {
     const res = await api.get('/auth/me')
@@ -556,6 +739,31 @@ const fetchCurrentUser = async () => {
     }
   } catch (error) { 
     console.error('Auth error', error) 
+  }
+}
+
+const fetchPaymentSettings = async () => {
+  try {
+    const response = await api.get('/client/payment-settings')
+    // ClientPaymentSettingController@show returns the client_payment_settings
+    // row (id, client_id, gcash_number, ...) - it has no per-method "enabled"
+    // toggles like the Service Provider settings do, so we derive them here:
+    // - GCash is only offered if the client has a registered gcash_number
+    // - On Hand (Cash) needs no registration, so it's always available
+    const data = response.data?.data || response.data || {}
+    const gcashNumber = data.gcash_number || null
+
+    paymentSettings.value = {
+      is_on_hand_enabled: true,
+      is_gcash_enabled: !!gcashNumber,
+      gcash_number: gcashNumber
+    }
+  } catch (error) {
+    console.error('Failed to load payment settings', error)
+    // Still let the client offer On Hand (Cash) even if settings failed to load
+    paymentSettings.value.is_on_hand_enabled = true
+    paymentSettings.value.is_gcash_enabled = false
+    paymentSettings.value.gcash_number = null
   }
 }
 
@@ -769,6 +977,100 @@ const sendColor = async (color) => {
    if(success) showColorShareModal.value = false
 }
 
+const preventInvalidChars = (e) => {
+  if (['e', 'E', '+', '-'].includes(e.key)) {
+    e.preventDefault()
+  }
+}
+
+// Create Official Deal - Client-initiated (vice-versa negotiation)
+const openOfficialDealModal = () => {
+  showAttachmentMenu.value = false
+  const req = activeContact.value.requestContext || {}
+  const isFixed = req.service_offering?.price_type?.toLowerCase() === 'fixed price'
+  
+  let defaultPrice = req.service_offering?.price || '';
+
+  if (!isFixed && req.description) {
+     const totalMatch = req.description.match(/Estimated Total Price: ₱([\d,]+(\.\d{2})?)/);
+     if (totalMatch) {
+         defaultPrice = totalMatch[1].replace(/,/g, '');
+     } else {
+         const areaMatch = req.description.match(/Area Size: ([\d,]+(\.\d{2})?)\s*sqm/i);
+         if (areaMatch && req.service_offering?.price) {
+             const area = parseFloat(areaMatch[1].replace(/,/g, ''));
+             defaultPrice = area * parseFloat(req.service_offering.price);
+         }
+     }
+  }
+
+  dealForm.value = {
+    price: defaultPrice,
+    preferred_date: req.preferred_date || '',
+    time_preference: req.time_preference || '',
+    contact_number: req.contact_number || '',
+    address: req.address || '',
+    description: `Official agreement for ${req.service_offering?.title || activeContact.value.service_title}.\n\nClient Notes: ${req.description || 'None'}`,
+    colors: '',
+    is_fixed_price: isFixed 
+  }
+  showDealModal.value = true
+}
+
+const sendOfficialDeal = async () => {
+  if(!dealForm.value.price || !dealForm.value.preferred_date || !dealForm.value.time_preference || !dealForm.value.contact_number || !dealForm.value.address) {
+    toast.error("Please complete all required fields")
+    return
+  }
+  dealForm.value.price = parseFloat(dealForm.value.price);
+
+  const payloadData = { ...dealForm.value }
+  if (dealForm.value.colors.trim()) {
+     payloadData.colors = JSON.stringify(dealForm.value.colors.trim())
+  } else {
+     payloadData.colors = null
+  }
+  
+  const success = await submitMessageToDb('official_deal', null, payloadData)
+  if(success) {
+    toast.success("Official deal sent successfully!")
+    showDealModal.value = false
+  }
+}
+
+// Send Payment Terms - Client-initiated (vice-versa negotiation)
+const openPaymentTermModal = () => {
+  showAttachmentMenu.value = false
+  const acceptedDeal = messages.value.slice().reverse().find(m => m.type === 'official_deal' && m.payload?.deal_status === 'ongoing')
+  if (!acceptedDeal) {
+     toast.error("No ongoing deal found to attach payment terms.")
+     return
+  }
+  currentDealId.value = acceptedDeal.payload.deal_id
+  
+  paymentTermForm.value = { payment_method: '', payment_term: '' }
+  showPaymentTermModal.value = true
+}
+
+const sendPaymentTerm = async () => {
+  if(!paymentTermForm.value.payment_method || !paymentTermForm.value.payment_term) {
+    toast.error("Please select a method and a term.")
+    return
+  }
+  
+  const payloadData = {
+     deal_id: currentDealId.value,
+     payment_method: paymentTermForm.value.payment_method,
+     payment_term: paymentTermForm.value.payment_term
+  }
+
+  const success = await submitMessageToDb('payment_term', null, payloadData)
+  if(success) {
+    toast.success("Payment terms sent successfully!")
+    showPaymentTermModal.value = false
+  }
+}
+
 // Deal Actions
 const handleDealAction = async (action, message) => {
   if(!message.payload || !message.payload.deal_id) {
@@ -835,6 +1137,7 @@ const handlePaymentTermAction = async (action, message) => {
 
 onMounted(async () => {
   await fetchCurrentUser()
+  await fetchPaymentSettings()
   await fetchContacts()
 })
 </script>

@@ -1161,6 +1161,70 @@ const sendPaymentTerm = async () => {
   }
 }
 
+// Deal Actions - responds to an Official Deal the Client sent (vice-versa negotiation)
+const handleDealAction = async (action, message) => {
+  if(!message.payload || !message.payload.deal_id) {
+     toast.error("Deal reference missing");
+     return;
+  }
+  
+  try {
+    const res = await api.post(`/service-provider/chat/deals/${message.payload.deal_id}/respond`, {
+      action: action,
+      message_id: message.id
+    })
+
+    if (res.data.success) {
+      toast.success(action === 'agree' ? 'Deal Accepted Successfully!' : 'Deal Declined')
+      message.payload.deal_status = action === 'agree' ? 'ongoing' : 'declined';
+      messages.value.push({
+        id: Date.now(),
+        sender: 'me',
+        text: action === 'agree' ? "I have accepted the official deal! We can proceed with the next steps." : "I have declined the official deal. Please adjust the offer.",
+        type: 'text',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent',
+        is_deleted: false
+      });
+      scrollToBottom();
+    }
+  } catch(error) {
+    toast.error('Failed to process deal action')
+  }
+}
+
+// Payment Terms Action - responds to Payment Terms the Client sent (vice-versa negotiation)
+const handlePaymentTermAction = async (action, message) => {
+  if(!message.payload || !message.payload.term_id) {
+     toast.error("Payment term reference missing");
+     return;
+  }
+  
+  try {
+    const res = await api.post(`/service-provider/chat/payment-terms/${message.payload.term_id}/respond`, {
+      action: action,
+      message_id: message.id
+    })
+
+    if (res.data.success) {
+      toast.success(action === 'agree' ? 'Payment Term Agreed!' : 'Payment Term Declined')
+      message.payload.term_status = action === 'agree' ? 'agreed' : 'declined';
+      messages.value.push({
+        id: Date.now(),
+        sender: 'me',
+        text: action === 'agree' ? "I have agreed to the payment terms." : "I have declined the payment terms. Let's negotiate.",
+        type: 'text',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent',
+        is_deleted: false
+      });
+      scrollToBottom();
+    }
+  } catch(error) {
+    toast.error('Failed to process payment term action')
+  }
+}
+
 onMounted(async () => {
   await fetchCurrentUser()
   await fetchPaymentSettings()

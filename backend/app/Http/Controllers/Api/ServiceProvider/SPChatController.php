@@ -12,6 +12,7 @@ use App\Events\MessageSent;
 use App\Events\Chat\MessageUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class SPChatController extends Controller
 {
@@ -228,5 +229,162 @@ class SPChatController extends Controller
         broadcast(new MessageUpdated($message, $message->receiver_id))->toOthers();
 
         return response()->json(['success' => true]);
+    }
+
+    // ------------------------------------------------------------------
+    // VICE-VERSA NEGOTIATION SUPPORT
+    // Mirrors ClientChatController::respondToDeal() / respondToPaymentTerm(),
+    // but for when the Service Provider is the one responding to an Official
+    // Deal / Payment Term that the Client sent. Same DB writes, same events,
+    // same payload shape as the Client-side flow - just the responder role
+    // is reversed.
+    // ------------------------------------------------------------------
+
+    public function respondToDeal(Request $request, int $dealId)
+    {
+        $request->validate([
+            'action' => 'required|in:agree,decline',
+            'message_id' => 'required|exists:sp_messages,id'
+        ]);
+
+        $deal = OfficialDeal::findOrFail($dealId);
+        $chatMessage = SPMessage::findOrFail($request->message_id);
+        $serviceRequest = ClientServiceRequest::findOrFail($deal->client_service_request_id);
+
+        if ($request->action === 'agree') {
+            $deal->update(['status' => 'ongoing']);
+            $serviceRequest->update(['status' => 'ongoing']);
+        } else {
+            $deal->update(['status' => 'declined']);
+            $serviceRequest->update(['status' => 'pending']);
+        }
+
+        $payload = $chatMessage->payload;
+        $payload['deal_status'] = $deal->status;
+        $chatMessage->update(['payload' => $payload]);
+
+        broadcast(new MessageUpdated($chatMessage, $chatMessage->sender_id))->toOthers();
+
+        $replyText = $request->action === 'agree' 
+            ? 'I have accepted the official deal! We can proceed with the next steps.' 
+            : 'I have declined the official deal. Please adjust the offer.';
+
+        $replyMsg = SPMessage::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $deal->client_id,
+            'service_request_id' => $chatMessage->service_request_id,
+            'message' => $replyText,
+            'type' => 'text',
+            'is_read' => false
+        ]);
+
+        broadcast(new MessageSent($replyMsg))->toOthers();
+
+        return response()->json(['success' => true, 'updated_message' => clone $chatMessage]);
+    }
+
+    public function respondToPaymentTerm(Request $request, int $termId)
+    {
+        $request->validate([
+            'action' => 'required|in:agree,decline',
+            'message_id' => 'required|exists:sp_messages,id'
+        ]);
+
+        $term = OfficialPaymentTerm::findOrFail($termId);
+        $chatMessage = SPMessage::findOrFail($request->message_id);
+
+        $status = $request->action === 'agree' ? 'agreed' : 'declined';
+        $term->update(['status' => $status]);
+
+        $payload = $chatMessage->payload;
+        $payload['term_status'] = $status;
+        $chatMessage->update(['payload' => $payload]);
+
+        broadcast(new MessageUpdated($chatMessage, $chatMessage->sender_id))->toOthers();
+
+        $replyText = $request->action === 'agree' 
+            ? 'I have agreed to the payment terms.' 
+            : 'I have declined the payment terms. Let\'s negotiate.';
+
+        $replyMsg = SPMessage::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $term->client_id,
+            'service_request_id' => $chatMessage->service_request_id,
+            'message' => $replyText,
+            'type' => 'text',
+            'is_read' => false
+        ]);
+
+        broadcast(new MessageSent($replyMsg))->toOthers();
+
+        // ------------------------------------------------------------------
+        // PWD Verification & Invoice generation triggers when the Payment
+        // Term is agreed to - same process as the Client-side flow, keyed
+        // off the deal's client_id so it always applies to the actual
+        // client on the deal (regardless of who initiated / who responded).
+        // ------------------------------------------------------------------
+        if ($request->action === 'agree') {
+            $deal = OfficialDeal::find($term->official_deal_id);
+
+            if ($deal) {
+                // Check if the client on this deal is verified for PWD
+                $pwdVerified = DB::table('pwd_applications')
+                    ->where('user_id', $deal->client_id)
+                    ->where('status', 'verified')
+                    ->exists();
+
+                $originalPrice = $deal->price;
+                $discountAmount = 0;
+                $isPwd = false;
+
+                if ($pwdVerified) {
+                    $discountAmount = $originalPrice * 0.20;
+                    $newPrice = $originalPrice - $discountAmount;
+
+                    // Apply discount logic directly to the deal and attach system note
+                    $deal->update([
+                        'price' => $newPrice,
+                        'description' => $deal->description . "\n\n[System Note: 20% PWD Discount Applied (Deducted ₱" . number_format($discountAmount, 2) . ")]"
+                    ]);
+                    $isPwd = true;
+
+                    // Automatically notify the client of the PWD discount via chat
+                    $pwdMsg = SPMessage::create([
+                        'sender_id' => Auth::id(), // Sent dynamically pretending it is from Provider/System
+                        'receiver_id' => $deal->client_id,
+                        'service_request_id' => $chatMessage->service_request_id,
+                        'message' => "System Notification: You are eligible for a PWD discount! A 20% discount (₱" . number_format($discountAmount, 2) . ") has been automatically applied to your official deal.",
+                        'type' => 'text',
+                        'is_read' => false
+                    ]);
+                    broadcast(new MessageSent($pwdMsg))->toOthers();
+                }
+
+                // Generate system Invoice Payload
+                $invoicePayload = [
+                    'deal_id' => $deal->id,
+                    'original_price' => $originalPrice,
+                    'discount_amount' => $discountAmount,
+                    'final_price' => $deal->price,
+                    'payment_method' => $term->payment_method,
+                    'payment_term' => $term->payment_term,
+                    'is_pwd' => $isPwd
+                ];
+
+                // Send invoice automatically into the chat
+                $invoiceMsg = SPMessage::create([
+                    'sender_id' => Auth::id(),
+                    'receiver_id' => $deal->client_id,
+                    'service_request_id' => $chatMessage->service_request_id,
+                    'message' => 'System Invoice Generated',
+                    'type' => 'invoice',
+                    'payload' => $invoicePayload,
+                    'is_read' => false
+                ]);
+                broadcast(new MessageSent($invoiceMsg))->toOthers();
+            }
+        }
+
+        return response()->json(['success' => true, 'updated_message' => clone $chatMessage]);
     }
 }

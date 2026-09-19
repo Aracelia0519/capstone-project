@@ -383,6 +383,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/messages/{clientId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getMessages']);
             Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
 
+            // NEW: Vice-versa negotiation - lets the Service Provider respond to an
+            // Official Deal / Payment Term that the Client initiated (mirrors the
+            // Client's own /deals/{dealId}/respond and /payment-terms/{termId}/respond)
+            Route::post('/deals/{dealId}/respond', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'respondToDeal']);
+            Route::post('/payment-terms/{termId}/respond', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'respondToPaymentTerm']);
+
             Route::post('/send-image', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendImage']);
             Route::put('/messages/{id}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'updateMessage']);
             Route::delete('/messages/{id}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'deleteMessage']);

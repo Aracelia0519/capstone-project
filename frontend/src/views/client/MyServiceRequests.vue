@@ -53,7 +53,7 @@
 
     <div v-else class="grid grid-cols-1 gap-4 sm:gap-6">
       <Card 
-        v-for="request in filteredRequests"
+        v-for="request in displayedRequests"
         :key="request.id"
         class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50 backdrop-blur-sm hover:border-cyan-500/30 transition-all duration-300 group shadow-none overflow-hidden"
       >
@@ -204,6 +204,25 @@
           </div>
         </CardContent>
       </Card>
+
+      <div v-if="!isLoading && filteredRequests.length > 3" class="flex justify-center mt-4 mb-8">
+        <Button 
+          v-if="!showAllServices" 
+          variant="outline" 
+          @click="showAllServices = true"
+          class="bg-gray-800/50 hover:bg-gray-800 text-cyan-400 border-cyan-500/30 hover:border-cyan-400 rounded-xl px-8 transition-all"
+        >
+          View more services ({{ filteredRequests.length - 3 }} more)
+        </Button>
+        <Button 
+          v-else 
+          variant="outline" 
+          @click="showAllServices = false"
+          class="bg-gray-800/50 hover:bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 rounded-xl px-8 transition-all"
+        >
+          Show less
+        </Button>
+      </div>
     </div>
 
     <div v-if="!isLoading && filteredRequests.length === 0" class="text-center py-12 sm:py-24">
@@ -315,11 +334,11 @@
              <div class="grid grid-cols-2 gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700 mb-4 shadow-sm">
                <div>
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid So Far</p>
-                 <p class="text-sm text-emerald-400 font-bold tracking-tight">鈧眥{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
+                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
                </div>
                <div>
                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                 <p class="text-sm text-red-400 font-bold tracking-tight">鈧眥{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
+                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
                </div>
              </div>
 
@@ -453,7 +472,7 @@
                    <div>
                      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
                      <p class="text-xs text-emerald-400 font-bold">
-                       鈧眥{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
+                       ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
                        <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
                      </p>
                    </div>
@@ -681,15 +700,15 @@
 
                 <div class="flex justify-between text-base pt-2 font-bold text-white">
                     <span>Total Amount</span>
-                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.total_amount).toLocaleString() }}</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.total_amount).toLocaleString() }}</span>
                 </div>
                 <div class="flex justify-between text-sm text-emerald-400">
                     <span>Amount Paid</span>
-                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.amount_paid).toLocaleString() }}</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.amount_paid).toLocaleString() }}</span>
                 </div>
                 <div class="flex justify-between text-sm text-red-400">
                     <span>Balance Due</span>
-                    <span>鈧眥{ Number(selectedInvoiceReq.raw.invoice_details.balance).toLocaleString() }}</span>
+                    <span>₱{{ Number(selectedInvoiceReq.raw.invoice_details.balance).toLocaleString() }}</span>
                 </div>
              </div>
           </div>
@@ -714,7 +733,7 @@
                 </div>
                 <p class="text-xs text-gray-500 uppercase">Receipt No.</p>
                 <p class="text-sm font-mono text-white mb-2">{{ selectedReceiptReq.raw.receipt_details.receipt_number }}</p>
-                <h3 class="text-2xl font-bold text-emerald-400">鈧眥{ Number(selectedReceiptReq.raw.receipt_details.total_paid).toLocaleString() }}</h3>
+                <h3 class="text-2xl font-bold text-emerald-400">₱{{ Number(selectedReceiptReq.raw.receipt_details.total_paid).toLocaleString() }}</h3>
                 <p class="text-xs text-gray-400 mt-1">Successfully Paid</p>
              </div>
 
@@ -769,6 +788,7 @@ const route = useRoute()
 const activeFilter = ref('all')
 const serviceRequests = ref([])
 const isLoading = ref(true)
+const showAllServices = ref(false)
 
 const activeClientId = ref(null)
 
@@ -823,6 +843,10 @@ watch(showSignAgreementModal, async (isOpen) => {
       initCanvas()
     }, 150)
   }
+})
+
+watch(activeFilter, () => {
+  showAllServices.value = false
 })
 
 const getPos = (e) => {
@@ -1296,6 +1320,11 @@ const statusCounts = computed(() => {
 const filteredRequests = computed(() => {
   if (activeFilter.value === 'all') return serviceRequests.value
   return serviceRequests.value.filter(request => request.status === activeFilter.value)
+})
+
+const displayedRequests = computed(() => {
+  if (showAllServices.value) return filteredRequests.value
+  return filteredRequests.value.slice(0, 3)
 })
 
 const statsCards = computed(() => [
