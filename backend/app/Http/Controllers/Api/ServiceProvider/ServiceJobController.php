@@ -80,6 +80,29 @@ class ServiceJobController extends Controller
                 $req->latest_completion = $latestCompletion;
                 $req->survey_agreement = $surveyAgreement;
 
+                // GET CLIENT EXACT LOCATION FOR LEAFLET VERIFICATION
+                $clientReq = DB::table('client_requirements')
+                    ->where('user_id', $req->client_id)
+                    ->where('status', 'approved')
+                    ->first();
+
+                if ($clientReq) {
+                    $clientAddress = DB::table('client_addresses')
+                        ->where('client_requirements_id', $clientReq->id)
+                        ->first();
+
+                    if ($clientAddress && $clientAddress->latitude && $clientAddress->longitude) {
+                        $req->target_lat = $clientAddress->latitude;
+                        $req->target_lng = $clientAddress->longitude;
+                    } else {
+                        $req->target_lat = 14.4200;
+                        $req->target_lng = 120.9600;
+                    }
+                } else {
+                    $req->target_lat = 14.4200;
+                    $req->target_lng = 120.9600;
+                }
+
                 // --- INVOICE, PWD DISCOUNT & RECEIPT LOGIC ---
                 $pwd_discount_applied = false;
                 $pwd_discount_text = null;
@@ -361,7 +384,8 @@ class ServiceJobController extends Controller
     {
         $request->validate([
             'proof_images' => 'required|array',
-            'proof_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120'
+            'proof_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
+            'is_bypassed' => 'nullable|boolean'
         ]);
 
         DB::beginTransaction();

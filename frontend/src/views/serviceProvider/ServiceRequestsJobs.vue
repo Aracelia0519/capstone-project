@@ -63,8 +63,9 @@
       </div>
     </div>
 
-    <div class="md:hidden space-y-4 mb-8">
-      <div v-for="job in filteredJobs" :key="job.id" class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+    <!-- Mobile View -->
+    <div class="md:hidden space-y-4 mb-4">
+      <div v-for="job in paginatedJobs" :key="job.id" class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
         <div class="flex justify-between items-start mb-3">
           <div class="flex items-center">
             <div class="w-8 h-8 rounded-lg bg-blue-900/20 border border-blue-800/50 flex items-center justify-center mr-2 text-blue-400">
@@ -135,7 +136,8 @@
       </div>
     </div>
 
-    <div class="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mb-8">
+    <!-- Desktop Table View -->
+    <div class="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-hidden mb-4">
       <Table>
         <TableHeader class="bg-slate-950">
           <TableRow class="border-slate-800 hover:bg-transparent">
@@ -149,7 +151,7 @@
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="job in filteredJobs" :key="job.id" class="border-slate-800 hover:bg-slate-800/50">
+          <TableRow v-for="job in paginatedJobs" :key="job.id" class="border-slate-800 hover:bg-slate-800/50">
             <TableCell>
                <div class="flex items-center">
                   <div class="w-10 h-10 rounded-lg bg-blue-900/20 border border-blue-800/50 flex items-center justify-center mr-3 text-blue-400">
@@ -238,6 +240,22 @@
           </TableRow>
         </TableBody>
       </Table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div v-if="filteredJobs.length > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 mb-8">
+      <p class="text-sm text-slate-400">
+        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, filteredJobs.length) }} of {{ filteredJobs.length }} jobs
+      </p>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" @click="prevPage" :disabled="currentPage === 1" class="bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700">
+          Previous
+        </Button>
+        <div class="text-sm text-slate-300 px-2 font-medium">Page {{ currentPage }} of {{ totalPages }}</div>
+        <Button variant="outline" size="sm" @click="nextPage" :disabled="currentPage === totalPages" class="bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700">
+          Next
+        </Button>
+      </div>
     </div>
 
     <Dialog v-model:open="showDetailsModal">
@@ -571,12 +589,38 @@
              <DialogTitle>Mark Job as Complete</DialogTitle>
           </DialogHeader>
           <div class="py-4">
-             <p class="text-sm text-gray-400 mb-4">Please upload images showing the completed work. The client will review these to finalize the job.</p>
+             <div class="mb-4">
+                <h4 class="text-sm font-bold text-slate-300 mb-2">Location Verification</h4>
+                <div id="completion-map" class="h-48 w-full rounded-xl z-0 border border-slate-700 bg-slate-800"></div>
+                
+                <div class="flex items-center justify-between mt-2">
+                   <div class="flex items-center gap-2">
+                      <span v-if="isLocating" class="text-xs text-blue-400 flex items-center">
+                         <div class="animate-spin h-3 w-3 border-2 border-blue-400 border-t-transparent rounded-full mr-1"></div> Locating...
+                      </span>
+                      <span v-else-if="isAtLocation" class="text-xs text-emerald-400 flex items-center">
+                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Verified at location
+                      </span>
+                      <span v-else-if="bypassLocation" class="text-xs text-amber-400 flex items-center">
+                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Location Bypassed
+                      </span>
+                      <span v-else class="text-xs text-red-400 flex items-center">
+                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Not at client location
+                      </span>
+                   </div>
+                   
+                   <Button v-if="!isAtLocation && !bypassLocation && !isLocating" @click="bypassLocation = true" variant="outline" size="sm" class="h-7 text-[10px] border-amber-500/50 text-amber-500 hover:bg-amber-500/10">
+                      Bypass Location (Demo)
+                   </Button>
+                </div>
+             </div>
+
+             <p class="text-sm text-gray-400 mb-4 border-t border-slate-800 pt-4">Please upload images showing the completed work. The client will review these to finalize the job.</p>
              <input type="file" ref="completionProofInput" multiple accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 mb-3 cursor-pointer" />
           </div>
-          <div class="flex justify-end gap-3 mt-4">
+          <div class="flex justify-end gap-3 mt-4 border-t border-slate-800 pt-4">
              <Button variant="ghost" @click="showCompleteModal = false" class="text-gray-400 hover:text-white">Cancel</Button>
-             <Button @click="submitCompletion" :disabled="isCompleting" class="bg-blue-600 hover:bg-blue-700 text-white">
+             <Button @click="submitCompletion" :disabled="isCompleting || (!isAtLocation && !bypassLocation) || isLocating" class="bg-blue-600 hover:bg-blue-700 text-white">
                 <span v-if="isCompleting" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
                 <span v-else>Submit & Request Approval</span>
              </Button>
@@ -758,6 +802,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+
+// Fix for missing marker icons in Leaflet via Vue/Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+  iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+  shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+});
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -785,6 +840,12 @@ const completionProofInput = ref(null)
 const isCompleting = ref(false)
 const jobToComplete = ref(null)
 
+// Map states
+const isLocating = ref(false)
+const isAtLocation = ref(false)
+const bypassLocation = ref(false)
+const mapInstance = ref(null)
+
 const isSendingReminder = ref(false)
 const isGeneratingReport = ref(false)
 
@@ -805,6 +866,136 @@ const selectedReceiptReq = ref(null)
 const signaturePad = ref(null)
 const isDrawing = ref(false)
 let ctx = null
+
+// --- PAGINATION STATE ---
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+
+const activeFilter = ref({ value: 'all', label: 'All Jobs' })
+
+const filters = [
+  { value: 'all', label: 'All Jobs' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'verifying', label: 'Verifying' }, 
+  { value: 'ongoing', label: 'Ongoing' },
+  { value: 'completion_review', label: 'Under Review' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' }
+]
+
+const jobs = ref([])
+
+const filteredJobs = computed(() => activeFilter.value.value === 'all' ? jobs.value : jobs.value.filter(job => job.status === activeFilter.value.value))
+
+// --- PAGINATION COMPUTED PROPERTIES & METHODS ---
+const totalPages = computed(() => Math.ceil(filteredJobs.value.length / itemsPerPage.value) || 1)
+
+const paginatedJobs = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredJobs.value.slice(start, end)
+})
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+// Reset pagination when filter changes
+watch(() => activeFilter.value, () => {
+  currentPage.value = 1
+})
+
+const initMap = async () => {
+   isLocating.value = true
+   isAtLocation.value = false
+   bypassLocation.value = false
+   
+   await nextTick()
+   
+   if (mapInstance.value) {
+       mapInstance.value.remove()
+       mapInstance.value = null
+   }
+
+   const targetLat = jobToComplete.value?.originalData?.target_lat || 14.4200
+   const targetLng = jobToComplete.value?.originalData?.target_lng || 120.9600
+   
+   mapInstance.value = L.map('completion-map').setView([targetLat, targetLng], 15)
+   
+   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+       attribution: '© OpenStreetMap & CARTO'
+   }).addTo(mapInstance.value)
+
+   L.circle([targetLat, targetLng], {
+       color: '#3b82f6',
+       fillColor: '#3b82f6',
+       fillOpacity: 0.2,
+       radius: 500
+   }).addTo(mapInstance.value)
+
+   L.marker([targetLat, targetLng]).addTo(mapInstance.value).bindPopup('Client Location').openPopup()
+
+   if (navigator.geolocation) {
+       navigator.geolocation.getCurrentPosition(
+           (position) => {
+               const userLat = position.coords.latitude
+               const userLng = position.coords.longitude
+               
+               const userLatLng = L.latLng(userLat, userLng)
+               const targetLatLng = L.latLng(targetLat, targetLng)
+               const distance = userLatLng.distanceTo(targetLatLng)
+
+               L.circleMarker([userLat, userLng], {
+                   radius: 8,
+                   fillColor: "#10b981",
+                   color: "#fff",
+                   weight: 2,
+                   opacity: 1,
+                   fillOpacity: 1
+               }).addTo(mapInstance.value).bindPopup('Your Current Location').openPopup()
+
+               mapInstance.value.fitBounds(L.latLngBounds([userLatLng, targetLatLng]), { padding: [30, 30] })
+
+               if (distance <= 500) {
+                   isAtLocation.value = true
+               } else {
+                   isAtLocation.value = false
+               }
+               isLocating.value = false
+           },
+           (error) => {
+               console.error("Geolocation error:", error)
+               isLocating.value = false
+           },
+           { enableHighAccuracy: true }
+       )
+   } else {
+       isLocating.value = false
+   }
+}
+
+watch(showCompleteModal, (newVal) => {
+  if (newVal) {
+    bypassLocation.value = false;
+    isAtLocation.value = false;
+    setTimeout(() => {
+      initMap();
+    }, 300);
+  } else {
+    if (mapInstance.value) {
+      mapInstance.value.remove();
+      mapInstance.value = null;
+    }
+  }
+})
 
 const openGenerateModal = () => {
     showGenerateAgreementModal.value = true
@@ -891,22 +1082,6 @@ const agreementPreviewText = computed(() => {
    return `FORMAL SURVEY AGREEMENT\n\nDate Issued: ${date}\nService Provider: [Your Name]\nClient: ${clientName}\nService Location: ${location}\n\nBy signing this agreement, the Client formally authorizes the Service Provider to enter the specified premises to conduct a comprehensive site survey. This survey is required to evaluate the scope of work, verify measurements, and confirm the feasibility of the requested service: '${serviceTitle}'.\n\nThis agreement does not commit the Client to a final contract but ensures mutual understanding and safety during the inspection phase.`;
 });
 
-
-const activeFilter = ref({ value: 'all', label: 'All Jobs' })
-
-const filters = [
-  { value: 'all', label: 'All Jobs' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'verifying', label: 'Verifying' }, 
-  { value: 'ongoing', label: 'Ongoing' },
-  { value: 'completion_review', label: 'Under Review' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' }
-]
-
-const jobs = ref([])
-
-const filteredJobs = computed(() => activeFilter.value.value === 'all' ? jobs.value : jobs.value.filter(job => job.status === activeFilter.value.value))
 
 const getInitials = (name) => {
   if (!name) return 'UN'
@@ -1193,11 +1368,16 @@ const submitCompletion = async () => {
       toast.error('Please select at least one image.')
       return
    }
+   if (!isAtLocation.value && !bypassLocation.value) {
+      toast.error('You must be at the client location or choose to bypass for this presentation.')
+      return
+   }
 
    const formData = new FormData()
    for (let i = 0; i < completionProofInput.value.files.length; i++) {
       formData.append('proof_images[]', completionProofInput.value.files[i])
    }
+   formData.append('is_bypassed', bypassLocation.value ? 1 : 0)
 
    isCompleting.value = true
    try {
