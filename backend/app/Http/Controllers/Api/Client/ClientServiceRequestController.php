@@ -8,6 +8,7 @@ use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm;
 use App\Models\ServiceProvider\ServicePaymentTransaction; 
+use App\Models\ServiceProvider\MaterialExpenseRequest;
 use App\Models\ServiceProvider\ServiceJobCompletion;
 use App\Models\ServiceProvider\ServiceReview;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
+use App\Support\MaterialExpenses;
 
 class ClientServiceRequestController extends Controller
 {
@@ -47,7 +49,7 @@ class ClientServiceRequestController extends Controller
             }
 
             $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
-            $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->latest()->first() : null;
+            $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->latest()->first() : null;
             
             if ($paymentTerm) {
                 if ($paymentTerm->proof_of_payment) {
@@ -55,7 +57,7 @@ class ClientServiceRequestController extends Controller
                     $paymentTerm->proof_of_payment_url = $baseUrl . '/storage/' . ltrim($cleanProof, '/');
                 }
 
-                $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+                $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->pluck('id');
                 $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
                     ->where('status', 'completed')
                     ->sum('amount');
@@ -109,6 +111,10 @@ class ClientServiceRequestController extends Controller
             }
             // -----------------------------------------------------------
 
+            // --- MATERIALS REIMBURSEMENT (provider-bought materials) ---
+            MaterialExpenses::attach($req, $deal, $baseUrl);
+            // -----------------------------------------------------------
+
             // --- INVOICE, PWD DISCOUNT & RECEIPT LOGIC ---
             $pwd_discount_applied = false;
             $pwd_discount_text = null;
@@ -139,6 +145,7 @@ class ClientServiceRequestController extends Controller
                     'total_amount' => $invoiceTotal,
                     'amount_paid' => $invoicePaid,
                     'balance' => $invoiceBalance,
+                    'materials_amount' => ($req->materials_summary['total_approved'] ?? 0),
                     'payment_method' => strtoupper(str_replace('_', ' ', $paymentTerm->payment_method)),
                     'status' => $paymentTerm->status
                 ];
@@ -225,6 +232,39 @@ class ClientServiceRequestController extends Controller
 
         $term = OfficialPaymentTerm::with('deal')->findOrFail($termId);
 
+        // --- MATERIALS REIMBURSEMENT TERM: one proof covers the remaining materials balance ---
+        if ($term->is_materials_term) {
+            if ($request->hasFile('proof_image')) {
+                $path = $request->file('proof_image')->store('service_payments/proofs', 'public');
+                $term->proof_of_payment = $path;
+                $term->status = 'awaiting_proof_approval';
+                $term->proof_rejection_reason = null;
+                $term->save();
+
+                $materialsPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)
+                    ->where('status', 'completed')
+                    ->sum('amount');
+                $payableAmount = max(0, (float) $term->amount - (float) $materialsPaid);
+
+                $transaction = new ServicePaymentTransaction();
+                $transaction->payment_term_id = $term->id;
+                $transaction->client_id = $term->client_id;
+                $transaction->provider_id = $term->provider_id;
+                $transaction->amount = $payableAmount;
+                $transaction->payment_method = 'on_hand';
+                $transaction->status = 'pending';
+                $transaction->save();
+
+                // Broadcast Event
+                event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
+
+                return response()->json(['success' => true, 'message' => 'Proof of payment for materials uploaded. Waiting for the Service Provider to verify.']);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Image upload failed.'], 400);
+        }
+        // ----------------------------------------------------------------------------
+
         if ($request->hasFile('proof_image')) {
             $path = $request->file('proof_image')->store('service_payments/proofs', 'public');
             $term->proof_of_payment = $path;
@@ -238,7 +278,7 @@ class ClientServiceRequestController extends Controller
             $serviceOffering = $deal->clientServiceRequest?->serviceOffering;
             $isDaily = DailyBilling::isDaily($serviceOffering);
 
-            $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+            $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->pluck('id');
             $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
                 ->where('status', 'completed')
                 ->sum('amount');
@@ -287,6 +327,24 @@ class ClientServiceRequestController extends Controller
         $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
         $amount = (float) $deal->price;
 
+        // --- MATERIALS REIMBURSEMENT TERM: pays the approved materials balance ---
+        if ($term->is_materials_term) {
+            $materialsPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)
+                ->where('status', 'completed')
+                ->sum('amount');
+            $remainingMaterials = max(0, (float) $term->amount - (float) $materialsPaid);
+
+            if ($remainingMaterials <= 0) {
+                return response()->json(['success' => false, 'message' => 'Materials are already fully paid.'], 400);
+            }
+
+            $payableAmount = $remainingMaterials;
+            $paymentName = $serviceName . ' (Materials Reimbursement)';
+
+            return $this->createGcashSession($request, $user, $term, $payableAmount, $paymentName);
+        }
+        // -------------------------------------------------------------------------
+
         // --- DAILY PRICING: each payment covers exactly ONE day fee ---
         $isDaily = DailyBilling::isDaily($deal->clientServiceRequest?->serviceOffering);
         if ($isDaily) {
@@ -303,7 +361,7 @@ class ClientServiceRequestController extends Controller
         }
         // --------------------------------------------------------------
 
-        $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+        $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->pluck('id');
         $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
             ->where('status', 'completed')
             ->sum('amount');
@@ -492,9 +550,17 @@ class ClientServiceRequestController extends Controller
             $term->load('deal.clientServiceRequest.serviceOffering');
             $isDaily = DailyBilling::isDaily($term->deal?->clientServiceRequest?->serviceOffering);
 
-            // Daily-priced services keep their term 'agreed' so the client can
-            // keep paying each day; only fixed deals flip to 'paid'.
-            $term->status = $isDaily ? 'agreed' : 'paid';
+            if ($term->is_materials_term) {
+                // Materials term: flip to 'paid' only once fully covered.
+                $materialsPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)
+                    ->where('status', 'completed')
+                    ->sum('amount');
+                $term->status = $materialsPaid >= (float) $term->amount ? 'paid' : 'agreed';
+            } else {
+                // Daily-priced services keep their term 'agreed' so the client can
+                // keep paying each day; only fixed deals flip to 'paid'.
+                $term->status = $isDaily ? 'agreed' : 'paid';
+            }
             $term->save();
 
             Storage::disk('local')->delete($filePath);
@@ -635,6 +701,104 @@ class ClientServiceRequestController extends Controller
         event(new ServiceRequestUpdated($review->client_id, $review->provider_id));
 
         return response()->json(['success' => true, 'message' => 'Your reply has been posted successfully.']);
+    }
+
+    public function approveMaterials(int $batchId)
+    {
+        try {
+            $batch = MaterialExpenseRequest::findOrFail($batchId);
+            $req = ClientServiceRequest::findOrFail($batch->client_service_request_id);
+
+            if ($req->client_id !== Auth::id()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+            if ($batch->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'This materials request was already processed.'], 400);
+            }
+
+            $batch->status = 'approved';
+            $batch->approved_at = now();
+            $batch->save();
+
+            $delta = (float) $batch->items()->sum('total_price');
+            $this->updateMaterialsPaymentTerm($req, $delta);
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($req->client_id, $req->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Materials approved. The total cost (₱' . number_format($delta, 2) . ') has been added to the payments you will make.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to approve materials.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function rejectMaterials(Request $request, int $batchId)
+    {
+        $request->validate(['rejection_reason' => 'required|string|max:500']);
+
+        try {
+            $batch = MaterialExpenseRequest::findOrFail($batchId);
+            $req = ClientServiceRequest::findOrFail($batch->client_service_request_id);
+
+            if ($req->client_id !== Auth::id()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+            }
+            if ($batch->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'This materials request was already processed.'], 400);
+            }
+
+            $batch->status = 'rejected';
+            $batch->rejection_reason = $request->rejection_reason;
+            $batch->save();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($req->client_id, $req->provider_id));
+
+            return response()->json(['success' => true, 'message' => 'Materials request rejected. The Service Provider has been notified.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to reject materials.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Rolls the approved materials total into the deal's materials payment term
+     * (same payment method as the agreed main term). Reuses an existing unpaid
+     * materials term, otherwise creates a new one.
+     */
+    private function updateMaterialsPaymentTerm(ClientServiceRequest $req, float $delta)
+    {
+        $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
+        if (!$deal || $delta <= 0) return;
+
+        $term = OfficialPaymentTerm::where('official_deal_id', $deal->id)
+            ->where('is_materials_term', true)
+            ->where('status', '!=', 'paid')
+            ->latest('id')->first();
+
+        if ($term) {
+            $term->amount = round(((float) $term->amount) + $delta, 2);
+            $term->status = 'agreed';
+            $term->save();
+            return;
+        }
+
+        $mainTerm = OfficialPaymentTerm::where('official_deal_id', $deal->id)
+            ->where('is_materials_term', false)
+            ->latest('id')->first();
+
+        OfficialPaymentTerm::create([
+            'official_deal_id' => $deal->id,
+            'provider_id' => $deal->provider_id,
+            'client_id' => $deal->client_id,
+            'payment_method' => $mainTerm?->payment_method ?? 'on_hand',
+            'payment_term' => 'Materials Reimbursement',
+            'status' => 'agreed',
+            'is_materials_term' => true,
+            'amount' => round($delta, 2)
+        ]);
     }
 
     private function saveBase64Image($base64String, $pathPrefix) {

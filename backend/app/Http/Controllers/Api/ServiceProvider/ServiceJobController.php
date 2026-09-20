@@ -8,6 +8,8 @@ use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm;
 use App\Models\ServiceProvider\ServicePaymentTransaction;
+use App\Models\ServiceProvider\MaterialExpenseRequest;
+use App\Models\ServiceProvider\MaterialExpenseItem;
 use App\Models\ServiceProvider\ServiceJobCompletion;
 use App\Models\ServiceProvider\DailyWorkLog;
 use App\Models\User;
@@ -19,6 +21,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
+use App\Support\MaterialExpenses;
 
 class ServiceJobController extends Controller
 {
@@ -35,7 +38,7 @@ class ServiceJobController extends Controller
 
             $formattedRequests = $jobRequests->map(function ($req) use ($baseUrl) {
                 $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
-                $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->latest()->first() : null;
+                $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->latest()->first() : null;
                 
                 if ($paymentTerm) {
                     if ($paymentTerm->proof_of_payment) {
@@ -43,7 +46,7 @@ class ServiceJobController extends Controller
                         $paymentTerm->proof_of_payment_url = $baseUrl . '/storage/' . ltrim($cleanProof, '/');
                     }
 
-                    $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
+                    $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->pluck('id');
                     $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
                         ->where('status', 'completed')
                         ->sum('amount');
@@ -90,6 +93,10 @@ class ServiceJobController extends Controller
                     $paymentTerm->total_paid = $dailyBilling['total_paid'];
                     $paymentTerm->balance = $dailyBilling['outstanding'];
                 }
+                // -----------------------------------------------------------
+
+                // --- MATERIALS REIMBURSEMENT (provider-bought materials) ---
+                MaterialExpenses::attach($req, $deal, $baseUrl);
                 // -----------------------------------------------------------
 
                 // GET CLIENT EXACT LOCATION FOR LEAFLET VERIFICATION
@@ -145,6 +152,7 @@ class ServiceJobController extends Controller
                         'total_amount' => $invoiceTotal,
                         'amount_paid' => $invoicePaid,
                         'balance' => $invoiceBalance,
+                        'materials_amount' => ($req->materials_summary['total_approved'] ?? 0),
                         'payment_method' => strtoupper(str_replace('_', ' ', $paymentTerm->payment_method)),
                         'status' => $paymentTerm->status
                     ];
@@ -346,9 +354,17 @@ class ServiceJobController extends Controller
             $term->load('deal.clientServiceRequest.serviceOffering');
             $isDaily = DailyBilling::isDaily($term->deal?->clientServiceRequest?->serviceOffering);
 
-            // Daily-priced services keep their term 'agreed' so the client can
-            // keep paying each day; only fixed deals flip to 'paid'.
-            $term->status = $isDaily ? 'agreed' : 'paid';
+            if ($term->is_materials_term) {
+                // Materials term: flip to 'paid' only once fully covered.
+                $materialsPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)
+                    ->where('status', 'completed')
+                    ->sum('amount');
+                $term->status = $materialsPaid >= (float) $term->amount ? 'paid' : 'agreed';
+            } else {
+                // Daily-priced services keep their term 'agreed' so the client can
+                // keep paying each day; only fixed deals flip to 'paid'.
+                $term->status = $isDaily ? 'agreed' : 'paid';
+            }
             $term->save();
 
             $transaction = ServicePaymentTransaction::where('payment_term_id', $term->id)
@@ -680,6 +696,93 @@ class ServiceJobController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to update work day.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider records a batch of materials he/she bought with his/her own
+     * money (item name, quantity, unit price each) plus an optional proof
+     * photo. Status starts 'pending' until the client approves or rejects.
+     */
+    public function addMaterials(Request $request, $id)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.item_name' => 'required|string|max:255',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'proof_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
+        ]);
+
+        try {
+            $job = ClientServiceRequest::where('provider_id', Auth::id())->findOrFail($id);
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'])) {
+                return response()->json(['success' => false, 'message' => 'Materials can only be added while the job is active.'], 400);
+            }
+
+            $proofPath = null;
+            if ($request->hasFile('proof_image')) {
+                $proofPath = $request->file('proof_image')->store('service_materials/proofs', 'public');
+            }
+
+            $batch = MaterialExpenseRequest::create([
+                'client_service_request_id' => $job->id,
+                'provider_id' => Auth::id(),
+                'proof_photo_path' => $proofPath,
+                'status' => 'pending'
+            ]);
+
+            foreach ($request->items as $item) {
+                $qty = (int) $item['quantity'];
+                $unit = (float) $item['unit_price'];
+                MaterialExpenseItem::create([
+                    'material_expense_request_id' => $batch->id,
+                    'item_name' => $item['item_name'],
+                    'quantity' => $qty,
+                    'unit_price' => round($unit, 2),
+                    'total_price' => round($qty * $unit, 2)
+                ]);
+            }
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Materials added successfully. The client must approve them before they are billed.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to add materials.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider deletes one of his/her own materials batches while it is still
+     * 'pending' (e.g. a mistake was made). Already-processed batches cannot be
+     * deleted.
+     */
+    public function deleteMaterials($batchId)
+    {
+        try {
+            $batch = MaterialExpenseRequest::findOrFail($batchId);
+            $job = ClientServiceRequest::where('provider_id', Auth::id())->findOrFail($batch->client_service_request_id);
+
+            if ($batch->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'Only pending materials requests can be deleted.'], 400);
+            }
+
+            if ($batch->proof_photo_path) {
+                Storage::disk('public')->delete($batch->proof_photo_path);
+            }
+            $batch->delete();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json(['success' => true, 'message' => 'Materials request deleted.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to delete materials.', 'error' => $e->getMessage()], 500);
         }
     }
 

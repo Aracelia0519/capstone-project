@@ -239,7 +239,7 @@
     </div>
 
     <Dialog v-model:open="isModalOpen">
-      <DialogContent class="bg-gray-900 border-gray-800 text-slate-200 sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
+      <DialogContent class="bg-gray-900 border-gray-800 text-slate-200 md:max-w-[1000px] rounded-2xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
         <div class="sticky top-0 z-10 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-5">
           <DialogTitle class="text-xl font-bold text-white flex items-center gap-2">
              <ClipboardList class="w-5 h-5 text-cyan-400" />
@@ -313,6 +313,44 @@
              <p class="text-xs text-gray-300 italic border-l-2 border-red-500/50 pl-2">"{{ selectedRequest.raw.latest_completion.rejection_reason }}"</p>
              <p class="text-xs text-gray-400 mt-2">The provider is currently working to address your feedback.</p>
            </div>
+
+           <div class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
+             <h4 class="text-sm font-bold text-blue-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+               <User class="w-4 h-4 text-blue-400" />
+               My Request Details
+             </h4>
+
+             <div class="space-y-1.5 mb-5">
+               <p class="text-[10px] text-gray-500 uppercase tracking-wider">My Notes / Instructions</p>
+               <p class="text-sm bg-gray-950 border border-gray-800 p-4 rounded-xl text-gray-300 leading-relaxed italic">
+                 "{{ selectedRequest.description || 'No additional notes provided.' }}"
+               </p>
+             </div>
+
+             <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar class="w-3 h-3 text-gray-400"/> Preferred Date</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.requestedDate }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock class="w-3 h-3 text-gray-400"/> Arrival Time</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.time_preference || 'Flexible' }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Phone class="w-3 h-3 text-gray-400"/> Contact</p>
+                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.contact_number || 'N/A' }}</p>
+               </div>
+               <div class="space-y-1">
+                 <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
+                 <Badge :class="getStatusClasses(selectedRequest.status, selectedRequest.raw.survey_agreement)" class="mt-0.5">{{ getCustomStatusLabel(selectedRequest) }}</Badge>
+               </div>
+             </div>
+
+             <div class="space-y-1.5 pt-4 border-t border-gray-800 mt-5">
+               <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin class="w-3 h-3 text-gray-400"/> Complete Address</p>
+               <p class="text-sm text-gray-300">{{ selectedRequest.raw.address || 'N/A' }}</p>
+             </div>
+           </div>
            
            <div v-if="selectedRequest.raw.payment_term" class="bg-gradient-to-br from-yellow-900/10 to-yellow-800/20 rounded-2xl p-5 border border-yellow-700/50 shadow-inner">
              <h4 class="text-sm font-bold text-yellow-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
@@ -325,6 +363,100 @@
                 <p class="text-sm font-bold text-red-400 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> Proof Rejected</p>
                 <p class="text-xs text-gray-300 mt-1">The Service Provider rejected your proof of payment: <span class="italic text-red-300">"{{ selectedRequest.raw.payment_term.proof_rejection_reason }}"</span>. This payment was NOT counted. Please settle the payment again.</p>
              </div>
+
+             <!-- ============ MATERIALS REIMBURSEMENT (provider-bought) ============ -->
+             <div v-if="selectedRequest.raw.materials?.length" class="mb-4 bg-amber-900/10 border border-amber-700/40 rounded-xl p-3 space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                   <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                      Materials Reimbursement
+                   </p>
+                   <span v-if="selectedRequest.raw.materials_summary && selectedRequest.raw.materials_summary.balance > 0" class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Balance: ₱{{ Number(selectedRequest.raw.materials_summary.balance).toLocaleString() }}</span>
+                </div>
+
+                <div v-for="batch in selectedRequest.raw.materials" :key="batch.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                   <div class="flex items-center justify-between gap-2">
+                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                      <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
+                   </div>
+
+                   <div class="space-y-1">
+                      <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
+                         <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
+                         <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
+                         <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
+                      </div>
+                   </div>
+
+                   <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
+                      <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
+                      <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
+                   </div>
+
+                   <div v-if="batch.proof_photo_url" class="mt-1">
+                      <img :src="batch.proof_photo_url" class="h-24 rounded-lg border border-slate-700 object-cover cursor-pointer" @click="openImageInNewTab(batch.proof_photo_url)" />
+                   </div>
+
+                   <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
+                   </div>
+
+                   <div v-if="batch.status === 'pending'" class="flex gap-2 pt-1">
+                      <Button @click="approveMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                         {{ isProcessingMaterials ? 'Processing...' : 'Approve' }}
+                      </Button>
+                      <Button @click="rejectMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-red-600 hover:bg-red-700 text-white font-bold h-8 text-xs flex-1">
+                         {{ isProcessingMaterials ? 'Processing...' : 'Reject' }}
+                      </Button>
+                   </div>
+                </div>
+
+                <!-- Materials payment (created when the client approves) -->
+                <div v-if="selectedRequest.raw.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedRequest.raw.materials_term.status)" class="bg-slate-950 border border-amber-700/40 rounded-lg p-3 space-y-3">
+                   <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
+                   <div class="grid grid-cols-3 gap-2">
+                      <div>
+                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                         <p class="text-sm text-white font-bold">₱{{ Number(selectedRequest.raw.materials_term.amount).toLocaleString() }}</p>
+                      </div>
+                      <div>
+                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
+                         <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.total_paid).toLocaleString() }}</p>
+                      </div>
+                      <div>
+                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
+                         <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</p>
+                      </div>
+                   </div>
+                   <p class="text-xs text-gray-400">Payment method: <span class="font-bold text-yellow-300 uppercase">{{ selectedRequest.raw.materials_term.payment_method }}</span> ({{ selectedRequest.raw.materials_term.payment_term }})</p>
+
+                   <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'gcash'" class="text-center">
+                      <Button @click="payWithGcash(selectedRequest.raw.materials_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 rounded-xl text-xs">
+                         <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                         <span v-else>Pay Materials via GCash — ₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</span>
+                      </Button>
+                   </div>
+
+                   <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'on_hand'" class="text-center">
+                      <p class="text-xs text-gray-400 mb-2">Hand the materials payment physically and upload the receipt/proof here.</p>
+                      <input type="file" ref="materialsProofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                      <Button @click="uploadMaterialsProof(selectedRequest.raw.materials_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-9 rounded-xl text-xs">
+                         <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                         <span v-else>Upload Proof for Materials</span>
+                      </Button>
+                   </div>
+
+                   <div v-if="selectedRequest.raw.materials_term.status === 'awaiting_proof_approval'" class="text-center bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
+                      <p class="text-xs font-bold text-blue-400">Proof uploaded — waiting for provider verification.</p>
+                   </div>
+
+                   <div v-if="selectedRequest.raw.materials_term.status === 'paid' && selectedRequest.raw.materials_term.balance <= 0" class="text-center">
+                      <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid.</p>
+                   </div>
+                </div>
+             </div>
+             <!-- ================================================================ -->
 
              <!-- ============ DAILY BILLING PANEL (Daily-priced services) ============ -->
              <div v-if="selectedRequest.raw.daily_billing" class="space-y-4">
@@ -619,43 +751,6 @@
               <p class="text-sm text-gray-400 italic">Custom Service Request (No predefined package selected)</p>
            </div>
 
-           <div class="space-y-5 px-1">
-             <h4 class="text-sm font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-2 uppercase tracking-wider">
-               <User class="w-4 h-4 text-blue-400" />
-               My Request Specifics
-             </h4>
-
-             <div class="space-y-1.5">
-               <p class="text-[10px] text-gray-500 uppercase tracking-wider">My Notes / Instructions</p>
-               <p class="text-sm bg-gray-950 border border-gray-800 p-4 rounded-xl text-gray-300 leading-relaxed italic">
-                 "{{ selectedRequest.description || 'No additional notes provided.' }}"
-               </p>
-             </div>
-
-             <div class="grid grid-cols-2 gap-x-4 gap-y-5">
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar class="w-3 h-3 text-gray-400"/> Preferred Date</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.requestedDate }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock class="w-3 h-3 text-gray-400"/> Arrival Time</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.time_preference || 'Flexible' }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Phone class="w-3 h-3 text-gray-400"/> Contact</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.contact_number || 'N/A' }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
-                 <Badge :class="getStatusClasses(selectedRequest.status, selectedRequest.raw.survey_agreement)" class="mt-0.5">{{ getCustomStatusLabel(selectedRequest) }}</Badge>
-               </div>
-             </div>
-
-             <div class="space-y-1.5 pt-3 border-t border-gray-800">
-               <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin class="w-3 h-3 text-gray-400"/> Complete Address</p>
-               <p class="text-sm text-gray-300">{{ selectedRequest.raw.address || 'N/A' }}</p>
-             </div>
-           </div>
            
            <div class="h-2"></div>
         </div>
@@ -920,6 +1015,74 @@ const selectedRequest = ref(null)
 const proofInput = ref(null)
 const isUploadingProof = ref(false)
 const isPaying = ref(false)
+
+const isProcessingMaterials = ref(false)
+const materialsProofInput = ref(null)
+
+const approveMaterials = async (batchId) => {
+   if (!selectedRequest.value) return
+   isProcessingMaterials.value = true
+   try {
+      const res = await api.post(`/client/services/materials/${batchId}/approve`)
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve materials.')
+   } finally {
+      isProcessingMaterials.value = false
+   }
+}
+
+const rejectMaterials = async (batchId) => {
+   if (!selectedRequest.value) return
+   const reason = window.prompt('Reason for rejecting these materials:', '')
+   if (reason === null) return
+   if (!reason.trim()) {
+      toast.error('A reason is required to reject the materials.')
+      return
+   }
+   isProcessingMaterials.value = true
+   try {
+      const res = await api.post(`/client/services/materials/${batchId}/reject`, {
+         rejection_reason: reason.trim()
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject materials.')
+   } finally {
+      isProcessingMaterials.value = false
+   }
+}
+
+const uploadMaterialsProof = async (termId) => {
+  if (!materialsProofInput.value || !materialsProofInput.value.files[0]) {
+    toast.error("Please select an image file first.")
+    return
+  }
+  const formData = new FormData()
+  formData.append('proof_image', materialsProofInput.value.files[0])
+
+  isUploadingProof.value = true
+  try {
+    const res = await api.post(`/client/services/payment-terms/${termId}/upload-proof`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if(res.data.success) {
+      toast.success(res.data.message)
+      await fetchRequests(true)
+    }
+  } catch(error) {
+    toast.error(error.response?.data?.message || "Failed to upload proof.")
+  } finally {
+    isUploadingProof.value = false
+    if(materialsProofInput.value) materialsProofInput.value.value = null
+  }
+}
 
 const isApprovingWork = ref(false)
 const showRejectModal = ref(false)

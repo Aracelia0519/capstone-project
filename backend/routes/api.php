@@ -233,6 +233,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/requests/{id}/approve-completion', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'approveCompletion']);
             Route::post('/requests/{id}/reject-completion', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'rejectCompletion']);
             
+            // NEW MATERIALS REIMBURSEMENT ROUTES (client approves/rejects provider-bought materials)
+            Route::post('/materials/{batchId}/approve', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'approveMaterials']);
+            Route::post('/materials/{batchId}/reject', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'rejectMaterials']);
+            
             // NEW: Reviews Route
             Route::post('/requests/{id}/review', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitReview']);
         });
@@ -424,6 +428,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
         Route::post('/job-requests/{id}/complete', [ServiceJobController::class, 'submitCompletion']); // NEW
         Route::post('/job-requests/{id}/daily-work-day', [ServiceJobController::class, 'markWorkDay']); // NEW: Daily billing work-day toggle
+        Route::post('/job-requests/{id}/materials', [ServiceJobController::class, 'addMaterials']); // NEW: Materials reimbursement
+        Route::delete('/job-requests/materials/{batchId}', [ServiceJobController::class, 'deleteMaterials']); // NEW: Materials reimbursement
 
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);

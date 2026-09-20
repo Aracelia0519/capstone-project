@@ -17,7 +17,14 @@ class OfficialPaymentTerm extends Model
         'payment_method',
         'payment_term',
         'status',
-        'proof_rejection_reason'
+        'proof_rejection_reason',
+        'is_materials_term',
+        'amount'
+    ];
+
+    protected $casts = [
+        'is_materials_term' => 'boolean',
+        'amount' => 'float'
     ];
 
     public function deal()

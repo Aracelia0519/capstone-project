@@ -259,13 +259,14 @@
     </div>
 
     <Dialog v-model:open="showDetailsModal">
-      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[700px] max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[1100px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <DialogTitle>Job Request Details</DialogTitle>
         </DialogHeader>
         
         <div v-if="selectedJob" class="py-4 space-y-6">
 
+          <!-- ═══════════ ALERTS ═══════════ -->
           <div v-if="selectedJob.originalData.latest_completion && selectedJob.originalData.latest_completion.status === 'rejected'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
              <h4 class="text-sm font-bold text-red-400 flex items-center gap-2 mb-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -287,6 +288,7 @@
              </div>
           </div>
 
+          <!-- ═══════════ SURVEY AGREEMENT ═══════════ -->
           <div v-if="selectedJob.status === 'pending' && selectedJob.originalData.survey_agreement" class="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-xl">
              <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-2 mb-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -329,315 +331,424 @@
              </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-5">
-             <div>
-                <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
-                <p class="text-white font-medium">{{ selectedJob.client }}</p>
+          <!-- ═══════════ REQUEST OVERVIEW ═══════════ -->
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+             <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                Request Overview
+             </h4>
+             <div class="grid grid-cols-2 gap-4">
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
+                   <p class="text-white font-medium">{{ selectedJob.client }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Status</p>
+                   <Badge variant="outline" :class="[
+                        selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
+                        selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
+                        selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                        selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
+                        selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
+                     ]">
+                        {{ getCustomStatusText(selectedJob) }}
+                     </Badge>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Preferred Date</p>
+                   <p class="text-white">{{ selectedJob.date }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Time Preference</p>
+                   <p class="text-white">{{ selectedJob.paintBrand }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Contact Details</p>
+                   <p class="text-white">{{ selectedJob.paintType }}</p>
+                </div>
              </div>
-             <div>
-                <p class="text-slate-400 text-xs uppercase mb-1">Status</p>
-                <Badge variant="outline" :class="[
-                     selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
-                     selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
-                     selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
-                     selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
-                     selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
-                  ]">
-                     {{ getCustomStatusText(selectedJob) }}
-                  </Badge>
-             </div>
-             
-             <div v-if="selectedJob.originalData.official_deal" class="col-span-2 border border-blue-800/50 bg-blue-900/10 p-4 rounded-xl mt-2">
-                 <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    Official Deal & Payment Details
-                 </h4>
-
-                 <!-- ============ DAILY BILLING PANEL (Daily-priced services) ============ -->
-                 <div v-if="selectedJob.originalData.daily_billing" class="mb-4 mt-1 space-y-4">
-                    <div class="bg-blue-900/30 border border-blue-500/40 rounded-xl p-3">
-                       <p class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-1">Daily Billing Active</p>
-                       <p class="text-xs text-gray-300">Client is billed <span class="font-bold text-white">₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</span> per day since {{ selectedJob.originalData.daily_billing.billing_started_at }} until the service is completed &amp; approved.</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
-                          <p class="text-sm text-white font-bold">{{ selectedJob.originalData.daily_billing.days_elapsed }}</p>
-                       </div>
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
-                          <p class="text-sm text-gray-300 font-bold">{{ selectedJob.originalData.daily_billing.days_exempt }}</p>
-                       </div>
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
-                          <p class="text-sm text-emerald-400 font-bold">{{ selectedJob.originalData.daily_billing.days_paid }}</p>
-                       </div>
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedJob.originalData.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
-                          <p class="text-sm text-red-400 font-bold">{{ selectedJob.originalData.daily_billing.days_outstanding }}</p>
-                       </div>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due</p>
-                          <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_due).toLocaleString() }}</p>
-                       </div>
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
-                          <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_paid).toLocaleString() }}</p>
-                       </div>
-                       <div>
-                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
-                          <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}</p>
-                       </div>
-                    </div>
-
-                    <div v-if="['ongoing', 'completion_review'].includes(selectedJob.status)" class="bg-slate-950 border border-slate-800 rounded-xl p-3">
-                       <div class="flex items-center justify-between mb-2">
-                          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Work Day Tracker</p>
-                          <button type="button" @click="workDayBypass = !workDayBypass" :class="workDayBypass ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors">
-                             {{ workDayBypass ? 'Bypass ON' : 'Bypass' }}
-                          </button>
-                       </div>
-                       <p class="text-xs text-gray-500 mb-2">Mark a day as <span class="text-red-400 font-bold">NOT worked</span> to waive the client's fee for that day. Unmarked days are treated as worked.</p>
-
-                       <!-- Bypass (presentation mode): pick ANY date and mark it worked / not worked -->
-                       <div v-if="workDayBypass" class="bg-blue-900/20 border border-blue-500/40 rounded-lg p-3 mb-3 space-y-2">
-                          <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
-                          <div class="flex items-center gap-2 flex-wrap">
-                             <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
-                             <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
-                                <span v-if="isMarkingWorkDay">Marking...</span>
-                                <span v-else>Mark Worked</span>
-                             </button>
-                             <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
-                                <span v-if="isMarkingWorkDay">Marking...</span>
-                                <span v-else>Mark Not Worked</span>
-                             </button>
-                          </div>
-                       </div>
-
-                       <div class="max-h-44 overflow-y-auto space-y-1 pr-1">
-                          <div v-for="day in getWorkDays(selectedJob.originalData.daily_billing)" :key="day.date" class="flex items-center justify-between rounded-lg px-2 py-1.5 border border-slate-800 bg-slate-900/60">
-                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-medium text-gray-300">{{ day.label }}</span>
-                                <span v-if="day.isToday" class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Today</span>
-                                <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
-                             </div>
-                             <div class="flex gap-1">
-                                <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
-                                   Worked
-                                </button>
-                                <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
-                                   Not Worked
-                                </button>
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-
-                    <div v-if="selectedJob.status === 'ongoing'" class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                       <div v-if="selectedJob.originalData.daily_billing.today_exempt" class="text-center">
-                          <p class="text-sm font-bold text-gray-400">No daily fee today</p>
-                          <p class="text-xs text-gray-500 mt-1">You marked today as not worked, so the client does not owe today's fee.</p>
-                       </div>
-                       <div v-else-if="selectedJob.originalData.daily_billing.today_paid" class="flex items-center justify-center gap-2">
-                          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                          <p class="text-sm font-bold text-emerald-400">Client settled today's daily fee</p>
-                       </div>
-                       <div v-else class="flex items-center justify-center gap-2">
-                          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                          <p class="text-sm font-bold text-amber-400">Awaiting today's daily fee of ₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</p>
-                       </div>
-                    </div>
-
-                    <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="border-t border-blue-800/30 pt-3">
-                       <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Daily Payment Proof</p>
-                       <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
-                          <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
-                       </div>
-                       <div class="flex gap-2 flex-wrap">
-                          <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
-                             <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                             <span v-else>Approve & Verify Payment</span>
-                          </Button>
-                          <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
-                             <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
-                             <span v-else>Reject Proof</span>
-                          </Button>
-                       </div>
-                    </div>
-
-                    <div v-if="selectedJob.originalData.daily_billing.payment_log.length" class="bg-slate-950 border border-slate-800 rounded-xl p-3 max-h-44 overflow-y-auto">
-                       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
-                       <div v-for="entry in selectedJob.originalData.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
-                          <div class="flex items-center gap-2">
-                             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                             <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
-                          </div>
-                          <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
-                       </div>
-                    </div>
-
-                    <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.daily_billing.days_outstanding > 0" class="border-t border-blue-800/30 pt-3">
-                       <p class="text-red-400 text-sm font-bold mb-2">Unpaid Daily Balance Action</p>
-                       <p class="text-xs text-gray-300 mb-3">{{ selectedJob.originalData.daily_billing.days_outstanding }} unpaid day(s) remaining (₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}). Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
-                       <div class="flex gap-2 flex-wrap">
-                          <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
-                             <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
-                             <span v-else>Send Email Reminder</span>
-                          </Button>
-                          <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
-                             <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
-                             <span v-else>Generate Legal Report</span>
-                          </Button>
-                          <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
-                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                             Download Legal Report (PDF)
-                          </a>
-                       </div>
-                    </div>
-                 </div>
-                 <!-- ================================================================ -->
-
-                 <template v-if="!selectedJob.originalData.daily_billing">
-                 <div class="grid grid-cols-2 gap-4">
-                     <div>
-                        <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
-                        <p class="text-emerald-400 font-bold text-lg">₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }}</p>
-                     </div>
-                     <div v-if="selectedJob.originalData.payment_term">
-                        <p class="text-slate-400 text-xs uppercase mb-1">Payment Method & Term</p>
-                        <p class="text-white text-sm uppercase font-semibold">{{ selectedJob.originalData.payment_term.payment_method.replace('_', ' ') }}</p>
-                        <p class="text-gray-300 text-xs mt-0.5">{{ selectedJob.originalData.payment_term.payment_term }}</p>
-                     </div>
-                 </div>
-
-                 <div v-if="selectedJob.originalData.payment_term" class="grid grid-cols-2 gap-4 bg-slate-950 p-3 rounded-xl border border-slate-800 mb-4 mt-3">
-                   <div>
-                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid By Client</p>
-                     <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.total_paid || 0).toLocaleString() }}</p>
-                   </div>
-                   <div>
-                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                     <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.balance || 0).toLocaleString() }}</p>
-                   </div>
-                 </div>
-
-                 <!-- Invoice PWD Discount Visibility Block -->
-                 <div v-if="selectedJob.originalData.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl mt-3">
-                     <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> PWD DISCOUNT APPLIED</p>
-                     <p class="text-xs text-gray-300 mt-1">{{ selectedJob.originalData.invoice_details.pwd_discount_text }}</p>
-                 </div>
-
-                 <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mt-4 border-t border-blue-800/30 pt-4">
-                    <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
-                    <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
-                       <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                       <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
-                          <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                          <span v-else>Approve & Verify Payment</span>
-                       </Button>
-                       <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
-                          <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
-                          <span v-else>Reject Proof</span>
-                       </Button>
-                    </div>
-                 </div>
-
-                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4 border-t border-blue-800/30 pt-3">
-                    <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">Fully Paid & Completed</Badge>
-                 </div>
-                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-3">
-                    <Badge class="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">Initial Payment Verified - Pending Balance</Badge>
-                 </div>
-                 <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4 border-t border-blue-800/30 pt-3">
-                    <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
-                 </div>
-                 
-                 <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-4">
-                     <p class="text-red-400 text-sm font-bold mb-2">Unpaid Balance Action</p>
-                     <p class="text-xs text-gray-300 mb-3">Client has not fully paid. Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
-
-                     <div class="flex gap-2 flex-wrap">
-                        <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
-                           <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
-                           <span v-else>Send Email Reminder</span>
-                        </Button>
-
-                        <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
-                           <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
-                           <span v-else>Generate Legal Report</span>
-                        </Button>
-                        
-                        <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
-                           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                           Download Legal Report (PDF)
-                        </a>
-                     </div>
-                 </div>
-                 </template>
-
-                 <!-- System Native Invoices & Receipts -->
-                 <div class="flex gap-2 flex-wrap mt-4 border-t border-blue-800/30 pt-4">
-                     <Button v-if="selectedJob.originalData.invoice_details" variant="secondary" size="sm" @click="openInvoiceModal(selectedJob)" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> View Invoice
-                     </Button>
-                     <Button v-if="selectedJob.originalData.receipt_details" variant="secondary" size="sm" @click="openReceiptModal(selectedJob)" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-4 8l6-6M5 8h.01M5 12h.01M5 16h.01M3 21l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2v-16a2 2 0 00-2-2h-14a2 2 0 00-2 2v16z"/></svg> View Receipt
-                     </Button>
-                 </div>
-             </div>
-
-             <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
-                 <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-4">Service Offering Details</h4>
-                 <div class="grid grid-cols-2 gap-4">
-                     <div>
-                        <p class="text-slate-400 text-xs uppercase mb-1">Service Category</p>
-                        <p class="text-white">{{ selectedJob.serviceDetails.category }}</p>
-                     </div>
-                     <div>
-                        <p class="text-slate-400 text-xs uppercase mb-1">Service Title</p>
-                        <p class="text-white">{{ selectedJob.serviceDetails.title }}</p>
-                     </div>
-                     <div>
-                        <p class="text-slate-400 text-xs uppercase mb-1">Service Rate</p>
-                        <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type || 'N/A' }}</p>
-                     </div>
-                     <div>
-                        <p class="text-slate-400 text-xs uppercase mb-1">Est. Duration</p>
-                        <p class="text-white">{{ selectedJob.serviceDetails.duration }}</p>
-                     </div>
-                 </div>
-             </div>
-
-             <div class="col-span-2 border-t border-slate-800 pt-4 mt-2">
-                 <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-4">Client Initial Request Info</h4>
-             </div>
-             <div class="col-span-2">
+             <div class="mt-4">
                 <p class="text-slate-400 text-xs uppercase mb-1">Complete Location</p>
-                <p class="text-white bg-slate-950 p-2 rounded-lg border border-slate-800 text-sm">{{ selectedJob.location }}</p>
+                <p class="text-white bg-slate-900 p-2 rounded-lg border border-slate-800 text-sm">{{ selectedJob.location }}</p>
              </div>
-             <div>
-                <p class="text-slate-400 text-xs uppercase mb-1">Preferred Date</p>
-                <p class="text-white">{{ selectedJob.date }}</p>
-             </div>
-             <div>
-                <p class="text-slate-400 text-xs uppercase mb-1">Time Preference</p>
-                <p class="text-white">{{ selectedJob.paintBrand }}</p>
-             </div>
-             <div>
-                <p class="text-slate-400 text-xs uppercase mb-1">Contact Details</p>
-                <p class="text-white">{{ selectedJob.paintType }}</p>
-             </div>
-             <div class="col-span-2 mt-2">
+             <div class="mt-4">
                 <p class="text-slate-400 text-xs uppercase mb-1">Client Description / Notes</p>
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
+                <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
                    {{ selectedJob.serviceDetails.description || 'No additional description provided.' }}
+                </div>
+             </div>
+          </div>
+
+          <!-- ═══════════ SERVICE OFFERING ═══════════ -->
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+             <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Service Offering Details
+             </h4>
+             <div class="grid grid-cols-2 gap-4">
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Service Category</p>
+                   <p class="text-white">{{ selectedJob.serviceDetails.category }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Service Title</p>
+                   <p class="text-white">{{ selectedJob.serviceDetails.title }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Service Rate</p>
+                   <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type || 'N/A' }}</p>
+                </div>
+                <div>
+                   <p class="text-slate-400 text-xs uppercase mb-1">Est. Duration</p>
+                   <p class="text-white">{{ selectedJob.serviceDetails.duration }}</p>
+                </div>
+             </div>
+          </div>
+
+          <!-- ═══════════ OFFICIAL DEAL & PAYMENT DETAILS ═══════════ -->
+          <div v-if="selectedJob.originalData.official_deal" class="bg-slate-950/60 border border-blue-800/50 rounded-xl p-4">
+             <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Official Deal & Payment Details
+             </h4>
+
+             <!-- Legacy (fixed-price) deal summary -->
+             <template v-if="!selectedJob.originalData.daily_billing">
+             <div class="grid grid-cols-2 gap-4">
+                 <div>
+                    <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
+                    <p class="text-emerald-400 font-bold text-lg">₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }}</p>
+                 </div>
+                 <div v-if="selectedJob.originalData.payment_term">
+                    <p class="text-slate-400 text-xs uppercase mb-1">Payment Method & Term</p>
+                    <p class="text-white text-sm uppercase font-semibold">{{ selectedJob.originalData.payment_term.payment_method.replace('_', ' ') }}</p>
+                    <p class="text-gray-300 text-xs mt-0.5">{{ selectedJob.originalData.payment_term.payment_term }}</p>
+                 </div>
+             </div>
+
+             <div v-if="selectedJob.originalData.payment_term" class="grid grid-cols-2 gap-4 bg-slate-900 p-3 rounded-xl border border-slate-800 mb-4 mt-3">
+               <div>
+                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid By Client</p>
+                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.total_paid || 0).toLocaleString() }}</p>
+               </div>
+               <div>
+                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
+                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.balance || 0).toLocaleString() }}</p>
+               </div>
+             </div>
+
+             <!-- Invoice PWD Discount Visibility Block -->
+             <div v-if="selectedJob.originalData.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl mt-3">
+                 <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> PWD DISCOUNT APPLIED</p>
+                 <p class="text-xs text-gray-300 mt-1">{{ selectedJob.originalData.invoice_details.pwd_discount_text }}</p>
+             </div>
+
+             <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mb-4 mt-4 border-t border-blue-800/30 pt-4">
+                <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
+                <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                   <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                   <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                      <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                      <span v-else>Approve & Verify Payment</span>
+                   </Button>
+                   <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                      <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                      <span v-else>Reject Proof</span>
+                   </Button>
+                </div>
+             </div>
+
+             <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4">
+                <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">Fully Paid & Completed</Badge>
+             </div>
+             <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance > 0" class="mt-4">
+                <Badge class="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">Initial Payment Verified - Pending Balance</Badge>
+             </div>
+             <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4">
+                <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
+             </div>
+
+             <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-4">
+                 <p class="text-red-400 text-sm font-bold mb-2">Unpaid Balance Action</p>
+                 <p class="text-xs text-gray-300 mb-3">Client has not fully paid. Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+
+                 <div class="flex gap-2 flex-wrap">
+                    <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                       <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                       <span v-else>Send Email Reminder</span>
+                    </Button>
+
+                    <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                       <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                       <span v-else>Generate Legal Report</span>
+                    </Button>
+
+                    <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                       Download Legal Report (PDF)
+                    </a>
+                 </div>
+             </div>
+             </template>
+
+             <!-- Daily billing panel -->
+             <div v-if="selectedJob.originalData.daily_billing" class="space-y-4">
+                <div class="bg-blue-900/30 border border-blue-500/40 rounded-xl p-3">
+                   <p class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-1">Daily Billing Active</p>
+                   <p class="text-xs text-gray-300">Client is billed <span class="font-bold text-white">₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</span> per day since {{ selectedJob.originalData.daily_billing.billing_started_at }} until the service is completed &amp; approved.</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
+                      <p class="text-sm text-white font-bold">{{ selectedJob.originalData.daily_billing.days_elapsed }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
+                      <p class="text-sm text-gray-300 font-bold">{{ selectedJob.originalData.daily_billing.days_exempt }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
+                      <p class="text-sm text-emerald-400 font-bold">{{ selectedJob.originalData.daily_billing.days_paid }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedJob.originalData.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
+                      <p class="text-sm text-red-400 font-bold">{{ selectedJob.originalData.daily_billing.days_outstanding }}</p>
+                   </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due</p>
+                      <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_due).toLocaleString() }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
+                      <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_paid).toLocaleString() }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
+                      <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}</p>
+                   </div>
+                </div>
+
+                <div v-if="['ongoing', 'completion_review'].includes(selectedJob.status)" class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                   <div class="flex items-center justify-between mb-2">
+                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Work Day Tracker</p>
+                      <button type="button" @click="workDayBypass = !workDayBypass" :class="workDayBypass ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors">
+                         {{ workDayBypass ? 'Bypass ON' : 'Bypass' }}
+                      </button>
+                   </div>
+                   <p class="text-xs text-gray-500 mb-2">Mark a day as <span class="text-red-400 font-bold">NOT worked</span> to waive the client's fee for that day. Unmarked days are treated as worked.</p>
+
+                   <!-- Bypass (presentation mode): pick ANY date and mark it worked / not worked -->
+                   <div v-if="workDayBypass" class="bg-blue-900/20 border border-blue-500/40 rounded-lg p-3 mb-3 space-y-2">
+                      <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
+                      <div class="flex items-center gap-2 flex-wrap">
+                         <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
+                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                            <span v-if="isMarkingWorkDay">Marking...</span>
+                            <span v-else>Mark Worked</span>
+                         </button>
+                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                            <span v-if="isMarkingWorkDay">Marking...</span>
+                            <span v-else>Mark Not Worked</span>
+                         </button>
+                      </div>
+                   </div>
+
+                   <div class="max-h-44 overflow-y-auto space-y-1 pr-1">
+                      <div v-for="day in getWorkDays(selectedJob.originalData.daily_billing)" :key="day.date" class="flex items-center justify-between rounded-lg px-2 py-1.5 border border-slate-800 bg-slate-900/60">
+                         <div class="flex items-center gap-2">
+                            <span class="text-xs font-medium text-gray-300">{{ day.label }}</span>
+                            <span v-if="day.isToday" class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Today</span>
+                            <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
+                         </div>
+                         <div class="flex gap-1">
+                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                               Worked
+                            </button>
+                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                               Not Worked
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.status === 'ongoing'" class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                   <div v-if="selectedJob.originalData.daily_billing.today_exempt" class="text-center">
+                      <p class="text-sm font-bold text-gray-400">No daily fee today</p>
+                      <p class="text-xs text-gray-500 mt-1">You marked today as not worked, so the client does not owe today's fee.</p>
+                   </div>
+                   <div v-else-if="selectedJob.originalData.daily_billing.today_paid" class="flex items-center justify-center gap-2">
+                      <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <p class="text-sm font-bold text-emerald-400">Client settled today's daily fee</p>
+                   </div>
+                   <div v-else class="flex items-center justify-center gap-2">
+                      <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <p class="text-sm font-bold text-amber-400">Awaiting today's daily fee of ₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</p>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="border-t border-blue-800/30 pt-3">
+                   <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Daily Payment Proof</p>
+                   <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                      <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                   </div>
+                   <div class="flex gap-2 flex-wrap">
+                      <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                         <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                         <span v-else>Approve & Verify Payment</span>
+                      </Button>
+                      <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                         <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                         <span v-else>Reject Proof</span>
+                      </Button>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.originalData.daily_billing.payment_log.length" class="bg-slate-900 border border-slate-800 rounded-xl p-3 max-h-44 overflow-y-auto">
+                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
+                   <div v-for="entry in selectedJob.originalData.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
+                      <div class="flex items-center gap-2">
+                         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                         <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
+                      </div>
+                      <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.daily_billing.days_outstanding > 0" class="border-t border-blue-800/30 pt-3">
+                   <p class="text-red-400 text-sm font-bold mb-2">Unpaid Daily Balance Action</p>
+                   <p class="text-xs text-gray-300 mb-3">{{ selectedJob.originalData.daily_billing.days_outstanding }} unpaid day(s) remaining (₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}). Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+                   <div class="flex gap-2 flex-wrap">
+                      <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                         <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                         <span v-else>Send Email Reminder</span>
+                      </Button>
+                      <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                         <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                         <span v-else>Generate Legal Report</span>
+                      </Button>
+                      <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                         Download Legal Report (PDF)
+                      </a>
+                   </div>
+                </div>
+             </div>
+
+             <!-- System Native Invoices & Receipts -->
+             <div class="flex gap-2 flex-wrap mt-4 border-t border-blue-800/30 pt-4">
+                 <Button v-if="selectedJob.originalData.invoice_details" variant="secondary" size="sm" @click="openInvoiceModal(selectedJob)" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> View Invoice
+                 </Button>
+                 <Button v-if="selectedJob.originalData.receipt_details" variant="secondary" size="sm" @click="openReceiptModal(selectedJob)" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-4 8l6-6M5 8h.01M5 12h.01M5 16h.01M3 21l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2v-16a2 2 0 00-2-2h-14a2 2 0 00-2 2v16z"/></svg> View Receipt
+                 </Button>
+             </div>
+          </div>
+
+          <!-- ═══════════ MATERIALS REIMBURSEMENT ═══════════ -->
+          <div v-if="selectedJob.originalData.official_deal" class="bg-slate-950/60 border border-amber-700/40 rounded-xl p-4">
+             <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h4 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                   Materials Reimbursement
+                </h4>
+                <Button size="sm" @click="showMaterialsForm = !showMaterialsForm" :class="showMaterialsForm ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-amber-600 hover:bg-amber-700 text-white'" class="h-8 text-xs">
+                   {{ showMaterialsForm ? 'Cancel' : '+ Add Materials' }}
+                </Button>
+             </div>
+
+             <!-- Add-materials form -->
+             <div v-if="showMaterialsForm" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-2">
+                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">New Materials Request</p>
+                <div v-for="(item, idx) in materialsItems" :key="idx" class="flex gap-2 items-center">
+                   <input v-model="item.item_name" placeholder="Material name" class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                   <input v-model.number="item.quantity" type="number" min="1" placeholder="Qty" class="w-16 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                   <input v-model.number="item.unit_price" type="number" min="0" step="0.01" placeholder="Price each" class="w-28 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                   <button type="button" @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-300 text-xs font-bold" :disabled="materialsItems.length === 1">✕</button>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                   <button type="button" @click="addMaterialRow" class="text-[10px] font-bold h-6 px-2 rounded-md bg-slate-800 text-blue-400 border border-slate-700 hover:bg-slate-700">+ Add Item</button>
+                   <input type="file" ref="materialsProofInput" accept="image/*" class="text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 cursor-pointer" />
+                </div>
+                <Button @click="submitMaterials" :disabled="isAddingMaterials" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 rounded-xl text-xs">
+                   <span v-if="isAddingMaterials" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Submitting...</span>
+                   <span v-else>Submit for Client Approval</span>
+                </Button>
+             </div>
+
+             <!-- Materials batches -->
+             <div v-if="selectedJob.originalData.materials?.length" class="space-y-2">
+                <div v-for="batch in selectedJob.originalData.materials" :key="batch.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                   <div class="flex items-center justify-between gap-2">
+                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                      <div class="flex items-center gap-2">
+                         <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
+                         <button v-if="batch.status === 'pending'" type="button" @click="deleteMaterials(batch.id)" :disabled="isDeletingMaterials" class="text-red-400 hover:text-red-300 text-xs font-bold">Delete</button>
+                      </div>
+                   </div>
+                   <div class="space-y-1">
+                      <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
+                         <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
+                         <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
+                         <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
+                      </div>
+                   </div>
+                   <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
+                      <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
+                      <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
+                   </div>
+                   <img v-if="batch.proof_photo_url" :src="batch.proof_photo_url" class="h-20 rounded-lg border border-slate-700 object-cover" />
+                   <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Materials payment term -->
+             <div v-if="selectedJob.originalData.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedJob.originalData.materials_term.status)" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-3">
+                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
+                <div class="grid grid-cols-3 gap-2">
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                      <p class="text-sm text-white font-bold">₱{{ Number(selectedJob.originalData.materials_term.amount).toLocaleString() }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
+                      <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.total_paid).toLocaleString() }}</p>
+                   </div>
+                   <div>
+                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
+                      <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.balance).toLocaleString() }}</p>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.originalData.materials_term.status === 'awaiting_proof_approval'" class="border-t border-amber-800/30 pt-3">
+                   <p class="text-yellow-400 text-xs font-bold mb-2">Client Uploaded Materials Proof</p>
+                   <div class="w-full max-w-[180px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                      <img :src="selectedJob.originalData.materials_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                   </div>
+                   <div class="flex gap-2 flex-wrap">
+                      <Button @click="approveProof(selectedJob.originalData.materials_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs">
+                         <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                         <span v-else>Approve &amp; Verify</span>
+                      </Button>
+                      <Button @click="rejectProof(selectedJob.originalData.materials_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30">
+                         <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                         <span v-else>Reject Proof</span>
+                      </Button>
+                   </div>
+                </div>
+
+                <div v-if="selectedJob.originalData.materials_term.status === 'paid' && selectedJob.originalData.materials_term.balance <= 0" class="text-center">
+                   <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid by the client.</p>
                 </div>
              </div>
           </div>
@@ -1705,6 +1816,69 @@ const getWorkDays = (billing) => {
       guard++
    }
    return days
+}
+
+// ---- Materials Reimbursement ----
+const showMaterialsForm = ref(false)
+const materialsItems = ref([{ item_name: '', quantity: 1, unit_price: null }])
+const materialsProofInput = ref(null)
+const isAddingMaterials = ref(false)
+const isDeletingMaterials = ref(false)
+
+const addMaterialRow = () => materialsItems.value.push({ item_name: '', quantity: 1, unit_price: null })
+const removeMaterialRow = (idx) => {
+   if (materialsItems.value.length > 1) materialsItems.value.splice(idx, 1)
+}
+
+const submitMaterials = async () => {
+   if (!selectedJob.value) return
+   const items = materialsItems.value.filter((it) => it.item_name && it.item_name.trim() && it.unit_price !== null && it.unit_price !== '' && Number(it.unit_price) >= 0)
+   if (!items.length) {
+      toast.error('Add at least one material with a name and price.')
+      return
+   }
+   const formData = new FormData()
+   items.forEach((it, idx) => {
+      formData.append(`items[${idx}][item_name]`, it.item_name.trim())
+      formData.append(`items[${idx}][quantity]`, Number(it.quantity) || 1)
+      formData.append(`items[${idx}][unit_price]`, Number(it.unit_price))
+   })
+   if (materialsProofInput.value && materialsProofInput.value.files && materialsProofInput.value.files[0]) {
+      formData.append('proof_image', materialsProofInput.value.files[0])
+   }
+   isAddingMaterials.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/materials`, formData, {
+         headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showMaterialsForm.value = false
+         materialsItems.value = [{ item_name: '', quantity: 1, unit_price: null }]
+         if (materialsProofInput.value) materialsProofInput.value.value = null
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add materials.')
+   } finally {
+      isAddingMaterials.value = false
+   }
+}
+
+const deleteMaterials = async (batchId) => {
+   if (!selectedJob.value || !window.confirm('Delete this materials request?')) return
+   isDeletingMaterials.value = true
+   try {
+      const res = await api.delete(`/service-provider/job-requests/materials/${batchId}`)
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete materials.')
+   } finally {
+      isDeletingMaterials.value = false
+   }
 }
 
 const sendReminder = async (termId) => {

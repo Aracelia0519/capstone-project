@@ -113,7 +113,11 @@ class DailyBilling
 
         $termIds = [];
         if ($term) {
-            $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id')->all();
+            $q = OfficialPaymentTerm::where('official_deal_id', $deal->id);
+            if (Schema::hasColumn('official_payment_terms', 'is_materials_term')) {
+                $q->where('is_materials_term', false);
+            }
+            $termIds = $q->pluck('id')->all();
         }
 
         $transactions = [];
