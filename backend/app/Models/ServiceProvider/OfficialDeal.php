@@ -22,7 +22,8 @@ class OfficialDeal extends Model
         'contact_number', 
         'address', 
         'description', 
-        'status'
+        'status',
+        'daily_billing_started_at'
     ];
 
     public function clientServiceRequest()

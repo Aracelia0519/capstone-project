@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
+use App\Support\DailyBilling;
 
 class ClientServiceRequestController extends Controller
 {
@@ -100,6 +101,14 @@ class ClientServiceRequestController extends Controller
             $req->service_review = $review;
             $req->survey_agreement = $surveyAgreement;
 
+            // --- DAILY BILLING SNAPSHOT (Daily-priced services only) ---
+            $dailyBilling = DailyBilling::snapshot($req, $deal, $paymentTerm, $baseUrl);
+            $req->daily_billing = $dailyBilling;
+            if ($dailyBilling) {
+                $req->is_daily_pricing = true;
+            }
+            // -----------------------------------------------------------
+
             // --- INVOICE, PWD DISCOUNT & RECEIPT LOGIC ---
             $pwd_discount_applied = false;
             $pwd_discount_text = null;
@@ -113,15 +122,23 @@ class ClientServiceRequestController extends Controller
             }
 
             if ($deal && $paymentTerm && in_array($paymentTerm->status, ['agreed', 'awaiting_proof_approval', 'paid'])) {
+                $invoiceTotal = $deal->price;
+                $invoicePaid = $paymentTerm->total_paid ?? 0;
+                $invoiceBalance = $paymentTerm->balance ?? 0;
+                if ($dailyBilling) {
+                    $invoiceTotal = $dailyBilling['total_due'];
+                    $invoicePaid = $dailyBilling['total_paid'];
+                    $invoiceBalance = $dailyBilling['outstanding'];
+                }
                 $req->invoice_details = [
                     'invoice_number' => 'INV-' . date('Y') . '-' . str_pad($deal->id, 5, '0', STR_PAD_LEFT),
                     'issued_date' => $paymentTerm->created_at,
                     'paid_date' => $paymentTerm->status === 'paid' ? $paymentTerm->updated_at : null,
                     'pwd_discount_applied' => $pwd_discount_applied,
                     'pwd_discount_text' => $pwd_discount_text,
-                    'total_amount' => $deal->price,
-                    'amount_paid' => $paymentTerm->total_paid ?? 0,
-                    'balance' => $paymentTerm->balance ?? 0,
+                    'total_amount' => $invoiceTotal,
+                    'amount_paid' => $invoicePaid,
+                    'balance' => $invoiceBalance,
                     'payment_method' => strtoupper(str_replace('_', ' ', $paymentTerm->payment_method)),
                     'status' => $paymentTerm->status
                 ];
@@ -211,27 +228,36 @@ class ClientServiceRequestController extends Controller
         if ($request->hasFile('proof_image')) {
             $path = $request->file('proof_image')->store('service_payments/proofs', 'public');
             $term->proof_of_payment = $path;
-            $term->status = 'awaiting_proof_approval'; 
+            $term->status = 'awaiting_proof_approval';
+            $term->proof_rejection_reason = null; // fresh attempt supersedes any previous rejection
             $term->save();
 
             $deal = $term->deal;
             $amount = (float) $deal->price;
-            
+
+            $serviceOffering = $deal->clientServiceRequest?->serviceOffering;
+            $isDaily = DailyBilling::isDaily($serviceOffering);
+
             $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
             $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
                 ->where('status', 'completed')
                 ->sum('amount');
 
-            $remainingBalance = $amount - $totalPaid;
-
-            if ($totalPaid > 0) {
-                $payableAmount = $remainingBalance;
+            if ($isDaily) {
+                // Daily-priced service: this proof covers exactly ONE day fee.
+                $payableAmount = $amount;
             } else {
-                $percentage = 100;
-                if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
-                    $percentage = (float) $matches[1];
+                $remainingBalance = $amount - $totalPaid;
+
+                if ($totalPaid > 0) {
+                    $payableAmount = $remainingBalance;
+                } else {
+                    $percentage = 100;
+                    if (preg_match('/(\d+)%/', $term->payment_term, $matches)) {
+                        $percentage = (float) $matches[1];
+                    }
+                    $payableAmount = ($amount * ($percentage / 100));
                 }
-                $payableAmount = ($amount * ($percentage / 100));
             }
 
             $transaction = new ServicePaymentTransaction();
@@ -261,6 +287,22 @@ class ClientServiceRequestController extends Controller
         $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
         $amount = (float) $deal->price;
 
+        // --- DAILY PRICING: each payment covers exactly ONE day fee ---
+        $isDaily = DailyBilling::isDaily($deal->clientServiceRequest?->serviceOffering);
+        if ($isDaily) {
+            $snapshot = DailyBilling::snapshot($deal->clientServiceRequest, $deal, $term);
+
+            if ($snapshot && $snapshot['days_outstanding'] <= 0) {
+                return response()->json(['success' => false, 'message' => 'All daily fees up to today are already settled.'], 400);
+            }
+
+            $payableAmount = $amount; // agreed deal price = daily rate
+            $paymentName = $serviceName . ' (Daily Fee' . ($snapshot ? ' - ' . $snapshot['next_due_date'] : '') . ')';
+
+            return $this->createGcashSession($request, $user, $term, $payableAmount, $paymentName);
+        }
+        // --------------------------------------------------------------
+
         $termIds = OfficialPaymentTerm::where('official_deal_id', $deal->id)->pluck('id');
         $totalPaid = ServicePaymentTransaction::whereIn('payment_term_id', $termIds)
             ->where('status', 'completed')
@@ -283,6 +325,14 @@ class ClientServiceRequestController extends Controller
             $payableAmount = ($amount * ($percentage / 100));
             $paymentName = $serviceName . ' (' . $percentage . '% Payment)';
         }
+
+        return $this->createGcashSession($request, $user, $term, $payableAmount, $paymentName);
+    }
+
+    private function createGcashSession(Request $request, $user, $term, $payableAmount, $paymentName)
+    {
+        $deal = $term->deal;
+        $serviceName = $deal->clientServiceRequest->serviceOffering->title ?? 'Custom Service';
 
         try {
             $client = new \GuzzleHttp\Client();
@@ -439,7 +489,12 @@ class ClientServiceRequestController extends Controller
                 'status' => 'completed'
             ]);
 
-            $term->status = 'paid';
+            $term->load('deal.clientServiceRequest.serviceOffering');
+            $isDaily = DailyBilling::isDaily($term->deal?->clientServiceRequest?->serviceOffering);
+
+            // Daily-priced services keep their term 'agreed' so the client can
+            // keep paying each day; only fixed deals flip to 'paid'.
+            $term->status = $isDaily ? 'agreed' : 'paid';
             $term->save();
 
             Storage::disk('local')->delete($filePath);

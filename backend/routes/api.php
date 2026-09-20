@@ -405,6 +405,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/job-requests/gcash-details', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'getGcashDetails']);
         Route::post('/job-requests/payment-terms/{termId}/approve', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'approvePaymentProof']);
+        Route::post('/job-requests/payment-terms/{termId}/reject-proof', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'rejectProof']);
 
         Route::post('/job-requests/payment-terms/{termId}/remind', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'sendPaymentReminder']);
         Route::post('/job-requests/payment-terms/{termId}/legal-report', [\App\Http\Controllers\Api\ServiceProvider\ServiceJobController::class, 'generateLegalReport']);
@@ -422,6 +423,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/job-requests/{id}/approve', [ServiceJobController::class, 'approve']);
         Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
         Route::post('/job-requests/{id}/complete', [ServiceJobController::class, 'submitCompletion']); // NEW
+        Route::post('/job-requests/{id}/daily-work-day', [ServiceJobController::class, 'markWorkDay']); // NEW: Daily billing work-day toggle
 
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);

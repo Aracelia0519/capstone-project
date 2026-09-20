@@ -12,6 +12,7 @@ use App\Events\MessageSent;
 use App\Events\Chat\MessageUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ClientChatController extends Controller
 {
@@ -256,7 +257,11 @@ class ClientChatController extends Controller
         $serviceRequest = ClientServiceRequest::findOrFail($deal->client_service_request_id);
 
         if ($request->action === 'accept') {
-            $deal->update(['status' => 'ongoing']);
+            $dealUpdateData = ['status' => 'ongoing'];
+            if (Schema::hasColumn('official_deals', 'daily_billing_started_at') && empty($deal->daily_billing_started_at)) {
+                $dealUpdateData['daily_billing_started_at'] = now();
+            }
+            $deal->update($dealUpdateData);
             $serviceRequest->update(['status' => 'ongoing']);
         } else {
             $deal->update(['status' => 'declined']);

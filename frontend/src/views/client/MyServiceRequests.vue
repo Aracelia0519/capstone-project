@@ -320,6 +320,127 @@
                Official Payment Terms
              </h4>
 
+             <!-- Proof-of-payment rejection notice (any billing mode) -->
+             <div v-if="selectedRequest.raw.payment_term?.proof_rejection_reason" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
+                <p class="text-sm font-bold text-red-400 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> Proof Rejected</p>
+                <p class="text-xs text-gray-300 mt-1">The Service Provider rejected your proof of payment: <span class="italic text-red-300">"{{ selectedRequest.raw.payment_term.proof_rejection_reason }}"</span>. This payment was NOT counted. Please settle the payment again.</p>
+             </div>
+
+             <!-- ============ DAILY BILLING PANEL (Daily-priced services) ============ -->
+             <div v-if="selectedRequest.raw.daily_billing" class="space-y-4">
+               <div class="bg-blue-900/20 border border-blue-500/40 rounded-xl p-3 flex items-start gap-3">
+                 <Calendar class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                 <div>
+                   <p class="text-sm font-bold text-blue-300 uppercase tracking-wider">Daily Billing Active</p>
+                   <p class="text-xs text-gray-300 mt-1">
+                     You pay <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
+                     for every day the provider works (counting from {{ selectedRequest.raw.daily_billing.billing_started_at }}).
+                     Days the provider marks as <span class="font-bold text-gray-100">not worked</span> are free.
+                   </p>
+                 </div>
+               </div>
+
+               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
+                   <p class="text-sm text-white font-bold">{{ selectedRequest.raw.daily_billing.days_elapsed }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
+                   <p class="text-sm text-gray-300 font-bold">{{ selectedRequest.raw.daily_billing.days_exempt }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
+                   <p class="text-sm text-emerald-400 font-bold">{{ selectedRequest.raw.daily_billing.days_paid }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
+                   <p class="text-sm text-red-400 font-bold">{{ selectedRequest.raw.daily_billing.days_outstanding }}</p>
+                 </div>
+               </div>
+
+               <div class="grid grid-cols-2 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due So Far</p>
+                   <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_due).toLocaleString() }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
+                   <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_paid).toLocaleString() }}</p>
+                 </div>
+               </div>
+
+               <div v-if="selectedRequest.raw.daily_billing.payment_log.length" class="bg-gray-900/60 border border-gray-800 rounded-xl p-3 max-h-44 overflow-y-auto">
+                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
+                 <div v-for="entry in selectedRequest.raw.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-gray-800/60 last:border-0">
+                   <div class="flex items-center gap-2">
+                     <CheckCircle2 class="w-4 h-4 text-emerald-400" />
+                     <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
+                   </div>
+                   <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
+                 </div>
+               </div>
+
+               <template v-if="selectedRequest.status === 'ongoing' && selectedRequest.raw.payment_term.status === 'agreed'">
+                 <div v-if="selectedRequest.raw.daily_billing.today_exempt" class="bg-gray-800/60 border border-gray-600/50 rounded-xl p-3 text-center">
+                   <p class="text-sm font-bold text-gray-300">No payment due today</p>
+                   <p class="text-xs text-gray-400 mt-1">The Service Provider marked today as not worked, so today is free of charge.</p>
+                 </div>
+                 <div v-else-if="selectedRequest.raw.daily_billing.today_paid" class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-center gap-2">
+                   <CheckCircle2 class="w-5 h-5 text-emerald-400" />
+                   <p class="text-sm font-bold text-emerald-400">Today's daily fee is settled</p>
+                 </div>
+                 <div v-else>
+                   <p class="text-xs text-gray-400 mb-3 text-center">
+                     Today's fee of <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
+                     (due {{ selectedRequest.raw.daily_billing.next_due_date }}) is pending settlement.
+                   </p>
+                   <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-1">
+                     <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
+                       <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                       <span v-else>Pay Today's Daily Fee via GCash</span>
+                     </Button>
+                   </div>
+                   <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-1">
+                     <p class="text-xs text-gray-400 mb-2 text-center">Hand the daily payment physically, then upload the receipt/proof below.</p>
+                     <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                     <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
+                       <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                       <span v-else>Upload Proof of Daily Payment</span>
+                     </Button>
+                   </div>
+                 </div>
+               </template>
+
+               <div v-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl text-center">
+                 <p class="text-sm font-bold text-blue-400">Daily Proof Uploaded</p>
+                 <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify today's payment.</p>
+               </div>
+
+               <div v-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
+                 Awaiting your agreement to the payment terms in the chat section.
+               </div>
+
+               <div v-if="selectedRequest.status === 'completion_review'" class="bg-pink-900/20 border border-pink-500/30 rounded-xl p-3 text-center">
+                 <p class="text-sm font-bold text-pink-400">Service complete — awaiting your approval</p>
+                 <p class="text-xs text-gray-300 mt-1">No new daily fees will accrue. Any unpaid days above remain due.</p>
+               </div>
+
+               <template v-if="selectedRequest.status === 'completed'">
+                 <div class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 text-center">
+                   <CheckCircle2 class="w-5 h-5 text-emerald-400 mx-auto mb-1" />
+                   <p class="text-sm font-bold text-emerald-400">Service completed &amp; approved</p>
+                 </div>
+                 <div v-if="selectedRequest.raw.daily_billing.days_outstanding > 0" class="bg-amber-900/30 border border-amber-500/50 rounded-xl p-3 text-center">
+                   <AlertCircle class="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                   <p class="text-sm font-bold text-amber-400">{{ selectedRequest.raw.daily_billing.days_outstanding }} unpaid day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }} (₱{{ Number(selectedRequest.raw.daily_billing.outstanding).toLocaleString() }})</p>
+                   <p class="text-xs text-gray-300 mt-1">Please settle the outstanding amount with your provider.</p>
+                 </div>
+               </template>
+             </div>
+             <!-- ================================================================ -->
+
+             <template v-if="!selectedRequest.raw.daily_billing">
              <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800 mb-4">
                <div>
                  <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Method</p>
@@ -407,6 +528,7 @@
              <div v-else-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
                 Awaiting your agreement in the chat section.
              </div>
+             </template>
            </div>
 
            <div v-if="selectedRequest.raw.service_review" class="bg-gradient-to-br from-amber-900/10 to-amber-800/20 border border-amber-800/30 p-5 rounded-2xl shadow-inner">

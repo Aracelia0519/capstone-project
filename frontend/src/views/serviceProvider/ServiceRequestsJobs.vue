@@ -352,6 +352,157 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     Official Deal & Payment Details
                  </h4>
+
+                 <!-- ============ DAILY BILLING PANEL (Daily-priced services) ============ -->
+                 <div v-if="selectedJob.originalData.daily_billing" class="mb-4 mt-1 space-y-4">
+                    <div class="bg-blue-900/30 border border-blue-500/40 rounded-xl p-3">
+                       <p class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-1">Daily Billing Active</p>
+                       <p class="text-xs text-gray-300">Client is billed <span class="font-bold text-white">₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</span> per day since {{ selectedJob.originalData.daily_billing.billing_started_at }} until the service is completed &amp; approved.</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
+                          <p class="text-sm text-white font-bold">{{ selectedJob.originalData.daily_billing.days_elapsed }}</p>
+                       </div>
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
+                          <p class="text-sm text-gray-300 font-bold">{{ selectedJob.originalData.daily_billing.days_exempt }}</p>
+                       </div>
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
+                          <p class="text-sm text-emerald-400 font-bold">{{ selectedJob.originalData.daily_billing.days_paid }}</p>
+                       </div>
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedJob.originalData.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
+                          <p class="text-sm text-red-400 font-bold">{{ selectedJob.originalData.daily_billing.days_outstanding }}</p>
+                       </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due</p>
+                          <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_due).toLocaleString() }}</p>
+                       </div>
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
+                          <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_paid).toLocaleString() }}</p>
+                       </div>
+                       <div>
+                          <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
+                          <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}</p>
+                       </div>
+                    </div>
+
+                    <div v-if="['ongoing', 'completion_review'].includes(selectedJob.status)" class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                       <div class="flex items-center justify-between mb-2">
+                          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Work Day Tracker</p>
+                          <button type="button" @click="workDayBypass = !workDayBypass" :class="workDayBypass ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors">
+                             {{ workDayBypass ? 'Bypass ON' : 'Bypass' }}
+                          </button>
+                       </div>
+                       <p class="text-xs text-gray-500 mb-2">Mark a day as <span class="text-red-400 font-bold">NOT worked</span> to waive the client's fee for that day. Unmarked days are treated as worked.</p>
+
+                       <!-- Bypass (presentation mode): pick ANY date and mark it worked / not worked -->
+                       <div v-if="workDayBypass" class="bg-blue-900/20 border border-blue-500/40 rounded-lg p-3 mb-3 space-y-2">
+                          <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
+                          <div class="flex items-center gap-2 flex-wrap">
+                             <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
+                             <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                                <span v-if="isMarkingWorkDay">Marking...</span>
+                                <span v-else>Mark Worked</span>
+                             </button>
+                             <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                                <span v-if="isMarkingWorkDay">Marking...</span>
+                                <span v-else>Mark Not Worked</span>
+                             </button>
+                          </div>
+                       </div>
+
+                       <div class="max-h-44 overflow-y-auto space-y-1 pr-1">
+                          <div v-for="day in getWorkDays(selectedJob.originalData.daily_billing)" :key="day.date" class="flex items-center justify-between rounded-lg px-2 py-1.5 border border-slate-800 bg-slate-900/60">
+                             <div class="flex items-center gap-2">
+                                <span class="text-xs font-medium text-gray-300">{{ day.label }}</span>
+                                <span v-if="day.isToday" class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Today</span>
+                                <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
+                             </div>
+                             <div class="flex gap-1">
+                                <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                                   Worked
+                                </button>
+                                <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                                   Not Worked
+                                </button>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div v-if="selectedJob.status === 'ongoing'" class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                       <div v-if="selectedJob.originalData.daily_billing.today_exempt" class="text-center">
+                          <p class="text-sm font-bold text-gray-400">No daily fee today</p>
+                          <p class="text-xs text-gray-500 mt-1">You marked today as not worked, so the client does not owe today's fee.</p>
+                       </div>
+                       <div v-else-if="selectedJob.originalData.daily_billing.today_paid" class="flex items-center justify-center gap-2">
+                          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          <p class="text-sm font-bold text-emerald-400">Client settled today's daily fee</p>
+                       </div>
+                       <div v-else class="flex items-center justify-center gap-2">
+                          <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                          <p class="text-sm font-bold text-amber-400">Awaiting today's daily fee of ₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</p>
+                       </div>
+                    </div>
+
+                    <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="border-t border-blue-800/30 pt-3">
+                       <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Daily Payment Proof</p>
+                       <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                          <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                       </div>
+                       <div class="flex gap-2 flex-wrap">
+                          <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                             <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                             <span v-else>Approve & Verify Payment</span>
+                          </Button>
+                          <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                             <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                             <span v-else>Reject Proof</span>
+                          </Button>
+                       </div>
+                    </div>
+
+                    <div v-if="selectedJob.originalData.daily_billing.payment_log.length" class="bg-slate-950 border border-slate-800 rounded-xl p-3 max-h-44 overflow-y-auto">
+                       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
+                       <div v-for="entry in selectedJob.originalData.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
+                          <div class="flex items-center gap-2">
+                             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                             <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
+                          </div>
+                          <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
+                       </div>
+                    </div>
+
+                    <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.daily_billing.days_outstanding > 0" class="border-t border-blue-800/30 pt-3">
+                       <p class="text-red-400 text-sm font-bold mb-2">Unpaid Daily Balance Action</p>
+                       <p class="text-xs text-gray-300 mb-3">{{ selectedJob.originalData.daily_billing.days_outstanding }} unpaid day(s) remaining (₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}). Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+                       <div class="flex gap-2 flex-wrap">
+                          <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                             <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                             <span v-else>Send Email Reminder</span>
+                          </Button>
+                          <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                             <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                             <span v-else>Generate Legal Report</span>
+                          </Button>
+                          <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                             Download Legal Report (PDF)
+                          </a>
+                       </div>
+                    </div>
+                 </div>
+                 <!-- ================================================================ -->
+
+                 <template v-if="!selectedJob.originalData.daily_billing">
                  <div class="grid grid-cols-2 gap-4">
                      <div>
                         <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
@@ -386,10 +537,16 @@
                     <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
                        <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
                     </div>
-                    <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
-                       <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                       <span v-else>Approve & Verify Payment</span>
-                    </Button>
+                    <div class="flex gap-2 flex-wrap">
+                       <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                          <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                          <span v-else>Approve & Verify Payment</span>
+                       </Button>
+                       <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                          <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                          <span v-else>Reject Proof</span>
+                       </Button>
+                    </div>
                  </div>
 
                  <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4 border-t border-blue-800/30 pt-3">
@@ -423,6 +580,7 @@
                         </a>
                      </div>
                  </div>
+                 </template>
 
                  <!-- System Native Invoices & Receipts -->
                  <div class="flex gap-2 flex-wrap mt-4 border-t border-blue-800/30 pt-4">
@@ -1473,6 +1631,80 @@ const approveProof = async (termId) => {
    } finally {
       isApprovingProof.value = false
    }
+}
+
+const isRejectingProof = ref(false)
+const rejectProof = async (termId) => {
+   if (!termId) return
+   const reason = window.prompt('Reason for rejecting this proof of payment:', '')
+   if (reason === null) return
+   if (!reason.trim()) {
+      toast.error('A reason is required to reject the proof.')
+      return
+   }
+   isRejectingProof.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/reject-proof`, { reason: reason.trim() })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject proof.')
+   } finally {
+      isRejectingProof.value = false
+   }
+}
+
+const isMarkingWorkDay = ref(false)
+const workDayBypass = ref(false) // presentation mode: lets you mark ANY date
+const workDayBypassDate = ref(new Date().toISOString().slice(0, 10))
+const markWorkDay = async (reqId, workDate, worked, bypass = false) => {
+   if (!reqId || !workDate || isMarkingWorkDay.value) return
+   isMarkingWorkDay.value = true
+   try {
+      const res = await api.post(`/service-provider/job-requests/${reqId}/daily-work-day`, { work_date: workDate, worked, bypass })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update work day.')
+   } finally {
+      isMarkingWorkDay.value = false
+   }
+}
+
+const markBypassDay = async (reqId, worked) => {
+   if (!workDayBypassDate.value) {
+      toast.error('Please pick a date first.')
+      return
+   }
+   await markWorkDay(reqId, workDayBypassDate.value, worked, true)
+}
+
+const getWorkDays = (billing) => {
+   if (!billing || !billing.billing_started_at) return []
+   const workedMap = {}
+   ;(billing.work_log || []).forEach((w) => { workedMap[w.date] = w.worked })
+   const start = new Date(billing.billing_started_at + 'T00:00:00')
+   const today = new Date()
+   today.setHours(0, 0, 0, 0)
+   const cursor = new Date(start)
+   const days = []
+   let guard = 0
+   while (cursor <= today && guard < 400) {
+      const iso = cursor.toISOString().slice(0, 10)
+      days.push({
+         date: iso,
+         label: cursor.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+         worked: workedMap[iso] ?? null,
+         isToday: cursor.getTime() === today.getTime(),
+      })
+      cursor.setDate(cursor.getDate() + 1)
+      guard++
+   }
+   return days
 }
 
 const sendReminder = async (termId) => {

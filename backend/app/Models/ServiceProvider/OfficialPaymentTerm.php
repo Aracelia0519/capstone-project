@@ -16,7 +16,8 @@ class OfficialPaymentTerm extends Model
         'client_id',
         'payment_method',
         'payment_term',
-        'status'
+        'status',
+        'proof_rejection_reason'
     ];
 
     public function deal()

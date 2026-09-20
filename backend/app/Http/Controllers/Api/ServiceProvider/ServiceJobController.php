@@ -9,13 +9,16 @@ use App\Models\ServiceProvider\OfficialDeal;
 use App\Models\ServiceProvider\OfficialPaymentTerm;
 use App\Models\ServiceProvider\ServicePaymentTransaction;
 use App\Models\ServiceProvider\ServiceJobCompletion;
+use App\Models\ServiceProvider\DailyWorkLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
+use App\Support\DailyBilling;
 
 class ServiceJobController extends Controller
 {
@@ -80,6 +83,15 @@ class ServiceJobController extends Controller
                 $req->latest_completion = $latestCompletion;
                 $req->survey_agreement = $surveyAgreement;
 
+                // --- DAILY BILLING SNAPSHOT (Daily-priced services only) ---
+                $dailyBilling = DailyBilling::snapshot($req, $deal, $paymentTerm, $baseUrl);
+                $req->daily_billing = $dailyBilling;
+                if ($dailyBilling && $paymentTerm) {
+                    $paymentTerm->total_paid = $dailyBilling['total_paid'];
+                    $paymentTerm->balance = $dailyBilling['outstanding'];
+                }
+                // -----------------------------------------------------------
+
                 // GET CLIENT EXACT LOCATION FOR LEAFLET VERIFICATION
                 $clientReq = DB::table('client_requirements')
                     ->where('user_id', $req->client_id)
@@ -116,15 +128,23 @@ class ServiceJobController extends Controller
                 }
 
                 if ($deal && $paymentTerm && in_array($paymentTerm->status, ['agreed', 'awaiting_proof_approval', 'paid'])) {
+                    $invoiceTotal = $deal->price;
+                    $invoicePaid = $paymentTerm->total_paid ?? 0;
+                    $invoiceBalance = $paymentTerm->balance ?? 0;
+                    if ($dailyBilling) {
+                        $invoiceTotal = $dailyBilling['total_due'];
+                        $invoicePaid = $dailyBilling['total_paid'];
+                        $invoiceBalance = $dailyBilling['outstanding'];
+                    }
                     $req->invoice_details = [
                         'invoice_number' => 'INV-' . date('Y') . '-' . str_pad($deal->id, 5, '0', STR_PAD_LEFT),
                         'issued_date' => $paymentTerm->created_at,
                         'paid_date' => $paymentTerm->status === 'paid' ? $paymentTerm->updated_at : null,
                         'pwd_discount_applied' => $pwd_discount_applied,
                         'pwd_discount_text' => $pwd_discount_text,
-                        'total_amount' => $deal->price,
-                        'amount_paid' => $paymentTerm->total_paid ?? 0,
-                        'balance' => $paymentTerm->balance ?? 0,
+                        'total_amount' => $invoiceTotal,
+                        'amount_paid' => $invoicePaid,
+                        'balance' => $invoiceBalance,
                         'payment_method' => strtoupper(str_replace('_', ' ', $paymentTerm->payment_method)),
                         'status' => $paymentTerm->status
                     ];
@@ -323,7 +343,12 @@ class ServiceJobController extends Controller
     {
         try {
             $term = OfficialPaymentTerm::with('deal')->findOrFail($termId);
-            $term->status = 'paid';
+            $term->load('deal.clientServiceRequest.serviceOffering');
+            $isDaily = DailyBilling::isDaily($term->deal?->clientServiceRequest?->serviceOffering);
+
+            // Daily-priced services keep their term 'agreed' so the client can
+            // keep paying each day; only fixed deals flip to 'paid'.
+            $term->status = $isDaily ? 'agreed' : 'paid';
             $term->save();
 
             $transaction = ServicePaymentTransaction::where('payment_term_id', $term->id)
@@ -434,6 +459,16 @@ class ServiceJobController extends Controller
             $totalPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)->where('status', 'completed')->sum('amount');
             $balance = max(0, $term->deal->price - $totalPaid);
 
+            // Daily-priced services: outstanding = accrued days not yet paid
+            $serviceOffering = $term->deal->clientServiceRequest->serviceOffering ?? null;
+            if (DailyBilling::isDaily($serviceOffering)) {
+                $snapshot = DailyBilling::snapshot($term->deal->clientServiceRequest, $term->deal, $term);
+                if ($snapshot) {
+                    $totalPaid = $snapshot['total_paid'];
+                    $balance = $snapshot['outstanding'];
+                }
+            }
+
             $htmlContent = "
                 <div style='font-family: sans-serif; line-height: 1.6;'>
                     <h3>Hello {$client->first_name},</h3>
@@ -468,6 +503,16 @@ class ServiceJobController extends Controller
             
             $totalPaid = ServicePaymentTransaction::where('payment_term_id', $term->id)->where('status', 'completed')->sum('amount');
             $balance = max(0, $term->deal->price - $totalPaid);
+
+            // Daily-priced services: outstanding = accrued days not yet paid
+            $serviceOffering = $term->deal->clientServiceRequest->serviceOffering ?? null;
+            if (DailyBilling::isDaily($serviceOffering)) {
+                $snapshot = DailyBilling::snapshot($term->deal->clientServiceRequest, $term->deal, $term);
+                if ($snapshot) {
+                    $totalPaid = $snapshot['total_paid'];
+                    $balance = $snapshot['outstanding'];
+                }
+            }
 
             $htmlContent = "
             <html>
@@ -577,6 +622,111 @@ class ServiceJobController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to generate report.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider marks a work day for a Daily-priced job.
+     * worked = false means the provider did NOT work that day, so the
+     * client is not charged for it.
+     */
+    public function markWorkDay(Request $request, $id)
+    {
+        $request->validate([
+            'work_date' => 'required|date_format:Y-m-d',
+            'worked' => 'required|boolean',
+            'bypass' => 'sometimes|boolean'
+        ]);
+
+        try {
+            $providerId = Auth::id();
+            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'])) {
+                return response()->json(['success' => false, 'message' => 'Work days can only be marked while the job is active.'], 400);
+            }
+
+            $deal = OfficialDeal::where('client_service_request_id', $job->id)->latest()->first();
+            $start = $deal ? DailyBilling::billingStart($deal) : null;
+            if (!$start) {
+                return response()->json(['success' => false, 'message' => 'Daily billing has not started for this job.'], 400);
+            }
+
+            $workDate = Carbon::parse($request->work_date);
+            // `bypass` is a presentation/demo aid: when set, the billing-window
+            // date check is skipped so ANY date can be marked during a demo.
+            if (!$request->boolean('bypass')) {
+                if ($workDate->lt($start->copy()->startOfDay()) || $workDate->gt(Carbon::now())) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Work day must be between ' . $start->copy()->startOfDay()->toDateString() . ' and today.'
+                    ], 400);
+                }
+            }
+
+            DailyWorkLog::updateOrCreate(
+                ['client_service_request_id' => $job->id, 'work_date' => $request->work_date],
+                ['worked' => (bool) $request->worked]
+            );
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => $request->worked
+                    ? 'Day marked as worked. The client is charged for this day.'
+                    : 'Day marked as NOT worked. The client is not charged for this day.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update work day.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider rejects a Client's on-hand proof of payment (e.g. the client
+     * uploaded something but never actually paid). The pending transaction is
+     * marked failed so the day is NOT counted as paid, and the client is
+     * shown the rejection reason.
+     */
+    public function rejectProof(Request $request, $termId)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+
+        try {
+            $term = OfficialPaymentTerm::with('deal')
+                ->where('provider_id', Auth::id())
+                ->findOrFail($termId);
+
+            if ($term->status !== 'awaiting_proof_approval') {
+                return response()->json(['success' => false, 'message' => 'There is no pending proof to reject.'], 400);
+            }
+
+            $transaction = ServicePaymentTransaction::where('payment_term_id', $term->id)
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+
+            if ($transaction) {
+                $transaction->status = 'failed';
+                $transaction->save();
+            }
+
+            $term->status = 'agreed';
+            $term->proof_rejection_reason = $request->reason;
+            $term->save();
+
+            // Broadcast Event
+            event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Proof rejected. The client has been notified and this payment was NOT counted.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to reject proof.', 'error' => $e->getMessage()], 500);
         }
     }
 

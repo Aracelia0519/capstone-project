@@ -144,7 +144,7 @@
                 <SelectTrigger class="bg-gray-800 border-gray-600 text-white rounded-xl">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
-                <SelectContent class="bg-gray-800 border-gray-700 text-white rounded-xl">
+                <SelectContent class="bg-gray-800 border-gray-700 text-white rounded-xl z-[10020]">
                   <SelectItem v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</SelectItem>
                 </SelectContent>
               </Select>
@@ -173,10 +173,11 @@
                 <SelectTrigger class="bg-gray-800 border-gray-600 text-white rounded-xl">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
-                <SelectContent class="bg-gray-800 border-gray-700 text-white rounded-xl">
+                <SelectContent class="bg-gray-800 border-gray-700 text-white rounded-xl z-[10020]">
                   <SelectItem value="Base Rate">Base Rate</SelectItem>
                   <SelectItem value="Starting Price">Starting Price</SelectItem>
                   <SelectItem value="Per Sqm">Per Sqm</SelectItem>
+                  <SelectItem value="Daily">Daily</SelectItem>
                   <SelectItem value="Fixed Price">Fixed Price</SelectItem>
                 </SelectContent>
               </Select>
