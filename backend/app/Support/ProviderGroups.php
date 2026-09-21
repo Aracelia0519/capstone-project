@@ -14,6 +14,7 @@ use App\Models\ServiceProvider\ProviderGroupServiceApproval;
 use App\Models\ServiceProvider\ProviderGroupShareApproval;
 use App\Models\ServiceProvider\ProviderGroupShareRequest;
 use App\Models\User;
+use App\Events\ServiceProvider\ProviderGroupJobUpdated;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -419,7 +420,9 @@ class ProviderGroups
             return ['locked' => false, 'reason' => 'total_not_100', 'total' => $total];
         }
 
-        // Lock it in.
+        // Lock it in + broadcast to every accepted member AND the client(s)
+        // who own this deal, so both my-requests and the ecommerce job view
+        // refetch without a reload — mirrors the partnership Pusher flow.
         DB::transaction(function () use ($deal, $approved) {
             ProviderGroupDealAllocation::where('official_deal_id', $deal->id)->delete();
             foreach ($approved as $p) {
@@ -431,6 +434,19 @@ class ProviderGroups
                 ]);
             }
         });
+
+        event(new ProviderGroupJobUpdated(
+            (int) $deal->group_id,
+            'official_deal',
+            (int) $deal->id,
+            'split_locked',
+            [
+                'group_id' => (int) $deal->group_id,
+                'request_id' => $deal->client_service_request_id ?? null,
+                'type' => 'split_locked',
+                'message' => 'Revenue split locked at exactly 100%. Everyone can now see the team breakdown live.'
+            ]
+        ));
 
         return ['locked' => true, 'total' => $total];
     }

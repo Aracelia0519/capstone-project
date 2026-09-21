@@ -37,10 +37,10 @@
           <div 
             v-else
             v-for="contact in filteredContacts" 
-            :key="contact.id"
+            :key="contact.key || contact.id"
             @click="selectContact(contact)"
             class="flex items-center p-3 cursor-pointer transition-colors border-b border-slate-800/50 hover:bg-slate-800/50 w-full"
-            :class="{ 'bg-slate-800/80 border-l-2 border-l-blue-500': activeContact?.id === contact.id }"
+            :class="{ 'bg-slate-800/80 border-l-2 border-l-blue-500': (activeContact?.key || activeContact?.id) === (contact.key || contact.id) }"
           >
             <div class="relative mr-3 shrink-0">
               <Avatar class="h-10 w-10 md:h-12 md:w-12 border border-slate-700">
@@ -53,7 +53,10 @@
             
             <div class="flex-1 min-w-0">
               <div class="flex justify-between items-baseline mb-0.5 md:mb-1">
-                <h3 class="text-sm font-semibold text-slate-200 truncate pr-2">{{ contact.name }}</h3>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <h3 class="text-sm font-semibold text-slate-200 truncate">{{ contact.name }}</h3>
+                  <Badge v-if="contact.is_group" class="bg-purple-600/20 text-purple-300 border border-purple-500/30 text-[8px] h-4 px-1.5 rounded-full shrink-0">GROUP</Badge>
+                </div>
                 <span class="text-[10px] md:text-xs text-slate-500 shrink-0">{{ contact.time || contact.date }}</span>
               </div>
               <div class="flex justify-between items-center">
@@ -87,8 +90,11 @@
             </div>
             
             <div class="min-w-0 pr-2">
-              <h2 class="text-sm md:text-base font-bold text-white leading-tight truncate">{{ activeContact.name }}</h2>
-              <p class="text-[10px] md:text-xs text-slate-400 truncate">{{ activeContact.jobTitle || activeContact.service_title }}</p>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <h2 class="text-sm md:text-base font-bold text-white leading-tight truncate">{{ activeContact.name }}</h2>
+                <Badge v-if="activeContact.is_group" class="bg-purple-600/20 text-purple-300 border border-purple-500/30 text-[8px] h-4 px-1.5 rounded-full shrink-0">GROUP</Badge>
+              </div>
+              <p class="text-[10px] md:text-xs text-slate-400 truncate">{{ activeContact.is_group ? (activeContact.member_count ? activeContact.member_count + ' members' : 'Team chat') : (activeContact.jobTitle || activeContact.service_title) }}</p>
             </div>
           </div>
           
@@ -117,11 +123,13 @@
           >
             <Avatar v-if="message.sender !== 'me'" class="h-6 w-6 md:h-8 md:w-8 mr-1.5 md:mr-2 shrink-0 self-end mb-1 border border-slate-700 hidden sm:flex">
                <AvatarFallback class="bg-gradient-to-br from-indigo-600 to-cyan-600 text-white text-[10px] md:text-xs">
-                 {{ getInitials(activeContact.name) }}
+                 {{ getInitials(message.sender_name || activeContact.name) }}
                </AvatarFallback>
             </Avatar>
 
             <div class="flex flex-col max-w-[95%] sm:max-w-[85%] md:max-w-[75%] relative group/msg" :class="message.sender === 'me' ? 'items-end' : 'items-start'">
+              
+              <span v-if="activeContact.is_group && message.sender !== 'me' && message.sender_name" class="text-[9px] md:text-[10px] text-slate-400 font-medium mb-0.5 ml-1">{{ message.sender_name }}</span>
               
               <div v-if="message.sender === 'me' && !message.is_deleted && (message.type === 'text' || message.type === 'image')" class="absolute top-0 right-full mr-2 opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-md px-1 py-0.5 z-10">
                  <button v-if="message.type === 'text'" @click="startEditMessage(message)" class="p-1 text-slate-400 hover:text-blue-400" title="Edit"><Edit2 class="w-3 h-3"/></button>
@@ -663,6 +671,10 @@ const initWebSockets = (userId) => {
 
   window.Echo.private(`chat.${userId}`)
     .listen('.MessageSent', (e) => {
+      // Group-chat messages arrive on the group channel (client.group.{id});
+      // skip them here so they are not rendered twice.
+      if (e.message.is_group) return
+
       const incomingMsg = {
         id: e.message.id,
         sender: 'client', 
@@ -688,6 +700,8 @@ const initWebSockets = (userId) => {
     // NEW: Listen for payload edits/updates on the existing messages
     .listen('.MessageUpdated', (e) => {
         const updatedMsg = e.message;
+        if (e.message.is_group) return;
+
         const index = messages.value.findIndex(m => m.id === updatedMsg.id);
         if (index !== -1) {
             messages.value[index].text = updatedMsg.message;
@@ -699,6 +713,72 @@ const initWebSockets = (userId) => {
             }
         }
     })
+}
+
+// GROUP CHAT realtime (client side): subscribe once per group id on the
+// client's group channel and route events to the active group conversation
+// (matched via service_request_id) or bump the right contact's badge.
+const subscribedGroups = {}
+
+const handleGroupMessageSent = (e) => {
+  const msg = e.message
+  const reqId = msg.service_request_id
+
+  // The sender already appended this message locally on success, so skip the
+  // websocket echo (and any accidental re-delivery) to avoid rendering the
+  // message twice on the sender's own screen.
+  if (Number(msg.sender_id) === Number(currentUser.value?.id)) return
+  if (messages.value.some(m => m.id === msg.id)) return
+
+  if (activeContact.value?.is_group && Number(activeContact.value.requestContext?.id) === Number(reqId)) {
+    const isImage = msg.type === 'image'
+    let textContent = msg.message
+    if (isImage && textContent) {
+        textContent = textContent.startsWith('http') ? textContent : baseStorageUrl + textContent.replace(/^\/+/, '').replace(/^storage\//, '')
+    }
+    const incomingMsg = {
+      id: msg.id,
+      sender_id: msg.sender_id,
+      sender_name: msg.sender?.first_name ? `${msg.sender.first_name} ${msg.sender.last_name || ''}`.trim() : (msg.sender_name || ''),
+      sender: msg.sender_id === currentUser.value?.id ? 'me' : 'client',
+      text: textContent,
+      type: msg.type,
+      payload: msg.payload,
+      time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'read',
+      is_deleted: msg.payload?.is_deleted || false
+    }
+    messages.value.push(incomingMsg)
+    scrollToBottom()
+  } else {
+    const cIdx = contacts.value.findIndex(c => c.is_group && Number(c.requestContext?.id) === Number(reqId))
+    if (cIdx !== -1) {
+       contacts.value[cIdx].unread += 1
+       contacts.value[cIdx].last_message = msg.type === 'text' ? msg.message : `New ${msg.type.replace('_', ' ')}`
+    }
+  }
+}
+
+const handleGroupMessageUpdated = (e) => {
+    const updatedMsg = e.message;
+    const index = messages.value.findIndex(m => m.id === updatedMsg.id);
+    if (index !== -1) {
+        messages.value[index].text = updatedMsg.message;
+        messages.value[index].payload = updatedMsg.payload;
+        messages.value[index].is_deleted = updatedMsg.payload?.is_deleted || false;
+
+        if (updatedMsg.type === 'image' && messages.value[index].text && !messages.value[index].text.startsWith('http')) {
+            messages.value[index].text = baseStorageUrl + messages.value[index].text.replace(/^\/+/, '').replace(/^storage\//, '');
+        }
+    }
+}
+
+const ensureGroupSubscription = (groupId) => {
+  if (!groupId || subscribedGroups[groupId] || !window.Echo) return
+  subscribedGroups[groupId] = true
+  window.Echo.private(`client.group.${groupId}`)
+    .listen('.MessageSent', handleGroupMessageSent)
+    .listen('.MessageUpdated', handleGroupMessageUpdated)
 }
 
 const getInitials = (name) => {
@@ -773,6 +853,7 @@ const fetchContacts = async () => {
     const response = await api.get('/client/chat/contacts')
     if (response.data.success) {
       contacts.value = response.data.contacts || response.data.data
+      contacts.value.forEach(c => { if (c.is_group) ensureGroupSubscription(c.group_id) })
       if (window.innerWidth >= 768 && contacts.value.length > 0) {
         selectContact(contacts.value[0])
       }
@@ -805,11 +886,42 @@ const fetchMessages = async (providerId) => {
   finally { isLoadingMessages.value = false }
 }
 
+const fetchGroupMessages = async (requestId) => {
+  isLoadingMessages.value = true
+  messages.value = []
+  try {
+    const response = await api.get(`/client/chat/group/messages/${requestId}`)
+    if (response.data.success) {
+      messages.value = (response.data.messages || response.data.data).map(m => {
+        return {
+          id: m.id,
+          sender_id: m.sender_id,
+          sender_name: m.sender_name || '',
+          sender: m.sender_id === currentUser.value?.id || m.sender === 'me' ? 'me' : 'client',
+          text: m.message || m.text,
+          type: m.type,
+          payload: m.payload,
+          time: m.time || new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: m.status || (m.is_read ? 'read' : 'sent'),
+          is_deleted: m.is_deleted || m.payload?.is_deleted || false
+        }
+      })
+      scrollToBottom()
+    }
+  } catch (error) { toast.error('Failed to load chat history') }
+  finally { isLoadingMessages.value = false }
+}
+
 const selectContact = (contact) => {
   activeContact.value = contact
   contact.unread = 0
   showMobileChat.value = true
-  fetchMessages(contact.id)
+  if (contact.is_group) {
+    ensureGroupSubscription(contact.group_id)
+    fetchGroupMessages(contact.service_request_id || contact.requestContext?.id)
+  } else {
+    fetchMessages(contact.id)
+  }
 }
 
 // Edit & Delete Handlers

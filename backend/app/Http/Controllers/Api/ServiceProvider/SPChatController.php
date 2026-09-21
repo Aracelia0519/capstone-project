@@ -21,9 +21,15 @@ class SPChatController extends Controller
     public function getContacts()
     {
         $providerId = Auth::id();
+        $groupIds = ProviderGroups::acceptedGroupIds($providerId);
 
         $requests = ClientServiceRequest::with(['client', 'serviceOffering'])
-            ->where('provider_id', $providerId)
+            ->where(function ($q) use ($providerId, $groupIds) {
+                $q->where('provider_id', $providerId);
+                if (count($groupIds) > 0) {
+                    $q->orWhereIn('group_id', $groupIds);
+                }
+            })
             ->where('status', '!=', 'rejected') 
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -31,6 +37,44 @@ class SPChatController extends Controller
         $contacts = [];
 
         foreach ($requests as $req) {
+            // GROUP SERVICE: one shared group chat per request (client + group).
+            if ($req->group_id) {
+                $key = 'group-' . $req->id;
+                if (isset($contacts[$key])) continue;
+
+                $lastMsg = SPMessage::where('service_request_id', $req->id)->latest()->first();
+                $unreadCount = SPMessage::where('service_request_id', $req->id)
+                    ->where('sender_id', '!=', $providerId)
+                    ->where('is_read', false)
+                    ->count();
+
+                $groupPayload = ProviderGroups::groupPayload((int) $req->group_id);
+                $clientName = $req->client
+                    ? trim(($req->client->first_name ?? '') . ' ' . ($req->client->last_name ?? ''))
+                    : 'Client';
+
+                $contacts[$key] = [
+                    'key' => $key,
+                    'id' => $req->client_id,
+                    'name' => $groupPayload['group_name'] ?? ('Group #' . $req->group_id),
+                    'jobTitle' => 'Client: ' . ($clientName ?: 'Unknown'),
+                    'service_request_id' => $req->id,
+                    'service_title' => $req->serviceOffering ? $req->serviceOffering->title : 'Custom Job',
+                    'last_message' => $lastMsg ? $lastMsg->message : 'No messages yet.',
+                    'last_time' => $lastMsg ? $lastMsg->created_at->format('h:i A') : '',
+                    'unread' => $unreadCount,
+                    'status' => $req->status,
+                    'date' => $req->created_at->format('M d'),
+                    'requestContext' => $req,
+                    'is_group' => true,
+                    'group_id' => (int) $req->group_id,
+                    'client_id' => $req->client_id,
+                    'leader_id' => $groupPayload['leader_id'] ?? null,
+                    'member_count' => $groupPayload['member_count'] ?? 0
+                ];
+                continue;
+            }
+
             $clientId = $req->client_id;
             
             if (!isset($contacts[$clientId])) {
@@ -57,7 +101,8 @@ class SPChatController extends Controller
                     'unread' => $unreadCount,
                     'status' => $req->status,
                     'date' => $req->created_at->format('M d'),
-                    'requestContext' => $req 
+                    'requestContext' => $req,
+                    'is_group' => false
                 ];
             }
         }
@@ -104,6 +149,61 @@ class SPChatController extends Controller
         return response()->json(['success' => true, 'messages' => $formattedMessages]);
     }
 
+    /**
+     * Shared group chat thread for a GROUP service request. Every accepted
+     * member of the group (and the provider who owns the job) may read it;
+     * the client's copy is served by ClientChatController::getGroupMessages.
+     */
+    public function getGroupMessages($requestId)
+    {
+        $providerId = Auth::id();
+
+        $req = ClientServiceRequest::find($requestId);
+        if (!$req) {
+            return response()->json(['success' => false, 'message' => 'Service request not found.'], 404);
+        }
+
+        if ($req->group_id) {
+            if (!ProviderGroups::isMember($providerId, (int) $req->group_id)) {
+                return response()->json(['success' => false, 'message' => 'Not part of this service request group.'], 403);
+            }
+        } elseif ((int) $req->provider_id !== $providerId) {
+            return response()->json(['success' => false, 'message' => 'Not allowed to view this chat.'], 403);
+        }
+
+        SPMessage::where('service_request_id', $requestId)
+            ->where('sender_id', '!=', $providerId)
+            ->update(['is_read' => true]);
+
+        $baseUrl = rtrim(request()->getSchemeAndHttpHost(), '/');
+        $messages = SPMessage::where('service_request_id', $requestId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $formattedMessages = $messages->map(function ($msg) use ($providerId, $baseUrl) {
+
+            $text = $msg->message;
+            if ($msg->type === 'image' && !empty($msg->message)) {
+                $text = $baseUrl . '/storage/' . ltrim(str_replace('/storage/', '', $msg->message), '/');
+            }
+
+            return [
+                'id' => $msg->id,
+                'sender_id' => $msg->sender_id,
+                'sender_name' => ProviderGroups::memberName((int) $msg->sender_id),
+                'sender' => $msg->sender_id === $providerId ? 'me' : 'them',
+                'text' => $text,
+                'type' => $msg->type,
+                'payload' => $msg->payload,
+                'time' => $msg->created_at->format('h:i A'),
+                'status' => $msg->is_read ? 'read' : 'sent',
+                'is_deleted' => isset($msg->payload['is_deleted']) && $msg->payload['is_deleted'] === true
+            ];
+        });
+
+        return response()->json(['success' => true, 'messages' => $formattedMessages]);
+    }
+
     public function sendMessage(Request $request)
     {
         $request->validate([
@@ -116,13 +216,19 @@ class SPChatController extends Controller
 
         $payload = $request->payload ?? [];
 
-        if ($request->type === 'official_deal') {
-            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+        $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+        $isGroupJob = $serviceRequest && $serviceRequest->group_id;
 
-            // Group jobs: only accepted members may create the deal — one at a time.
-            if ($serviceRequest && $serviceRequest->group_id) {
-                if (!ProviderGroups::isMember(Auth::id(), (int) $serviceRequest->group_id)) {
-                    return response()->json(['success' => false, 'message' => 'Only members of the group can create a deal for this request.'], 403);
+        // Group chats may only be written by ACCEPTED members of the group.
+        if ($isGroupJob && !ProviderGroups::isMember(Auth::id(), (int) $serviceRequest->group_id)) {
+            return response()->json(['success' => false, 'message' => 'Only members of the group can chat in this request.'], 403);
+        }
+
+        if ($request->type === 'official_deal') {
+            // Group jobs: ONLY the group leader deals with the official deal.
+            if ($isGroupJob) {
+                if (!ProviderGroups::isLeader(Auth::id(), (int) $serviceRequest->group_id)) {
+                    return response()->json(['success' => false, 'message' => 'Only the group leader can create the official deal for this request. Other members can only chat.'], 403);
                 }
                 $denied = $this->groupGuard((int) $serviceRequest->group_id, 'client_service_request', (int) $serviceRequest->id, 'create_deal');
                 if ($denied) return $denied;
@@ -140,7 +246,7 @@ class SPChatController extends Controller
                 'status' => 'pending'
             ]);
 
-            if ($serviceRequest && $serviceRequest->group_id) {
+            if ($isGroupJob) {
                 ProviderGroups::releaseLock((int) Auth::id(), 'client_service_request', (int) $serviceRequest->id, 'create_deal');
             }
 
@@ -149,12 +255,10 @@ class SPChatController extends Controller
         }
 
         if ($request->type === 'payment_term') {
-            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
-            $isGroupJob = $serviceRequest && $serviceRequest->group_id;
-
             if ($isGroupJob) {
-                if (!ProviderGroups::isMember(Auth::id(), (int) $serviceRequest->group_id)) {
-                    return response()->json(['success' => false, 'message' => 'Only members of the group can send payment terms for this request.'], 403);
+                // Group jobs: ONLY the group leader sends the payment terms.
+                if (!ProviderGroups::isLeader(Auth::id(), (int) $serviceRequest->group_id)) {
+                    return response()->json(['success' => false, 'message' => 'Only the group leader can send payment terms for this request. Other members can only chat.'], 403);
                 }
 
                 $activeDeal = OfficialDeal::where('client_id', $request->receiver_id)
@@ -243,6 +347,11 @@ class SPChatController extends Controller
             'service_request_id' => 'required'
         ]);
 
+        $req = ClientServiceRequest::find($request->service_request_id);
+        if ($req && $req->group_id && !ProviderGroups::isMember(Auth::id(), (int) $req->group_id)) {
+            return response()->json(['success' => false, 'message' => 'Only members of the group can chat in this request.'], 403);
+        }
+
         $path = $request->file('image')->store('chat_images', 'public');
         
         $message = SPMessage::create([
@@ -314,6 +423,11 @@ class SPChatController extends Controller
         $chatMessage = SPMessage::findOrFail($request->message_id);
         $serviceRequest = ClientServiceRequest::findOrFail($deal->client_service_request_id);
 
+        // Group jobs: ONLY the group leader may respond to the official deal.
+        if ($serviceRequest->group_id && !ProviderGroups::isLeader(Auth::id(), (int) $serviceRequest->group_id)) {
+            return response()->json(['success' => false, 'message' => 'Only the group leader can respond to the official deal for this request. Other members can only chat.'], 403);
+        }
+
         if ($request->action === 'agree') {
             $dealUpdateData = ['status' => 'ongoing'];
             if (Schema::hasColumn('official_deals', 'daily_billing_started_at') && empty($deal->daily_billing_started_at)) {
@@ -359,6 +473,13 @@ class SPChatController extends Controller
 
         $term = OfficialPaymentTerm::findOrFail($termId);
         $chatMessage = SPMessage::findOrFail($request->message_id);
+
+        // Group jobs: ONLY the group leader may respond to the payment terms.
+        $deal = OfficialDeal::find($term->official_deal_id);
+        $serviceRequest = $deal ? ClientServiceRequest::find($deal->client_service_request_id) : null;
+        if ($serviceRequest && $serviceRequest->group_id && !ProviderGroups::isLeader(Auth::id(), (int) $serviceRequest->group_id)) {
+            return response()->json(['success' => false, 'message' => 'Only the group leader can respond to the payment terms for this request. Other members can only chat.'], 403);
+        }
 
         $status = $request->action === 'agree' ? 'agreed' : 'declined';
         $term->update(['status' => $status]);

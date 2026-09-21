@@ -13,6 +13,7 @@ use App\Events\Chat\MessageUpdated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Support\ProviderGroups;
 
 class ClientChatController extends Controller
 {
@@ -29,8 +30,42 @@ class ClientChatController extends Controller
         $contacts = [];
 
         foreach ($requests as $req) {
-            if (!$req->provider_id) continue;
-            
+            if (!$req->provider_id && !$req->group_id) continue;
+
+            // GROUP SERVICE: one shared group chat per request (client + team).
+            if ($req->group_id) {
+                $key = 'group-' . $req->id;
+                if (isset($contacts[$key])) continue;
+
+                $lastMsg = SPMessage::where('service_request_id', $req->id)->latest()->first();
+                $unreadCount = SPMessage::where('service_request_id', $req->id)
+                    ->where('sender_id', '!=', $clientId)
+                    ->where('is_read', false)
+                    ->count();
+
+                $groupPayload = ProviderGroups::groupPayload((int) $req->group_id);
+
+                $contacts[$key] = [
+                    'key' => $key,
+                    'id' => $req->provider_id,
+                    'name' => $groupPayload['group_name'] ?? ('Group #' . $req->group_id),
+                    'jobTitle' => $req->serviceOffering ? $req->serviceOffering->title : 'Custom Job',
+                    'service_request_id' => $req->id,
+                    'service_title' => $req->serviceOffering ? $req->serviceOffering->title : 'Custom Job',
+                    'last_message' => $lastMsg ? $lastMsg->message : 'No messages yet.',
+                    'last_time' => $lastMsg ? $lastMsg->created_at->format('h:i A') : '',
+                    'unread' => $unreadCount,
+                    'status' => $req->status,
+                    'date' => $req->created_at->format('M d'),
+                    'requestContext' => $req,
+                    'is_group' => true,
+                    'group_id' => (int) $req->group_id,
+                    'leader_id' => $groupPayload['leader_id'] ?? null,
+                    'member_count' => $groupPayload['member_count'] ?? 0
+                ];
+                continue;
+            }
+
             $providerId = $req->provider_id;
             
             if (!isset($contacts[$providerId])) {
@@ -57,7 +92,8 @@ class ClientChatController extends Controller
                     'unread' => $unreadCount,
                     'status' => $req->status,
                     'date' => $req->created_at->format('M d'),
-                    'requestContext' => $req 
+                    'requestContext' => $req,
+                    'is_group' => false
                 ];
             }
         }
@@ -91,6 +127,53 @@ class ClientChatController extends Controller
 
             return [
                 'id' => $msg->id,
+                'sender' => $msg->sender_id === $clientId ? 'me' : 'them',
+                'text' => $text,
+                'type' => $msg->type,
+                'payload' => $msg->payload,
+                'time' => $msg->created_at->format('h:i A'),
+                'status' => $msg->is_read ? 'read' : 'sent',
+                'is_deleted' => isset($msg->payload['is_deleted']) && $msg->payload['is_deleted'] === true
+            ];
+        });
+
+        return response()->json(['success' => true, 'messages' => $formattedMessages]);
+    }
+
+    /**
+     * Shared group chat thread viewed by the CLIENT for a GROUP service
+     * request. The client owns the request; every provider message in the
+     * thread (from any accepted group member) is included.
+     */
+    public function getGroupMessages($requestId)
+    {
+        $clientId = Auth::id();
+
+        $req = ClientServiceRequest::find($requestId);
+        if (!$req || (int) $req->client_id !== (int) $clientId) {
+            return response()->json(['success' => false, 'message' => 'Service request not found.'], 404);
+        }
+
+        SPMessage::where('service_request_id', $requestId)
+            ->where('sender_id', '!=', $clientId)
+            ->update(['is_read' => true]);
+
+        $baseUrl = rtrim(request()->getSchemeAndHttpHost(), '/');
+        $messages = SPMessage::where('service_request_id', $requestId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $formattedMessages = $messages->map(function ($msg) use ($clientId, $baseUrl) {
+
+            $text = $msg->message;
+            if ($msg->type === 'image' && !empty($msg->message)) {
+                $text = $baseUrl . '/storage/' . ltrim(str_replace('/storage/', '', $msg->message), '/');
+            }
+
+            return [
+                'id' => $msg->id,
+                'sender_id' => $msg->sender_id,
+                'sender_name' => ProviderGroups::memberName((int) $msg->sender_id),
                 'sender' => $msg->sender_id === $clientId ? 'me' : 'them',
                 'text' => $text,
                 'type' => $msg->type,
@@ -148,11 +231,19 @@ class ClientChatController extends Controller
         // one sending the terms here.
         // ------------------------------------------------------------------
         if ($request->type === 'payment_term') {
-            $activeDeal = OfficialDeal::where('provider_id', $request->receiver_id)
-                                      ->where('client_id', Auth::id())
-                                      ->where('client_service_request_id', $request->service_request_id)
-                                      ->latest()
-                                      ->first();
+            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+            $isGroupJob = $serviceRequest && $serviceRequest->group_id;
+
+            // Group jobs: the active deal belongs to the group, so match by
+            // request + group (not by which single provider created it).
+            $activeDealQuery = OfficialDeal::where('client_id', Auth::id())
+                                      ->where('client_service_request_id', $request->service_request_id);
+            if ($isGroupJob) {
+                $activeDealQuery->where('group_id', $serviceRequest->group_id);
+            } else {
+                $activeDealQuery->where('provider_id', $request->receiver_id);
+            }
+            $activeDeal = $activeDealQuery->latest()->first();
 
             if (!$activeDeal) {
                 return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);

@@ -37,10 +37,10 @@
           <div 
             v-else
             v-for="contact in filteredContacts" 
-            :key="contact.id"
+            :key="contact.key || contact.id"
             @click="selectContact(contact)"
             class="flex items-center p-3 cursor-pointer transition-colors border-b border-slate-800/50 hover:bg-slate-800/50 w-full"
-            :class="{ 'bg-slate-800/80 border-l-2 border-l-blue-500': activeContact?.id === contact.id }"
+            :class="{ 'bg-slate-800/80 border-l-2 border-l-blue-500': (activeContact?.key || activeContact?.id) === (contact.key || contact.id) }"
           >
             <div class="relative mr-3 shrink-0">
               <Avatar class="h-10 w-10 md:h-12 md:w-12 border border-slate-700">
@@ -56,7 +56,10 @@
             
             <div class="flex-1 min-w-0">
               <div class="flex justify-between items-baseline mb-0.5 md:mb-1">
-                <h3 class="text-sm font-semibold text-slate-200 truncate pr-2">{{ contact.name }}</h3>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <h3 class="text-sm font-semibold text-slate-200 truncate">{{ contact.name }}</h3>
+                  <Badge v-if="contact.is_group" class="bg-purple-600/20 text-purple-300 border border-purple-500/30 text-[8px] h-4 px-1.5 rounded-full shrink-0">GROUP</Badge>
+                </div>
                 <span class="text-[10px] md:text-xs text-slate-500 shrink-0">{{ contact.time || contact.date }}</span>
               </div>
               <div class="flex justify-between items-center">
@@ -90,7 +93,10 @@
             </div>
             
             <div class="min-w-0 pr-2">
-              <h2 class="text-sm md:text-base font-bold text-white leading-tight truncate">{{ activeContact.name }}</h2>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <h2 class="text-sm md:text-base font-bold text-white leading-tight truncate">{{ activeContact.name }}</h2>
+                <Badge v-if="activeContact.is_group" class="bg-purple-600/20 text-purple-300 border border-purple-500/30 text-[8px] h-4 px-1.5 rounded-full shrink-0">GROUP</Badge>
+              </div>
               <p class="text-[10px] md:text-xs text-slate-400 truncate">{{ activeContact.jobTitle || activeContact.service_title }}</p>
             </div>
           </div>
@@ -120,11 +126,13 @@
           >
             <Avatar v-if="message.sender !== 'me'" class="h-6 w-6 md:h-8 md:w-8 mr-1.5 md:mr-2 shrink-0 self-end mb-1 border border-slate-700 hidden sm:flex">
                <AvatarFallback class="bg-gradient-to-br from-indigo-600 to-cyan-600 text-white text-[10px] md:text-xs">
-                 {{ getInitials(activeContact.name) }}
+                 {{ getInitials(message.sender_name || activeContact.name) }}
                </AvatarFallback>
             </Avatar>
 
             <div class="flex flex-col max-w-[95%] sm:max-w-[85%] md:max-w-[75%] relative group/msg" :class="message.sender === 'me' ? 'items-end' : 'items-start'">
+              
+              <span v-if="isActiveGroupChat && message.sender !== 'me' && message.sender_name" class="text-[9px] md:text-[10px] text-slate-400 font-medium mb-0.5 ml-1">{{ message.sender_name }}</span>
               
               <div v-if="message.sender === 'me' && !message.is_deleted && (message.type === 'text' || message.type === 'image')" class="absolute top-0 right-full mr-2 opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-md px-1 py-0.5 z-10">
                  <button v-if="message.type === 'text'" @click="startEditMessage(message)" class="p-1 text-slate-400 hover:text-blue-400" title="Edit"><Edit2 class="w-3 h-3"/></button>
@@ -226,12 +234,12 @@
                     </div>
                  </div>
                  
-                 <div v-if="message.sender !== 'me' && message.payload?.deal_status === 'pending'" class="mt-3 flex gap-2">
+                 <div v-if="message.sender !== 'me' && message.payload?.deal_status === 'pending' && canNegotiateActiveChat" class="mt-3 flex gap-2">
                     <Button size="sm" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-900/20" @click="handleDealAction('agree', message)">Agree & Accept</Button>
                     <Button size="sm" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10" @click="handleDealAction('decline', message)">Decline</Button>
                  </div>
                  <div v-else class="mt-3 text-center text-xs font-bold" :class="{ 'text-cyan-300 animate-pulse': message.payload?.deal_status === 'pending' || !message.payload?.deal_status, 'text-emerald-400': message.payload?.deal_status === 'ongoing', 'text-red-400': message.payload?.deal_status === 'declined' }">
-                    <span v-if="message.payload?.deal_status === 'pending' || !message.payload?.deal_status">Waiting for client's approval...</span>
+                    <span v-if="message.payload?.deal_status === 'pending' || !message.payload?.deal_status">{{ isActiveGroupChat && !isActiveGroupLeader ? "Awaiting the group leader's response..." : "Waiting for client's approval..." }}</span>
                     <span v-else-if="message.payload?.deal_status === 'ongoing'">✅ Client Accepted the Deal!</span>
                     <span v-else-if="message.payload?.deal_status === 'declined'">❌ Client Declined the Deal.</span>
                  </div>
@@ -254,12 +262,12 @@
                     </div>
                  </div>
 
-                 <div v-if="message.sender !== 'me' && message.payload?.term_status === 'pending'" class="mt-3 flex gap-2">
+                 <div v-if="message.sender !== 'me' && message.payload?.term_status === 'pending' && canNegotiateActiveChat" class="mt-3 flex gap-2">
                     <Button size="sm" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" @click="handlePaymentTermAction('agree', message)">Agree to Terms</Button>
                     <Button size="sm" variant="outline" class="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10" @click="handlePaymentTermAction('decline', message)">Decline</Button>
                  </div>
                  <div v-else class="mt-3 text-center text-xs font-bold" :class="{ 'text-yellow-300 animate-pulse': message.payload?.term_status === 'pending', 'text-emerald-400': message.payload?.term_status === 'agreed', 'text-red-400': message.payload?.term_status === 'declined' }">
-                    <span v-if="message.payload?.term_status === 'pending'">Waiting for your response...</span>
+                    <span v-if="message.payload?.term_status === 'pending'">{{ isActiveGroupChat && !isActiveGroupLeader ? "Awaiting the group leader's response..." : "Waiting for your response..." }}</span>
                     <span v-else-if="message.payload?.term_status === 'agreed'">✅ You Agreed to these Terms!</span>
                     <span v-else-if="message.payload?.term_status === 'declined'">❌ You Declined these Terms.</span>
                  </div>
@@ -329,11 +337,11 @@
                       <ClipboardList class="w-4 h-4 mr-2 text-blue-400" /> 
                       <span class="font-medium text-sm">Send Request Details</span>
                    </DropdownMenuItem>
-                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openOfficialDealModal">
+                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openOfficialDealModal" v-if="canNegotiateActiveChat">
                       <ShieldCheck class="w-4 h-4 mr-2 text-emerald-400" /> 
                       <span class="font-medium text-sm">Create Official Deal</span>
                    </DropdownMenuItem>
-                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openPaymentTermModal" v-if="hasOngoingDeal">
+                   <DropdownMenuItem class="cursor-pointer focus:bg-slate-700 py-2.5 rounded-lg mt-1" @click="openPaymentTermModal" v-if="hasOngoingDeal && canNegotiateActiveChat">
                       <CreditCard class="w-4 h-4 mr-2 text-yellow-400" /> 
                       <span class="font-medium text-sm">Send Payment Terms</span>
                    </DropdownMenuItem>
@@ -698,6 +706,10 @@ const initWebSockets = (userId) => {
 
   window.Echo.private(`chat.${userId}`)
     .listen('.MessageSent', (e) => {
+      // Group-chat messages arrive on the group channel (service-provider.group.{id});
+      // skip them here so they are not rendered twice.
+      if (e.message.is_group) return
+
       const isImage = e.message.type === 'image'
       let textContent = e.message.message
       
@@ -730,6 +742,8 @@ const initWebSockets = (userId) => {
     // NEW: Listen for payload edits/updates on the existing messages
     .listen('.MessageUpdated', (e) => {
         const updatedMsg = e.message;
+        if (e.message.is_group) return;
+
         const index = messages.value.findIndex(m => m.id === updatedMsg.id);
         if (index !== -1) {
             messages.value[index].text = updatedMsg.message;
@@ -741,6 +755,71 @@ const initWebSockets = (userId) => {
             }
         }
     })
+}
+
+// GROUP CHAT realtime: subscribe once per group id and route incoming events
+// to the active group conversation, or bump the matching contact's badge.
+const subscribedGroups = {}
+
+const handleGroupMessageSent = (e) => {
+  const msg = e.message
+  const reqId = msg.service_request_id
+
+  // The sender already appended this message locally on success, so skip the
+  // websocket echo (and any accidental re-delivery) to avoid rendering the
+  // message twice on the sender's own screen.
+  if (Number(msg.sender_id) === Number(currentUser.value?.id)) return
+  if (messages.value.some(m => m.id === msg.id)) return
+
+  if (activeContact.value?.is_group && Number(activeContact.value.requestContext?.id) === Number(reqId)) {
+    const isImage = msg.type === 'image'
+    let textContent = msg.message
+    if (isImage && textContent) {
+        textContent = textContent.startsWith('http') ? textContent : baseStorageUrl + textContent.replace(/^\/+/, '').replace(/^storage\//, '')
+    }
+    const incomingMsg = {
+      id: msg.id,
+      sender_id: msg.sender_id,
+      sender_name: msg.sender?.first_name ? `${msg.sender.first_name} ${msg.sender.last_name || ''}`.trim() : (msg.sender_name || ''),
+      sender: msg.sender_id === currentUser.value?.id ? 'me' : 'client',
+      text: textContent,
+      type: msg.type,
+      payload: msg.payload,
+      time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'read',
+      is_deleted: msg.payload?.is_deleted || false
+    }
+    messages.value.push(incomingMsg)
+    scrollToBottom()
+  } else {
+    const cIdx = contacts.value.findIndex(c => c.is_group && Number(c.requestContext?.id) === Number(reqId))
+    if (cIdx !== -1) {
+       contacts.value[cIdx].unread += 1
+       contacts.value[cIdx].last_message = msg.type === 'text' ? msg.message : `New ${msg.type.replace('_', ' ')}`
+    }
+  }
+}
+
+const handleGroupMessageUpdated = (e) => {
+    const updatedMsg = e.message;
+    const index = messages.value.findIndex(m => m.id === updatedMsg.id);
+    if (index !== -1) {
+        messages.value[index].text = updatedMsg.message;
+        messages.value[index].payload = updatedMsg.payload;
+        messages.value[index].is_deleted = updatedMsg.payload?.is_deleted || false;
+
+        if (updatedMsg.type === 'image' && messages.value[index].text && !messages.value[index].text.startsWith('http')) {
+            messages.value[index].text = baseStorageUrl + messages.value[index].text.replace(/^\/+/, '').replace(/^storage\//, '');
+        }
+    }
+}
+
+const ensureGroupSubscription = (groupId) => {
+  if (!groupId || subscribedGroups[groupId] || !window.Echo) return
+  subscribedGroups[groupId] = true
+  window.Echo.private(`service-provider.group.${groupId}`)
+    .listen('.MessageSent', handleGroupMessageSent)
+    .listen('.MessageUpdated', handleGroupMessageUpdated)
 }
 
 const preventInvalidChars = (e) => {
@@ -776,6 +855,16 @@ const hasOngoingDeal = computed(() => {
   return messages.value.some(m => m.type === 'official_deal' && m.payload?.deal_status === 'ongoing')
 })
 
+// GROUP CHAT negotiation rules: in a group chat only the LEADER of the group
+// may create / respond to the official deal & payment terms. Other members
+// can still chat (text, image, shares) but cannot negotiate.
+const isActiveGroupChat = computed(() => !!(activeContact.value?.is_group))
+const isActiveGroupLeader = computed(() => {
+  if (!activeContact.value?.is_group) return true
+  return Number(activeContact.value.leader_id) === Number(currentUser.value?.id)
+})
+const canNegotiateActiveChat = computed(() => !isActiveGroupChat.value || isActiveGroupLeader.value)
+
 const fetchCurrentUser = async () => {
   try {
     const res = await api.get('/auth/me')
@@ -806,6 +895,7 @@ const fetchContacts = async () => {
     const response = await api.get('/service-provider/chat/contacts')
     if (response.data.success) {
       contacts.value = response.data.data || response.data.contacts
+      contacts.value.forEach(c => { if (c.is_group) ensureGroupSubscription(c.group_id) })
       if (window.innerWidth >= 768 && contacts.value.length > 0) {
         selectContact(contacts.value[0])
       }
@@ -845,11 +935,49 @@ const fetchMessages = async (clientId) => {
   finally { isLoadingMessages.value = false }
 }
 
+const fetchGroupMessages = async (requestId) => {
+  isLoadingMessages.value = true
+  messages.value = []
+  try {
+    const response = await api.get(`/service-provider/chat/group/messages/${requestId}`)
+    if (response.data.success) {
+      messages.value = (response.data.messages || response.data.data).map(m => {
+        const isImage = m.type === 'image'
+        let textContent = m.message || m.text
+
+        if (isImage && textContent && !textContent.startsWith('http')) {
+           textContent = baseStorageUrl + textContent.replace(/^\/+/, '').replace(/^storage\//, '')
+        }
+
+        return {
+          id: m.id,
+          sender_id: m.sender_id,
+          sender_name: m.sender_name || '',
+          sender: m.sender_id === currentUser.value?.id || m.sender === 'me' ? 'me' : 'client',
+          text: textContent,
+          type: m.type,
+          payload: m.payload,
+          time: m.time || new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: m.status || (m.is_read ? 'read' : 'sent'),
+          is_deleted: m.is_deleted || m.payload?.is_deleted || false
+        }
+      })
+      scrollToBottom()
+    }
+  } catch (error) { toast.error('Failed to load chat history') }
+  finally { isLoadingMessages.value = false }
+}
+
 const selectContact = (contact) => {
   activeContact.value = contact
   contact.unread = 0
   showMobileChat.value = true
-  fetchMessages(contact.id)
+  if (contact.is_group) {
+    ensureGroupSubscription(contact.group_id)
+    fetchGroupMessages(contact.service_request_id || contact.requestContext?.id)
+  } else {
+    fetchMessages(contact.id)
+  }
 }
 
 // Edit & Delete Handlers
@@ -1110,6 +1238,10 @@ const openOfficialDealModal = () => {
 }
 
 const sendOfficialDeal = async () => {
+  if (isActiveGroupChat.value && !isActiveGroupLeader.value) {
+    toast.error("Only the group leader can create the official deal. Other members can only chat.")
+    return
+  }
   if(!dealForm.value.price || !dealForm.value.preferred_date || !dealForm.value.time_preference || !dealForm.value.contact_number || !dealForm.value.address) {
     toast.error("Please complete all required fields")
     return
@@ -1143,6 +1275,10 @@ const openPaymentTermModal = () => {
 }
 
 const sendPaymentTerm = async () => {
+  if (isActiveGroupChat.value && !isActiveGroupLeader.value) {
+    toast.error("Only the group leader can send payment terms. Other members can only chat.")
+    return
+  }
   if(!paymentTermForm.value.payment_method || !paymentTermForm.value.payment_term) {
     toast.error("Please select a method and a term.")
     return

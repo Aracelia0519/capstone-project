@@ -177,6 +177,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('chat')->group(function () {
             Route::get('/contacts', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'getContacts']);
             Route::get('/messages/{providerId}', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'getMessages']);
+            Route::get('/group/messages/{requestId}', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'getGroupMessages']);
             Route::post('/send', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'sendMessage']);
             
             Route::post('/deals/{dealId}/respond', [\App\Http\Controllers\Api\Client\ClientChatController::class, 'respondToDeal']);
@@ -385,6 +386,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('chat')->group(function () {
             Route::get('/contacts', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getContacts']);
             Route::get('/messages/{clientId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getMessages']);
+            Route::get('/group/messages/{requestId}', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'getGroupMessages']);
             Route::post('/send', [\App\Http\Controllers\Api\ServiceProvider\SPChatController::class, 'sendMessage']);
 
             // NEW: Vice-versa negotiation - lets the Service Provider respond to an
