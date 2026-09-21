@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
 use App\Support\MaterialExpenses;
+use App\Support\ProviderGroups;
 
 class ClientServiceRequestController extends Controller
 {
@@ -31,7 +32,7 @@ class ClientServiceRequestController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $formattedRequests = $serviceRequests->map(function ($req) use ($baseUrl) {
+        $formattedRequests = $serviceRequests->map(function ($req) use ($baseUrl, $clientId) {
             $service = $req->serviceOffering;
             
             if ($service && !empty($service->image_paths)) {
@@ -159,6 +160,10 @@ class ClientServiceRequestController extends Controller
                     'service_name' => $service ? $service->title : 'Custom Service',
                     'provider_name' => $req->provider ? $req->provider->first_name . ' ' . $req->provider->last_name : 'N/A'
                 ];
+            }
+            // --- GROUP (TEAM) SERVICES: team info + revenue breakdown ---
+            if ($req->group_id) {
+                ProviderGroups::attachToJob($req, $baseUrl, (int) $clientId);
             }
             // ---------------------------------------------
             

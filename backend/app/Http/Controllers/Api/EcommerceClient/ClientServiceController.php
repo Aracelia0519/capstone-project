@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceOffering;
 use App\Models\EcommerceClient\ClientServiceRequest;
 use App\Events\ServiceProvider\ServiceRequestCreated;
+use App\Support\ProviderGroups;
 use Vinkla\Hashids\Facades\Hashids;
 
 class ClientServiceController extends Controller
@@ -38,7 +39,7 @@ class ClientServiceController extends Controller
             ->get()
             ->groupBy('service_offering_id');
 
-        $services = ServiceOffering::with('provider')
+        $services = ServiceOffering::with(['provider', 'group'])
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -94,6 +95,9 @@ class ClientServiceController extends Controller
                 'provider_id' => $service->provider_id,
                 'provider_hash_id' => Hashids::encode($service->provider_id), // Hash generation for Provider ID added here
                 'provider_name' => $providerName,
+                'group_id' => $service->group_id,
+                'is_group_service' => (bool) $service->group_id,
+                'group_name' => $service->group ? $service->group->group_name : null,
                 'title' => $service->title,
                 'category' => $service->category,
                 'price' => (float) $service->price,
@@ -182,10 +186,13 @@ class ClientServiceController extends Controller
             $finalDescription .= "\n\n--- Service Details ---\nArea Size: " . $validated['sqm'] . " sqm\nEstimated Total Price: ₱" . number_format($validated['calculated_total'], 2);
         }
 
+        $serviceOffering = ServiceOffering::find($validated['service_offering_id']);
+
         $serviceRequest = ClientServiceRequest::create([
             'client_id' => $userId,
             'service_offering_id' => $validated['service_offering_id'],
             'provider_id' => $validated['provider_id'],
+            'group_id' => $serviceOffering->group_id ?? null,
             'description' => $finalDescription,
             'preferred_date' => $validated['preferred_date'],
             'time_preference' => $validated['time_preference'],
@@ -194,8 +201,15 @@ class ClientServiceController extends Controller
             'status' => 'pending'
         ]);
 
-        // Broadcast the real-time event to the specific provider
-        event(new ServiceRequestCreated($validated['provider_id']));
+        // Broadcast the real-time event to the assigned provider — and, for
+        // group services, to EVERY accepted member of the group.
+        if ($serviceOffering && $serviceOffering->group_id) {
+            foreach (ProviderGroups::acceptedMemberIds((int) $serviceOffering->group_id) as $memberId) {
+                event(new ServiceRequestCreated($memberId));
+            }
+        } else {
+            event(new ServiceRequestCreated($validated['provider_id']));
+        }
 
         return response()->json([
             'success' => true,

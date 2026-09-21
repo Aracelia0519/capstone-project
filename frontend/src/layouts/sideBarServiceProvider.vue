@@ -244,7 +244,7 @@ import {
   LayoutDashboard, Users, ClipboardCheck, Paintbrush, 
   History, Package, Building, FileText, Settings, LogOut, Lock, 
   Loader2, Briefcase, MessageCircle, CreditCard, UserCog, Bell, AlertTriangle,
-  Bug, ShieldCheck
+  Bug, ShieldCheck, UsersRound
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -288,6 +288,7 @@ const baseNavigation = [
       { name: 'CRM', path: '/serviceProvider/SPCRM', icon: UserCog, color: 'text-pink-400', badge: '3', requiresVerify: true, hideOnTerminate: true },
       { name: 'Service Jobs', path: '/serviceProvider/ServiceRequestsJobs', icon: ClipboardCheck, color: 'text-amber-400', badge: '12', requiresVerify: true, hideOnTerminate: true, allowIfActiveJobs: true },
       { name: 'Offer Jobs', path: '/serviceProvider/OfferJobs', icon: Briefcase, color: 'text-purple-400', requiresVerify: true, hideOnTerminate: true },
+      { name: 'My Group', path: '/serviceProvider/ServiceGroup', icon: UsersRound, color: 'text-fuchsia-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Chat Clients', path: '/serviceProvider/SPChat', icon: MessageCircle, color: 'text-blue-400', badge: '5', requiresVerify: true, hideOnTerminate: true, allowIfActiveJobs: true }
     ]
   },

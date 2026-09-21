@@ -74,6 +74,9 @@
             <div>
               <p class="text-white font-medium text-sm">#{{ job.id }}</p>
               <p class="text-gray-400 text-xs">{{ job.date }}</p>
+              <Badge v-if="job.originalData?.is_group" variant="outline" class="mt-1 border-fuchsia-500/40 text-fuchsia-400 bg-fuchsia-500/10 text-[9px] uppercase tracking-wider">
+                Team · {{ job.originalData.group?.group_name || 'Group' }}
+              </Badge>
             </div>
           </div>
           <Badge variant="outline" :class="[
@@ -160,6 +163,7 @@
                   <div>
                      <p class="text-white font-medium">#{{ job.id }}</p>
                      <p class="text-gray-400 text-xs">{{ job.date }}</p>
+                     <p v-if="job.originalData?.is_group" class="text-fuchsia-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">{{ job.originalData.group?.group_name }}</p>
                   </div>
                </div>
             </TableCell>
@@ -288,6 +292,26 @@
              </div>
           </div>
 
+          <!-- ═══════════ GROUP (TEAM) JOB ═══════════ -->
+          <div v-if="selectedJob.originalData.is_group" class="bg-fuchsia-950/30 border border-fuchsia-700/50 p-4 rounded-xl">
+            <h4 class="text-sm font-bold text-fuchsia-400 flex items-center gap-2 mb-2">
+              <UsersRound class="w-4 h-4" /> Team Job — {{ selectedJob.originalData.group?.group_name }}
+            </h4>
+            <p class="text-gray-300 text-sm mb-2">
+              This request was booked with a team of {{ selectedJob.originalData.group?.member_count }} verified providers. Any team member can handle it — but only ONE action may run at a time.
+            </p>
+            <div v-if="activeGroupLocks.length" class="space-y-1 mb-2">
+              <p v-for="l in activeGroupLocks" :key="l.id" class="text-xs text-amber-400/90 flex items-center gap-1.5">
+                <Lock class="w-3.5 h-3.5 shrink-0" /> {{ l.member_name }} is handling the "{{ l.action.replace(/_/g, ' ') }}" action — those buttons are temporarily disabled (auto-releases in 10 minutes).
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span v-for="m in selectedJob.originalData.group?.members || []" :key="m.id" class="text-[10px] px-2 py-0.5 rounded-full border font-medium" :class="Number(m.id) === Number(currentUserId) ? 'border-fuchsia-500/50 text-fuchsia-300 bg-fuchsia-500/10' : 'border-slate-700 bg-slate-800/60 text-slate-300'">
+                {{ m.name }}<span v-if="m.role === 'leader'"> · Leader</span>
+              </span>
+            </div>
+          </div>
+
           <!-- ═══════════ SURVEY AGREEMENT ═══════════ -->
           <div v-if="selectedJob.status === 'pending' && selectedJob.originalData.survey_agreement" class="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-xl">
              <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-2 mb-2">
@@ -318,13 +342,13 @@
              </Button>
 
              <div v-if="selectedJob.originalData.survey_agreement.status === 'signed'" class="mt-4">
-                 <Button @click="handleSurveyAction('start')" :disabled="isSurveyProcessing" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
+                 <Button @click="handleSurveyAction('start')" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'start_survey')" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Start Survey</span>
                  </Button>
              </div>
              <div v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'" class="mt-4">
-                 <Button @click="handleSurveyAction('complete')" :disabled="isSurveyProcessing" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
+                 <Button @click="handleSurveyAction('complete')" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'complete_survey')" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> End & Complete Survey</span>
                  </Button>
@@ -449,11 +473,11 @@
                    <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
                 </div>
                 <div class="flex gap-2 flex-wrap">
-                   <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                   <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
                       <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
                       <span v-else>Approve & Verify Payment</span>
                    </Button>
-                   <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                   <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
                       <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
                       <span v-else>Reject Proof</span>
                    </Button>
@@ -492,6 +516,114 @@
                  </div>
              </div>
              </template>
+
+             <!-- ═══════════ GROUP REVENUE SPLIT (non-daily team jobs) ═══════════ -->
+             <div v-if="split" class="mt-4 border-t border-fuchsia-800/40 pt-4">
+               <p class="text-[11px] font-black text-fuchsia-300 uppercase tracking-widest mb-1 flex items-center gap-2">
+                 <UsersRound class="w-4 h-4" /> Team Revenue Split
+               </p>
+               <p class="text-xs text-gray-400 mb-3">
+                 Each member proposes the % of this job they keep — every other member must approve each proposal, and they must total 100% before the split is locked.
+               </p>
+
+               <!-- Locked -->
+               <div v-if="split.status === 'locked'" class="bg-fuchsia-900/20 border border-fuchsia-700/40 rounded-xl p-3">
+                 <p class="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5"><Lock class="w-3.5 h-3.5" /> Split locked — final allocations:</p>
+                 <div v-for="a in split.allocations" :key="a.member_id" class="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0">
+                   <span class="text-gray-300">{{ a.member_name }}</span>
+                   <span class="text-white font-bold">{{ a.percentage }}%</span>
+                 </div>
+                 <p class="text-[10px] text-gray-500 mt-2">On a ₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }} deal, each member is entitled to their listed share.</p>
+               </div>
+
+               <!-- In-progress / none -->
+               <div v-else class="space-y-2">
+                 <div v-if="!split.proposals?.length" class="text-xs text-gray-500 italic">No proposals yet — propose your share below.</div>
+
+                 <div v-for="p in split.proposals" :key="p.id" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                   <div class="flex items-center justify-between gap-2 flex-wrap">
+                     <span class="text-sm font-semibold text-white">{{ p.member_name }} — <span class="text-fuchsia-300">{{ p.percentage }}%</span></span>
+                     <Badge variant="outline" :class="p.status === 'approved' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : p.status === 'rejected' ? 'border-rose-500/40 text-rose-400 bg-rose-500/10' : 'border-amber-500/40 text-amber-400 bg-amber-500/10'" class="text-[10px] uppercase">{{ p.status }}</Badge>
+                   </div>
+                   <p v-if="p.rejection_reason" class="text-[11px] text-rose-400 mt-1 italic">"{{ p.rejection_reason }}"</p>
+                   <div class="flex flex-wrap gap-1.5 mt-2">
+                     <span v-for="a in p.approvals" :key="a.member_id" class="text-[10px] px-1.5 py-0.5 rounded-md border" :class="a.status === 'approved' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : a.status === 'rejected' ? 'border-rose-500/30 text-rose-400 bg-rose-500/10' : 'border-slate-600 text-slate-400 bg-slate-800'">
+                       {{ shortName(a.member_name) }}: {{ a.status }}
+                     </span>
+                   </div>
+                   <div v-if="canDecideProposal(p)" class="flex gap-2 mt-2">
+                     <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'approve')">Approve</Button>
+                     <Button size="sm" variant="outline" class="bg-slate-800 border-rose-700/50 text-rose-400 hover:bg-rose-500/10 text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'reject')">Reject</Button>
+                   </div>
+                   <p v-else-if="myDecisionOn(p)" class="text-[10px] text-gray-500 mt-2">Your decision: {{ myDecisionOn(p) }}</p>
+                 </div>
+
+                 <div v-if="canProposeSplit" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Propose your share (%)</p>
+                   <div class="flex gap-2 items-center">
+                     <input v-model.number="splitProposalPercent" type="number" min="1" max="100" step="0.01" placeholder="e.g. 40" class="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600" @keyup.enter="proposeSplit" />
+                     <Button size="sm" class="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white text-xs h-9" :disabled="splitBusy" @click="proposeSplit">
+                       <Loader2 v-if="splitBusy" class="w-3.5 h-3.5 mr-1 animate-spin" />
+                       <span v-else class="mr-1">⇪</span>
+                       Submit Share
+                     </Button>
+                   </div>
+                   <p class="text-[10px] text-gray-500 mt-2">Approved proposals so far: {{ split.total_proposed }}% — must reach exactly 100% for the split to lock.</p>
+                 </div>
+                 <p v-else-if="split.my_proposal" class="text-[10px] text-gray-500">
+                   Your proposal ({{ split.my_proposal.percentage }}%) is recorded — status: {{ split.my_proposal.status }}.
+                 </p>
+               </div>
+             </div>
+
+             <!-- ═══════════ TEAM REVENUE BREAKDOWN (group jobs) ═══════════ -->
+             <div v-if="revenueSummary && revenueSummary.is_group" class="mt-4 border-t border-emerald-800/40 pt-4">
+               <p class="text-[11px] font-black text-emerald-300 uppercase tracking-widest mb-1 flex items-center gap-2">
+                 <UsersRound class="w-4 h-4" /> Team Revenue Breakdown
+               </p>
+               <p class="text-xs text-gray-400 mb-3">
+                 What the team earned on this job and each member's share — <span class="text-emerald-300 font-semibold">{{ revenueSummary.group_name }}</span>.
+               </p>
+
+               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/70 border border-emerald-700/30 rounded-xl p-3 mb-3">
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Team Earned</p>
+                   <p class="text-sm text-emerald-400 font-bold">₱{{ Number(revenueSummary.team_earned || 0).toLocaleString() }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid By Client</p>
+                   <p class="text-sm text-white font-bold">₱{{ Number(revenueSummary.paid_total || 0).toLocaleString() }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
+                   <p class="text-sm text-red-400 font-bold">₱{{ Number(revenueSummary.outstanding || 0).toLocaleString() }}</p>
+                 </div>
+                 <div>
+                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Materials Reimbursed</p>
+                   <p class="text-sm text-amber-300 font-bold">₱{{ Number(revenueSummary.materials_paid || 0).toLocaleString() }}</p>
+                 </div>
+               </div>
+
+               <div class="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-3">
+                 <div class="flex justify-between items-center mb-2">
+                   <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Member Shares</p>
+                   <span v-if="revenueSummary.is_daily" class="text-[10px] text-gray-400">Daily job — paid equally</span>
+                   <span v-else-if="revenueSummary.split_locked" class="text-[10px] text-emerald-400">Split locked at 100%</span>
+                   <span v-else class="text-[10px] text-amber-400">Split in negotiation</span>
+                 </div>
+                 <div v-for="m in revenueSummary.members" :key="m.member_id" class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800 last:border-0" :class="{ 'bg-emerald-500/10 rounded px-1': m.member_id === revenueSummary.you }">
+                   <span class="text-gray-300 flex items-center gap-1.5">
+                     {{ m.member_name }}
+                     <span v-if="m.member_id === revenueSummary.you" class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">You</span>
+                   </span>
+                   <span class="text-white font-bold">{{ m.percentage }}% · ₱{{ Number(m.share_amount || 0).toLocaleString() }}</span>
+                 </div>
+                 <div class="flex items-center justify-between pt-2 mt-1 border-t border-emerald-700/30">
+                   <span class="text-xs font-bold text-emerald-300">Your estimated share</span>
+                   <span class="text-sm font-black text-emerald-400">₱{{ Number(revenueSummary.your_share_amount || 0).toLocaleString() }}</span>
+                 </div>
+               </div>
+             </div>
 
              <!-- Daily billing panel -->
              <div v-if="selectedJob.originalData.daily_billing" class="space-y-4">
@@ -548,11 +680,11 @@
                       <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
                       <div class="flex items-center gap-2 flex-wrap">
                          <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
-                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
                             <span v-if="isMarkingWorkDay">Marking...</span>
                             <span v-else>Mark Worked</span>
                          </button>
-                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
                             <span v-if="isMarkingWorkDay">Marking...</span>
                             <span v-else>Mark Not Worked</span>
                          </button>
@@ -567,10 +699,10 @@
                             <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
                          </div>
                          <div class="flex gap-1">
-                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
                                Worked
                             </button>
-                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
                                Not Worked
                             </button>
                          </div>
@@ -599,11 +731,11 @@
                       <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
                    </div>
                    <div class="flex gap-2 flex-wrap">
-                      <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                      <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
                          <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
                          <span v-else>Approve & Verify Payment</span>
                       </Button>
-                      <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                      <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
                          <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
                          <span v-else>Reject Proof</span>
                       </Button>
@@ -659,7 +791,7 @@
                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                    Materials Reimbursement
                 </h4>
-                <Button size="sm" @click="showMaterialsForm = !showMaterialsForm" :class="showMaterialsForm ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-amber-600 hover:bg-amber-700 text-white'" class="h-8 text-xs">
+                <Button size="sm" @click="showMaterialsForm = !showMaterialsForm" :class="showMaterialsForm ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-amber-600 hover:bg-amber-700 text-white'" :disabled="isActionLocked(selectedJob, 'add_materials')" class="h-8 text-xs">
                    {{ showMaterialsForm ? 'Cancel' : '+ Add Materials' }}
                 </Button>
              </div>
@@ -677,7 +809,7 @@
                    <button type="button" @click="addMaterialRow" class="text-[10px] font-bold h-6 px-2 rounded-md bg-slate-800 text-blue-400 border border-slate-700 hover:bg-slate-700">+ Add Item</button>
                    <input type="file" ref="materialsProofInput" accept="image/*" class="text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 cursor-pointer" />
                 </div>
-                <Button @click="submitMaterials" :disabled="isAddingMaterials" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 rounded-xl text-xs">
+                <Button @click="submitMaterials" :disabled="isAddingMaterials || isActionLocked(selectedJob, 'add_materials')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 rounded-xl text-xs">
                    <span v-if="isAddingMaterials" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Submitting...</span>
                    <span v-else>Submit for Client Approval</span>
                 </Button>
@@ -690,7 +822,7 @@
                       <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
                       <div class="flex items-center gap-2">
                          <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
-                         <button v-if="batch.status === 'pending'" type="button" @click="deleteMaterials(batch.id)" :disabled="isDeletingMaterials" class="text-red-400 hover:text-red-300 text-xs font-bold">Delete</button>
+                         <button v-if="batch.status === 'pending'" type="button" @click="deleteMaterials(batch.id)" :disabled="isDeletingMaterials || isActionLocked(selectedJob, 'delete_materials')" class="text-red-400 hover:text-red-300 text-xs font-bold">Delete</button>
                       </div>
                    </div>
                    <div class="space-y-1">
@@ -736,11 +868,11 @@
                       <img :src="selectedJob.originalData.materials_term.proof_of_payment_url" class="w-full h-auto object-cover" />
                    </div>
                    <div class="flex gap-2 flex-wrap">
-                      <Button @click="approveProof(selectedJob.originalData.materials_term.id)" :disabled="isApprovingProof" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs">
+                      <Button @click="approveProof(selectedJob.originalData.materials_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs">
                          <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
                          <span v-else>Approve &amp; Verify</span>
                       </Button>
-                      <Button @click="rejectProof(selectedJob.originalData.materials_term.id)" :disabled="isRejectingProof" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30">
+                      <Button @click="rejectProof(selectedJob.originalData.materials_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30">
                          <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
                          <span v-else>Reject Proof</span>
                       </Button>
@@ -756,19 +888,19 @@
 
         <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-4 px-6 pb-6">
            <template v-if="selectedJob && selectedJob.status === 'pending'">
-             <Button variant="outline" class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" @click="promptRejectJob">Reject Request</Button>
+             <Button variant="outline" class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" :disabled="isActionLocked(selectedJob, 'reject_request')" @click="promptRejectJob">Reject Request</Button>
              
-             <Button v-if="!selectedJob.originalData.survey_agreement" class="bg-indigo-600 hover:bg-indigo-700 text-white" @click="openGenerateModal">
+             <Button v-if="!selectedJob.originalData.survey_agreement" class="bg-indigo-600 hover:bg-indigo-700 text-white" :disabled="isActionLocked(selectedJob, 'survey_agreement')" @click="openGenerateModal">
                 Generate Survey Agreement
              </Button>
 
-             <Button v-else-if="selectedJob.originalData.survey_agreement.status === 'completed'" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" @click="promptApproveJob">
+             <Button v-else-if="selectedJob.originalData.survey_agreement.status === 'completed'" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 border-0 text-white shadow-lg shadow-emerald-600/20" :disabled="isActionLocked(selectedJob, 'approve_request')" @click="promptApproveJob">
                 Officially Approve Request
              </Button>
 
            </template>
            <template v-if="selectedJob && selectedJob.status === 'ongoing'">
-             <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="promptCompleteJob(selectedJob)">Submit Proof of Completion</Button>
+             <Button class="bg-blue-600 hover:bg-blue-700 text-white" :disabled="isActionLocked(selectedJob, 'submit_completion')" @click="promptCompleteJob(selectedJob)">Submit Proof of Completion</Button>
            </template>
         </div>
       </DialogContent>
@@ -1070,6 +1202,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { UsersRound, Lock, Loader2 } from 'lucide-vue-next'
 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -1098,6 +1231,121 @@ const showDetailsModal = ref(false)
 const selectedJob = ref(null)
 
 const activeProviderId = ref(null)
+
+// ─────────────────────────────────────────────────────────────
+// GROUP (TEAM) SUPPORT — action locks + revenue split
+// ─────────────────────────────────────────────────────────────
+const currentUserId = computed(() => selectedJob.value?.originalData?.viewer_id ?? null)
+
+const jobLocks = (job, entityType = 'client_service_request', action = null, entityId = null) => {
+  const locks = job?.originalData?.group_locks || []
+  return locks.filter(l =>
+    l.entity_type === entityType &&
+    (action == null || l.action === action) &&
+    (entityId == null || Number(l.entity_id) === Number(entityId))
+  )
+}
+
+// Is another member holding the lock for this action on this job?
+const isActionLocked = (job, action, entityType = 'client_service_request', entityId = null) => {
+  if (!job?.originalData?.is_group) return false
+  const locks = jobLocks(job, entityType, action, entityId)
+  return locks.some(l => l.member_id !== currentUserId.value)
+}
+
+const activeGroupLocks = computed(() => {
+  const locks = selectedJob.value?.originalData?.group_locks || []
+  return locks.filter(l => l.member_id !== currentUserId.value)
+})
+
+// Run an action under the one-at-a-time group lock (individual jobs: no lock).
+async function runGroupAction(job, action, fn, entityType = 'client_service_request', entityId = null) {
+  if (!job?.originalData?.is_group) { await fn(); return }
+  const id = entityId ?? job.originalData.id
+  try {
+    const lockRes = await api.post('/service-provider/groups/lock', {
+      entity_type: entityType,
+      entity_id: id,
+      action,
+      group_id: job.originalData.group_id
+    })
+    if (!lockRes.data?.success) {
+      toast.error(lockRes.data?.message || 'Another member is handling this action.')
+      return
+    }
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Another member is handling this action. Please wait a moment.')
+    return
+  }
+  try {
+    await fn()
+  } finally {
+    try {
+      await api.post('/service-provider/groups/lock/release', { entity_type: entityType, entity_id: id, action })
+    } catch {}
+  }
+}
+
+// ── Revenue split (non-daily group jobs) ──
+const split = computed(() => selectedJob.value?.originalData?.split || null)
+const revenueSummary = computed(() => selectedJob.value?.originalData?.revenue_summary || null)
+const splitBusy = ref(false)
+const splitProposalPercent = ref('')
+
+const canProposeSplit = computed(() => {
+  const s = split.value
+  if (!s || !s.deal_id || s.status === 'locked') return false
+  if (!s.my_proposal) return true
+  return s.my_proposal.status === 'rejected'
+})
+
+const canDecideProposal = (proposal) => {
+  if (!proposal || proposal.status !== 'pending') return false
+  if (proposal.member_id === currentUserId.value) return false
+  return true
+}
+
+const myDecisionOn = (proposal) => {
+  const mine = proposal.approvals?.find(a => a.member_id === currentUserId.value)
+  return mine ? mine.status : null
+}
+
+async function proposeSplit() {
+  const pct = Number(splitProposalPercent.value)
+  if (!pct || pct <= 0 || pct > 100) {
+    toast.error('Enter a percentage between 1 and 100.')
+    return
+  }
+  splitBusy.value = true
+  try {
+    const res = await api.post(`/service-provider/groups/splits/${split.value.deal_id}/propose`, { percentage: pct })
+    toast.success(res.data.message)
+    splitProposalPercent.value = ''
+    await fetchJobRequests(true)
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Failed to submit your share.')
+    await fetchJobRequests(true)
+  } finally {
+    splitBusy.value = false
+  }
+}
+
+async function decideProposal(proposal, decision) {
+  splitBusy.value = true
+  try {
+    const res = await api.post(`/service-provider/groups/splits/proposals/${proposal.id}/${decision}`)
+    toast.success(res.data.message)
+    await fetchJobRequests(true)
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Failed to record your decision.')
+    // Revoke/block cases change the whole split state — always re-sync.
+    await fetchJobRequests(true)
+  } finally {
+    splitBusy.value = false
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 
 const showConfirmDialog = ref(false)
 const actionType = ref('') 
@@ -1357,6 +1605,11 @@ const getInitials = (name) => {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2)
 }
 
+const shortName = (name) => {
+  if (!name) return '?'
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+}
+
 const getStatusText = (status) => {
   if (!status) return 'Unknown'
   if (status === 'completion_review') return 'Under Review'
@@ -1466,20 +1719,21 @@ const generateSurveyAgreement = async () => {
     }
 
     isGeneratingAgreement.value = true;
-    try {
-        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/survey-agreement`, {
-            provider_signature: signatureBase64
-        });
-        if(response.data.success) {
-            toast.success(response.data.message);
-            showGenerateAgreementModal.value = false;
-            fetchJobRequests(true);
+    await runGroupAction(selectedJob.value, 'survey_agreement', async () => {
+        try {
+            const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/survey-agreement`, {
+                provider_signature: signatureBase64
+            });
+            if(response.data.success) {
+                toast.success(response.data.message);
+                showGenerateAgreementModal.value = false;
+                fetchJobRequests(true);
+            }
+        } catch(err) {
+            toast.error('Failed to generate agreement.');
         }
-    } catch(err) {
-        toast.error('Failed to generate agreement.');
-    } finally {
-        isGeneratingAgreement.value = false;
-    }
+    });
+    isGeneratingAgreement.value = false;
 }
 
 const printDocument = (title, htmlContent) => {
@@ -1613,18 +1867,19 @@ const downloadAgreement = () => {
 const handleSurveyAction = async (action) => {
     if(!selectedJob.value) return;
     isSurveyProcessing.value = true;
-    try {
-        const endpoint = action === 'start' ? 'start-survey' : 'complete-survey';
-        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
-        if(response.data.success) {
-            toast.success(response.data.message);
-            fetchJobRequests(true);
+    await runGroupAction(selectedJob.value, action === 'start' ? 'start_survey' : 'complete_survey', async () => {
+        try {
+            const endpoint = action === 'start' ? 'start-survey' : 'complete-survey';
+            const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
+            if(response.data.success) {
+                toast.success(response.data.message);
+                fetchJobRequests(true);
+            }
+        } catch(err) {
+            toast.error(`Failed to ${action} survey.`);
         }
-    } catch(err) {
-        toast.error(`Failed to ${action} survey.`);
-    } finally {
-        isSurveyProcessing.value = false;
-    }
+    });
+    isSurveyProcessing.value = false;
 }
 
 const promptCompleteJob = (job) => {
@@ -1649,22 +1904,22 @@ const submitCompletion = async () => {
    formData.append('is_bypassed', bypassLocation.value ? 1 : 0)
 
    isCompleting.value = true
-   try {
-      const res = await api.post(`/service-provider/job-requests/${jobToComplete.value.originalData.id}/complete`, formData, {
-         headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      if (res.data.success) {
-         toast.success(res.data.message)
-         showCompleteModal.value = false
-         showDetailsModal.value = false
-         fetchJobRequests(true) 
+   await runGroupAction(jobToComplete.value, 'submit_completion', async () => {
+      try {
+         const res = await api.post(`/service-provider/job-requests/${jobToComplete.value.originalData.id}/complete`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+         })
+         if (res.data.success) {
+            toast.success(res.data.message)
+            showCompleteModal.value = false
+            showDetailsModal.value = false
+            fetchJobRequests(true) 
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to submit proof.')
       }
-   } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit proof.')
-   } finally {
-      isCompleting.value = false
-      if (completionProofInput.value) completionProofInput.value.value = null
-   }
+   })
+   isCompleting.value = false
 }
 
 const openGcashModal = async () => {
@@ -1697,27 +1952,33 @@ const handleConfirmAction = async () => {
 
   try {
     if (actionType.value === 'approve') {
-      const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/approve`)
-      
-      if(response.data.success) {
-        selectedJob.value.status = 'verifying'
-        const index = jobs.value.findIndex(j => j.id === selectedJob.value.id)
-        if (index !== -1) jobs.value[index].status = 'verifying'
+      await runGroupAction(selectedJob.value, 'approve_request', async () => {
+        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/approve`)
         
-        toast.success('Job request officially approved successfully.')
-        showDetailsModal.value = false
-      }
+        if(response.data.success) {
+          selectedJob.value.status = 'verifying'
+          const index = jobs.value.findIndex(j => j.id === selectedJob.value.id)
+          if (index !== -1) jobs.value[index].status = 'verifying'
+          
+          toast.success('Job request officially approved successfully.')
+          showDetailsModal.value = false
+          fetchJobRequests(true)
+        }
+      })
     } else if (actionType.value === 'reject') {
-      const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/reject`)
-      
-      if(response.data.success) {
-        selectedJob.value.status = 'rejected'
-        const index = jobs.value.findIndex(j => j.id === selectedJob.value.id)
-        if (index !== -1) jobs.value[index].status = 'rejected'
+      await runGroupAction(selectedJob.value, 'reject_request', async () => {
+        const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/reject`)
         
-        toast.success('Job request rejected successfully.')
-        showDetailsModal.value = false
-      }
+        if(response.data.success) {
+          selectedJob.value.status = 'rejected'
+          const index = jobs.value.findIndex(j => j.id === selectedJob.value.id)
+          if (index !== -1) jobs.value[index].status = 'rejected'
+          
+          toast.success('Job request rejected successfully.')
+          showDetailsModal.value = false
+          fetchJobRequests(true)
+        }
+      })
     }
   } catch (error) {
     console.error(`Error processing ${actionType.value} job:`, error)
@@ -1731,17 +1992,18 @@ const handleConfirmAction = async () => {
 const approveProof = async (termId) => {
    if (!termId) return
    isApprovingProof.value = true
-   try {
-      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
-      if (res.data.success) {
-         toast.success('Payment verified successfully!')
-         await fetchJobRequests(true)
+   await runGroupAction(selectedJob.value, 'approve_proof', async () => {
+      try {
+         const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/approve`)
+         if (res.data.success) {
+            toast.success('Payment verified successfully!')
+            await fetchJobRequests(true)
+         }
+      } catch(error) {
+         toast.error('Failed to verify payment proof.')
       }
-   } catch(error) {
-      toast.error('Failed to verify payment proof.')
-   } finally {
-      isApprovingProof.value = false
-   }
+   }, 'official_payment_term', termId)
+   isApprovingProof.value = false
 }
 
 const isRejectingProof = ref(false)
@@ -1754,17 +2016,18 @@ const rejectProof = async (termId) => {
       return
    }
    isRejectingProof.value = true
-   try {
-      const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/reject-proof`, { reason: reason.trim() })
-      if (res.data.success) {
-         toast.success(res.data.message)
-         await fetchJobRequests(true)
+   await runGroupAction(selectedJob.value, 'reject_proof', async () => {
+      try {
+         const res = await api.post(`/service-provider/job-requests/payment-terms/${termId}/reject-proof`, { reason: reason.trim() })
+         if (res.data.success) {
+            toast.success(res.data.message)
+            await fetchJobRequests(true)
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to reject proof.')
       }
-   } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to reject proof.')
-   } finally {
-      isRejectingProof.value = false
-   }
+   }, 'official_payment_term', termId)
+   isRejectingProof.value = false
 }
 
 const isMarkingWorkDay = ref(false)
@@ -1773,17 +2036,18 @@ const workDayBypassDate = ref(new Date().toISOString().slice(0, 10))
 const markWorkDay = async (reqId, workDate, worked, bypass = false) => {
    if (!reqId || !workDate || isMarkingWorkDay.value) return
    isMarkingWorkDay.value = true
-   try {
-      const res = await api.post(`/service-provider/job-requests/${reqId}/daily-work-day`, { work_date: workDate, worked, bypass })
-      if (res.data.success) {
-         toast.success(res.data.message)
-         await fetchJobRequests(true)
+   await runGroupAction(selectedJob.value, 'work_day', async () => {
+      try {
+         const res = await api.post(`/service-provider/job-requests/${reqId}/daily-work-day`, { work_date: workDate, worked, bypass })
+         if (res.data.success) {
+            toast.success(res.data.message)
+            await fetchJobRequests(true)
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to update work day.')
       }
-   } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update work day.')
-   } finally {
-      isMarkingWorkDay.value = false
-   }
+   })
+   isMarkingWorkDay.value = false
 }
 
 const markBypassDay = async (reqId, worked) => {
@@ -1847,38 +2111,40 @@ const submitMaterials = async () => {
       formData.append('proof_image', materialsProofInput.value.files[0])
    }
    isAddingMaterials.value = true
-   try {
-      const res = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/materials`, formData, {
-         headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      if (res.data.success) {
-         toast.success(res.data.message)
-         showMaterialsForm.value = false
-         materialsItems.value = [{ item_name: '', quantity: 1, unit_price: null }]
-         if (materialsProofInput.value) materialsProofInput.value.value = null
-         await fetchJobRequests(true)
+   await runGroupAction(selectedJob.value, 'add_materials', async () => {
+      try {
+         const res = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/materials`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+         })
+         if (res.data.success) {
+            toast.success(res.data.message)
+            showMaterialsForm.value = false
+            materialsItems.value = [{ item_name: '', quantity: 1, unit_price: null }]
+            if (materialsProofInput.value) materialsProofInput.value.value = null
+            await fetchJobRequests(true)
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to add materials.')
       }
-   } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add materials.')
-   } finally {
-      isAddingMaterials.value = false
-   }
+   })
+   isAddingMaterials.value = false
 }
 
 const deleteMaterials = async (batchId) => {
    if (!selectedJob.value || !window.confirm('Delete this materials request?')) return
    isDeletingMaterials.value = true
-   try {
-      const res = await api.delete(`/service-provider/job-requests/materials/${batchId}`)
-      if (res.data.success) {
-         toast.success(res.data.message)
-         await fetchJobRequests(true)
+   await runGroupAction(selectedJob.value, 'delete_materials', async () => {
+      try {
+         const res = await api.delete(`/service-provider/job-requests/materials/${batchId}`)
+         if (res.data.success) {
+            toast.success(res.data.message)
+            await fetchJobRequests(true)
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to delete materials.')
       }
-   } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete materials.')
-   } finally {
-      isDeletingMaterials.value = false
-   }
+   })
+   isDeletingMaterials.value = false
 }
 
 const sendReminder = async (termId) => {

@@ -456,6 +456,36 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/{id}/toggle', [ServiceOfferingController::class, 'toggleStatus']);
         });
 
+        // ------------------------------------------------------------------
+        // SERVICE PROVIDER GROUPS (teams)
+        // ------------------------------------------------------------------
+        Route::prefix('groups')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'store']);
+
+            // Revenue split (non-daily group jobs) + generic locks — registered
+            // before the {group} wildcard routes so literal segments win.
+            Route::get('/splits/{dealId}', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'splitState']);
+            Route::post('/splits/{dealId}/propose', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'proposeShare']);
+            Route::post('/splits/proposals/{proposalId}/approve', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'approveShare']);
+            Route::post('/splits/proposals/{proposalId}/reject', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'rejectShare']);
+            Route::post('/lock', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'acquireLockEndpoint']);
+            Route::post('/lock/release', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'releaseLockEndpoint']);
+
+            // Group management
+            Route::post('/{group}/invite', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'invite']);
+            Route::post('/{group}/invites/{memberId}/respond', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'respondInvite']);
+            Route::post('/{group}/members/{memberId}/remove', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'removeMember']);
+            Route::post('/{group}/leave', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'leaveGroup']);
+
+            // Group service-creation approval workflow
+            Route::get('/{group}/services', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'services']);
+            Route::post('/{group}/services', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'storeService']);
+            Route::post('/{group}/services/{serviceId}', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'updateService']);
+            Route::post('/{group}/services/{serviceId}/approve', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'approveService']);
+            Route::post('/{group}/services/{serviceId}/reject', [\App\Http\Controllers\Api\ServiceProvider\GroupController::class, 'rejectService']);
+        });
+
         Route::post('/save-color', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'saveColor']);
         Route::get('/colors', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'getSavedColors']);
         Route::get('/colors/{id}', [\App\Http\Controllers\Api\ServiceProvider\ServiceProviderColorController::class, 'getColor']);

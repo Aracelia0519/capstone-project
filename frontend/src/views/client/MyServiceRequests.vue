@@ -78,6 +78,9 @@
                   <Badge :class="['font-semibold border uppercase tracking-wider text-[10px]', getStatusClasses(request.status, request.raw.survey_agreement)]">
                     {{ getCustomStatusLabel(request) }}
                   </Badge>
+                  <Badge v-if="request.raw.is_group" class="bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/40 font-semibold uppercase tracking-wider text-[10px] gap-1">
+                    <UsersRound class="w-3 h-3" /> Team Service
+                  </Badge>
                   <span class="text-xs sm:text-sm text-gray-400">{{ request.date }}</span>
                 </div>
                 
@@ -663,6 +666,38 @@
              </template>
            </div>
 
+           <!-- ═══════════ TEAM REVENUE BREAKDOWN (group services) ═══════════ -->
+           <div v-if="selectedRequest.raw.revenue_summary && selectedRequest.raw.revenue_summary.is_group" class="bg-gradient-to-br from-emerald-900/10 to-emerald-800/20 rounded-2xl p-5 border border-emerald-700/50 shadow-inner">
+              <h4 class="text-sm font-bold text-emerald-400 mb-1 flex items-center gap-2 uppercase tracking-wider">
+                <UsersRound class="w-4 h-4" />
+                Team Revenue Breakdown
+              </h4>
+              <p class="text-xs text-gray-400 mb-3">
+                How your payment is shared with the service team — <span class="text-emerald-300 font-semibold">{{ selectedRequest.raw.revenue_summary.group_name }}</span>.
+              </p>
+
+              <div class="grid grid-cols-2 gap-3 bg-slate-950/50 border border-emerald-800/40 rounded-xl p-3 mb-3">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Contract / Team Earns</p>
+                  <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.revenue_summary.team_earned || 0).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding Balance</p>
+                  <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedRequest.raw.revenue_summary.outstanding || 0).toLocaleString() }}</p>
+                </div>
+              </div>
+
+              <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-2">How the team splits it</p>
+              <div v-for="m in selectedRequest.raw.revenue_summary.members" :key="m.member_id" class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800 last:border-0 bg-slate-950/40 rounded px-1.5 mb-0.5">
+                <span class="text-gray-300">{{ m.member_name }}</span>
+                <span class="text-white font-bold">{{ m.percentage }}% · ₱{{ Number(m.share_amount || 0).toLocaleString() }}</span>
+              </div>
+              <p v-if="selectedRequest.raw.revenue_summary.is_daily" class="text-[10px] text-gray-500 mt-2">This is a daily-billed service — the team shares it equally.</p>
+              <p v-else-if="!selectedRequest.raw.revenue_summary.split_locked" class="text-[10px] text-amber-400 mt-2">The team is still finalizing their split.</p>
+              <p v-else class="text-[10px] text-emerald-500 mt-2">Split locked — each member receives their listed share.</p>
+           </div>
+           <!-- ══════════════════════════════════════════════════════════ -->
+
            <div v-if="selectedRequest.raw.service_review" class="bg-gradient-to-br from-amber-900/10 to-amber-800/20 border border-amber-800/30 p-5 rounded-2xl shadow-inner">
               <h4 class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
                 <Star class="w-4 h-4 fill-amber-400" />
@@ -996,7 +1031,7 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt, UsersRound
 } from 'lucide-vue-next'
 
 const router = useRouter()

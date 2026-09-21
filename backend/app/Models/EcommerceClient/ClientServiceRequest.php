@@ -15,6 +15,7 @@ class ClientServiceRequest extends Model
         'client_id',
         'service_offering_id',
         'provider_id',
+        'group_id',
         'description',
         'preferred_date',
         'time_preference',
@@ -36,5 +37,10 @@ class ClientServiceRequest extends Model
     public function provider()
     {
         return $this->belongsTo(User::class, 'provider_id');
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(\App\Models\ServiceProvider\ProviderGroup::class, 'group_id');
     }
 }

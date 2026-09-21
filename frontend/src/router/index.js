@@ -57,6 +57,7 @@ import Distributors from '@/views/serviceProvider/Distributors.vue'
 import ReportsSP from '@/views/serviceProvider/ReportsSP.vue'
 import ProfileSettingsSP from '@/views/serviceProvider/ProfileSettingsSP.vue'
 import OfferJobs from '@/views/serviceProvider/OfferJobs.vue'
+import ServiceGroup from '@/views/serviceProvider/ServiceGroup.vue'
 import SPChat from '@/views/serviceProvider/SPChat.vue'
 import SPPaymentSettings from '@/views/serviceProvider/SPPaymentSettings.vue'
 import SPCRM from '@/views/serviceProvider/SPCRM.vue'
@@ -761,6 +762,11 @@ const routes = [
         path: 'OfferJobs',
         name: 'OfferJobs',
         component: OfferJobs
+      },
+      {
+        path: 'ServiceGroup',
+        name: 'ServiceGroup',
+        component: ServiceGroup
       },
       {
         path: 'SPChat',

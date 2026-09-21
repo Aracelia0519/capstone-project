@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
 use App\Support\MaterialExpenses;
+use App\Support\ProviderGroups;
 
 class ServiceJobController extends Controller
 {
@@ -31,12 +32,15 @@ class ServiceJobController extends Controller
             $providerId = Auth::id(); 
             $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
 
+            // Group jobs: every ACCEPTED member of the group sees the request.
+            $groupIds = ProviderGroups::acceptedGroupIds($providerId);
             $jobRequests = ClientServiceRequest::with(['client', 'serviceOffering'])
                 ->where('provider_id', $providerId)
+                ->when(count($groupIds) > 0, fn($q) => $q->orWhereIn('group_id', $groupIds))
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            $formattedRequests = $jobRequests->map(function ($req) use ($baseUrl) {
+            $formattedRequests = $jobRequests->map(function ($req) use ($baseUrl, $providerId) {
                 $deal = OfficialDeal::where('client_service_request_id', $req->id)->latest()->first();
                 $paymentTerm = $deal ? OfficialPaymentTerm::where('official_deal_id', $deal->id)->where('is_materials_term', false)->latest()->first() : null;
                 
@@ -97,6 +101,10 @@ class ServiceJobController extends Controller
 
                 // --- MATERIALS REIMBURSEMENT (provider-bought materials) ---
                 MaterialExpenses::attach($req, $deal, $baseUrl);
+                // -----------------------------------------------------------
+
+                // --- GROUP (team) metadata, action locks & revenue split ---
+                ProviderGroups::attachToJob($req, $baseUrl, $providerId);
                 // -----------------------------------------------------------
 
                 // GET CLIENT EXACT LOCATION FOR LEAFLET VERIFICATION
@@ -196,7 +204,9 @@ class ServiceJobController extends Controller
         DB::beginTransaction();
         try {
             $providerId = Auth::id();
-            $job = ClientServiceRequest::with(['client', 'serviceOffering'])->where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id)->load(['client', 'serviceOffering']);
+            $denied = $this->groupJobGuard($job, 'survey_agreement');
+            if ($denied) return $denied;
 
             $agreementText = "FORMAL SURVEY AGREEMENT\n\n";
             $agreementText .= "Date Issued: " . now()->format('F j, Y') . "\n";
@@ -227,6 +237,9 @@ class ServiceJobController extends Controller
 
             DB::commit();
 
+            // Release the one-at-a-time group lock (individual jobs: no-op).
+            $this->groupJobRelease($job, 'survey_agreement');
+
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
@@ -245,7 +258,9 @@ class ServiceJobController extends Controller
     {
         try {
             $providerId = Auth::id();
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'start_survey');
+            if ($denied) return $denied;
 
             DB::table('service_survey_agreements')
                 ->where('client_service_request_id', $job->id)
@@ -256,6 +271,8 @@ class ServiceJobController extends Controller
 
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $this->groupJobRelease($job, 'start_survey');
 
             return response()->json([
                 'success' => true,
@@ -271,7 +288,9 @@ class ServiceJobController extends Controller
     {
         try {
             $providerId = Auth::id();
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'complete_survey');
+            if ($denied) return $denied;
 
             DB::table('service_survey_agreements')
                 ->where('client_service_request_id', $job->id)
@@ -282,6 +301,8 @@ class ServiceJobController extends Controller
             
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $this->groupJobRelease($job, 'complete_survey');
 
             return response()->json([
                 'success' => true,
@@ -298,12 +319,17 @@ class ServiceJobController extends Controller
         try {
             $providerId = Auth::id();
             
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'approve_request');
+            if ($denied) return $denied;
+
             $job->status = 'verifying';
             $job->save();
 
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $this->groupJobRelease($job, 'approve_request');
 
             return response()->json([
                 'success' => true,
@@ -325,12 +351,17 @@ class ServiceJobController extends Controller
         try {
             $providerId = Auth::id();
             
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'reject_request');
+            if ($denied) return $denied;
+
             $job->status = 'rejected';
             $job->save();
 
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $this->groupJobRelease($job, 'reject_request');
 
             return response()->json([
                 'success' => true,
@@ -353,6 +384,14 @@ class ServiceJobController extends Controller
             $term = OfficialPaymentTerm::with('deal')->findOrFail($termId);
             $term->load('deal.clientServiceRequest.serviceOffering');
             $isDaily = DailyBilling::isDaily($term->deal?->clientServiceRequest?->serviceOffering);
+
+            $denied = $this->groupActionGuard(
+                $term->deal?->group_id ? (int) $term->deal->group_id : null,
+                'official_payment_term',
+                (int) $term->id,
+                'approve_proof'
+            );
+            if ($denied) return $denied;
 
             if ($term->is_materials_term) {
                 // Materials term: flip to 'paid' only once fully covered.
@@ -378,6 +417,8 @@ class ServiceJobController extends Controller
 
             // Broadcast Event
             event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
+
+            ProviderGroups::releaseLock((int) Auth::id(), 'official_payment_term', (int) $term->id, 'approve_proof');
 
             return response()->json([
                 'success' => true,
@@ -432,7 +473,9 @@ class ServiceJobController extends Controller
         DB::beginTransaction();
         try {
             $providerId = Auth::id();
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'submit_completion');
+            if ($denied) return $denied;
 
             $imagePaths = [];
             if ($request->hasFile('proof_images')) {
@@ -451,6 +494,9 @@ class ServiceJobController extends Controller
             $job->save();
 
             DB::commit();
+
+            // Release the one-at-a-time group lock (individual jobs: no-op).
+            $this->groupJobRelease($job, 'submit_completion');
 
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
@@ -656,7 +702,9 @@ class ServiceJobController extends Controller
 
         try {
             $providerId = Auth::id();
-            $job = ClientServiceRequest::where('provider_id', $providerId)->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'work_day');
+            if ($denied) return $denied;
 
             if (!in_array($job->status, ['ongoing', 'completion_review'])) {
                 return response()->json(['success' => false, 'message' => 'Work days can only be marked while the job is active.'], 400);
@@ -688,6 +736,8 @@ class ServiceJobController extends Controller
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
+            $this->groupJobRelease($job, 'work_day');
+
             return response()->json([
                 'success' => true,
                 'message' => $request->worked
@@ -715,7 +765,9 @@ class ServiceJobController extends Controller
         ]);
 
         try {
-            $job = ClientServiceRequest::where('provider_id', Auth::id())->findOrFail($id);
+            $job = $this->findGroupJob($id);
+            $denied = $this->groupJobGuard($job, 'add_materials');
+            if ($denied) return $denied;
 
             if (!in_array($job->status, ['ongoing', 'completion_review'])) {
                 return response()->json(['success' => false, 'message' => 'Materials can only be added while the job is active.'], 400);
@@ -748,6 +800,8 @@ class ServiceJobController extends Controller
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
 
+            $this->groupJobRelease($job, 'add_materials');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Materials added successfully. The client must approve them before they are billed.'
@@ -766,7 +820,9 @@ class ServiceJobController extends Controller
     {
         try {
             $batch = MaterialExpenseRequest::findOrFail($batchId);
-            $job = ClientServiceRequest::where('provider_id', Auth::id())->findOrFail($batch->client_service_request_id);
+            $job = $this->findGroupJob($batch->client_service_request_id);
+            $denied = $this->groupJobGuard($job, 'delete_materials');
+            if ($denied) return $denied;
 
             if ($batch->status !== 'pending') {
                 return response()->json(['success' => false, 'message' => 'Only pending materials requests can be deleted.'], 400);
@@ -779,6 +835,8 @@ class ServiceJobController extends Controller
 
             // Broadcast Event
             event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $this->groupJobRelease($job, 'delete_materials');
 
             return response()->json(['success' => true, 'message' => 'Materials request deleted.']);
         } catch (\Exception $e) {
@@ -799,9 +857,39 @@ class ServiceJobController extends Controller
         ]);
 
         try {
-            $term = OfficialPaymentTerm::with('deal')
-                ->where('provider_id', Auth::id())
-                ->findOrFail($termId);
+            $term = OfficialPaymentTerm::with('deal')->findOrFail($termId);
+
+            $requestId = $term->deal?->client_service_request_id;
+            if (!$requestId) {
+                return response()->json(['success' => false, 'message' => 'This payment term is not linked to a job.'], 404);
+            }
+
+            // Group-aware ownership: the acting member must be able to work
+            // this job (assigned directly to them OR an accepted member of
+            // the job's group). A member other than the term creator can
+            // still reject proof — that is the whole point of a team.
+            $providerId = Auth::id();
+            $groupIds = ProviderGroups::acceptedGroupIds($providerId);
+            $canAct = ClientServiceRequest::where('id', (int) $requestId)
+                ->where(function ($q) use ($providerId, $groupIds) {
+                    $q->where('provider_id', $providerId);
+                    if (count($groupIds) > 0) {
+                        $q->orWhereIn('group_id', $groupIds);
+                    }
+                })
+                ->exists();
+
+            if (!$canAct) {
+                return response()->json(['success' => false, 'message' => 'Payment term not found.'], 404);
+            }
+
+            $denied = $this->groupActionGuard(
+                $term->deal?->group_id ? (int) $term->deal->group_id : null,
+                'official_payment_term',
+                (int) $term->id,
+                'reject_proof'
+            );
+            if ($denied) return $denied;
 
             if ($term->status !== 'awaiting_proof_approval') {
                 return response()->json(['success' => false, 'message' => 'There is no pending proof to reject.'], 400);
@@ -821,6 +909,8 @@ class ServiceJobController extends Controller
             $term->proof_rejection_reason = $request->reason;
             $term->save();
 
+            ProviderGroups::releaseLock((int) Auth::id(), 'official_payment_term', (int) $term->id, 'reject_proof');
+
             // Broadcast Event
             event(new ServiceRequestUpdated($term->client_id, $term->provider_id));
 
@@ -831,6 +921,64 @@ class ServiceJobController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to reject proof.', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Finds a job request the current provider may act on: either a request
+     * assigned directly to them, or one belonging to a group they are an
+     * ACCEPTED member of.
+     */
+    private function findGroupJob($id)
+    {
+        $providerId = Auth::id();
+        $groupIds = ProviderGroups::acceptedGroupIds($providerId);
+
+        // Group the ownership check so the `id = ?` from findOrFail binds to
+        // the whole predicate. Without the closure, SQL precedence turns
+        //   provider_id = ? OR group_id IN (...) AND id = ?
+        // into
+        //   provider_id = ? OR (group_id IN (...) AND id = ?)
+        // and the first row returned is the provider's LOWEST-id job, so every
+        // action would write to the wrong request.
+        $query = ClientServiceRequest::where(function ($q) use ($providerId, $groupIds) {
+            $q->where('provider_id', $providerId);
+            if (count($groupIds) > 0) {
+                $q->orWhereIn('group_id', $groupIds);
+            }
+        });
+
+        return $query->findOrFail($id);
+    }
+
+    /**
+     * One-at-a-time guard for group jobs. When a group member is already
+     * performing this action (non-expired lock), the other members get a 409
+     * and the action is blocked. Otherwise the current user's lock is taken.
+     */
+    private function groupActionGuard(?int $groupId, string $entityType, int $entityId, string $action)
+    {
+        if (!$groupId) return null; // individual jobs do not need group locks
+
+        $lock = ProviderGroups::activeLock($entityType, $entityId, $action);
+        if ($lock && (int) $lock->member_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => ProviderGroups::memberName((int) $lock->member_id) . ' is currently handling this action. Please wait a moment.',
+            ], 409);
+        }
+
+        ProviderGroups::acquireLock((int) Auth::id(), $entityType, $entityId, $action, $groupId);
+        return null;
+    }
+
+    private function groupJobGuard(ClientServiceRequest $job, string $action)
+    {
+        return $this->groupActionGuard($job->group_id ? (int) $job->group_id : null, 'client_service_request', (int) $job->id, $action);
+    }
+
+    private function groupJobRelease(ClientServiceRequest $job, string $action)
+    {
+        ProviderGroups::releaseLock((int) Auth::id(), 'client_service_request', (int) $job->id, $action);
     }
 
     private function saveBase64Image($base64String, $pathPrefix) {

@@ -210,8 +210,12 @@
                 </div>
 
                 <div class="flex items-center text-sm text-gray-600 mb-3 bg-gray-50 px-2.5 py-1.5 rounded-lg w-max border border-gray-100">
-                  <User class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
-                  <span class="font-medium truncate max-w-37.5">{{ service.provider_name }}</span>
+                  <User v-if="!service.is_group_service" class="w-4 h-4 text-blue-500 mr-2 shrink-0" />
+                  <UsersRound v-else class="w-4 h-4 text-fuchsia-500 mr-2 shrink-0" />
+                  <span class="font-medium truncate max-w-37.5">{{ service.is_group_service ? (service.group_name || service.provider_name) : service.provider_name }}</span>
+                  <Badge v-if="service.is_group_service" class="ml-2 bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 text-[10px] font-bold px-1.5 py-0 shrink-0">
+                    Team
+                  </Badge>
                 </div>
                 
                 <p class="text-sm text-gray-500 line-clamp-3 leading-relaxed mb-4">
@@ -388,6 +392,7 @@ import api from '@/utils/axios'
 import { 
   Clock, 
   User, 
+  UsersRound,
   Briefcase,
   Image as ImageIcon,
   PaintRoller,

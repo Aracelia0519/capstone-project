@@ -127,6 +127,7 @@ class ClientChatController extends Controller
 
             $deal = OfficialDeal::create([
                 'provider_id' => $request->receiver_id,
+                'group_id' => $serviceRequest ? $serviceRequest->group_id : null,
                 'client_id' => Auth::id(),
                 'client_service_request_id' => $request->service_request_id,
                 'service_offering_id' => $serviceRequest ? $serviceRequest->service_offering_id : null,

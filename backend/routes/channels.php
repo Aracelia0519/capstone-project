@@ -185,6 +185,33 @@ Broadcast::channel('distributor.{distributorId}.returns', function ($user, $dist
     return false;
 });
 
+// ------------- SERVICE-PROVIDER GROUP JOB CHANNELS (Pusher realtime) -------------
+// Mirrors the Partnership/PartnershipMessageSent pattern. Two private channels:
+//   - service-provider.group.{groupId}  -> every ACCEPTED member of the group
+//   - client.group.{groupId}            -> the client(s) who own a job of the group
+// The event ProviderGroupJobUpdated broadcasts on BOTH, so the whole group's
+// split/service/job/proof state stays live on every screen without a reload.
+
+Broadcast::channel('service-provider.group.{groupId}', function ($user, $groupId) {
+    if (!in_array($user->role ?? '', ['service_provider', 'admin'], true)) return false;
+    // Leader + every accepted member of the group may listen.
+    $ids = \App\Support\ProviderGroups::acceptedGroupIds((int) $user->id);
+    foreach ($ids as $gid) {
+        if ((int) $gid === (int) $groupId) return true;
+    }
+    return false;
+});
+
+Broadcast::channel('client.group.{groupId}', function ($user, $groupId) {
+    // The client may listen only if they own a job belonging to this group.
+    if ($user->role === 'client') {
+        return \App\Models\EcommerceClient\ClientServiceRequest::where('client_id', (int) $user->id)
+            ->where('group_id', (int) $groupId)
+            ->exists();
+    }
+    return false;
+});
+
 // Finance Channel
 Broadcast::channel('distributor.{distributorId}.finance', function ($user, $distributorId) {
     if ($user->role === 'admin') return true;

@@ -15,6 +15,7 @@ class OfficialDeal extends Model
         'client_service_request_id', 
         'service_offering_id', 
         'provider_id', 
+        'group_id',
         'client_id',
         'price', 
         'preferred_date', 
@@ -39,6 +40,11 @@ class OfficialDeal extends Model
     public function provider()
     {
         return $this->belongsTo(User::class, 'provider_id');
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(ProviderGroup::class, 'group_id');
     }
 
     public function client()

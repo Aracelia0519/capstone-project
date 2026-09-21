@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Support\ProviderGroups;
 
 class SPChatController extends Controller
 {
@@ -118,8 +119,18 @@ class SPChatController extends Controller
         if ($request->type === 'official_deal') {
             $serviceRequest = ClientServiceRequest::find($request->service_request_id);
 
+            // Group jobs: only accepted members may create the deal — one at a time.
+            if ($serviceRequest && $serviceRequest->group_id) {
+                if (!ProviderGroups::isMember(Auth::id(), (int) $serviceRequest->group_id)) {
+                    return response()->json(['success' => false, 'message' => 'Only members of the group can create a deal for this request.'], 403);
+                }
+                $denied = $this->groupGuard((int) $serviceRequest->group_id, 'client_service_request', (int) $serviceRequest->id, 'create_deal');
+                if ($denied) return $denied;
+            }
+
             $deal = OfficialDeal::create([
                 'provider_id' => Auth::id(),
+                'group_id' => $serviceRequest ? $serviceRequest->group_id : null,
                 'client_id' => $request->receiver_id,
                 'client_service_request_id' => $request->service_request_id,
                 'service_offering_id' => $serviceRequest ? $serviceRequest->service_offering_id : null,
@@ -129,19 +140,45 @@ class SPChatController extends Controller
                 'status' => 'pending'
             ]);
 
+            if ($serviceRequest && $serviceRequest->group_id) {
+                ProviderGroups::releaseLock((int) Auth::id(), 'client_service_request', (int) $serviceRequest->id, 'create_deal');
+            }
+
             $payload['deal_id'] = $deal->id;
             $payload['deal_status'] = 'pending';
         }
 
         if ($request->type === 'payment_term') {
-            $activeDeal = OfficialDeal::where('client_id', $request->receiver_id)
-                                      ->where('provider_id', Auth::id())
-                                      ->where('client_service_request_id', $request->service_request_id)
-                                      ->latest()
-                                      ->first();
+            $serviceRequest = ClientServiceRequest::find($request->service_request_id);
+            $isGroupJob = $serviceRequest && $serviceRequest->group_id;
 
-            if (!$activeDeal) {
-                return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);
+            if ($isGroupJob) {
+                if (!ProviderGroups::isMember(Auth::id(), (int) $serviceRequest->group_id)) {
+                    return response()->json(['success' => false, 'message' => 'Only members of the group can send payment terms for this request.'], 403);
+                }
+
+                $activeDeal = OfficialDeal::where('client_id', $request->receiver_id)
+                                          ->where('client_service_request_id', $request->service_request_id)
+                                          ->where('group_id', $serviceRequest->group_id)
+                                          ->latest()
+                                          ->first();
+
+                if (!$activeDeal) {
+                    return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);
+                }
+
+                $denied = $this->groupGuard((int) $serviceRequest->group_id, 'official_deal', (int) $activeDeal->id, 'payment_term');
+                if ($denied) return $denied;
+            } else {
+                $activeDeal = OfficialDeal::where('client_id', $request->receiver_id)
+                                          ->where('provider_id', Auth::id())
+                                          ->where('client_service_request_id', $request->service_request_id)
+                                          ->latest()
+                                          ->first();
+
+                if (!$activeDeal) {
+                    return response()->json(['success' => false, 'message' => 'No official deal found for this request.']);
+                }
             }
 
             $term = OfficialPaymentTerm::create([
@@ -152,6 +189,10 @@ class SPChatController extends Controller
                 'payment_term' => $payload['payment_term'],
                 'status' => 'pending'
             ]);
+
+            if ($isGroupJob) {
+                ProviderGroups::releaseLock((int) Auth::id(), 'official_deal', (int) $activeDeal->id, 'payment_term');
+            }
 
             $payload['deal_id'] = $activeDeal->id; 
             $payload['term_id'] = $term->id;
@@ -171,6 +212,27 @@ class SPChatController extends Controller
         broadcast(new MessageSent($message))->toOthers();
 
         return response()->json(['success' => true, 'message' => clone $message]);
+    }
+
+    /**
+     * One-at-a-time guard for group jobs (mirrors the same rule used on the
+     * job dashboard). Returns a 409 response when another member is already
+     * performing this action, otherwise acquires the lock for this user.
+     */
+    private function groupGuard(?int $groupId, string $entityType, int $entityId, string $action)
+    {
+        if (!$groupId) return null;
+
+        $lock = ProviderGroups::activeLock($entityType, $entityId, $action);
+        if ($lock && (int) $lock->member_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => ProviderGroups::memberName((int) $lock->member_id) . ' is currently handling this action. Please wait a moment.',
+            ], 409);
+        }
+
+        ProviderGroups::acquireLock((int) Auth::id(), $entityType, $entityId, $action, $groupId);
+        return null;
     }
 
     public function sendImage(Request $request)
