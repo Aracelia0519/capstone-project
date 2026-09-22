@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Events\Requirements\RequirementSubmitted;
+use App\Models\IdentityVerificationResult;
+use App\Services\IdentityVerificationService;
 
 class SupplierRequirementController extends Controller
 {
@@ -66,7 +68,13 @@ class SupplierRequirementController extends Controller
                     'photos' => $photoUrls,
                     'resubmission_count' => $requirements->resubmission_count ?? 0,
                     'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s'),
-                    'updated_at' => $requirements->updated_at->format('Y-m-d H:i:s')
+                    'updated_at' => $requirements->updated_at->format('Y-m-d H:i:s'),
+                    'verification_result' => IdentityVerificationService::formatResult(
+                        IdentityVerificationResult::where('user_id', $user->id)
+                            ->where('requirement_type', 'supplier')
+                            ->latest()
+                            ->first()
+                    )
                 ]
             ], 200);
             
@@ -108,6 +116,14 @@ class SupplierRequirementController extends Controller
                 'barangay_clearance_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'business_registration_number' => 'required|string|max:100',
                 'business_registration_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                
+                // Automatic identity verification (selfie + face recognition + OCR)
+                'selfie_photo' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+                'face_detected' => 'sometimes|in:0,1,true,false',
+                'face_match' => 'sometimes|in:0,1,true,false',
+                'face_similarity' => 'sometimes|numeric|between:0,1',
+                'ocr_text' => 'sometimes|nullable|string',
+                'ocr_id_number' => 'sometimes|nullable|string',
                 
                 // Address Validation - strict bounding box for Cavite
                 'province' => 'required|string|in:Cavite',
@@ -172,6 +188,15 @@ class SupplierRequirementController extends Controller
                     }
                 }
                 
+                // Handle face selfie upload (for facial recognition matching)
+                $selfieDbPath = null;
+                if ($request->hasFile('selfie_photo')) {
+                    $selfieFile = $request->file('selfie_photo');
+                    $selfieName = $user->id . '_selfie_' . time() . '_' . uniqid() . '.' . $selfieFile->getClientOriginalExtension();
+                    $selfiePath = Storage::disk('public')->putFileAs('supplier_verification_selfies', $selfieFile, $selfieName);
+                    $selfieDbPath = $selfiePath;
+                }
+                
                 // Directly assigning to bypass model $fillable restrictions
                 $requirements = SupplierRequirements::firstOrNew(['user_id' => $user->id]);
                 $requirements->company_name = $request->company_name;
@@ -202,6 +227,17 @@ class SupplierRequirementController extends Controller
 
                 DB::commit();
 
+                // Save the automatic identity verification result (face match + OCR checks).
+                // NOTE: the requirement & user status stay 'pending' - the admin decides activation.
+                $verificationResult = IdentityVerificationService::saveResult(
+                    $user,
+                    'supplier',
+                    $requirements->id,
+                    'supplier',
+                    $selfieDbPath,
+                    array_merge($request->all(), ['typed_id_number' => $request->id_number])
+                );
+
                 // Broadcast Event to Admin UI Here
                 event(new RequirementSubmitted($user));
 
@@ -218,7 +254,8 @@ class SupplierRequirementController extends Controller
                         'status' => 'pending',
                         'has_submitted' => true,
                         'photos' => $photoUrls,
-                        'resubmission_count' => $requirements->resubmission_count
+                        'resubmission_count' => $requirements->resubmission_count,
+                        'verification_result' => IdentityVerificationService::formatResult($verificationResult)
                     ]
                 ], 200);
 

@@ -11,6 +11,8 @@ use App\Models\Finance\FinanceManager;
 use App\Models\Client\ClientRequirement;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
 use App\Models\Supplier\SupplierRequirements;
+use App\Models\IdentityVerificationResult;
+use App\Services\IdentityVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
@@ -194,6 +196,12 @@ class AdminUserController extends Controller
             'status_display' => ucfirst($user->status),
             'verification_status' => $verificationStatus,
             'verification_details' => $verificationDetails,
+            'identity_verification' => IdentityVerificationService::formatResult(
+                IdentityVerificationResult::where('user_id', $user->id)
+                    ->where('requirement_type', $user->role)
+                    ->latest()
+                    ->first()
+            ),
             'created_at' => $user->created_at->format('M d, Y'),
             'created_at_raw' => $user->created_at,
             'updated_at' => $user->updated_at,
@@ -653,6 +661,23 @@ class AdminUserController extends Controller
                     'success' => false,
                     'message' => 'User not found'
                 ], 404);
+            }
+            
+            // Identity & Location Verification guard: only allow approval when the
+            // automatic credential check passed (or when no check was submitted yet).
+            if (in_array($user->role, ['client', 'service_provider', 'supplier', 'distributor'])) {
+                $verificationResult = IdentityVerificationResult::where('user_id', $user->id)
+                    ->where('requirement_type', $user->role)
+                    ->latest()
+                    ->first();
+
+                if ($verificationResult && !(bool) $verificationResult->credentials_matched) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot approve: automatic identity verification failed. ' . ($verificationResult->failure_reason ?? 'Credentials do not match.'),
+                        'identity_verification' => IdentityVerificationService::formatResult($verificationResult)
+                    ], 422);
+                }
             }
             
             // Activate user account

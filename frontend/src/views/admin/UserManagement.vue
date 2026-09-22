@@ -317,8 +317,19 @@
                       <Badge :class="getVerificationBadgeClass(viewingUser.verification_status)">{{ viewingUser.verification_status || 'N/A' }}</Badge>
                     </div>
                     <div class="pt-4 flex flex-col gap-2">
+                        <!-- Automatic identity verification failure warning -->
+                        <div v-if="identityVerificationBlocked(viewingUser)" class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                           <p class="font-semibold flex items-center gap-1.5 mb-1">
+                              <i class="fas fa-exclamation-triangle"></i> Automatic identity verification failed
+                           </p>
+                           <p>{{ identityVerificationReason(viewingUser) }}</p>
+                           <p v-if="viewingUser.identity_verification?.checked_at" class="mt-1 text-[10px] text-slate-500">Checked {{ formatDate(viewingUser.identity_verification.checked_at) }}</p>
+                        </div>
                        <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
-                          <Button @click="approveUser(viewingUser)" class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white">
+                          <Button @click="approveUser(viewingUser)" 
+                              :disabled="identityVerificationBlocked(viewingUser)"
+                              class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white"
+                              :class="identityVerificationBlocked(viewingUser) ? 'opacity-50 cursor-not-allowed' : ''">
                              <i class="fas fa-check-circle"></i> Approve User
                           </Button>
                           <Button @click="openRejectModal(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
@@ -566,6 +577,73 @@
                                 </div>
                             </div>
                             </div>
+                        </div>
+
+                        <!-- Automatic Identity Verification Results (client-side AI) -->
+                        <div v-if="viewingUser.identity_verification" class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-sm font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fas fa-user-check" :class="viewingUser.identity_verification.credentials_matched ? 'text-green-600' : 'text-red-600'"></i>
+                                    Identity Verification Results
+                                </h4>
+                                <Badge :class="viewingUser.identity_verification.credentials_matched ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'">
+                                    {{ viewingUser.identity_verification.credentials_matched ? 'Matched' : 'Failed' }}
+                                </Badge>
+                            </div>
+
+                            <div v-if="viewingUser.identity_verification.failure_reason" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                                <p class="font-semibold flex items-center gap-1.5 mb-1"><i class="fas fa-exclamation-triangle"></i> Failure reason</p>
+                                <p>{{ viewingUser.identity_verification.failure_reason }}</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                                    <Label class="text-[10px] text-slate-500 uppercase block mb-1">Face Match</Label>
+                                    <span :class="viewingUser.identity_verification.face_match ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'">
+                                        {{ viewingUser.identity_verification.face_match ? 'Yes' : 'No' }}
+                                    </span>
+                                    <span v-if="viewingUser.identity_verification.face_similarity != null" class="block text-xs text-slate-500 mt-0.5">
+                                        {{ Math.round(viewingUser.identity_verification.face_similarity * 100) }}% similarity
+                                    </span>
+                                </div>
+                                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                                    <Label class="text-[10px] text-slate-500 uppercase block mb-1">Name Match</Label>
+                                    <span :class="viewingUser.identity_verification.name_match ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'">
+                                        {{ viewingUser.identity_verification.name_match ? 'Matched' : 'Not matched' }}
+                                    </span>
+                                </div>
+                                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                                    <Label class="text-[10px] text-slate-500 uppercase block mb-1">ID Number Match</Label>
+                                    <span :class="viewingUser.identity_verification.id_number_match ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'">
+                                        {{ viewingUser.identity_verification.id_number_match ? 'Matched' : 'Unverified' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div v-if="viewingUser.identity_verification.extracted_text || viewingUser.identity_verification.extracted_id_number" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                                    <Label class="text-[10px] text-slate-500 uppercase block mb-1">Extracted ID Number (OCR)</Label>
+                                    <p class="font-mono text-sm text-slate-900">{{ viewingUser.identity_verification.extracted_id_number || 'Not detected' }}</p>
+                                </div>
+                                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                                    <Label class="text-[10px] text-slate-500 uppercase block mb-1">Extracted Text (OCR)</Label>
+                                    <p class="text-xs text-slate-600 line-clamp-3">{{ viewingUser.identity_verification.extracted_text || 'Not available' }}</p>
+                                </div>
+                            </div>
+
+                            <div v-if="viewingUser.identity_verification.selfie_photo_url" class="mt-3">
+                                <Label class="text-[10px] text-slate-500 uppercase block mb-2">Submitted Selfie</Label>
+                                <button type="button" class="block group relative rounded-lg overflow-hidden border border-slate-200 cursor-pointer hover:shadow-md transition-all max-w-[180px]" @click="showImageModal(viewingUser.identity_verification.selfie_photo_url, 'Verification Selfie')">
+                                    <img :src="viewingUser.identity_verification.selfie_photo_url" alt="Verification selfie" class="w-full h-36 object-cover">
+                                    <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <i class="fas fa-expand text-white text-xl"></i>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <p v-if="viewingUser.identity_verification.checked_at" class="mt-3 text-[10px] text-slate-400">
+                                <i class="fas fa-clock mr-1"></i> Auto-checked on {{ formatDate(viewingUser.identity_verification.checked_at) }}
+                            </p>
                         </div>
 
                     </div>
@@ -1738,6 +1816,17 @@ export default {
         return details.valid_id_type || '';
       }
       return '';
+    },
+
+    identityVerificationBlocked(user) {
+      const iv = user && user.identity_verification;
+      return !!iv && iv.credentials_matched === false;
+    },
+
+    identityVerificationReason(user) {
+      const iv = user && user.identity_verification;
+      if (!iv) return '';
+      return iv.failure_reason || 'Automatic identity verification did not pass. Manual review is required before approval.';
     },
     
     handleError(error) {

@@ -515,10 +515,27 @@
               </div>
             </div>
 
-            <div v-show="currentStep === 4" class="max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
+            <div v-show="currentStep === 4" class="max-w-2xl mx-auto animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 class="text-lg font-semibold text-white mb-1 text-center">Review & Submit</h3>
               <p class="text-slate-400 text-sm text-center mb-6">Review your information before submission</p>
-              
+
+              <!-- Automatic Identity & Face Verification (client-side AI) -->
+              <div v-if="idVerification.idPhoto" class="mb-6 p-5 bg-slate-800/40 border border-slate-700/50 rounded-xl">
+                <h5 class="text-sm font-semibold text-indigo-400 mb-3 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  Identity & Face Verification
+                </h5>
+                <p class="text-xs text-slate-400 mb-4">Take a live selfie and we will automatically compare your face with the ID photo and read the printed name / ID number using on-device AI (no personal data leaves your browser).</p>
+                <FaceVerificationStep
+                  :id-photo="idVerification.idPhoto"
+                  :id-number="idVerification.idNumber"
+                  :first-name="user.first_name"
+                  :last-name="user.last_name"
+                  :id-type="idVerification.idType"
+                  v-model="idVerification.faceVerification"
+                />
+              </div>
+
               <div class="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
                 <div class="p-4 border-b border-slate-700/50 flex items-center gap-2 text-indigo-400 font-medium">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -739,6 +756,7 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'vue-sonner'
+import FaceVerificationStep from '@/components/FaceVerificationStep.vue'
 
 export default {
   name: 'ClientProfile',
@@ -746,7 +764,8 @@ export default {
     Card, CardContent, CardHeader, CardTitle, CardDescription,
     Button, Input, Label, Textarea, Badge, Progress,
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-    Toaster
+    Toaster,
+    FaceVerificationStep
   },
   data() {
     return {
@@ -836,6 +855,7 @@ export default {
         idNumber: '',
         idPhoto: null,
         idPhotoPreview: '',
+        faceVerification: null,
         status: 'not_submitted',
         resubmission_count: 0,
         loading: false,
@@ -1531,6 +1551,19 @@ export default {
         formData.append('id_type', this.idVerification.idType)
         formData.append('id_number', this.idVerification.idNumber)
         formData.append('id_photo', this.idVerification.idPhoto)
+        
+        // Client-side identity & face verification results (face-api + tesseract OCR)
+        const fv = this.idVerification.faceVerification || {}
+        if (fv.selfiePhoto instanceof File) formData.append('selfie_photo', fv.selfiePhoto)
+        formData.append('face_detected', fv.face_detected === true ? '1' : '0')
+        formData.append('face_match', fv.face_match === true ? '1' : '0')
+        formData.append('face_similarity', fv.face_similarity != null ? String(fv.face_similarity) : '0')
+        formData.append('ocr_text', fv.ocr_text || '')
+        formData.append('ocr_id_number', fv.ocr_id_number || '')
+        formData.append('name_match', fv.name_match === true ? '1' : '0')
+        formData.append('id_number_match', fv.id_number_match === true ? '1' : '0')
+        formData.append('credentials_matched', fv.credentials_matched === true ? '1' : '0')
+        formData.append('failure_reason', fv.failure_reason || '')
         
         formData.append('province', 'Cavite')
         formData.append('city', this.idVerification.city)

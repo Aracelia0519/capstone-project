@@ -14,6 +14,8 @@ use App\Events\Requirements\RequirementSubmitted;
 use App\Events\Requirements\RequirementStatusUpdated;
 use App\Models\SupportMessage; // <-- ADDED FOR CHAT
 use App\Events\SupportMessageSent; // <-- ADDED FOR CHAT
+use App\Models\IdentityVerificationResult;
+use App\Services\IdentityVerificationService;
 
 class ServiceProviderRequirementController extends Controller
 {
@@ -68,7 +70,13 @@ class ServiceProviderRequirementController extends Controller
                 'selfie_photo_url' => $requirement->selfie_with_id_photo 
                     ? asset('storage/' . $requirement->selfie_with_id_photo)
                     : null,
-                'address' => $requirement->address
+                'address' => $requirement->address,
+                'verification_result' => IdentityVerificationService::formatResult(
+                    IdentityVerificationResult::where('user_id', $user->id)
+                        ->where('requirement_type', 'service_provider')
+                        ->latest()
+                        ->first()
+                )
             ]
         ]);
     }
@@ -95,6 +103,12 @@ class ServiceProviderRequirementController extends Controller
             // Image validation depends on if they are submitting for the first time or replacing files
             'id_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // 5MB
             'selfie_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+            // Automatic verification results computed in the browser (face-api + tesseract.js)
+            'face_detected' => 'sometimes|in:0,1,true,false',
+            'face_match' => 'sometimes|in:0,1,true,false',
+            'face_similarity' => 'sometimes|numeric|between:0,1',
+            'ocr_text' => 'sometimes|nullable|string',
+            'ocr_id_number' => 'sometimes|nullable|string',
             
             // Address validation strictly enforced to Cavite bounds
             'province' => 'required|string|in:Cavite',
@@ -215,6 +229,17 @@ class ServiceProviderRequirementController extends Controller
 
             DB::commit();
 
+            // Save the automatic identity verification result (face match + OCR checks).
+            // NOTE: the requirement & user status stay 'pending' - the admin decides activation.
+            $verificationResult = IdentityVerificationService::saveResult(
+                $user,
+                'service_provider',
+                $requirement->id,
+                'service_provider',
+                $requirement->selfie_with_id_photo,
+                array_merge($request->all(), ['typed_id_number' => $request->id_number])
+            );
+
             // 🔔 Broadcast Event to Admin Frontend instantly
             event(new RequirementSubmitted($user));
 
@@ -229,7 +254,8 @@ class ServiceProviderRequirementController extends Controller
                     'resubmission_count' => $requirement->resubmission_count,
                     'id_photo_url' => $requirement->valid_id_photo ? asset('storage/' . $requirement->valid_id_photo) : null,
                     'selfie_photo_url' => $requirement->selfie_with_id_photo ? asset('storage/' . $requirement->selfie_with_id_photo) : null,
-                    'address' => $requirement->address
+                    'address' => $requirement->address,
+                    'verification_result' => IdentityVerificationService::formatResult($verificationResult)
                 ]
             ]);
 

@@ -822,6 +822,22 @@
                     </div>
                   </div>
 
+                  <div class="document-card bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+                    <h4 class="font-bold text-gray-800 mb-3 flex items-center">
+                      <ShieldCheck class="w-5 h-5 mr-2 text-emerald-500 icon-hover" />
+                      Automatic Identity & Face Verification
+                    </h4>
+                    <p class="text-sm text-gray-600 mb-4">Take a live selfie and we'll automatically compare your face with the Valid ID photo and read the printed ID number using on-device AI. Results are reviewed by an admin before your account is activated.</p>
+                    <FaceVerificationStep
+                      :id-photo="verificationForm.valid_id_photo"
+                      :id-number="verificationForm.id_number"
+                      :first-name="userInfo.first_name"
+                      :last-name="userInfo.last_name"
+                      :id-type="verificationForm.valid_id_type"
+                      v-model="faceVerification"
+                    />
+                  </div>
+
                   <div class="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
                     <div class="flex items-start">
                       <input type="checkbox" v-model="acceptedTerms" id="terms" 
@@ -1046,6 +1062,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import FaceVerificationStep from '@/components/FaceVerificationStep.vue'
 
 const router = useRouter()
 
@@ -1121,6 +1138,7 @@ const changingPassword = ref(false)
 const submittingVerification = ref(false)
 const currentStep = ref(1)
 const acceptedTerms = ref(false)
+const faceVerification = ref(null)
 
 // Geolocation State
 const gettingLocation = ref(false)
@@ -1887,6 +1905,19 @@ const submitVerification = async () => {
     if(verificationForm.mayor_permit_photo) formData.append('mayor_permit_photo', verificationForm.mayor_permit_photo)
     if(verificationForm.barangay_clearance_photo) formData.append('barangay_clearance_photo', verificationForm.barangay_clearance_photo)
     if(verificationForm.business_registration_photo) formData.append('business_registration_photo', verificationForm.business_registration_photo)
+
+    // Client-side identity & face verification results (face-api + tesseract OCR)
+    const fv = faceVerification.value || {}
+    if (fv.selfiePhoto instanceof File) formData.append('selfie_photo', fv.selfiePhoto)
+    formData.append('face_detected', fv.face_detected === true ? '1' : '0')
+    formData.append('face_match', fv.face_match === true ? '1' : '0')
+    formData.append('face_similarity', fv.face_similarity != null ? String(fv.face_similarity) : '0')
+    formData.append('ocr_text', fv.ocr_text || '')
+    formData.append('ocr_id_number', fv.ocr_id_number || '')
+    formData.append('name_match', fv.name_match === true ? '1' : '0')
+    formData.append('id_number_match', fv.id_number_match === true ? '1' : '0')
+    formData.append('credentials_matched', fv.credentials_matched === true ? '1' : '0')
+    formData.append('failure_reason', fv.failure_reason || '')
     
     const response = await axios.post('/supplier/requirements', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }

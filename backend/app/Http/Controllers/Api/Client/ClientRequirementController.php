@@ -13,6 +13,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Events\Requirements\RequirementSubmitted;
+use App\Models\IdentityVerificationResult;
+use App\Services\IdentityVerificationService;
 
 class ClientRequirementController extends Controller
 {
@@ -49,7 +51,13 @@ class ClientRequirementController extends Controller
                     'resubmission_count' => $requirement->resubmission_count ?? 0,
                     'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $requirement->updated_at->format('Y-m-d H:i:s'),
-                    'address' => $requirement->address
+                    'address' => $requirement->address,
+                    'verification_result' => IdentityVerificationService::formatResult(
+                        IdentityVerificationResult::where('user_id', $user->id)
+                            ->where('requirement_type', 'client')
+                            ->latest()
+                            ->first()
+                    )
                 ]
             ], 200);
             
@@ -81,6 +89,7 @@ class ClientRequirementController extends Controller
                 'id_type' => 'required|string|in:philid,passport,driver_license,umid,prc,voter,postal,philhealth,nbi,senior_citizen,other',
                 'id_number' => 'required|string|max:100',
                 'id_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB max
+                'selfie_photo' => 'nullable|file|mimes:jpg,jpeg,png|max:5120', // Face selfie (new)
                 // Address validation - Restrict to Cavite bounds
                 'province' => 'required|string|in:Cavite',
                 'city' => 'required|string|max:255',
@@ -88,6 +97,12 @@ class ClientRequirementController extends Controller
                 'block_address' => 'required|string|max:1000',
                 'latitude' => 'nullable|numeric|min:14.0000|max:14.6000',
                 'longitude' => 'nullable|numeric|min:120.5000|max:121.1000',
+                // Automatic verification results computed in the browser (face-api + tesseract.js)
+                'face_detected' => 'sometimes|in:0,1,true,false',
+                'face_match' => 'sometimes|in:0,1,true,false',
+                'face_similarity' => 'sometimes|numeric|between:0,1',
+                'ocr_text' => 'sometimes|nullable|string',
+                'ocr_id_number' => 'sometimes|nullable|string',
             ], [
                 'id_type.required' => 'Please select an ID type',
                 'id_type.in' => 'Please select a valid ID type',
@@ -139,6 +154,15 @@ class ClientRequirementController extends Controller
             
             // The path to store in database
             $dbFilePath = $folderPath . '/' . $fileName;
+
+            // Handle face selfie upload (for facial recognition matching)
+            $selfieDbPath = null;
+            if ($request->hasFile('selfie_photo')) {
+                $selfieFile = $request->file('selfie_photo');
+                $selfieName = $user->id . '_selfie_' . time() . '_' . uniqid() . '.' . $selfieFile->getClientOriginalExtension();
+                $selfiePath = Storage::disk('public')->putFileAs('id_verification_selfies', $selfieFile, $selfieName);
+                $selfieDbPath = $selfiePath;
+            }
             
             // Create or update client requirement (Using object approach to avoid fillable issues)
             $requirement = ClientRequirement::firstOrNew(['user_id' => $user->id]);
@@ -165,6 +189,17 @@ class ClientRequirementController extends Controller
 
             DB::commit();
 
+            // Save the automatic identity verification result (face match + OCR checks).
+            // NOTE: the requirement & user status stay 'pending' - the admin decides activation.
+            $verificationResult = IdentityVerificationService::saveResult(
+                $user,
+                'client',
+                $requirement->id,
+                'client',
+                $selfieDbPath,
+                array_merge($request->all(), ['typed_id_number' => $request->id_number])
+            );
+
             // Broadcast Event
             event(new RequirementSubmitted($user));
             
@@ -181,7 +216,8 @@ class ClientRequirementController extends Controller
                     'status_class' => $requirement->status_class,
                     'resubmission_count' => $requirement->resubmission_count,
                     'submitted_at' => $requirement->created_at->format('Y-m-d H:i:s'),
-                    'address' => $requirement->address
+                    'address' => $requirement->address,
+                    'verification_result' => IdentityVerificationService::formatResult($verificationResult)
                 ]
             ], 200);
             

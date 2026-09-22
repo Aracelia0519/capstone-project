@@ -644,6 +644,22 @@
                       </div>
                       <p v-if="idVerificationErrors.selfiePhoto" class="text-xs text-red-400 mt-2">{{ idVerificationErrors.selfiePhoto }}</p>
                   </div>
+
+                  <!-- Automatic Identity & Face Verification (client-side AI: face-api + tesseract OCR) -->
+                  <div class="md:col-span-2 bg-slate-800/40 border border-slate-700/50 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                      <ShieldCheck class="w-5 h-5 text-emerald-400" /> Automatic Identity & Face Verification
+                    </h3>
+                    <p class="text-sm text-gray-400 mb-4">Optionally run an automatic check that compares your face with the ID photo and reads the printed ID number using on-device AI. Results are reviewed by an admin before your account is activated.</p>
+                    <FaceVerificationStep
+                      :id-photo="idVerification.idPhoto || idVerification.idPhotoUrl"
+                      :id-number="idVerification.idNumber"
+                      :first-name="user.first_name"
+                      :last-name="user.last_name"
+                      :id-type="idVerification.idType"
+                      v-model="idVerification.faceVerification"
+                    />
+                  </div>
                 </div>
 
                 <div v-if="idVerification.status === 'pending'" class="md:col-span-2">
@@ -788,6 +804,7 @@ import {
   FileBadge, Check, X, CreditCard, Image, UploadCloud, 
   ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation, MessageSquare
 } from 'lucide-vue-next'
+import FaceVerificationStep from '@/components/FaceVerificationStep.vue'
 
 export default {
   name: 'ProfileSettingsPage',
@@ -797,7 +814,8 @@ export default {
     Card, CardContent, CardHeader, CardTitle, CardDescription, Avatar, AvatarFallback, AvatarImage,
     Badge, Progress, Separator, UserCog, ShieldCheck, Save, RotateCcw, Loader2, AlertCircle,
     Camera, Shield, CheckCircle2, AlertTriangle, Key, User, FileBadge, Check, X, CreditCard, Image, UploadCloud,
-    ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation, MessageSquare
+    ChevronLeft, ChevronRight, Lock, Eye, EyeOff, MapPin, Navigation, MessageSquare,
+    FaceVerificationStep
   },
   data() {
     return {
@@ -822,7 +840,7 @@ export default {
       stats: { completedJobs: 0, satisfaction: 0, activeProjects: 0 },
       // ID Verification
       idVerification: {
-        city: '', barangay: '', block_address: '', latitude: '', longitude: '', idType: '', idNumber: '', idPhoto: null, idPhotoPreview: null, idPhotoUrl: null, selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: null, status: 'not_submitted', submittedAt: null, reviewedAt: null, rejectionReason: null, resubmission_count: 0
+        city: '', barangay: '', block_address: '', latitude: '', longitude: '', idType: '', idNumber: '', idPhoto: null, idPhotoPreview: null, idPhotoUrl: null, selfiePhoto: null, selfiePhotoPreview: null, selfiePhotoUrl: null, faceVerification: null, status: 'not_submitted', submittedAt: null, reviewedAt: null, rejectionReason: null, resubmission_count: 0
       },
       idVerificationErrors: {},
       isDraggingId: false,
@@ -1429,6 +1447,19 @@ export default {
         // Append photos if they are new files, otherwise the backend will keep the existing ones
         if (this.idVerification.idPhoto) formData.append('id_photo', this.idVerification.idPhoto)
         if (this.idVerification.selfiePhoto) formData.append('selfie_photo', this.idVerification.selfiePhoto)
+
+        // Client-side identity & face verification results (face-api + tesseract OCR)
+        const fv = this.idVerification.faceVerification || {}
+        if (fv.selfiePhoto instanceof File && !(this.idVerification.selfiePhoto instanceof File)) formData.append('selfie_photo', fv.selfiePhoto)
+        formData.append('face_detected', fv.face_detected === true ? '1' : '0')
+        formData.append('face_match', fv.face_match === true ? '1' : '0')
+        formData.append('face_similarity', fv.face_similarity != null ? String(fv.face_similarity) : '0')
+        formData.append('ocr_text', fv.ocr_text || '')
+        formData.append('ocr_id_number', fv.ocr_id_number || '')
+        formData.append('name_match', fv.name_match === true ? '1' : '0')
+        formData.append('id_number_match', fv.id_number_match === true ? '1' : '0')
+        formData.append('credentials_matched', fv.credentials_matched === true ? '1' : '0')
+        formData.append('failure_reason', fv.failure_reason || '')
         
         formData.append('province', 'Cavite'); formData.append('city', this.idVerification.city)
         formData.append('barangay', this.idVerification.barangay); formData.append('block_address', this.idVerification.block_address)
