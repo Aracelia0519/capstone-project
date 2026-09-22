@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const baseURL = 'http://localhost:8000/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api', 
+  baseURL, 
   timeout: 10000, 
   headers: {
     'Content-Type': 'application/json',
@@ -9,6 +11,9 @@ const api = axios.create({
     'X-Requested-With': 'XMLHttpRequest'
   }
 })
+
+// Storage base URL (for public files like verification photos)
+export const storageBaseURL = baseURL.replace(/\/api$/, '');
 
 // Request interceptor - add token to requests
 api.interceptors.request.use(

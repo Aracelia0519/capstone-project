@@ -901,7 +901,7 @@
 </template>
 
 <script>
-import api from '@/utils/axios'; 
+import api, { storageBaseURL } from '@/utils/axios'; 
 import echo from '@/utils/websocket';
 import { toast } from 'vue-sonner';
 
@@ -1283,7 +1283,7 @@ export default {
     async fetchUserRequirements(userId) {
       this.loadingRequirements = true;
       try {
-        const storageUrl = 'http://localhost:8000';
+        const storageUrl = storageBaseURL;
         this.userRequirements = null;
         const response = await api.get(`/admin/users/${userId}`);
         
