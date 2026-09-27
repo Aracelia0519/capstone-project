@@ -12,6 +12,7 @@ use App\Models\Client\ClientRequirement;
 use App\Models\ServiceProvider\ServiceProviderRequirement;
 use App\Models\Supplier\SupplierRequirements;
 use App\Models\IdentityVerificationResult;
+use App\Models\SupportMessage;
 use App\Services\IdentityVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -57,6 +58,17 @@ class AdminUserController extends Controller
                       ->orWhere('email', 'like', "%{$search}%")
                       ->orWhere('phone', 'like', "%{$search}%");
                 });
+            }
+
+            // Filter: only users who have a support chat thread with the admin
+            // (sent a message to the admin pool, or received an admin reply).
+            if ($request->has('has_chat') && in_array($request->has_chat, ['yes', '1', 'true'], true)) {
+                $chatUserIds = collect([
+                    SupportMessage::query()->distinct()->pluck('sender_id'),
+                    SupportMessage::query()->distinct()->whereNotNull('receiver_id')->pluck('receiver_id'),
+                ])->flatten()->unique()->values();
+
+                $query->whereIn('id', $chatUserIds);
             }
             
             // Get paginated results
@@ -202,6 +214,14 @@ class AdminUserController extends Controller
                     ->latest()
                     ->first()
             ),
+            // Number of unread support messages the user sent to the admin pool.
+            'unread_support_messages' => SupportMessage::where('sender_id', $user->id)
+                ->where('is_read', false)
+                ->count(),
+            // Whether this user has any support thread with the admin.
+            'has_support_chat' => SupportMessage::where('sender_id', $user->id)
+                ->orWhere('receiver_id', $user->id)
+                ->exists(),
             'created_at' => $user->created_at->format('M d, Y'),
             'created_at_raw' => $user->created_at,
             'updated_at' => $user->updated_at,
@@ -671,10 +691,14 @@ class AdminUserController extends Controller
                     ->latest()
                     ->first();
 
-                if ($verificationResult && !(bool) $verificationResult->credentials_matched) {
+                // Approval stays blocked only when EVERY automatic check failed
+                // (face, name and ID number all did not match). When at least one
+                // check passed, the admin may approve after manually reviewing
+                // the submitted requirements and verification.
+                if ($verificationResult && !IdentityVerificationService::hasAnyMatch($verificationResult)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Cannot approve: automatic identity verification failed. ' . ($verificationResult->failure_reason ?? 'Credentials do not match.'),
+                        'message' => 'Cannot approve: none of the automatic identity verification checks passed (face, name and ID number all failed). ' . ($verificationResult->failure_reason ?? 'Credentials do not match.'),
                         'identity_verification' => IdentityVerificationService::formatResult($verificationResult)
                     ], 422);
                 }
@@ -752,6 +776,80 @@ class AdminUserController extends Controller
     }
 
     /**
+     * Record the admin's manual review outcome for a user's identity
+     * verification. The admin inspects the submitted requirements and
+     * verification, then marks the manual review approved or rejected with an
+     * optional note. This does NOT activate the account - that still happens
+     * through Approve User (allowed whenever at least one automatic check
+     * matched).
+     */
+    public function manualReview(Request $request, $id)
+    {
+        try {
+            $authUser = Auth::user();
+            if ($authUser->role !== 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access. Admin privileges required.'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:approved,rejected',
+                'reason' => 'nullable|string|max:1000',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::find($id);
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            $verificationResult = IdentityVerificationResult::where('user_id', $user->id)
+                ->where('requirement_type', $user->role)
+                ->latest()
+                ->first();
+
+            if (!$verificationResult) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This user has no automatic identity verification result to review.'
+                ], 422);
+            }
+
+            $verificationResult->update([
+                'manual_review_status' => $request->status,
+                'manual_review_reason' => $request->reason ?: null,
+                'manual_reviewed_by' => $authUser->id,
+                'manual_reviewed_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Manual review marked as ' . $request->status,
+                'identity_verification' => IdentityVerificationService::formatResult($verificationResult->refresh())
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update manual review',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Reject user with reason
      */
     public function reject(Request $request, $id)
@@ -787,8 +885,14 @@ class AdminUserController extends Controller
                 ], 404);
             }
             
-            // Deactivate user account
-            $user->deactivate();
+            // Rejected users stay loginable so they can review the rejection
+            // reason and re-submit their requirements. Rejection no longer
+            // deactivates the account (inactive means terminated/deactivated
+            // and blocks login). If an account was inactive, it is brought back
+            // to pending so the user can act on the rejection.
+            if ($user->status === 'inactive') {
+                $user->update(['status' => 'pending']);
+            }
             
             // Reject requirements based on user role
             switch ($user->role) {

@@ -25,8 +25,13 @@ class SupportMessageSent implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        // Broadcasts to the specific user's support channel
-        return new PrivateChannel('support.user.' . $this->clientId);
+        // Broadcasts to the specific user's support channel AND to the shared
+        // admin channel so every admin screen (e.g. User Management) can update
+        // its unread badges in real time.
+        return [
+            new PrivateChannel('support.user.' . $this->clientId),
+            new PrivateChannel('admin.support'),
+        ];
     }
 
     // ADD THIS METHOD: This tells Laravel the exact name to broadcast

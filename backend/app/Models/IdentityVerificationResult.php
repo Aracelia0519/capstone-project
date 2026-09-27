@@ -26,6 +26,11 @@ class IdentityVerificationResult extends Model
         'failure_reason',
         'extracted_text',
         'extracted_id_number',
+        'manual_review_requested',
+        'manual_review_status',
+        'manual_review_reason',
+        'manual_reviewed_by',
+        'manual_reviewed_at',
     ];
 
     protected $casts = [
@@ -35,6 +40,8 @@ class IdentityVerificationResult extends Model
         'name_match' => 'boolean',
         'id_number_match' => 'boolean',
         'credentials_matched' => 'boolean',
+        'manual_review_requested' => 'boolean',
+        'manual_reviewed_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

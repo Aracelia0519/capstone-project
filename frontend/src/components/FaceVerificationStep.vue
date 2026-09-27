@@ -145,6 +145,32 @@
 
       <div v-if="result.failure_reason" class="text-xs text-red-600 bg-red-100/70 rounded p-2">{{ result.failure_reason }}</div>
 
+      <!-- Manual review request: shown when at least ONE check passed but not all -->
+      <label
+        v-if="result.any_match === true && !result.credentials_matched"
+        class="flex items-start gap-2 p-3 rounded-lg border border-amber-300 bg-amber-50 cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          v-model="manualReviewRequested"
+          class="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
+        />
+        <span class="text-xs text-amber-800 leading-relaxed">
+          <span class="font-semibold">Submit for manual review by admin</span> — at least one automatic check
+          (face / name / ID number) passed, but not all. Your details will be sent for the admin to manually
+          review your requirements and verification before deciding.
+        </span>
+      </label>
+
+      <!-- All checks failed (verification actually ran): admin will not be able to approve -->
+      <div
+        v-else-if="result.any_match === false"
+        class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2"
+      >
+        All automatic checks (face, name, ID number) failed. An admin will not be able to approve your account
+        until at least one check passes. Please retake a clearer photo of your ID and try again.
+      </div>
+
       <div v-if="result.ocr_text" class="text-[11px] text-slate-500 bg-white/80 border border-slate-200 rounded p-2 max-h-24 overflow-auto whitespace-pre-wrap">
         <span class="font-semibold text-slate-600">OCR read:</span> {{ result.ocr_text }}
       </div>
@@ -181,7 +207,7 @@
  * If the ID photo is a PDF (allowed for clients), OCR cannot run - the step shows a
  * clear notice and returns verification with reasons instead of crashing.
  */
-import { ref, computed, h, onBeforeUnmount } from 'vue'
+import { ref, computed, h, onMounted, onBeforeUnmount } from 'vue'
 import {
   namesMatch,
   idNumbersMatch,
@@ -214,6 +240,7 @@ const cameraLoading = ref(false)
 const verifying = ref(false)
 const result = ref(null)
 const idNotImage = ref('')
+const manualReviewRequested = ref(false)
 
 // Tiny inline status dot so the parent doesn't need to import anything extra.
 const StatusDot = {
@@ -231,19 +258,58 @@ function switchMode(next) {
 /* ---------------------------------------------------------------------------
  * Webcam
  * ------------------------------------------------------------------------- */
-// Target facing mode. Only changed by the explicit "Switch Camera" action;
-// the first "Start Camera" press keeps the browser's default (usually 'user').
+// The camera is addressed by its real device (from enumerateDevices) so an
+// external webcam works like any other device. `facingMode` is only used as a
+// last resort on devices with no enumerable list (rare).
 let facingMode = 'user'
+const videoDevices = ref([])
+const deviceIndex = ref(0)
+let starting = false
+// True once the user picked a camera from the dropdown - after that we never
+// silently re-point at a different device.
+let userPickedCamera = false
 
-function buildVideoConstraints() {
-  // 'ideal' (never 'exact') so a device that can't match the requested facing
-  // mode - e.g. a laptop with only a front webcam and no rear camera - still
-  // works instead of rejecting the whole request with OverconstrainedError.
-  return {
-    facingMode: { ideal: facingMode },
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
+// Virtual cameras (e.g. OBS Virtual Camera) only deliver frames while their
+// host app is running, so they are skipped when auto-selecting a default.
+function isVirtualDevice(dev) {
+  return /virtual|obs|ndi|droidcam/i.test((dev && dev.label) || '')
+}
+
+function deviceLabel(idx) {
+  const d = videoDevices.value[idx]
+  return (d && d.label) || `Camera ${idx + 1}`
+}
+
+async function refreshVideoDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices()
+    videoDevices.value = devs.filter((d) => d.kind === 'videoinput')
+
+    if (!userPickedCamera) {
+      // Prefer a real camera over a virtual one (OBS Virtual Camera blocks
+      // the stream whenever OBS is not running).
+      const realIdx = videoDevices.value.findIndex((d) => !isVirtualDevice(d))
+      if (realIdx >= 0) deviceIndex.value = realIdx
+    } else if (deviceIndex.value >= videoDevices.value.length) {
+      deviceIndex.value = Math.max(0, videoDevices.value.length - 1)
+    }
+  } catch (e) {
+    videoDevices.value = []
   }
+}
+
+// Constraint strategies, tried in order until one produces a working stream.
+// An external webcam on Windows can reject one style of request while another
+// works fine, so on failure we fall through: real device id -> plain default
+// (the plain `video: true` style that used to work) -> facing mode.
+function cameraStrategies() {
+  const dev = videoDevices.value[deviceIndex.value]
+  return [
+    dev && dev.deviceId ? { deviceId: { ideal: dev.deviceId } } : null,
+    true,
+    { facingMode: { ideal: facingMode } },
+  ]
 }
 
 function describeCameraError(e) {
@@ -254,13 +320,27 @@ function describeCameraError(e) {
   if (/NotFound|DevicesNotFound/i.test(name)) {
     return 'No camera was detected on this device. Connect a webcam or use the Upload option.'
   }
-  if (/NotReadable|TrackStart|in use/i.test(name)) {
-    return 'Your camera is currently in use by another application (for example, your camera app). Close it, then press Start Camera again (or use Upload).'
+  if (/NotReadable|TrackStart|in use|busy/i.test(name)) {
+    return 'The camera could not be accessed after several automatic retries. Close any other tab or app using the camera, then press Start Camera again. If it still fails, fully refresh this page once (Ctrl+F5) - Chrome on Windows can keep a webcam locked to the old page session - or use the Upload option instead.'
   }
   if (/Overconstrained/i.test(name)) {
     return 'Your camera could not provide the requested mode. Press Switch Camera / Start Camera again (or use Upload).'
   }
   return 'Could not start the camera (' + name + '). Please allow camera permission or use Upload.'
+}
+
+function isRetryableError(e) {
+  const name = (e && (e.name || e.message)) || ''
+  // NotReadable / AbortError / "in use" usually mean the device was still
+  // releasing from a previous stream - waiting and retrying fixes it.
+  return /NotReadable|TrackStart|AbortError|in use|busy/i.test(name)
+}
+
+function isHardError(e) {
+  const name = (e && (e.name || e.message)) || ''
+  // Permission / no-device errors will not be fixed by another constraint
+  // style, so they fail immediately with a clear message.
+  return /NotAllowed|Permission|Security|NotFound|DevicesNotFound/i.test(name)
 }
 
 async function startCamera() {
@@ -269,31 +349,84 @@ async function startCamera() {
     idNotImage.value = 'Webcam is not available in this browser. Use the Upload option below.'
     return
   }
+  if (starting) return
+  starting = true
   cameraLoading.value = true
   stopCamera() // release any existing stream first
-  try {
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: buildVideoConstraints(),
-      audio: false,
-    })
-    stream.value = newStream
-    if (video.value) {
-      video.value.srcObject = newStream
-      await video.value.play().catch(() => {})
+
+  // Give the browser a moment to fully release the previous stream so the
+  // device is not reported as "busy" by the next getUserMedia call.
+  await new Promise((r) => setTimeout(r, 200))
+
+  if (videoDevices.value.length === 0) await refreshVideoDevices()
+
+  let lastError = null
+
+  const strategies = cameraStrategies()
+  for (let s = 0; s < strategies.length; s++) {
+    const videoConstraint = strategies[s]
+    if (videoConstraint === null) continue
+
+    // For each style, allow one quick retry on transient "busy" errors.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.info('[FaceVerificationStep] camera attempt', 'strategy=' + s, 'device=' + deviceLabel(deviceIndex.value))
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraint,
+          audio: false,
+        })
+        stream.value = newStream
+        if (video.value) {
+          video.value.srcObject = newStream
+          await video.value.play().catch(() => {})
+        }
+        streamActive.value = true
+        idNotImage.value = ''
+        cameraLoading.value = false
+        starting = false
+        // Labels only appear after permission is granted - refresh so the
+        // camera picker dropdown below shows real device names.
+        refreshVideoDevices()
+        return
+      } catch (e) {
+        lastError = e
+        stopCamera()
+        if (isHardError(e)) {
+          streamActive.value = false
+          idNotImage.value = describeCameraError(e)
+          cameraLoading.value = false
+          starting = false
+          return
+        }
+        if (!isRetryableError(e) || attempt >= 2) break
+        // Retryable: wait a moment, then try this style once more.
+        await new Promise((r) => setTimeout(r, 500))
+      }
     }
-    streamActive.value = true
-    idNotImage.value = ''
-  } catch (e) {
-    streamActive.value = false
-    idNotImage.value = describeCameraError(e)
-  } finally {
-    cameraLoading.value = false
   }
+
+  streamActive.value = false
+  const selectedDevice = videoDevices.value[deviceIndex.value]
+  const virtualHint = selectedDevice && isVirtualDevice(selectedDevice)
+    ? ' The selected camera "' + deviceLabel(deviceIndex.value) + '" is a virtual camera - start the app that provides it (e.g. OBS Studio) or choose your real webcam from the camera picker below.'
+    : ''
+  idNotImage.value = describeCameraError(lastError) + virtualHint
+  cameraLoading.value = false
+  starting = false
+  // Permission was granted even if the stream failed, so now labels are
+  // available - refresh so the camera picker shows real device names.
+  refreshVideoDevices()
 }
 
 function switchCamera() {
-  // Explicit user action to flip between front ('user') and rear ('environment').
-  facingMode = facingMode === 'user' ? 'environment' : 'user'
+  // With multiple cameras, cycle through the real devices (works with external
+  // webcams). With one device, fall back to the old front/back flip (mobile).
+  if (videoDevices.value.length > 1) {
+    deviceIndex.value = (deviceIndex.value + 1) % videoDevices.value.length
+    userPickedCamera = true
+  } else {
+    facingMode = facingMode === 'user' ? 'environment' : 'user'
+  }
   startCamera()
 }
 
@@ -303,6 +436,7 @@ function onCameraButton() {
 }
 
 function stopCamera() {
+  starting = false
   if (stream.value) {
     stream.value.getTracks().forEach((t) => t.stop())
     stream.value = null
@@ -390,9 +524,14 @@ async function runVerification() {
         face_similarity: 0,
         name_match: false,
         id_number_match: false,
+        any_match: null,
         failure_reason: 'ID is not an image (PDF). Face & OCR verification could not run.',
       }
-      emit('update:modelValue', { ...result.value, selfiePhoto: selfieFile.value })
+      emit('update:modelValue', {
+        ...result.value,
+        selfiePhoto: selfieFile.value,
+        manual_review_requested: false,
+      })
       return
     }
 
@@ -448,6 +587,7 @@ async function runVerification() {
 
     result.value = {
       credentials_matched,
+      any_match: Boolean(face_match || name_match || id_number_match),
       face_detected: selfieDet.face_detected && idDet.face_detected,
       face_match,
       face_similarity,
@@ -457,13 +597,21 @@ async function runVerification() {
       ocr_id_number,
       failure_reason: failureParts.length ? failureParts.join(' ') : null,
     }
+    // A manual-review request only makes sense when at least one check passed
+    // but not everything (fully matched users don't need one; all-failed users
+    // cannot be approved by an admin until a check passes).
+    if (!result.value.any_match || result.value.credentials_matched) {
+      manualReviewRequested.value = false
+    }
     emit('update:modelValue', {
       ...result.value,
       selfiePhoto: selfieFile.value,
+      manual_review_requested: manualReviewRequested.value,
     })
   } catch (e) {
     result.value = {
       credentials_matched: false,
+      any_match: null,
       face_detected: false,
       face_match: false,
       face_similarity: 0,
@@ -471,11 +619,21 @@ async function runVerification() {
       id_number_match: false,
       failure_reason: 'Verification could not be completed: ' + (e && e.message ? e.message : 'unknown error'),
     }
-    emit('update:modelValue', { ...result.value, selfiePhoto: selfieFile.value })
+    emit('update:modelValue', {
+      ...result.value,
+      selfiePhoto: selfieFile.value,
+      manual_review_requested: false,
+    })
   } finally {
     verifying.value = false
   }
 }
+
+onMounted(() => {
+  // Populate the camera picker as soon as the step is shown. Labels appear
+  // fully after the first successful camera start / permission grant.
+  refreshVideoDevices()
+})
 
 onBeforeUnmount(() => stopCamera())
 </script>

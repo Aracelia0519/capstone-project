@@ -212,6 +212,17 @@ class IdentityVerificationService
     }
 
     /**
+     * Whether at least ONE of the automatic checks (face / name / ID number)
+     * matched. When this is true the user may request manual review and the
+     * admin may approve after checking the requirements manually. When every
+     * check failed, approval stays blocked.
+     */
+    public static function hasAnyMatch(IdentityVerificationResult $result)
+    {
+        return (bool) ((bool) $result->face_match || (bool) $result->name_match || (bool) $result->id_number_match);
+    }
+
+    /**
      * Persist the verification result for a user/requirement and return it.
      *
      * @param array $payload  raw request payload (ocr_text, ocr_id_number, face_match, face_similarity)
@@ -247,6 +258,14 @@ class IdentityVerificationService
                 'failure_reason' => $decision['failure_reason'],
                 'extracted_text' => $payload['ocr_text'] ?? null,
                 'extracted_id_number' => $payload['ocr_id_number'] ?? null,
+                // The user may ask for a manual review whenever at least one
+                // automatic check passed. A fresh automatic check clears any
+                // earlier manual-review outcome.
+                'manual_review_requested' => static::toBool($payload['manual_review_requested'] ?? false),
+                'manual_review_status' => null,
+                'manual_review_reason' => null,
+                'manual_reviewed_by' => null,
+                'manual_reviewed_at' => null,
             ]
         );
 
@@ -277,6 +296,14 @@ class IdentityVerificationService
             'failure_reason' => $result->failure_reason,
             'extracted_text' => $result->extracted_text,
             'extracted_id_number' => $result->extracted_id_number,
+            'any_check_matched' => static::hasAnyMatch($result),
+            'manual_review_requested' => (bool) $result->manual_review_requested,
+            'manual_review_status' => $result->manual_review_status,
+            'manual_review_reason' => $result->manual_review_reason,
+            'manual_reviewed_by' => $result->manual_reviewed_by,
+            'manual_reviewed_at' => $result->manual_reviewed_at
+                ? $result->manual_reviewed_at->format('Y-m-d H:i:s')
+                : null,
             'checked_at' => $result->updated_at ? $result->updated_at->format('Y-m-d H:i:s') : null,
         ];
     }

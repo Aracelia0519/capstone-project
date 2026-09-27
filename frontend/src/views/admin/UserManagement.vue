@@ -109,6 +109,17 @@
               <option value="inactive">Inactive</option>
               <option value="pending">Pending</option>
             </select>
+
+            <select 
+              v-model="hasChatFilter" 
+              @change="fetchUsers"
+              class="appearance-none flex h-10 w-full sm:w-[140px] items-center justify-between rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto;"
+              title="Filter users that have a support chat with the admin"
+            >
+              <option value="all">All Chat</option>
+              <option value="yes">Has Chat</option>
+            </select>
             
             <Button variant="outline" @click="fetchUsers" class="gap-2">
               <i class="fas fa-sync-alt"></i>
@@ -217,9 +228,13 @@
                 
                 <TableCell class="text-right">
                   <div class="flex items-center justify-end gap-2">
-                    <!-- Support Chat Action Button -->
-                    <Button variant="ghost" size="icon" @click="openAdminChat(user)" class="h-8 w-8 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50" title="Message User">
+                    <!-- Support Chat Action Button with unread badge -->
+                    <Button variant="ghost" size="icon" @click="openAdminChat(user)" class="relative h-8 w-8 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50" title="Message User">
                       <i class="fas fa-comment-dots text-xs"></i>
+                      <span
+                        v-if="user.unread_support_messages > 0"
+                        class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white"
+                      >{{ user.unread_support_messages > 99 ? '99+' : user.unread_support_messages }}</span>
                     </Button>
                     <Button variant="ghost" size="icon" @click="viewUser(user)" class="h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="View User Details">
                       <i class="fas fa-eye text-xs"></i>
@@ -317,7 +332,7 @@
                       <Badge :class="getVerificationBadgeClass(viewingUser.verification_status)">{{ viewingUser.verification_status || 'N/A' }}</Badge>
                     </div>
                     <div class="pt-4 flex flex-col gap-2">
-                        <!-- Automatic identity verification failure warning -->
+                        <!-- Automatic identity verification failure warning (only when ALL checks failed) -->
                         <div v-if="identityVerificationBlocked(viewingUser)" class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                            <p class="font-semibold flex items-center gap-1.5 mb-1">
                               <i class="fas fa-exclamation-triangle"></i> Automatic identity verification failed
@@ -325,12 +340,34 @@
                            <p>{{ identityVerificationReason(viewingUser) }}</p>
                            <p v-if="viewingUser.identity_verification?.checked_at" class="mt-1 text-[10px] text-slate-500">Checked {{ formatDate(viewingUser.identity_verification.checked_at) }}</p>
                         </div>
+                        <!-- At least one check passed but not all: admin may approve after manual review -->
+                        <div v-else-if="identityVerificationPartial(viewingUser)" class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                           <p class="font-semibold flex items-center gap-1.5 mb-1">
+                              <i class="fas fa-clipboard-check"></i> Manual review available
+                           </p>
+                           <p>At least one automatic check (face / name / ID number) passed. You may review the submitted requirements and verification manually, then approve.</p>
+                           <p v-if="viewingUser.identity_verification?.manual_review_requested" class="mt-1 font-medium">The user has requested a manual review.</p>
+                        </div>
+                        <!-- Manual review outcome badge -->
+                        <div v-if="viewingUser.identity_verification?.manual_review_status" class="p-3 rounded-lg text-xs"
+                             :class="viewingUser.identity_verification.manual_review_status === 'approved' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'">
+                           <p class="font-semibold flex items-center gap-1.5">
+                              <i :class="viewingUser.identity_verification.manual_review_status === 'approved' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
+                              Manual review {{ viewingUser.identity_verification.manual_review_status }}
+                           </p>
+                           <p v-if="viewingUser.identity_verification.manual_review_reason" class="mt-1">{{ viewingUser.identity_verification.manual_review_reason }}</p>
+                        </div>
                        <template v-if="viewingUser.status === 'pending' || viewingUser.verification_status === 'pending'">
                           <Button @click="approveUser(viewingUser)" 
                               :disabled="identityVerificationBlocked(viewingUser)"
                               class="w-full justify-start gap-2 bg-green-600 hover:bg-green-700 text-white"
                               :class="identityVerificationBlocked(viewingUser) ? 'opacity-50 cursor-not-allowed' : ''">
                              <i class="fas fa-check-circle"></i> Approve User
+                          </Button>
+                          <Button v-if="(identityVerificationPartial(viewingUser) || viewingUser.identity_verification?.manual_review_status) && !identityVerificationBlocked(viewingUser)"
+                              @click="openManualReviewModal(viewingUser)"
+                              class="w-full justify-start gap-2 bg-amber-500 hover:bg-amber-600 text-white">
+                             <i class="fas fa-clipboard-check"></i> Manual Review
                           </Button>
                           <Button @click="openRejectModal(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
                              <i class="fas fa-times-circle"></i> Reject User
@@ -594,6 +631,32 @@
                             <div v-if="viewingUser.identity_verification.failure_reason" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
                                 <p class="font-semibold flex items-center gap-1.5 mb-1"><i class="fas fa-exclamation-triangle"></i> Failure reason</p>
                                 <p>{{ viewingUser.identity_verification.failure_reason }}</p>
+                            </div>
+
+                            <!-- Manual review request / outcome -->
+                            <div
+                                v-if="viewingUser.identity_verification.manual_review_requested || viewingUser.identity_verification.manual_review_status"
+                                class="mb-4 p-3 rounded-lg border text-xs"
+                                :class="viewingUser.identity_verification.manual_review_status === 'approved'
+                                    ? 'bg-green-50 border-green-200 text-green-700'
+                                    : viewingUser.identity_verification.manual_review_status === 'rejected'
+                                        ? 'bg-red-50 border-red-200 text-red-700'
+                                        : 'bg-amber-50 border-amber-200 text-amber-800'"
+                            >
+                                <p class="font-semibold flex items-center gap-1.5">
+                                    <i :class="viewingUser.identity_verification.manual_review_status === 'approved'
+                                        ? 'fas fa-check-circle'
+                                        : viewingUser.identity_verification.manual_review_status === 'rejected'
+                                            ? 'fas fa-times-circle'
+                                            : 'fas fa-clipboard-check'"></i>
+                                    <span v-if="viewingUser.identity_verification.manual_review_status === 'approved'">Manual review approved</span>
+                                    <span v-else-if="viewingUser.identity_verification.manual_review_status === 'rejected'">Manual review rejected</span>
+                                    <span v-else>Manual review requested by user</span>
+                                </p>
+                                <p v-if="viewingUser.identity_verification.manual_review_reason" class="mt-1">{{ viewingUser.identity_verification.manual_review_reason }}</p>
+                                <p v-if="viewingUser.identity_verification.manual_reviewed_at" class="mt-1 text-[10px] opacity-70">
+                                    <i class="fas fa-clock mr-1"></i> Reviewed {{ formatDate(viewingUser.identity_verification.manual_reviewed_at) }}
+                                </p>
                             </div>
 
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
@@ -888,6 +951,57 @@
       </div>
     </Dialog>
 
+    <Dialog :open="showManualReviewModal" @update:open="closeManualReviewModal">
+      <div v-if="showManualReviewModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <Card class="w-full max-w-md shadow-xl">
+          <CardHeader class="border-b">
+            <CardTitle>Manual Review — {{ userToManualReview?.full_name }}</CardTitle>
+            <p class="text-sm text-slate-500 mt-1">Record your decision after manually checking the submitted requirements and identification.</p>
+          </CardHeader>
+          <CardContent class="p-6">
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <Label>Decision <span class="text-red-500">*</span></Label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    :class="['flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-all cursor-pointer',
+                      manualReviewStatus === 'approved' ? 'bg-green-600 text-white border-green-600' : 'border-slate-200 text-slate-600 hover:bg-green-50']"
+                    @click="manualReviewStatus = 'approved'"
+                  >
+                    <i class="fas fa-check-circle"></i> Approved
+                  </button>
+                  <button
+                    type="button"
+                    :class="['flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-all cursor-pointer',
+                      manualReviewStatus === 'rejected' ? 'bg-red-600 text-white border-red-600' : 'border-slate-200 text-slate-600 hover:bg-red-50']"
+                    @click="manualReviewStatus = 'rejected'"
+                  >
+                    <i class="fas fa-times-circle"></i> Rejected
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <Label>Review Note (optional)</Label>
+                <textarea 
+                  v-model="manualReviewReason" 
+                  rows="4" 
+                  class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                  placeholder="Notes visible to the admin panel (e.g. why you approved or what still needs correcting)..."></textarea>
+              </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+              <Button type="button" variant="outline" @click="closeManualReviewModal">Cancel</Button>
+              <Button type="button" @click="confirmManualReview" :disabled="processingManualReview || !manualReviewStatus" class="min-w-[140px]">
+                <i v-if="processingManualReview" class="fas fa-spinner fa-spin mr-2"></i>
+                {{ processingManualReview ? 'Saving...' : 'Save Review' }}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </Dialog>
+
     <Dialog :open="showImageModalFlag" @update:open="closeImageModal">
       <div v-if="showImageModalFlag" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -1033,6 +1147,7 @@ export default {
       activeTab: 'all',
       searchQuery: '',
       statusFilter: 'all',
+      hasChatFilter: 'all',
       currentPage: 1,
       itemsPerPage: 10,
       showAddUserModal: false,
@@ -1045,6 +1160,12 @@ export default {
       rejectReason: '',
       userToReject: null,
       processingRejection: false,
+
+      showManualReviewModal: false,
+      manualReviewStatus: '',
+      manualReviewReason: '',
+      userToManualReview: null,
+      processingManualReview: false,
       
       loading: false,
       loadingRequirements: false,
@@ -1170,9 +1291,20 @@ export default {
             this.fetchUsers();
             this.fetchStatistics();
         });
+
+    // 🔔 Listen for support messages globally so the unread red badge on the
+    // message icon updates in real time when a user sends a message.
+    echo.private('admin.support')
+        .listen('.SupportMessageSent', (e) => {
+            if (e && e.message && e.message.sender_id &&
+                (!this.activeChatUser || e.message.sender_id !== this.activeChatUser.id)) {
+                this.fetchUsers();
+            }
+        });
   },
   beforeUnmount() {
       echo.leave('admin.requirements');
+      echo.leave('admin.support');
       if (this.activeChatUser) {
           echo.leave(`support.user.${this.activeChatUser.id}`);
       }
@@ -1196,6 +1328,8 @@ export default {
       this.showAdminChat = true;
       await this.fetchAdminChatMessages();
       this.setupAdminChatListener(user.id);
+      // Opening the thread marks the user's messages as read, so clear the badge.
+      this.fetchUsers();
     },
 
     closeAdminChat() {
@@ -1311,7 +1445,8 @@ export default {
           per_page: this.itemsPerPage,
           status: this.statusFilter !== 'all' ? this.statusFilter : undefined,
           search: this.searchQuery || undefined,
-          role: this.activeTab !== 'all' ? this.activeTab : undefined
+          role: this.activeTab !== 'all' ? this.activeTab : undefined,
+          has_chat: this.hasChatFilter !== 'all' ? this.hasChatFilter : undefined
         };
         const response = await api.get('/admin/users', { params });
         if (response.data.success) {
@@ -1561,8 +1696,22 @@ export default {
                 this.fetchStatistics();
                 return;
               }
-            } catch (approveError) {}
+            } catch (approveError) {
+              // Surface the guard message (e.g. all checks failed) instead of
+              // silently falling through to /activate, which bypasses the
+              // identity-verification block and must never approve such users.
+              if (approveError.response && approveError.response.status === 422) {
+                this.handleError(approveError);
+                return;
+              }
+            }
             
+            // Only fall back to a plain activation when the identity checks do
+            // NOT block approval (blocked = every automatic check failed).
+            if (this.identityVerificationBlocked(user)) {
+              toast.error('Cannot approve: none of the automatic identity verification checks passed (face, name and ID number all failed).');
+              return;
+            }
             const userResponse = await api.post(`/admin/users/${user.id}/activate`, {});
             if (userResponse.data.success) {
               toast.success('User activated successfully');
@@ -1818,15 +1967,75 @@ export default {
       return '';
     },
 
-    identityVerificationBlocked(user) {
+    identityVerificationHasAnyMatch(user) {
       const iv = user && user.identity_verification;
-      return !!iv && iv.credentials_matched === false;
+      return !!iv && (iv.face_match === true || iv.name_match === true || iv.id_number_match === true);
+    },
+
+    identityVerificationAllFailed(user) {
+      const iv = user && user.identity_verification;
+      return !!iv && iv.face_match === false && iv.name_match === false && iv.id_number_match === false;
+    },
+
+    identityVerificationBlocked(user) {
+      // Approval is blocked only when EVERY automatic check failed.
+      return this.identityVerificationAllFailed(user);
+    },
+
+    identityVerificationPartial(user) {
+      const iv = user && user.identity_verification;
+      if (!iv) return false;
+      return this.identityVerificationHasAnyMatch(user)
+        && !this.identityVerificationAllFailed(user)
+        && !(iv.credentials_matched === true);
     },
 
     identityVerificationReason(user) {
       const iv = user && user.identity_verification;
       if (!iv) return '';
       return iv.failure_reason || 'Automatic identity verification did not pass. Manual review is required before approval.';
+    },
+
+    // ---- Manual Review ----
+    openManualReviewModal(user) {
+      const iv = user && user.identity_verification;
+      this.userToManualReview = user;
+      this.manualReviewStatus = iv && iv.manual_review_status ? iv.manual_review_status : 'approved';
+      this.manualReviewReason = (iv && iv.manual_review_reason) || '';
+      this.showManualReviewModal = true;
+    },
+
+    closeManualReviewModal() {
+      this.showManualReviewModal = false;
+      this.userToManualReview = null;
+      this.manualReviewStatus = '';
+      this.manualReviewReason = '';
+    },
+
+    async confirmManualReview() {
+      if (!this.userToManualReview || !this.manualReviewStatus || this.processingManualReview) return;
+      this.processingManualReview = true;
+      try {
+        const res = await api.post(`/admin/users/${this.userToManualReview.id}/manual-review`, {
+          status: this.manualReviewStatus,
+          reason: this.manualReviewReason || undefined
+        });
+        if (res.data.success) {
+          toast.success(`Manual review marked as ${this.manualReviewStatus}`);
+          this.closeManualReviewModal();
+          // Update the viewing user's identity verification in place
+          if (this.viewingUser && this.viewingUser.id === this.userToManualReview.id && res.data.identity_verification) {
+            this.viewingUser.identity_verification = res.data.identity_verification;
+          }
+          this.fetchUsers();
+        } else {
+          toast.error(res.data.message || 'Failed to update manual review');
+        }
+      } catch (error) {
+        this.handleError(error);
+      } finally {
+        this.processingManualReview = false;
+      }
     },
     
     handleError(error) {

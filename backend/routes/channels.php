@@ -362,6 +362,11 @@ Broadcast::channel('support.user.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id || $user->role === 'admin';
 });
 
+// Shared admin channel for support messages (unread badges in User Management)
+Broadcast::channel('admin.support', function ($user) {
+    return $user->role === 'admin';
+});
+
 // ------------- NOTIFICATIONS CHANNEL -------------
 Broadcast::channel('notifications.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;

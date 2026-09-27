@@ -772,6 +772,7 @@ Route::middleware('auth:sanctum')->group(function () {
             
             Route::post('/{id}/approve', [AdminUserController::class, 'approve']);
             Route::post('/{id}/reject', [AdminUserController::class, 'reject']);
+            Route::post('/{id}/manual-review', [AdminUserController::class, 'manualReview']);
 
             Route::post('/{id}/reset-resubmission', [AdminUserController::class, 'resetResubmission']);
             

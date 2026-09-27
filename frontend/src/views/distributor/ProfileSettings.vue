@@ -1880,6 +1880,7 @@ const submitVerification = async () => {
     formData.append('id_number_match', fv.id_number_match === true ? '1' : '0')
     formData.append('credentials_matched', fv.credentials_matched === true ? '1' : '0')
     formData.append('failure_reason', fv.failure_reason || '')
+    formData.append('manual_review_requested', fv.manual_review_requested === true ? '1' : '0')
     
     const response = await axios.post('/distributor/requirements', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }

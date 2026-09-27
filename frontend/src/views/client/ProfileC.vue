@@ -1564,6 +1564,7 @@ export default {
         formData.append('id_number_match', fv.id_number_match === true ? '1' : '0')
         formData.append('credentials_matched', fv.credentials_matched === true ? '1' : '0')
         formData.append('failure_reason', fv.failure_reason || '')
+        formData.append('manual_review_requested', fv.manual_review_requested === true ? '1' : '0')
         
         formData.append('province', 'Cavite')
         formData.append('city', this.idVerification.city)
