@@ -38,7 +38,15 @@ class ProcurementRequest extends Model
         'approved_at',
         'processed_at',
         'shipped_at',
-        'delivered_at'
+        'delivered_at',
+        // Reservation audit trail. These MUST be fillable, not merely castable:
+        // they are written through `create()` when a request is raised, and mass
+        // assignment silently discards anything missing from $fillable — so
+        // without them the request would reserve stock while recording no trace
+        // that it ever had.
+        'stock_reserved_at',
+        'stock_released_at',
+        'stock_consumed_at'
     ];
 
     protected $casts = [
@@ -201,6 +209,16 @@ class ProcurementRequest extends Model
 
     /**
      * Update request status
+     *
+     * This is the only place a procurement request changes state -- the
+     * operational, distributor, finance and ready controllers all funnel through
+     * here -- so it is also where a reservation has to be given back.
+     *
+     * Raising a request reserves the supplier's stock. If the request is then
+     * rejected or cancelled and the units are never handed back, that stock stays
+     * permanently invisible: the supplier's available figure is net of reserved
+     * units, so a handful of dead requests quietly stop every distributor from
+     * buying the same product.
      */
     public function updateStatus($status, $reason = null)
     {
@@ -231,6 +249,28 @@ class ProcurementRequest extends Model
         }
         
         $this->save();
+
+        // After the save, deliberately: if the status write fails the reservation
+        // is still held and the request is still live, which is recoverable. The
+        // reverse -- stock returned against a request that is still pending --
+        // would hand the same units to two buyers.
+        if (in_array($status, ['rejected', 'cancelled'], true) && $this->holdsLiveReservation()) {
+            app(\App\Support\Inventory\BatchInventoryService::class)->releaseReservation($this);
+        }
+    }
+
+    /**
+     * True while this request still has stock set aside for it.
+     *
+     * Guards against releasing twice, and against releasing stock that has
+     * already been consumed by the delivery.
+     */
+    public function holdsLiveReservation(): bool
+    {
+        return (bool) $this->product_id
+            && $this->stock_reserved_at !== null
+            && $this->stock_consumed_at === null
+            && $this->stock_released_at === null;
     }
 
     public function financeApprovedBy()

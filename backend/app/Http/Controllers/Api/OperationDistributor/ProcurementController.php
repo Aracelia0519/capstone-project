@@ -188,6 +188,11 @@ class ProcurementController extends Controller
 
             $products = SupplierRawMaterial::where('user_id', $supplierId)
                 ->where('is_active', true)
+                // Eager-loaded so the `available_quantity` appended attribute
+                // reads the loaded lots instead of issuing a query per product.
+                // The procurement screen needs this figure to cap each line, so
+                // without it a 12-product catalogue costs 13 queries.
+                ->with('liveBatches')
                 ->get()
                 ->map(function ($product) {
                     if ($product->image_url && !str_starts_with($product->image_url, 'http')) {
@@ -342,6 +347,15 @@ class ProcurementController extends Controller
             $totalRequestedCost = 0;
             $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
+            // Running total of what has been asked for per product, across all
+            // lines. The same product can legitimately appear twice in `items`,
+            // and testing each line against the full available quantity would let
+            // 6 + 6 through on a shelf of 9: both lines pass individually, then
+            // the second reservation fails deep in the transaction with a much
+            // vaguer message. Summing first makes the pre-check agree with what
+            // the reservation is about to do.
+            $requestedByProduct = [];
+
             foreach ($request->items as $item) {
                 $material = SupplierRawMaterial::findOrFail($item['id']);
                 $minOrder = $material->min_order ?? 1;
@@ -378,10 +392,14 @@ class ProcurementController extends Controller
 
                 $available = $inventoryService->supplierAvailableQuantity($material);
 
-                if ($available < $item['quantity']) {
+                $requestedByProduct[$material->id] =
+                    ($requestedByProduct[$material->id] ?? 0) + (int) $item['quantity'];
+                $requested = $requestedByProduct[$material->id];
+
+                if ($available < $requested) {
                     $detail = $available === 0
                         ? "{$material->name} has no stock within its expiration date. Ask the supplier to archive the expired batches and add fresh stock."
-                        : "Only {$available} unit(s) of {$material->name} can be procured right now; {$item['quantity']} were requested. The rest is either already reserved or expired.";
+                        : "Only {$available} unit(s) of {$material->name} can be procured right now; {$requested} were requested. The rest is either already reserved or expired.";
 
                     return response()->json([
                         'success' => false,

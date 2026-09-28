@@ -280,6 +280,11 @@
                     </div>
                   </div>
                 </div>
+
+                <p class="text-xs text-gray-500 -mt-2">
+                  Quantities are limited to what the supplier currently has in stock. Expired and
+                  already-reserved units are not included.
+                </p>
                 
                 <div v-if="productsLoading" class="text-center py-8">
                   <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
@@ -311,7 +316,12 @@
 
                     <!-- Variant List with Images, Color Swatches, and Clickable Images -->
                     <div class="divide-y divide-gray-700/50">
-                      <div v-for="variant in group.variants" :key="variant.id" class="flex items-center justify-between p-3 hover:bg-gray-700/30 transition">
+                      <div
+                        v-for="variant in group.variants"
+                        :key="variant.id"
+                        class="flex items-center justify-between p-3 transition"
+                        :class="stockOf(variant) <= 0 ? 'bg-red-950/20 opacity-60' : 'hover:bg-gray-700/30'"
+                      >
                         <div class="flex items-center gap-4 flex-1 min-w-0">
                           <!-- Clickable Image -->
                           <div 
@@ -329,14 +339,30 @@
                               <span class="text-xs text-gray-400 font-mono">{{ variant.sku_code || 'No SKU' }}</span>
                               <span class="text-xs text-gray-500">Min: {{ variant.min_order || 1 }}</span>
                               <span v-if="variant.max_order" class="text-xs text-gray-500">Max: {{ variant.max_order }}</span>
+                              <!-- What the supplier can actually promise right now. -->
+                              <span
+                                class="text-xs font-medium px-1.5 py-0.5 rounded"
+                                :class="stockChipClass(variant)"
+                              >{{ stockLabel(variant) }}</span>
                             </div>
                           </div>
                           <span class="text-sm font-bold text-indigo-400 shrink-0">₱{{ formatCurrency(variant.price) }}</span>
                         </div>
                         <div class="flex items-center gap-2 ml-4">
-                          <button type="button" @click="updateCart(variant, -1)" class="w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition">−</button>
+                          <button
+                            type="button"
+                            @click="updateCart(variant, -1)"
+                            :disabled="getProductQty(variant.id) === 0"
+                            class="w-8 h-8 rounded bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition"
+                          >−</button>
                           <span class="w-8 text-center text-white font-medium">{{ getProductQty(variant.id) }}</span>
-                          <button type="button" @click="updateCart(variant, 1)" :disabled="!canAddProduct(variant)" class="w-8 h-8 rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition">+</button>
+                          <button
+                            type="button"
+                            @click="updateCart(variant, 1)"
+                            :disabled="!canAddProduct(variant)"
+                            :title="stockOf(variant) > 0 ? '' : 'Out of stock'"
+                            class="w-8 h-8 rounded bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition"
+                          >+</button>
                         </div>
                       </div>
                     </div>
@@ -423,10 +449,28 @@
                   <text class="text-white font-semibold mb-4 border-b border-gray-700 pb-2">Order Items</text>
                   <div class="space-y-3 mb-6">
                     <div v-for="item in cart" :key="item.id" class="flex justify-between text-sm">
-                      <span class="text-gray-300">{{ item.name }} ({{ item.size }}) x{{ item.quantity }}</span>
+                      <span class="text-gray-300">
+                        {{ item.name }} ({{ item.size }}) x{{ item.quantity }}
+                        <span class="text-xs text-gray-500">· {{ stockOf(item) }} in stock</span>
+                      </span>
                       <span class="text-white">₱{{ formatCurrency(item.price * item.quantity) }}</span>
                     </div>
                     <div v-if="cart.length === 0" class="text-gray-400 text-sm">No items selected.</div>
+                  </div>
+
+                  <!--
+                    Stock is reserved the instant any distributor raises a request,
+                    so the figure captured when the supplier was picked can be
+                    overtaken while this wizard is open. Say so here rather than
+                    letting the submit fail.
+                  -->
+                  <div
+                    v-if="stockShortfall.length > 0"
+                    class="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
+                  >
+                    <p class="text-red-300 text-sm font-medium mb-1">Not enough stock to complete this request</p>
+                    <p v-for="line in stockShortfall" :key="line" class="text-red-400/90 text-xs">{{ line }}</p>
+                    <p class="text-gray-400 text-xs mt-2">Go back a step and lower the quantity, or pick a different product.</p>
                   </div>
                   
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-t border-gray-700 pt-4">
@@ -539,18 +583,97 @@ const calculatedCartTotal = computed(() => {
   return cart.value.reduce((total, item) => total + (item.price * item.quantity), 0)
 })
 
+// ── Stock limits ────────────────────────────────────────────────────
+// A request can never take more than the supplier actually holds, so every
+// quantity control here is bounded by that. The server enforces the same rule in
+// `ProcurementController::store()`; this is so the operator finds out while
+// choosing, not after filling in the whole form.
+
+/**
+ * Units the supplier can still sell of this product.
+ *
+ * `available_quantity` is the server's own figure and already accounts for
+ * everything that should not be promised: expired lots, archived lots, and units
+ * held against another distributor's in-flight request. It falls back to the raw
+ * `quantity` only when the field is absent, so an older payload degrades to the
+ * previous behaviour instead of blocking every line.
+ */
+const stockOf = (product) => {
+  if (typeof product?.available_quantity === 'number') return product.available_quantity
+  return Number(product?.quantity) || 0
+}
+
+/** The supplier's own per-order ceiling, or null when there is none. */
+const orderCeilingOf = (product) => {
+  const max = Number(product?.max_order)
+  return Number.isFinite(max) && max > 0 ? max : null
+}
+
+/** Smallest order the supplier accepts. Always at least 1. */
+const minOrderOf = (product) => Math.max(1, Number(product?.min_order) || 1)
+
+/**
+ * The most of this product that can go on a single request: the smaller of what
+ * is in stock and the supplier's own max_order, whichever binds first.
+ */
+const purchasableLimitOf = (product) => {
+  const stock = stockOf(product)
+  const ceiling = orderCeilingOf(product)
+  return ceiling === null ? stock : Math.min(ceiling, stock)
+}
+
+const stockLabel = (product) => {
+  const stock = stockOf(product)
+  if (stock <= 0) return 'Out of stock'
+  return `${stock} in stock`
+}
+
+const stockChipClass = (product) => {
+  const stock = stockOf(product)
+  if (stock <= 0) return 'bg-red-500/20 text-red-300'
+  if (stock <= 5) return 'bg-amber-500/20 text-amber-300'
+  return 'bg-emerald-500/20 text-emerald-300'
+}
+
+/**
+ * Cart lines that ask for more than is on the shelf.
+ *
+ * Normally empty, because the +/- controls stop at the limit. It exists because
+ * the figure is only a snapshot: stock is reserved the moment any distributor
+ * raises a request, so between picking a quantity and pressing submit another
+ * request can eat into it. This is what stops the review step from presenting an
+ * order that the server is going to reject.
+ */
+const stockShortfall = computed(() =>
+  cart.value
+    .filter((item) => item.quantity > stockOf(item))
+    .map(
+      (item) =>
+        `${item.name} (${item.size}): ${item.quantity} requested but only ${stockOf(item)} in stock.`
+    )
+)
+
 const canAddProduct = (product) => {
   const currentQty = getProductQty(product.id)
-  const costToAdd = currentQty > 0 ? parseFloat(product.price) : (parseFloat(product.price) * (product.min_order || 1))
-  return (calculatedCartTotal.value + costToAdd) <= availableBudget.value
+  const minOrder = minOrderOf(product)
+
+  // A first add jumps straight to the minimum order quantity, so that is the
+  // figure the ceiling has to be tested against -- not the single unit the
+  // button nominally adds.
+  const tentative = currentQty > 0 ? currentQty + 1 : minOrder
+
+  if (tentative > purchasableLimitOf(product)) return false
+
+  const costToAdd = parseFloat(product.price) * (currentQty > 0 ? 1 : minOrder)
+  return calculatedCartTotal.value + costToAdd <= availableBudget.value
 }
 
 const validateCurrentStep = computed(() => {
   switch (currentStep.value) {
     case 1: return requestForm.value.supplier_id !== ''
-    case 2: return cart.value.length > 0
+    case 2: return cart.value.length > 0 && stockShortfall.value.length === 0
     case 3: return requestForm.value.delivery_address !== '' && requestForm.value.payment_terms !== ''
-    case 4: return requestForm.value.priority !== ''
+    case 4: return requestForm.value.priority !== '' && stockShortfall.value.length === 0
     default: return false
   }
 })
@@ -761,31 +884,65 @@ const selectSupplierFromWizard = (supplier) => {
 
 const updateCart = (product, change) => {
   const index = cart.value.findIndex(p => p.id === product.id)
-  const minOrder = product.min_order || 1
-  const maxOrder = product.max_order || 5000 
-  if (change > 0) {
-      let costToAdd = 0;
-      if (index > -1) {
-          costToAdd = parseFloat(product.price) * change;
-      } else {
-          costToAdd = parseFloat(product.price) * minOrder;
-      }
-      if ((calculatedCartTotal.value + costToAdd) > availableBudget.value) {
-          showToast(`Cannot add ${product.name}. Cart total would exceed the allocated business budget.`, 'warning');
-          return;
-      }
+  const currentQty = index > -1 ? cart.value[index].quantity : 0
+  const minOrder = minOrderOf(product)
+
+  // Dropping below the minimum order takes the whole line out, as before.
+  if (currentQty > 0 && currentQty + change < minOrder) {
+    cart.value.splice(index, 1)
+    return
   }
-  if (index > -1) {
-    const currentQty = cart.value[index].quantity
-    const newQty = currentQty + change
-    if (change < 0 && newQty < minOrder) {
-      cart.value.splice(index, 1)
-    } else if (newQty > maxOrder) {
-      showToast(`Maximum order limit for ${product.name} is ${maxOrder}`, 'warning')
-    } else {
-      cart.value[index].quantity = newQty
+
+  if (change > 0) {
+    const stock = stockOf(product)
+
+    if (stock <= 0) {
+      showToast(`${product.name} is out of stock and cannot be procured.`, 'warning')
+      return
     }
-  } else if (change > 0) {
+
+    // The ceiling binds on the quantity the line would END UP at, which for a
+    // first add is the minimum order rather than the one unit clicked.
+    const tentative = currentQty > 0 ? currentQty + change : minOrder
+    const ceiling = orderCeilingOf(product)
+    const limit = ceiling === null ? stock : Math.min(ceiling, stock)
+
+    if (tentative > limit) {
+      // A minimum order the shelf cannot satisfy is its own situation. Reporting
+      // only the stock figure ("only 10 in stock") leaves the operator staring at
+      // a number that does not explain why a single click placed nothing.
+      if (currentQty === 0 && minOrder > limit) {
+        showToast(
+          `Minimum order for ${product.name} is ${minOrder}, but only ${stock} unit(s) are in stock.`,
+          'warning'
+        )
+        return
+      }
+
+      // Otherwise say which limit actually stopped it -- "in stock" and "max
+      // order" call for completely different fixes.
+      showToast(
+        limit === stock
+          ? `Only ${stock} unit(s) of ${product.name} are in stock.`
+          : `Maximum order limit for ${product.name} is ${limit}.`,
+        'warning'
+      )
+      return
+    }
+
+    const costToAdd = parseFloat(product.price) * (currentQty > 0 ? change : minOrder)
+    if (calculatedCartTotal.value + costToAdd > availableBudget.value) {
+      showToast(
+        `Cannot add ${product.name}. Cart total would exceed the allocated business budget.`,
+        'warning'
+      )
+      return
+    }
+  }
+
+  if (index > -1) {
+    cart.value[index].quantity = currentQty + change
+  } else {
     cart.value.push({ ...product, quantity: minOrder })
   }
 }
@@ -800,6 +957,22 @@ const onAddressSelect = (event) => {
 }
 
 const formatAddress = (addr) => `${addr.block_address}, ${addr.barangay}, ${addr.city}, ${addr.province}`
+
+/**
+ * The server rejects an over-order with a 422 whose `message` is the useless
+ * string "Validation failed" and whose real explanation lives in `errors.items`.
+ * Reading only `message` is how a distributor ends up staring at "Validation
+ * failed" instead of "Only 9 unit(s) of Amber Diaz can be procured right now".
+ */
+const readSubmitError = (err) => {
+  const data = err?.response?.data
+  if (!data) return 'Failed to submit'
+
+  const fieldErrors = Object.values(data.errors || {}).flat().filter(Boolean)
+  if (fieldErrors.length) return fieldErrors.join(' ')
+
+  return data.message || 'Failed to submit'
+}
 
 const submitRequest = async () => {
   try {
@@ -819,7 +992,7 @@ const submitRequest = async () => {
       submitError.value = response.data.message
     }
   } catch (err) {
-    submitError.value = err.response?.data?.message || 'Failed to submit'
+    submitError.value = readSubmitError(err)
   } finally {
     submitting.value = false
   }

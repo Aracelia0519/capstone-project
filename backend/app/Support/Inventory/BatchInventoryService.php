@@ -242,19 +242,18 @@ class BatchInventoryService
                 return;
             }
 
-            // Prefer to release against the exact batch the request named, so a
-            // restock in the meantime is not consumed by the release.
-            // normaliseDate() handles both a cast Carbon instance and a raw string,
-            // because the column is only date-cast on some models.
-            $expiry = $this->normaliseDate($procurement->expiration_date);
-
+            // Driven by reserved_quantity rather than the expiration date frozen on
+            // the request. A reservation can span lots with different deadlines,
+            // while the request records only the soonest one, so filtering on that
+            // date returned part of the stock and left the rest reserved forever --
+            // invisible to every future procurement of this product.
+            //
+            // `reserved_quantity > 0` gives the protection the date was there for:
+            // a lot restocked after the reservation holds no reserved units, so the
+            // release cannot eat into it.
             $query = SupplierRawMaterialBatch::query()
                 ->where('supplier_raw_material_id', $material->id)
                 ->where('reserved_quantity', '>', 0);
-
-            if ($expiry !== null) {
-                $query->whereDate('expiration_date', $expiry);
-            }
 
             $remaining = (int) $procurement->quantity;
 
@@ -270,6 +269,10 @@ class BatchInventoryService
 
             $material->syncBatchRollups();
         });
+
+        // Stamped after the batch work so the timestamp cannot be left behind on a
+        // request whose release rolled back.
+        $procurement->forceFill(['stock_released_at' => now()])->save();
     }
 
     /**
@@ -290,26 +293,40 @@ class BatchInventoryService
             }
 
             $remaining = (int) $procurement->quantity;
-            $expiry = $this->normaliseDate($procurement->expiration_date);
 
-            $query = SupplierRawMaterialBatch::query()
-                ->where('supplier_raw_material_id', $material->id);
+            // Driven by reserved_quantity, NOT by the expiration date frozen on the
+            // request.
+            //
+            // A reservation is placed FEFO across every sellable lot, so it can
+            // span lots with different deadlines, while the request can only carry
+            // the single soonest one (allocations[0]). Filtering on that date found
+            // one lot and silently dropped the overflow: the units stayed reserved
+            // forever and the distributor received fewer than they had paid for.
+            //
+            // reserved_quantity > 0 already gives the same protection the date was
+            // there for -- a lot restocked after the reservation was made holds no
+            // reserved units, so a later release cannot eat into it.
+            $batches = SupplierRawMaterialBatch::query()
+                ->where('supplier_raw_material_id', $material->id)
+                ->where('reserved_quantity', '>', 0)
+                ->orderByRaw(BatchRules::fefoOrderBy())
+                ->lockForUpdate()
+                ->get();
 
-            if ($expiry !== null) {
-                $query->whereDate('expiration_date', $expiry);
-            }
-
-            foreach ($query->orderByRaw(BatchRules::fefoOrderBy())->lockForUpdate()->get() as $batch) {
+            foreach ($batches as $batch) {
                 if ($remaining <= 0) {
                     break;
                 }
 
-                $reserved = min((int) $batch->reserved_quantity, $remaining);
+                // Never take more than was actually held for this request, so the
+                // reserved and physical figures cannot drift apart.
+                $take = min((int) $batch->reserved_quantity, $remaining);
 
-                // Reserved units leave the physical quantity too.
-                $take = min((int) $batch->quantity, $remaining);
+                if ($take <= 0) {
+                    continue;
+                }
 
-                $batch->decrement('reserved_quantity', $reserved);
+                $batch->decrement('reserved_quantity', $take);
                 $batch->decrement('quantity', $take);
 
                 $remaining -= $take;
@@ -317,6 +334,11 @@ class BatchInventoryService
 
             $material->syncBatchRollups();
         });
+
+        // See releaseReservation(): stamped only once the stock movement has
+        // actually committed, so the trail never claims a delivery that did not
+        // happen.
+        $procurement->forceFill(['stock_consumed_at' => now()])->save();
     }
 
     /**
