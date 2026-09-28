@@ -2,6 +2,7 @@
 
 namespace App\Models\EcommerceClient;
 
+use App\Casts\CalendarDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Distributor\Product; // Updated namespace
@@ -16,7 +17,16 @@ class ClientOrderItem extends Model
         'distributor_id',
         'product_id',
         'quantity',
-        'price'
+        'price',
+        // The batch this line was actually fulfilled from, so a shipment can be
+        // traced back to a lot with a known expiration date.
+        'batch_code',
+        'expiration_date'
+    ];
+
+    protected $casts = [
+        'quantity'        => 'integer',
+        'expiration_date' => CalendarDate::class,
     ];
 
     public function product()

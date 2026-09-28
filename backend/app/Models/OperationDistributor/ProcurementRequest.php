@@ -2,6 +2,7 @@
 
 namespace App\Models\OperationDistributor;
 
+use App\Casts\CalendarDate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ class ProcurementRequest extends Model
         'category',
         'supplier', 
         'quantity',
+        'expiration_date',
         'unit_price',
         'total_cost',
         'priority',
@@ -43,6 +45,13 @@ class ProcurementRequest extends Model
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'total_cost' => 'decimal:2',
+        // The expiry of the supplier batch this request reserved. Carrying it on the
+        // request is what lets the delivered batch be identified unambiguously even
+        // if the supplier restocks the product in the meantime.
+        'expiration_date' => CalendarDate::class,
+        'stock_reserved_at' => 'datetime',
+        'stock_released_at' => 'datetime',
+        'stock_consumed_at' => 'datetime',
         'required_by_date' => 'date',
         'request_date' => 'date',
         'approved_at' => 'datetime',
@@ -101,11 +110,37 @@ class ProcurementRequest extends Model
     }
 
     /**
-     * Get the product
+     * The supplier's material this request is for.
+     *
+     * NOTE: `product_id` was re-pointed to `supplier_raw_materials.id` by migration
+     * 2026_07_07_021004. The old `product()` relation still claimed
+     * `distributor_products` and therefore always resolved to null.
+     *
+     * @see rawMaterial() for the correctly-named accessor.
+     */
+    public function rawMaterial()
+    {
+        return $this->belongsTo(\App\Models\Supplier\SupplierRawMaterial::class, 'product_id');
+    }
+
+    /**
+     * Kept for backwards compatibility with callers written against the old
+     * (incorrect) relation. New code should use rawMaterial().
      */
     public function product()
     {
         return $this->belongsTo(\App\Models\Distributor\Product::class, 'product_id');
+    }
+
+    /**
+     * Batches this distributor received because of this request.
+     */
+    public function receivedBatches()
+    {
+        return $this->hasMany(
+            \App\Models\OperationDistributor\DistributorInventoryBatch::class,
+            'source_procurement_request_id'
+        );
     }
 
     /**

@@ -458,14 +458,40 @@ class CartController extends Controller
             }
 
             $receiptItems = [];
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
             foreach ($cartItems as $item) {
+                // ── Deduct stock BEFORE writing the order line ─────────────
+                // FEFO: the batch expiring soonest is consumed first, and expired
+                // lots are excluded entirely, so a customer can never be served
+                // from stock past its date. Runs first so an insufficient-stock
+                // failure aborts the whole order rather than leaving an order row
+                // with no stock behind it.
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: $item->distributor_id,
+                        productId: $item->product_id,
+                        quantity: (int) $item->quantity,
+                        actorId: $user->id,
+                        eventType: 'sale',
+                        notes: "Client order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                // The soonest-dated batch that supplied this line, recorded on the
+                // order item so the shipment can be traced back to a lot.
+                $primaryBatch = collect($drawnBatches)->first();
+
                 ClientOrderItem::create([
                     'order_id' => $order->id,
                     'distributor_id' => $item->distributor_id,
                     'product_id' => $item->product_id,
                     'quantity' => $item->quantity,
-                    'price' => $item->discounted_price 
+                    'price' => $item->discounted_price,
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $distInfo = DB::table('distributor_requirements')->where('user_id', $item->distributor_id)->first();
@@ -476,34 +502,10 @@ class CartController extends Controller
                     'distributor_name' => $distName,
                     'quantity' => $item->quantity,
                     'price' => $item->discounted_price,
-                    'total' => $item->discounted_price * $item->quantity
+                    'total' => $item->discounted_price * $item->quantity,
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ];
-
-                $remainingToDeduct = $item->quantity;
-                $inventories = DistributorInventory::where('product_id', $item->product_id)
-                    ->where('distributor_id', $item->distributor_id)
-                    ->where('ecommerce_status', 'deployed')
-                    ->where('quantity', '>', 0)
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inventory) {
-                    if ($remainingToDeduct <= 0) break;
-                    if ($inventory->quantity >= $remainingToDeduct) {
-                        $inventory->quantity -= $remainingToDeduct;
-                        $inventory->save();
-                        $remainingToDeduct = 0;
-                    } else {
-                        $remainingToDeduct -= $inventory->quantity;
-                        $inventory->quantity = 0;
-                        $inventory->save();
-                    }
-                }
-
-                if ($remainingToDeduct > 0) {
-                    throw new \Exception("Not enough stock remaining for {$item->product->name}.");
-                }
             }
 
             foreach (array_keys($appliedPromotions) as $promoId) {

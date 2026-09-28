@@ -340,6 +340,7 @@ class ProcurementController extends Controller
             }
             
             $totalRequestedCost = 0;
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
             foreach ($request->items as $item) {
                 $material = SupplierRawMaterial::findOrFail($item['id']);
@@ -358,6 +359,34 @@ class ProcurementController extends Controller
                         'success' => false,
                         'message' => 'Validation failed',
                         'errors' => ['items' => ["Quantity for {$material->name} cannot exceed {$material->max_order}."]]
+                    ], 422);
+                }
+
+                // ── Batch availability ────────────────────────────────────
+                // A distributor can only buy stock that physically exists and is
+                // still within its expiration date. Checked before the budget
+                // test so the user gets the actionable message first.
+                if ($material->is_archived) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['items' => [
+                            "{$material->name} has been archived and can no longer be procured."
+                        ]]
+                    ], 422);
+                }
+
+                $available = $inventoryService->supplierAvailableQuantity($material);
+
+                if ($available < $item['quantity']) {
+                    $detail = $available === 0
+                        ? "{$material->name} has no stock within its expiration date. Ask the supplier to archive the expired batches and add fresh stock."
+                        : "Only {$available} unit(s) of {$material->name} can be procured right now; {$item['quantity']} were requested. The rest is either already reserved or expired.";
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Validation failed',
+                        'errors' => ['items' => [$detail]]
                     ], 422);
                 }
 
@@ -380,36 +409,71 @@ class ProcurementController extends Controller
             DB::beginTransaction();
             $createdRequests = [];
 
-            foreach ($request->items as $item) {
-                $material = SupplierRawMaterial::findOrFail($item['id']);
-                $totalCost = $material->price * $item['quantity'];
-                
-                $procurementRequest = ProcurementRequest::create([
-                    'requester_id' => $user->id,
-                    'distributor_id' => $distributorId,
-                    'supplier_id' => $request->supplier_id,
-                    'product_id' => $material->id,
-                    'request_code' => ProcurementRequest::generateRequestCode(),
-                    'product_name' => $material->name,
-                    'category' => $material->category,
-                    'supplier' => $request->supplier,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $material->price,
-                    'total_cost' => $totalCost,
-                    'priority' => $request->priority,
-                    'status' => 'pending',
-                    'shipping_method' => $request->shipping_method ?? 'standard',
-                    'payment_terms' => $request->payment_terms ?? 'cod',
-                    'delivery_address' => $request->delivery_address,
-                    'instructions' => $request->instructions,
-                    'required_by_date' => $request->required_by_date,
-                    'request_date' => now()->toDateString()
-                ]);
+            try {
+                foreach ($request->items as $item) {
+                    $material = SupplierRawMaterial::findOrFail($item['id']);
+                    $totalCost = $material->price * $item['quantity'];
 
-                $createdRequests[] = $procurementRequest;
+                    // ── Reserve the stock ───────────────────────────────────
+                    // The units are held against the supplier's batches (FEFO) the
+                    // moment the request is raised, so the same stock cannot be
+                    // promised to a second distributor while this shipment is in
+                    // transit. The batch's expiration date is stamped onto the
+                    // request so the delivered lot is unambiguous even if the
+                    // supplier restocks in the meantime.
+                    $allocations = $inventoryService->reserveForProcurement(
+                        $material,
+                        (int) $item['quantity']
+                    );
+
+                    $expirationDate = $allocations[0]['expiration_date'] ?? null;
+
+                    $procurementRequest = ProcurementRequest::create([
+                        'requester_id' => $user->id,
+                        'distributor_id' => $distributorId,
+                        'supplier_id' => $request->supplier_id,
+                        'product_id' => $material->id,
+                        'request_code' => ProcurementRequest::generateRequestCode(),
+                        'product_name' => $material->name,
+                        'category' => $material->category,
+                        'supplier' => $request->supplier,
+                        'quantity' => $item['quantity'],
+                        'expiration_date' => $expirationDate,
+                        'unit_price' => $material->price,
+                        'total_cost' => $totalCost,
+                        'priority' => $request->priority,
+                        'status' => 'pending',
+                        'shipping_method' => $request->shipping_method ?? 'standard',
+                        'payment_terms' => $request->payment_terms ?? 'cod',
+                        'delivery_address' => $request->delivery_address,
+                        'instructions' => $request->instructions,
+                        'required_by_date' => $request->required_by_date,
+                        'request_date' => now()->toDateString(),
+                        'stock_reserved_at' => now(),
+                    ]);
+
+                    $createdRequests[] = $procurementRequest;
+                }
+                
+                DB::commit();
+            } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                // The reservation is what failed; nothing partial should survive.
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => ['items' => [$e->getMessage()]]
+                ], 422);
+            } catch (\App\Support\Inventory\Exceptions\InvalidExpirationDate $e) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => ['expiration_date' => [$e->getMessage()]]
+                ], 422);
             }
-            
-            DB::commit();
 
             event(new ProcurementRequestCreated($distributorId));
 
@@ -420,7 +484,10 @@ class ProcurementController extends Controller
             ], 201);
             
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create procurement request: ' . $e->getMessage()

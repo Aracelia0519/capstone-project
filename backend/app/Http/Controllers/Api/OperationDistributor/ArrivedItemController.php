@@ -271,34 +271,65 @@ class ArrivedItemController extends Controller
             $procurement->moved_to_inventory = true;
             $procurement->save();
 
-            // Update inventory
-            $inventory = DistributorInventory::firstOrCreate(
-                [
-                    'distributor_id' => $distributorId,
-                    'product_id' => $distributorProductId
-                ],
-                ['quantity' => 0]
+            // ── Book the delivery in as a BATCH ─────────────────────────
+            // The supplier's batch expiry was frozen onto the request at
+            // procurement time, so the lot that lands in the warehouse carries a
+            // real expiration date instead of an untraceable lump sum. The audit
+            // log row is written by the service, which also keeps the parent
+            // inventory total in step.
+            $expirationDate = $request->input('expiration_date')
+                ?: ($procurement->expiration_date
+                    ? $procurement->expiration_date->toDateString()
+                    : null);
+
+            // Legacy requests predate batch tracking and have no recorded expiry.
+            // Fall back to the one-year default rather than refusing the delivery.
+            if ($expirationDate === null) {
+                $expirationDate = \App\Support\Inventory\BatchRules::minimumExpirationDate()->toDateString();
+            }
+
+            $batch = app(\App\Support\Inventory\BatchInventoryService::class)->receiveBatch(
+                distributorId: $distributorId,
+                productId: $distributorProductId,
+                quantity: (int) $procurement->quantity,
+                expirationDate: $expirationDate,
+                actorId: $user->id,
+                procurement: $procurement,
+                sourceRawMaterialId: $procurement->product_id,
+                batchCode: $request->input('batch_code')
             );
 
-            $inventory->quantity += $procurement->quantity;
-            $inventory->save();
-
-            // Audit log
-            InventoryLog::create([
-                'distributor_id' => $distributorId,
-                'product_id' => $distributorProductId,
-                'procurement_request_id' => $procurement->id,
-                'quantity_added' => $procurement->quantity,
-            ]);
+            // The reserved units have physically left the supplier.
+            app(\App\Support\Inventory\BatchInventoryService::class)
+                ->consumeReservation($procurement);
 
             DB::commit();
 
             event(new InventoryUpdated($distributorId));
 
-            return response()->json(['message' => 'Successfully moved to inventory.']);
+            return response()->json([
+                'message' => 'Successfully moved to inventory.',
+                'batch' => [
+                    'batch_code' => $batch->batch_code,
+                    'quantity' => (int) $batch->quantity,
+                    'expiration_date' => $batch->expiration_date?->toDateString(),
+                ],
+            ]);
 
+        } catch (\App\Support\Inventory\Exceptions\InvalidExpirationDate $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => ['expiration_date' => [$e->getMessage()]],
+            ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             return response()->json(['message' => 'Failed to move to inventory.', 'error' => $e->getMessage()], 500);
         }
     }
@@ -344,26 +375,26 @@ class ArrivedItemController extends Controller
                 throw new \Exception('Could not map to a distributor product for replacement.');
             }
 
-            // Update inventory
-            $inventory = DistributorInventory::firstOrCreate(
-                [
-                    'distributor_id' => $distributorId,
-                    'product_id' => $distributorProductId
-                ],
-                ['quantity' => 0]
+            // ── Replacement stock joins as its own batch ───────────────
+            // A replacement is a different lot from the original delivery, so it
+            // gets a fresh batch code while inheriting the original expiry. If the
+            // original date has since lapsed the service parks the units in a
+            // fresh batch with a one-year deadline rather than putting expired
+            // goods straight back on sale.
+            $originalExpiry = $procurement && $procurement->expiration_date
+                ? $procurement->expiration_date->toDateString()
+                : null;
+
+            $batch = app(\App\Support\Inventory\BatchInventoryService::class)->receiveBatch(
+                distributorId: $distributorId,
+                productId: $distributorProductId,
+                quantity: (int) $returnReq->quantity_returned,
+                expirationDate: $request->input('expiration_date') ?: $originalExpiry,
+                actorId: $user->id,
+                procurement: $procurement,
+                sourceRawMaterialId: $procurement?->product_id,
+                batchCode: $request->input('batch_code')
             );
-
-            $inventory->quantity += $returnReq->quantity_returned;
-            $inventory->save();
-
-            // Audit log
-            InventoryLog::create([
-                'distributor_id' => $distributorId,
-                'product_id' => $distributorProductId,
-                'procurement_request_id' => $procurement->id,
-                'quantity_added' => $returnReq->quantity_returned,
-                'notes' => 'Received from Supplier Replacement'
-            ]);
 
             // Mark return as completed
             $returnReq->status = 'completed';
@@ -373,10 +404,29 @@ class ArrivedItemController extends Controller
 
             event(new InventoryUpdated($distributorId));
 
-            return response()->json(['message' => 'Successfully moved replacement to inventory.']);
+            return response()->json([
+                'message' => 'Successfully moved replacement to inventory.',
+                'batch' => [
+                    'batch_code' => $batch->batch_code,
+                    'quantity' => (int) $batch->quantity,
+                    'expiration_date' => $batch->expiration_date?->toDateString(),
+                ],
+            ]);
 
+        } catch (\App\Support\Inventory\Exceptions\InvalidExpirationDate $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'errors' => ['expiration_date' => [$e->getMessage()]],
+            ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+
             return response()->json(['message' => 'Failed to move replacement to inventory.', 'error' => $e->getMessage()], 500);
         }
     }

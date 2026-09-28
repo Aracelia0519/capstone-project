@@ -33,10 +33,70 @@
               <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Variants</span>
               <span class="text-lg font-bold text-slate-800">{{ totalProducts }}</span>
             </div>
+            <Separator orientation="vertical" class="h-8 bg-slate-200" />
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Expiring ≤30d</span>
+              <span class="text-lg font-bold"
+                    :class="expiringSoonCount > 0 ? 'text-orange-600' : 'text-slate-800'">
+                {{ expiringSoonCount }}
+              </span>
+            </div>
+            <Separator orientation="vertical" class="h-8 bg-slate-200" />
+            <div class="flex flex-col items-center">
+              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Expired</span>
+              <span class="text-lg font-bold"
+                    :class="expiredProductCount > 0 ? 'text-red-600' : 'text-slate-800'">
+                {{ expiredProductCount }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
     </header>
+
+    <!-- ── Expiry alert bar ──────────────────────────────────────────
+         Shown whenever something in the catalogue has already lapsed.
+         Expired stock is not procurable, so the only way out is to archive
+         it and add a fresh batch. -->
+    <div v-if="expiredBatchCount > 0"
+         class="bg-red-50 border-b border-red-200 px-4 md:px-6 py-3">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <AlertTriangle class="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <p class="text-sm font-semibold text-red-800">
+              {{ expiredBatchCount }} expired {{ expiredBatchCount === 1 ? 'batch' : 'batches' }} in your catalogue
+            </p>
+            <p class="text-xs text-red-700 mt-0.5">
+              Expired stock cannot be procured. Move it to the archive and add a fresh batch to keep selling.
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="destructive"
+          class="shrink-0"
+          :disabled="isArchivingAll"
+          @click="confirmArchiveAll"
+        >
+          <Loader2 v-if="isArchivingAll" class="w-4 h-4 mr-2 animate-spin" />
+          <Archive v-else class="w-4 h-4 mr-2" />
+          Move All Expired to Archive
+        </Button>
+      </div>
+    </div>
+
+    <div v-else-if="expiringSoonCount > 0"
+         class="bg-orange-50 border-b border-orange-200 px-4 md:px-6 py-3">
+      <div class="max-w-7xl mx-auto flex items-start gap-3">
+        <Clock class="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+        <p class="text-sm text-orange-800">
+          <strong>{{ expiringSoonCount }}</strong>
+          {{ expiringSoonCount === 1 ? 'batch expires' : 'batches expire' }}
+          within 30 days. Use up the oldest lots first — stock is issued oldest-expiry-first automatically.
+        </p>
+      </div>
+    </div>
 
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
       <aside class="hidden lg:block lg:col-span-3 space-y-6">
@@ -280,11 +340,35 @@
                 </Button>
               </div>
 
+              <!-- "Move to Archive" per group. Only rendered when the group
+                   actually holds lapsed stock, so it never becomes a button
+                   whose only answer is "nothing to do". -->
+              <div
+                v-if="expiredBatchesInGroup(group).length > 0"
+                class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-100 px-2.5 py-2"
+              >
+                <span class="text-[11px] text-red-700 font-medium">
+                  {{ expiredBatchesInGroup(group).length }} expired
+                  {{ expiredBatchesInGroup(group).length === 1 ? 'batch' : 'batches' }}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  class="h-6 px-2 text-[11px] border-red-200 text-red-700 hover:bg-red-100"
+                  :disabled="isArchivingGroup === group.key"
+                  @click="archiveGroupExpired(group)"
+                >
+                  <Loader2 v-if="isArchivingGroup === group.key" class="w-3 h-3 mr-1 animate-spin" />
+                  <Archive v-else class="w-3 h-3 mr-1" />
+                  Move to Archive
+                </Button>
+              </div>
+
               <div v-if="expandedGroups.includes(group.key)" class="mt-3 pt-3 border-t border-slate-200 space-y-2">
                 <div 
                   v-for="variant in group.variants" 
                   :key="variant.id"
-                  class="flex flex-col bg-slate-50 p-2 rounded-lg text-sm gap-1"
+                  class="flex flex-col bg-slate-50 p-2 rounded-lg text-sm gap-1.5"
                 >
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -293,7 +377,13 @@
                       <span v-if="variant.color_code" class="w-3 h-3 rounded-full border border-slate-300 shrink-0" :style="{ backgroundColor: variant.color_code }"></span>
                       <span class="font-bold text-blue-600 ml-auto">₱{{ formatPrice(variant.price) }}</span>
                     </div>
-                    <div class="flex gap-1 ml-2">
+                    <div class="flex gap-0.5 ml-1">
+                      <Button variant="ghost" size="icon" class="h-7 w-7" :title="`Batches of ${variant.name}`" @click="openBatchPanel(variant)">
+                        <Layers class="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" class="h-7 w-7" :title="`Add stock to ${variant.name}`" @click="openRestock(variant)">
+                        <PackagePlus class="w-3 h-3" />
+                      </Button>
                       <Button variant="ghost" size="icon" class="h-7 w-7" @click="editProduct(variant)">
                         <Pencil class="w-3 h-3" />
                       </Button>
@@ -302,9 +392,41 @@
                       </Button>
                     </div>
                   </div>
-                  <div class="text-xs text-slate-500 flex items-center gap-1 pl-1">
-                    <span>Weight:</span>
-                    <span class="font-medium text-slate-700">{{ variant.weight || 10 }} kg</span>
+
+                  <!-- ── Batch status line ──────────────────────────────
+                       `quantity` alone would hide the problem: 100 units on
+                       hand can be unsellable if every lot has lapsed. Showing
+                       available, reserved and the next expiry side by side
+                       keeps that visible. -->
+                  <div class="flex items-center gap-2 flex-wrap pl-1">
+                    <span
+                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium"
+                      :class="expiryBadge(variant.expiration_date).classes"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full" :class="expiryBadge(variant.expiration_date).dot"></span>
+                      {{ expiryBadge(variant.expiration_date).label }}
+                    </span>
+
+                    <span class="text-[11px] text-slate-600">
+                      <span class="font-semibold text-slate-800">{{ availableOf(variant) }}</span>
+                      available
+                    </span>
+
+                    <span v-if="variant.reserved_quantity > 0" class="text-[11px] text-amber-700">
+                      · {{ variant.reserved_quantity }} reserved
+                    </span>
+
+                    <span class="text-[11px] text-slate-500">
+                      · {{ liveBatchesOf(variant).length }}
+                      {{ liveBatchesOf(variant).length === 1 ? 'batch' : 'batches' }}
+                    </span>
+                  </div>
+
+                  <div v-if="variant.is_expired" class="pl-1">
+                    <span class="text-[11px] text-red-700 inline-flex items-center gap-1">
+                      <AlertTriangle class="w-3 h-3" />
+                      Not procurable — no stock within date
+                    </span>
                   </div>
                 </div>
               </div>
@@ -517,13 +639,75 @@
 
               <div class="space-y-2">
                 <Label for="description" class="text-slate-700">Description</Label>
-                <Textarea 
-                  id="description" 
-                  v-model="newProduct.description" 
-                  placeholder="Describe the material details..." 
-                  class="resize-none h-32" 
+                <Textarea
+                  id="description"
+                  v-model="newProduct.description"
+                  placeholder="Describe the material details..."
+                  class="resize-none h-32"
                 />
               </div>
+
+              <!-- Batch details. Hidden while EDITING on purpose: stock only
+                   moves through a restock, which creates a new dated batch.
+                   Letting a plain edit rewrite the total would desync it from
+                   the lots actually on hand. -->
+              <template v-if="!isEditing">
+                <Separator />
+
+                <div class="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-100 p-3">
+                  <Layers class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p class="text-xs text-blue-700 leading-relaxed">
+                    Stock is tracked by <strong>batch</strong> — every delivery carries its own
+                    quantity and expiration date, and the oldest lot is always issued first.
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-2">
+                    <Label for="quantity" class="text-slate-700">
+                      Quantity <span class="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      v-model="newProduct.quantity"
+                      placeholder="e.g. 100"
+                      min="1"
+                      step="1"
+                      :class="{ 'border-red-300': quantityError && !newProduct.quantity }"
+                      @input="quantityError = ''"
+                    />
+                    <p v-if="quantityError" class="text-xs text-red-600">{{ quantityError }}</p>
+                  </div>
+
+                  <div class="space-y-2">
+                    <Label for="expiration_date" class="text-slate-700">
+                      Expiration Date
+                      <span v-if="requiresExpiration" class="text-red-500">*</span>
+                      <span v-else class="text-slate-400 font-normal">(optional)</span>
+                    </Label>
+                    <Input
+                      id="expiration_date"
+                      type="date"
+                      v-model="newProduct.expiration_date"
+                      :min="minimumExpirationDate"
+                      :class="{
+                        'border-red-300': expirationError,
+                        'bg-slate-50': !requiresExpiration && !newProduct.expiration_date
+                      }"
+                      @input="expirationError = ''"
+                    />
+                    <p v-if="expirationError" class="text-xs text-red-600">{{ expirationError }}</p>
+                    <p v-else-if="requiresExpiration" class="text-xs text-slate-500">
+                      Must be {{ formatDate(minimumExpirationDate) }} or later — 1 year from today.
+                    </p>
+                    <p v-else class="text-xs text-slate-500">
+                      Optional for {{ newProduct.category || 'this category' }} — leave blank for
+                      non-perishable goods like tools, accessories and packaging.
+                    </p>
+                  </div>
+                </div>
+              </template>
             </div>
 
             <div v-else-if="currentStep === 3" class="space-y-6">
@@ -591,6 +775,24 @@
                    <div><span class="text-slate-500 block text-xs uppercase tracking-wide">Selling Price</span> <span class="font-bold text-green-600">₱{{ formatPrice(newProduct.price) }}</span></div>
                    
                    <div class="col-span-2"><span class="text-slate-500 block text-xs uppercase tracking-wide">Limits (Min/Max)</span> <span class="font-medium text-slate-800">{{ newProduct.min_order || 1 }} - {{ newProduct.max_order || 'No Max' }}</span></div>
+
+                   <!-- Opening batch. Shown only when creating, because an edit
+                        never touches stock. -->
+                   <template v-if="!isEditing">
+                     <div>
+                       <span class="text-slate-500 block text-xs uppercase tracking-wide">Opening Quantity</span>
+                       <span class="font-bold text-slate-800">{{ newProduct.quantity || 0 }} units</span>
+                     </div>
+                     <div>
+                       <span class="text-slate-500 block text-xs uppercase tracking-wide">Expires</span>
+                       <span v-if="newProduct.expiration_date" class="font-medium text-slate-800">
+                         {{ formatDate(newProduct.expiration_date) }}
+                       </span>
+                       <span v-else class="font-medium text-slate-400 italic">
+                         {{ requiresExpiration ? 'Required — not set' : 'No expiry (non-perishable)' }}
+                       </span>
+                     </div>
+                   </template>
 
                    <div v-if="newProduct.color_code" class="col-span-2">
                      <span class="text-slate-500 block text-xs uppercase tracking-wide mb-1">Color</span> 
@@ -690,6 +892,229 @@
       </DialogContent>
     </Dialog>
 
+    <!-- ── Batch panel ──────────────────────────────────────────────
+         Every lot behind one product, soonest expiry first, matching the
+         order stock is actually issued in. -->
+    <Dialog :open="showBatchPanel" @update:open="closeBatchPanel">
+      <DialogContent class="sm:max-w-[640px] max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
+        <DialogHeader class="p-6 pb-3">
+          <DialogTitle class="flex items-center gap-2">
+            <div class="p-2 bg-blue-100 rounded-lg text-blue-600">
+              <Layers class="w-5 h-5" />
+            </div>
+            <div class="min-w-0">
+              <p class="truncate">{{ batchProduct?.name || 'Batches' }}</p>
+              <p v-if="batchProduct" class="text-xs font-normal text-slate-500 mt-0.5">
+                {{ batchProduct.category }}
+                <span v-if="batchProduct.size"> · {{ batchProduct.size }}</span>
+              </p>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div class="px-6 pb-3">
+          <div v-if="batchSummary" class="grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-lg bg-slate-50 border border-slate-200 py-2">
+              <p class="text-lg font-bold text-slate-800">{{ batchSummary.available }}</p>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500">Available</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-200 py-2">
+              <p class="text-lg font-bold text-slate-800">{{ batchSummary.reserved }}</p>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500">Reserved</p>
+            </div>
+            <div class="rounded-lg bg-slate-50 border border-slate-200 py-2">
+              <p class="text-lg font-bold"
+                 :class="batchSummary.expired > 0 ? 'text-red-600' : 'text-slate-800'">
+                {{ batchSummary.expired }}
+              </p>
+              <p class="text-[10px] uppercase tracking-wide text-slate-500">Expired</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-6 pb-4">
+          <div v-if="isLoadingBatches" class="flex justify-center items-center py-12">
+            <Loader2 class="w-6 h-6 animate-spin text-blue-600" />
+          </div>
+
+          <div v-else-if="batchRows.length === 0"
+               class="py-10 text-center text-sm text-slate-500">
+            No batches yet. Add stock to start selling this product.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="row in batchRows"
+              :key="row.batch.id"
+              class="rounded-lg border p-3 flex items-center gap-3"
+              :class="row.expired
+                ? 'border-red-200 bg-red-50/60'
+                : 'border-slate-200 bg-white'"
+            >
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-mono text-xs text-slate-600">{{ row.batch.batch_code }}</span>
+                  <span
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-medium"
+                    :class="expiryBadge(row.batch.expiration_date).classes"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="expiryBadge(row.batch.expiration_date).dot"></span>
+                    {{ expiryBadge(row.batch.expiration_date).label }}
+                  </span>
+                  <span
+                    v-if="row.reserved > 0"
+                    class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded"
+                  >
+                    {{ row.reserved }} reserved
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                  Added {{ formatDate(row.batch.created_at) }}
+                  <span v-if="row.batch.expiration_date">
+                    · expires {{ formatDate(row.batch.expiration_date) }}
+                  </span>
+                </p>
+                <p v-if="row.batch.archive_reason" class="text-[11px] text-slate-400 mt-0.5">
+                  {{ row.batch.archive_reason }}
+                </p>
+              </div>
+
+              <div class="text-right shrink-0">
+                <p class="font-bold text-slate-800">{{ row.batch.quantity }}</p>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wide">units</p>
+              </div>
+
+              <Button
+                v-if="row.expired"
+                size="sm"
+                variant="outline"
+                class="h-7 px-2 text-[11px] border-red-200 text-red-700 hover:bg-red-100 shrink-0"
+                :disabled="archivingBatchId === row.batch.id"
+                @click="archiveBatch(row.batch)"
+              >
+                <Loader2 v-if="archivingBatchId === row.batch.id" class="w-3 h-3 mr-1 animate-spin" />
+                <Archive v-else class="w-3 h-3 mr-1" />
+                Archive
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 flex justify-between items-center gap-3">
+          <p class="text-xs text-slate-500">
+            {{ batchRows.length }} {{ batchRows.length === 1 ? 'lot' : 'lots' }}, oldest expiry first
+          </p>
+          <div class="flex gap-2">
+            <Button variant="outline" size="sm" @click="closeBatchPanel">Close</Button>
+            <Button size="sm" @click="openRestockFromPanel">
+              <PackagePlus class="w-4 h-4 mr-1" />
+              Add Stock
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ── Restock ───────────────────────────────────────────────────
+         Adding stock to an existing product always opens a NEW batch, so
+         this form asks for the quantity and the expiration date of the
+         delivery being booked in. -->
+    <Dialog :open="showRestockModal" @update:open="showRestockModal = $event">
+      <DialogContent class="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <div class="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+              <PackagePlus class="w-5 h-5" />
+            </div>
+            Add Stock
+          </DialogTitle>
+          <p v-if="restockTarget" class="text-sm text-slate-500">
+            {{ restockTarget.name }}
+            <span v-if="restockTarget.size"> · {{ restockTarget.size }}</span>
+            — currently {{ availableOf(restockTarget) }} available
+          </p>
+        </DialogHeader>
+
+        <div class="space-y-4 py-2">
+          <div class="space-y-2">
+            <Label for="restock_quantity" class="text-slate-700">
+              Quantity Received <span class="text-red-500">*</span>
+            </Label>
+            <Input
+              id="restock_quantity"
+              type="number"
+              v-model="restockForm.quantity"
+              placeholder="e.g. 50"
+              min="1"
+              step="1"
+              :class="{ 'border-red-300': restockErrors.quantity }"
+            />
+            <p v-if="restockErrors.quantity" class="text-xs text-red-600">{{ restockErrors.quantity }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <Label for="restock_expiration" class="text-slate-700">
+              Expiration Date of this Batch
+              <span v-if="restockRequiresExpiration" class="text-red-500">*</span>
+              <span v-else class="text-slate-400 font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="restock_expiration"
+              type="date"
+              v-model="restockForm.expiration_date"
+              :min="minimumExpirationDate"
+              :class="{ 'border-red-300': restockErrors.expiration_date }"
+            />
+            <p v-if="restockErrors.expiration_date" class="text-xs text-red-600">
+              {{ restockErrors.expiration_date }}
+            </p>
+            <p v-else-if="restockRequiresExpiration" class="text-xs text-slate-500">
+              Must be {{ formatDate(minimumExpirationDate) }} or later — 1 year from today.
+            </p>
+            <p v-else class="text-xs text-slate-500">
+              Optional for {{ restockTarget?.category }} — tools, accessories and packaging
+              do not need a shelf life.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label for="restock_batch_code" class="text-slate-700">Batch Reference</Label>
+            <Input
+              id="restock_batch_code"
+              v-model="restockForm.batch_code"
+              placeholder="Optional — generated if blank"
+              class="font-mono"
+            />
+            <p class="text-xs text-slate-500">
+              Leave blank to have one generated. Reusing a reference that already exists
+              will add to that same lot.
+            </p>
+          </div>
+
+          <div class="flex items-start gap-3 rounded-lg bg-slate-50 border border-slate-200 p-3">
+            <Info class="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+            <p class="text-xs text-slate-600 leading-relaxed">
+              This creates a new batch alongside the existing ones. The running total
+              grows by {{ restockForm.quantity || 0 }} and existing batches keep their
+              own expiration dates.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <Button variant="outline" @click="showRestockModal = false">Cancel</Button>
+          <Button
+            @click="submitRestock"
+            :disabled="isRestocking"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Loader2 v-if="isRestocking" class="w-4 h-4 mr-2 animate-spin" />
+            Add to Inventory
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
   </div>
 </template>
 
@@ -700,8 +1125,21 @@ import api from '@/utils/axios';
 import { 
   Package2, Search, Filter, Settings, Package, Pencil, Trash2, 
   SearchX, PackagePlus, Check, ChevronLeft, ChevronRight, 
-  Loader2, UploadCloud, X, Info, ClipboardCheck, Plus, CopyPlus, ChevronDown
+  Loader2, UploadCloud, X, Info, ClipboardCheck, Plus, CopyPlus, ChevronDown,
+  Layers, Archive, AlertTriangle, Clock
 } from 'lucide-vue-next';
+
+// Batch rules. The server owns the real rulebook; this module only mirrors it so
+// the form can react before submit. Every rule is enforced again server-side.
+import {
+  loadBatchRules,
+  isExpirationOptional,
+  validateExpiration,
+  localMinimumDate,
+  expiryBadge,
+  daysUntil,
+  formatDate,
+} from '@/composables/useBatchInventory';
 
 // Shadcn Components
 import { Button } from '@/components/ui/button';
@@ -761,8 +1199,49 @@ const newProduct = reactive({
   min_order: '',
   max_order: '',
   description: '',
-  image_url: ''
+  image_url: '',
+  // Batch fields — only submitted when creating, never on a plain edit.
+  quantity: '',
+  expiration_date: '',
+  batch_code: ''
 });
+
+// Field-level messages so the user sees which input is at fault, not just a toast.
+const quantityError = ref('');
+const expirationError = ref('');
+
+// The rulebook, fetched once on mount. `minimumExpirationDate` doubles as the
+// `min` on the date input so the browser blocks an impossible date outright.
+const batchRules = ref(null);
+const minimumExpirationDate = computed(
+  () => batchRules.value?.minimumExpirationDate || localMinimumDate()
+);
+
+/** Does the selected category insist on an expiration date? */
+const requiresExpiration = computed(() => !isExpirationOptional(newProduct.category));
+
+// ── Batch panel ────────────────────────────────────────────────────
+const showBatchPanel = ref(false);
+const batchProduct = ref(null);
+const batchList = ref([]);
+const isLoadingBatches = ref(false);
+const archivingBatchId = ref(null);
+
+// ── Restock ────────────────────────────────────────────────────────
+const showRestockModal = ref(false);
+const restockTarget = ref(null);
+const isRestocking = ref(false);
+const restockErrors = reactive({ quantity: '', expiration_date: '' });
+const restockForm = reactive({ quantity: '', expiration_date: '', batch_code: '' });
+
+/** Restocking inherits the category rules of the product being topped up. */
+const restockRequiresExpiration = computed(
+  () => !isExpirationOptional(restockTarget.value?.category)
+);
+
+// ── Archive ────────────────────────────────────────────────────────
+const isArchivingAll = ref(false);
+const isArchivingGroup = ref(null);
 
 // Data Constants
 const categories = ref([
@@ -842,6 +1321,92 @@ const colorOptions = [
 // Computed
 const totalProducts = computed(() => products.value.length);
 const uniqueCategories = computed(() => new Set(products.value.map(p => p.category)).size);
+
+/**
+ * Lots for a product, in the order the API returned them (oldest expiry first).
+ * `live_batches` is what the index endpoint eager-loads; products created before
+ * batch tracking existed simply have none.
+ */
+const liveBatchesOf = (product) => product?.live_batches || [];
+
+/**
+ * Units a distributor can actually buy right now.
+ *
+ * `available_quantity` is appended server-side, but a cached or older response
+ * may not carry it, so fall back to the raw total rather than render
+ * "undefined" in the middle of a stock figure.
+ */
+const availableOf = (product) => {
+  if (!product) return 0;
+  if (typeof product.available_quantity === 'number') return product.available_quantity;
+  return Number(product.quantity) || 0;
+};
+
+/** Lots that have already lapsed, still in the active supply chain. */
+const expiredBatchesOf = (product) => liveBatchesOf(product).filter((b) => isBatchExpired(b));
+
+/**
+ * Has this lot passed its expiration date?
+ *
+ * Delegates to the shared `daysUntil` so the browser and the server cannot drift
+ * apart on the boundary. Note the `< 0`: a lot dated today has zero days left and
+ * is still sellable, which is exactly what the server's `isExpired()` does —
+ * a batch dies at the end of its last day, not at midnight on it.
+ */
+function isBatchExpired(batch) {
+  const days = daysUntil(batch?.expiration_date);
+  return days !== null && days < 0;
+}
+
+/** Expired lots across the whole catalogue — drives the red alert bar. */
+const expiredBatchCount = computed(
+  () => products.value.reduce((sum, p) => sum + expiredBatchesOf(p).length, 0)
+);
+
+/** Products with no lot left inside its date, so distributors cannot buy them. */
+const expiredProductCount = computed(
+  () => products.value.filter((p) => p.is_expired).length
+);
+
+/** Lots expiring within 30 days and still sellable. */
+const expiringSoonCount = computed(
+  () => products.value.reduce((sum, p) => {
+    return sum + liveBatchesOf(p).filter((b) => {
+      const days = daysUntil(b.expiration_date);
+      // `null` means non-perishable, which never counts as "expiring soon".
+      return days !== null && days >= 0 && days <= 30;
+    }).length;
+  }, 0)
+);
+
+/** Expired lots inside one card group, so the group can offer an archive button. */
+const expiredBatchesInGroup = (group) =>
+  (group?.variants || []).flatMap(expiredBatchesOf);
+
+/** Header figures for the batch panel: what is sellable, what is held, what is dead. */
+const batchSummary = computed(() => {
+  const rows = batchList.value;
+  return {
+    available: rows
+      .filter((b) => !b.is_archived && !isBatchExpired(b))
+      .reduce((sum, b) => sum + (b.quantity - (b.reserved_quantity || 0)), 0),
+    reserved: rows.reduce((sum, b) => sum + (b.reserved_quantity || 0), 0),
+    expired: rows.filter((b) => !b.is_archived && isBatchExpired(b))
+      .reduce((sum, b) => sum + b.quantity, 0),
+  };
+});
+
+/**
+ * Batch rows for the panel, newest-facing ordering already applied server-side.
+ * Archived lots are kept but greyed so the supplier can see the full history.
+ */
+const batchRows = computed(() =>
+  batchList.value.map((b) => ({
+    batch: b,
+    expired: !b.is_archived && isBatchExpired(b),
+    reserved: b.reserved_quantity || 0,
+  }))
+);
 
 const availableTypes = computed(() => {
   const types = new Set();
@@ -1054,8 +1619,11 @@ const closeModal = (val) => {
 const resetForm = () => {
   Object.assign(newProduct, {
     category: '', type: '', name: '', sku_code: '', size: '', weight: '',
-    color_code: '', price: '', min_order: '', max_order: '', description: '', image_url: ''
+    color_code: '', price: '', min_order: '', max_order: '', description: '', image_url: '',
+    quantity: '', expiration_date: '', batch_code: ''
   });
+  quantityError.value = '';
+  expirationError.value = '';
   imagePreview.value = '';
   uploadedImage.value = null;
   currentStep.value = 1;
@@ -1091,6 +1659,15 @@ const addVariant = (product) => {
 const onCategoryChange = () => {
   newProduct.type = '';
   newProduct.size = '';
+
+  // Switching from a perishable to a tools/packaging category makes the
+  // expiration date optional, and a date the user typed for the previous
+  // category may not be the right one for this one. Clear it rather than
+  // carrying a stale value into a new product.
+  if (isExpirationOptional(newProduct.category) && newProduct.expiration_date) {
+    newProduct.expiration_date = '';
+    expirationError.value = '';
+  }
 };
 
 const validateStep = () => {
@@ -1105,6 +1682,30 @@ const validateStep = () => {
             toast.error("Max order quantity must be greater than or equal to Min order quantity");
             return false;
         }
+    }
+
+    // Batch fields apply to the opening delivery only. On an edit the running
+    // total is a rollup the batches own, so there is nothing to validate here.
+    if (!isEditing.value) {
+      quantityError.value = '';
+      expirationError.value = '';
+
+      const qty = parseInt(newProduct.quantity, 10);
+      if (!newProduct.quantity || Number.isNaN(qty) || qty < 1) {
+        quantityError.value = 'Enter how many units you are adding.';
+        toast.error(quantityError.value);
+        return false;
+      }
+
+      const expiryError = validateExpiration(
+        newProduct.category,
+        newProduct.expiration_date
+      );
+      if (expiryError) {
+        expirationError.value = expiryError;
+        toast.error(expiryError);
+        return false;
+      }
     }
   }
   showValidation.value = false;
@@ -1172,6 +1773,11 @@ const handleSubmit = async () => {
     }
 
     if (isEditing.value) {
+      // Stock is not editable here. The batch fields would be silently ignored
+      // by the API anyway, and sending them invites the belief that they were
+      // applied. Restock is the only way to change a quantity.
+      ['quantity', 'expiration_date', 'batch_code'].forEach(k => formData.delete(k));
+
       await api.post(`/supplier/raw-materials/${editingId.value}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -1180,12 +1786,30 @@ const handleSubmit = async () => {
       await api.post('/supplier/raw-materials', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      toast.success(isVariant.value ? 'Variant added successfully' : 'Material added successfully');
+      toast.success(
+        `${isVariant.value ? 'Variant' : 'Material'} added — ${newProduct.quantity} units booked in`
+      );
     }
     
     await loadProducts();
     closeModal(false);
   } catch (error) {
+    // Point the failure at the field the server complained about, so the user
+    // is not left guessing which input was wrong.
+    const fieldErrors = error.response?.data?.errors || {};
+    if (fieldErrors.expiration_date) {
+      expirationError.value = Array.isArray(fieldErrors.expiration_date)
+        ? fieldErrors.expiration_date[0]
+        : fieldErrors.expiration_date;
+      currentStep.value = 2;
+    }
+    if (fieldErrors.quantity) {
+      quantityError.value = Array.isArray(fieldErrors.quantity)
+        ? fieldErrors.quantity[0]
+        : fieldErrors.quantity;
+      currentStep.value = 2;
+    }
+
     toast.error(error.response?.data?.message || 'Something went wrong');
     console.error(error);
   } finally {
@@ -1199,6 +1823,13 @@ const editProduct = (product) => {
   if (newProduct.weight === null || newProduct.weight === '') {
     newProduct.weight = 10;
   }
+  // Stock is not part of an edit. Leaving the batch fields populated would make
+  // it look as though saving would change the quantity, which it will not.
+  newProduct.quantity = '';
+  newProduct.expiration_date = '';
+  newProduct.batch_code = '';
+  quantityError.value = '';
+  expirationError.value = '';
   isEditing.value = true;
   isVariant.value = false;
   editingId.value = product.id;
@@ -1217,6 +1848,231 @@ const deleteProduct = async (id) => {
   } catch (error) {
     toast.error('Failed to delete material');
     console.error(error);
+  }
+};
+
+// ===================================================================
+// BATCH MANAGEMENT
+// ===================================================================
+
+/** Open the per-product batch panel, pulling the authoritative list. */
+const openBatchPanel = async (product) => {
+  batchProduct.value = product;
+  batchList.value = liveBatchesOf(product);
+  showBatchPanel.value = true;
+  await refreshBatches();
+};
+
+/**
+ * Re-read the lots for the open product.
+ *
+ * The index endpoint only eager-loads unarchived batches, so once a lot has been
+ * archived it vanishes from the card view. This fetch returns everything, which
+ * is why the panel can still show a lot after archiving it.
+ */
+const refreshBatches = async () => {
+  if (!batchProduct.value) return;
+
+  isLoadingBatches.value = true;
+  try {
+    const { data } = await api.get(`/supplier/raw-materials/${batchProduct.value.id}/batches`);
+    batchList.value = data.batches || [];
+  } catch (error) {
+    toast.error('Failed to load batches');
+    console.error(error);
+  } finally {
+    isLoadingBatches.value = false;
+  }
+};
+
+const closeBatchPanel = () => {
+  showBatchPanel.value = false;
+  batchProduct.value = null;
+  batchList.value = [];
+};
+
+/** Jump from the batch panel straight into a restock for the same product. */
+const openRestockFromPanel = () => {
+  const target = batchProduct.value;
+  closeBatchPanel();
+  if (target) openRestock(target);
+};
+
+/**
+ * Restock an existing product.
+ *
+ * Always a NEW batch — the previous lots keep their own expiration dates, so
+ * topping up with fresh paint does not silently extend the life of paint that
+ * has been sitting since last year.
+ */
+const openRestock = (product) => {
+  restockTarget.value = product;
+  Object.assign(restockForm, { quantity: '', expiration_date: '', batch_code: '' });
+  restockErrors.quantity = '';
+  restockErrors.expiration_date = '';
+  showRestockModal.value = true;
+};
+
+const submitRestock = async () => {
+  if (isRestocking.value || !restockTarget.value) return;
+
+  restockErrors.quantity = '';
+  restockErrors.expiration_date = '';
+
+  // Same rule the server applies, checked here so the failure is immediate
+  // rather than a round-trip 422.
+  const qty = parseInt(restockForm.quantity, 10);
+  if (!restockForm.quantity || Number.isNaN(qty) || qty < 1) {
+    restockErrors.quantity = 'Enter at least 1 unit.';
+    return;
+  }
+
+  const expiryError = validateExpiration(
+    restockTarget.value.category,
+    restockForm.expiration_date
+  );
+  if (expiryError) {
+    restockErrors.expiration_date = expiryError;
+    return;
+  }
+
+  isRestocking.value = true;
+  try {
+    const payload = { quantity: qty };
+    if (restockForm.expiration_date) payload.expiration_date = restockForm.expiration_date;
+    if (restockForm.batch_code) payload.batch_code = restockForm.batch_code;
+
+    const { data } = await api.post(
+      `/supplier/raw-materials/${restockTarget.value.id}/restock`,
+      payload
+    );
+
+    toast.success(data.message || 'Stock added');
+    showRestockModal.value = false;
+
+    // The cached rollup and expiry on the card have both moved.
+    await loadProducts();
+
+    if (batchProduct.value?.id === restockTarget.value.id) {
+      await refreshBatches();
+    }
+  } catch (error) {
+    const fieldErrors = error.response?.data?.errors || {};
+    if (fieldErrors.expiration_date) {
+      restockErrors.expiration_date = Array.isArray(fieldErrors.expiration_date)
+        ? fieldErrors.expiration_date[0]
+        : fieldErrors.expiration_date;
+    }
+    if (fieldErrors.quantity) {
+      restockErrors.quantity = Array.isArray(fieldErrors.quantity)
+        ? fieldErrors.quantity[0]
+        : fieldErrors.quantity;
+    }
+    toast.error(error.response?.data?.message || 'Failed to add stock');
+    console.error(error);
+  } finally {
+    isRestocking.value = false;
+  }
+};
+
+/** "Move to Archive" on a single lot. */
+const archiveBatch = async (batch) => {
+  archivingBatchId.value = batch.id;
+
+  try {
+    const { data } = await api.post(
+      `/supplier/raw-materials/batches/${batch.id}/archive`,
+      { reason: 'Expired — moved to archive by supplier' }
+    );
+
+    toast.success(data.message || 'Batch moved to archive');
+    await refreshBatches();
+    await loadProducts();
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to archive batch');
+    console.error(error);
+  } finally {
+    archivingBatchId.value = null;
+  }
+};
+
+/**
+ * "Move to Archive" for one card group.
+ *
+ * Calls the per-product endpoint once per variant that actually has a lapsed
+ * lot, so the audit trail records which product each lot belonged to.
+ */
+const archiveGroupExpired = async (group) => {
+  const targets = (group.variants || []).filter(
+    (v) => expiredBatchesOf(v).length > 0
+  );
+
+  if (targets.length === 0) return;
+
+  if (!window.confirm(
+    `Move ${group.name} expired stock to the archive?\n\n` +
+    'Expired stock cannot be procured. Add a fresh batch to keep this product sellable.'
+  )) return;
+
+  isArchivingGroup.value = group.key;
+
+  let archived = 0;
+  let lastError = null;
+
+  for (const target of targets) {
+    try {
+      const { data } = await api.post(
+        `/supplier/raw-materials/${target.id}/archive-expired`,
+        { reason: 'Expired — moved to archive by supplier' }
+      );
+      archived += data.archived || 0;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    toast.error(lastError.response?.data?.message || 'Failed to archive expired stock');
+    console.error(lastError);
+  } else if (archived === 0) {
+    toast.info('No expired batches left to archive.');
+  } else {
+    toast.success(
+      `${archived} expired ${archived === 1 ? 'batch' : 'batches'} moved to archive.`
+    );
+  }
+
+  isArchivingGroup.value = null;
+  await loadProducts();
+};
+
+/** Catalogue-wide sweep behind the red alert bar. */
+const confirmArchiveAll = async () => {
+  if (!window.confirm(
+    'Move every expired batch in your catalogue to the archive?\n\n' +
+    'This affects every product. Expired stock is already not procurable — ' +
+    'archiving just removes it from your active supply chain.'
+  )) return;
+
+  isArchivingAll.value = true;
+  try {
+    const { data } = await api.post('/supplier/raw-materials/archive-expired-all', {
+      reason: 'Expired — catalogue sweep',
+    });
+
+    if (data.archived > 0) {
+      toast.success(
+        `${data.archived} expired ${data.archived === 1 ? 'batch' : 'batches'} moved to archive.`
+      );
+    } else {
+      toast.info(data.message || 'Nothing in your catalogue has expired.');
+    }
+    await loadProducts();
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Failed to archive expired stock');
+    console.error(error);
+  } finally {
+    isArchivingAll.value = false;
   }
 };
 
@@ -1272,12 +2128,30 @@ const getCategoryShortName = (cat) => {
 const exportCatalog = () => {
   if (!products.value.length) return toast.warning('No materials to export');
   
-  const headers = ['Name', 'Category', 'Type', 'SKU', 'Size', 'Weight (kg)', 'Color', 'Selling Price', 'Min Order', 'Max Order', 'Description'];
+  // Batch columns come last so the existing layout is unchanged for anyone
+  // already importing this file.
+  const headers = [
+    'Name', 'Category', 'Type', 'SKU', 'Size', 'Weight (kg)', 'Color',
+    'Selling Price', 'Min Order', 'Max Order', 'Description',
+    'Available Qty', 'Reserved Qty', 'Next Expiry', 'Batch Count', 'Expired Qty',
+  ];
   const csv = [
     headers.join(','),
-    ...products.value.map(p => 
-      `"${p.name}","${p.category}","${p.type}","${p.sku_code || ''}","${p.size}","${p.weight || 10}","${p.color_code || ''}","${p.price}","${p.min_order || ''}","${p.max_order || ''}","${p.description || ''}"`
-    )
+    ...products.value.map(p => {
+      const batches = liveBatchesOf(p);
+      return [
+        p.name, p.category, p.type, p.sku_code || '', p.size, p.weight || 10,
+        p.color_code || '', p.price, p.min_order || '', p.max_order || '',
+        p.description || '',
+        availableOf(p),
+        p.reserved_quantity || 0,
+        p.expiration_date || '',
+        batches.length,
+        expiredBatchesOf(p).reduce((sum, b) => sum + b.quantity, 0),
+      ]
+        .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+        .join(',');
+    })
   ].join('\n');
   
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1288,8 +2162,12 @@ const exportCatalog = () => {
   toast.success('Catalog exported');
 };
 
-onMounted(() => {
-  loadProducts();
+onMounted(async () => {
+  // The rulebook drives the date input's `min` and the category-conditional
+  // requirement, so it has to be in hand before the form is used. A failure here
+  // is not fatal: the composable falls back to the same one-year arithmetic.
+  batchRules.value = await loadBatchRules();
+  await loadProducts();
 });
 </script>
 

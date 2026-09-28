@@ -433,14 +433,37 @@ class SpCartController extends Controller
             }
 
             $receiptItems = [];
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
             foreach ($cartItems as $item) {
+                // ── Deduct stock FEFO before recording the line ───────────
+                // Previously this loop silently stopped when stock ran out: no
+                // check, no error, and the order still went through for goods the
+                // distributor never had. sellFefo() throws instead, so the whole
+                // order rolls back rather than overselling.
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: $item->distributor_id,
+                        productId: $item->product_id,
+                        quantity: (int) $item->quantity,
+                        actorId: $user->id,
+                        eventType: 'sale',
+                        notes: "Service provider order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                $primaryBatch = collect($drawnBatches)->first();
+
                 SpOrderItem::create([
                     'sp_order_id' => $order->id,
                     'distributor_id' => $item->distributor_id,
                     'product_id' => $item->product_id,
                     'quantity' => $item->quantity,
                     'price' => $item->discounted_price,
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $distInfo = DB::table('distributor_requirements')->where('user_id', $item->distributor_id)->first();
@@ -451,29 +474,10 @@ class SpCartController extends Controller
                     'distributor_name' => $distName,
                     'quantity' => $item->quantity,
                     'price' => $item->discounted_price,
-                    'total' => $item->discounted_price * $item->quantity
+                    'total' => $item->discounted_price * $item->quantity,
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ];
-
-                $deduction = $item->quantity;
-                $inventories = DistributorInventory::where('product_id', $item->product_id)
-                    ->where('distributor_id', $item->distributor_id)
-                    ->where('ecommerce_status', 'deployed')
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inv) {
-                    if ($deduction <= 0) break;
-                    if ($inv->quantity >= $deduction) {
-                        $inv->quantity -= $deduction;
-                        $inv->save();
-                        $deduction = 0;
-                    } else {
-                        $deduction -= $inv->quantity;
-                        $inv->quantity = 0;
-                        $inv->save();
-                    }
-                }
             }
 
             foreach (array_keys($appliedPromotions) as $promoId) {

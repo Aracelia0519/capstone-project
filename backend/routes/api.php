@@ -1051,7 +1051,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::prefix('raw-materials')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'index']);
+
+            // The category / expiration rulebook. Registered BEFORE /{id} so the
+            // literal segment is never swallowed by the parameterised route.
+            Route::get('/rules', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'rules']);
+            Route::get('/procurable', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'procurable']);
+
+            // Archive sweeps.
+            Route::post('/archive-expired-all', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'archiveAllExpired']);
+            Route::post('/batches/{batchId}/archive', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'archiveBatch']);
+
             Route::post('/', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'store']);
+
+            // Batch operations on a single product.
+            Route::get('/{id}/batches', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'batches']);
+            Route::post('/{id}/restock', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'restock']);
+            Route::post('/{id}/archive-expired', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'archiveExpired']);
+
             Route::post('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'update']); 
             Route::delete('/{id}', [\App\Http\Controllers\Api\Supplier\SupplierRawMaterialController::class, 'destroy']);
         });
@@ -1173,12 +1189,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // EC Inventory Routes to bitch
         Route::get('/ec-inventory', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'index']);
+
+        // ── Batch tracking ──────────────────────────────────────────────
+        // Registered before /{id} so these literal paths are not captured by it.
+        Route::get('/ec-inventory/batches', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'batches']);
+        Route::get('/ec-inventory/expired', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'expired']);
+        Route::post('/ec-inventory/archive-expired', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'archiveAllExpired']);
+        Route::post('/ec-inventory/batches/{batchId}/archive', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'archiveBatch']);
+
         // INACTIVE INVENTORY NEW ROUTES
         Route::get('/ec-inventory/inactive', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'getInactive']);
         Route::post('/ec-inventory/{id}/request-deployment', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'requestDeployment']);
         // DEACTIVATE AND REACTIVATE
         Route::post('/ec-inventory/{id}/deactivate', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'moveToInactive']);
         Route::post('/ec-inventory/inactive/{id}/reactivate', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'reactivate']);
+
+        Route::prefix('ec-inventory/{inventoryId}/batches')->group(function () {
+            Route::post('/', [\App\Http\Controllers\Api\OperationDistributor\ECInventoryController::class, 'receiveBatch']);
+        });
 
         Route::prefix('ecommerce-orders')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\OperationDistributor\ECOrderController::class, 'index']);

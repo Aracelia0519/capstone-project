@@ -55,9 +55,54 @@
       >
         Unavailable Products ({{ inactiveItems.length }})
       </button>
+      <button 
+        @click="activeTab = 'batches'" 
+        :class="['px-5 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2', activeTab === 'batches' ? 'bg-emerald-600 text-white shadow-sm' : 'text-white hover:text-white hover:bg-gray-800']"
+      >
+        Batches &amp; Expiry
+        <span
+          v-if="expiredBatches.length > 0"
+          class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white"
+        >{{ expiredBatches.length }}</span>
+      </button>
     </div>
 
-    <div v-if="activeTab === 'active'" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <!-- ── Expired stock alert ──────────────────────────────────────
+         Expired lots sit in the warehouse taking up space and inflating the
+         on-hand figure while being impossible to sell. They are excluded from
+         what the store can buy, so the count is surfaced separately rather than
+         folded into "Total Units in Stock". -->
+    <div 
+      v-if="expiredBatches.length > 0" 
+      class="mb-6 rounded-xl border border-red-800/60 bg-red-950/40 p-4"
+    >
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <AlertTriangle class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p class="font-bold text-red-200">
+              {{ expiredBatches.length }} expired {{ expiredBatches.length === 1 ? 'batch' : 'batches' }} · {{ totalExpiredUnits }} units
+            </p>
+            <p class="text-sm text-red-300/80 mt-0.5">
+              These are excluded from what customers can buy. Move them to the archive to clear
+              them out of the active supply chain.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="destructive"
+          :disabled="isArchivingAll || !permissions.can_manage"
+          @click="archiveAllExpired"
+          class="shrink-0"
+        >
+          <Loader2 v-if="isArchivingAll" class="w-4 h-4 mr-2 animate-spin" />
+          <Archive v-else class="w-4 h-4 mr-2" />
+          Move All Expired to Archive
+        </Button>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 'active'" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
       <Card class="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-gray-800 text-white">
         <CardHeader class="p-4">
           <CardTitle class="text-2xl font-bold mb-1">
@@ -75,6 +120,18 @@
             <span v-else>{{ totalStock }}</span>
           </CardTitle>
           <CardDescription class="text-gray-300"><h2>Total Units in Stock</h2></CardDescription>
+        </CardHeader>
+      </Card>
+
+      <!-- On-hand minus expired. The gap between this and "Total Units" is
+           exactly the stock that looks available but cannot be sold. -->
+      <Card class="bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border-gray-800 text-white">
+        <CardHeader class="p-4">
+          <CardTitle class="text-2xl font-bold mb-1">
+            <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
+            <span v-else>{{ totalSellable }}</span>
+          </CardTitle>
+          <CardDescription class="text-gray-300"><h2>Sellable Units</h2></CardDescription>
         </CardHeader>
       </Card>
 
@@ -97,9 +154,133 @@
           <CardDescription class="text-gray-300"><h2>Deployed to E-commerce</h2></CardDescription>
         </CardHeader>
       </Card>
+
+      <Card :class="['border-gray-800 text-white', expiredBatches.length > 0 ? 'bg-gradient-to-br from-red-500/25 to-orange-500/20' : 'bg-gradient-to-br from-gray-700/30 to-gray-600/20']">
+        <CardHeader class="p-4">
+          <CardTitle :class="['text-2xl font-bold mb-1', expiredBatches.length > 0 ? 'text-red-300' : '']">
+            <Loader2 v-if="isLoading" class="w-6 h-6 animate-spin text-gray-400" />
+            <span v-else>{{ totalExpiredUnits }}</span>
+          </CardTitle>
+          <CardDescription class="text-gray-300"><h2>Expired Units</h2></CardDescription>
+        </CardHeader>
+      </Card>
     </div>
 
-    <Card class="bg-gray-900/50 backdrop-blur-sm border-gray-800 text-white overflow-hidden">
+    <!-- ── Batches tab ──────────────────────────────────────────────
+         Every lot the distributor holds, oldest expiry first — the same order
+         stock is issued in. This is where a distributor answers "which batch
+         am I about to sell, and what is about to die". -->
+    <Card v-if="activeTab === 'batches'" class="bg-gray-900/50 backdrop-blur-sm border-gray-800 text-white overflow-hidden">
+      <CardContent class="p-0">
+        <div class="p-5 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="relative w-full max-w-md">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              v-model="batchSearch"
+              type="text"
+              placeholder="Search by product, SKU or batch code..."
+              class="pl-10 h-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus-visible:ring-emerald-500/50"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <Badge variant="outline" class="bg-gray-800 border-gray-700 text-gray-300">
+              {{ filteredBatches.length }} {{ filteredBatches.length === 1 ? 'lot' : 'lots' }}
+            </Badge>
+            <Button
+              variant="outline"
+              :disabled="isLoadingBatches"
+              @click="fetchBatches"
+              class="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent"
+            >
+              <Loader2 v-if="isLoadingBatches" class="w-4 h-4 mr-2 animate-spin" />
+              <RefreshCw v-else class="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        <div v-if="isLoadingBatches" class="py-20 text-center">
+          <Loader2 class="w-8 h-8 animate-spin text-emerald-500 mx-auto" />
+        </div>
+
+        <div v-else-if="filteredBatches.length === 0" class="py-20 text-center text-gray-400">
+          <PackageX class="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <p>{{ batchSearch ? 'No batches match your search.' : 'No batches on record.' }}</p>
+        </div>
+
+        <div v-else class="overflow-x-auto custom-scrollbar">
+          <Table>
+            <TableHeader class="bg-gray-900/80 border-b border-gray-800">
+              <TableRow class="border-0 hover:bg-transparent">
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400">Product</TableHead>
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400">Batch Code</TableHead>
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400 text-right">Quantity</TableHead>
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400">Expiration</TableHead>
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400 text-center">Status</TableHead>
+                <TableHead class="h-12 text-xs font-medium uppercase tracking-wider text-gray-400 text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow
+                v-for="batch in filteredBatches"
+                :key="batch.id"
+                class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors"
+                :class="batch.is_expired ? 'bg-red-950/20' : ''"
+              >
+                <TableCell>
+                  <span class="font-medium text-white">{{ batch.product_name }}</span>
+                  <span class="block text-xs text-gray-400 font-mono">{{ batch.sku_code }}</span>
+                </TableCell>
+                <TableCell>
+                  <span class="font-mono text-xs text-gray-300">{{ batch.batch_code }}</span>
+                </TableCell>
+                <TableCell class="text-right font-bold text-white">{{ batch.quantity }}</TableCell>
+                <TableCell>
+                  <span v-if="!batch.expiration_date" class="text-gray-500 text-xs">No expiry</span>
+                  <span v-else :class="[
+                    'font-medium',
+                    batch.is_expired ? 'text-red-400' :
+                    batch.days_until_expiry <= 30 ? 'text-orange-400' : 'text-gray-200'
+                  ]">
+                    {{ formatDate(batch.expiration_date) }}
+                    <span class="block text-[10px] text-gray-500">
+                      {{ batch.is_expired ? `${batch.days_expired}d ago` : `${batch.days_until_expiry}d left` }}
+                    </span>
+                  </span>
+                </TableCell>
+                <TableCell class="text-center">
+                  <Badge :class="[
+                    'rounded-full border-0 font-medium',
+                    batch.is_expired ? 'bg-red-500/20 text-red-300' :
+                    batch.is_archived ? 'bg-gray-700 text-gray-400' :
+                    'bg-emerald-500/20 text-emerald-300'
+                  ]">
+                    {{ batch.is_archived ? 'Archived' : (batch.is_expired ? 'Expired' : 'Sellable') }}
+                  </Badge>
+                </TableCell>
+                <TableCell class="text-right">
+                  <Button
+                    v-if="batch.is_expired && !batch.is_archived"
+                    :disabled="!permissions.can_manage || archivingBatchId === batch.id"
+                    @click="archiveBatch(batch)"
+                    size="sm"
+                    variant="outline"
+                    class="border-red-800 text-red-300 hover:bg-red-900/40 hover:text-red-200 bg-transparent"
+                  >
+                    <Loader2 v-if="archivingBatchId === batch.id" class="w-4 h-4 mr-2 animate-spin" />
+                    <Archive v-else class="w-4 h-4 mr-2" />
+                    Move to Archive
+                  </Button>
+                  <span v-else-if="batch.is_archived" class="text-xs text-gray-500">Removed</span>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card v-else class="bg-gray-900/50 backdrop-blur-sm border-gray-800 text-white overflow-hidden">
       <CardContent class="p-0">
         
         <div class="p-5 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -177,15 +358,28 @@
                 </TableCell>
                 
                 <TableCell class="text-right">
-                  <div class="flex flex-col items-end">
+                  <div class="flex flex-col items-end gap-1">
                     <span :class="[
                       'font-bold text-lg',
-                      (activeTab === 'active' && item.quantity <= item.min_stock_level) ? 'text-amber-400' : 'text-emerald-400'
+                      (activeTab === 'active' && sellableOf(item) <= item.min_stock_level) ? 'text-amber-400' : 'text-emerald-400'
                     ]">
-                      {{ item.quantity }}
+                      {{ sellableOf(item) }}
                     </span>
-                    <span v-if="activeTab === 'active'" class="text-[10px] text-white-500 uppercase tracking-wider">
+                    
+                    <!-- When expired stock is inflating the total, say so rather
+                         than letting 100 sit next to 60 without explanation. -->
+                    <span v-if="expiredOf(item) > 0" class="text-[10px] text-red-400">
+                      +{{ expiredOf(item) }} expired (not sellable)
+                    </span>
+                    <span v-else-if="activeTab === 'active'" class="text-[10px] text-white-500 uppercase tracking-wider">
                       Min: {{ item.min_stock_level }}
+                    </span>
+                    <span
+                      v-if="activeTab === 'active' && item.earliest_expiration"
+                      class="text-[10px] uppercase tracking-wider"
+                      :class="expiryTone(item.earliest_expiration)"
+                    >
+                      {{ formatDate(item.earliest_expiration) }}
                     </span>
                   </div>
                 </TableCell>
@@ -197,6 +391,10 @@
                 <TableCell class="text-center">
                   <Badge v-if="item.ecommerce_status === 'inactive'" class="rounded-full border-0 font-medium bg-red-500/20 text-red-300">
                     Inactive
+                  </Badge>
+                  <Badge v-else-if="sellableOf(item) === 0 && item.quantity > 0"
+                         class="rounded-full border-0 font-medium bg-red-500/20 text-red-300">
+                    All Stock Expired
                   </Badge>
                   <Badge v-else :class="[
                     'rounded-full border-0 font-medium',
@@ -315,25 +513,105 @@
 
           <div :class="[
               'grid gap-4 p-4 bg-gray-800/30 rounded-xl border border-gray-800',
-              activeTab === 'active' ? 'grid-cols-3' : 'grid-cols-1'
+              activeTab === 'active' ? 'grid-cols-4' : 'grid-cols-1'
             ]">
             <div :class="['text-center', activeTab === 'active' ? 'border-r border-gray-700' : '']">
-              <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Current Stock</p>
+              <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Sellable Now</p>
               <p :class="[
                 'font-bold text-3xl',
-                (activeTab === 'active' && selectedItem.quantity <= selectedItem.min_stock_level) ? 'text-amber-400' : 'text-emerald-400'
-              ]">{{ selectedItem.quantity }}</p>
+                (activeTab === 'active' && sellableOf(selectedItem) <= selectedItem.min_stock_level) ? 'text-amber-400' : 'text-emerald-400'
+              ]">{{ sellableOf(selectedItem) }}</p>
+              <p v-if="expiredOf(selectedItem) > 0" class="text-[10px] text-red-400 mt-0.5">
+                of {{ selectedItem.quantity }} on hand
+              </p>
             </div>
             <div v-if="activeTab === 'active'" class="text-center border-r border-gray-700">
               <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Min. Threshold</p>
               <p class="font-bold text-2xl text-gray-300">{{ selectedItem.min_stock_level }}</p>
             </div>
-            <div v-if="activeTab === 'active'" class="text-center">
+            <div v-if="activeTab === 'active'" class="text-center border-r border-gray-700">
               <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Max Capacity</p>
               <p class="font-bold text-2xl text-gray-300">{{ selectedItem.max_stock_level }}</p>
             </div>
+            <div v-if="activeTab === 'active'" class="text-center">
+              <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Active Lots</p>
+              <p class="font-bold text-2xl text-gray-300">{{ (selectedItem.batches || []).length }}</p>
+            </div>
           </div>
 
+          <!-- ── Batch breakdown ───────────────────────────────────────
+               Without this the distributor cannot tell WHICH stock expires
+               when, which is the whole point of tracking by batch. Ordered
+               oldest-first, matching how stock is issued. -->
+          <div v-if="activeTab === 'active' && (selectedItem.batches || []).length > 0" class="rounded-xl border border-gray-800 overflow-hidden">
+            <div class="px-4 py-3 bg-gray-800/50 border-b border-gray-800 flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <Layers class="w-4 h-4 text-emerald-400" />
+                Batch Breakdown
+              </h3>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Oldest expiry first</span>
+            </div>
+            <Table>
+              <TableHeader class="bg-gray-900/60 border-b border-gray-800">
+                <TableRow class="border-0 hover:bg-transparent">
+                  <TableHead class="h-9 text-xs text-gray-400">Batch</TableHead>
+                  <TableHead class="h-9 text-xs text-gray-400 text-right">Qty</TableHead>
+                  <TableHead class="h-9 text-xs text-gray-400">Expires</TableHead>
+                  <TableHead class="h-9 text-xs text-gray-400 text-center">Status</TableHead>
+                  <TableHead class="h-9 text-xs text-gray-400 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow
+                  v-for="batch in selectedItem.batches"
+                  :key="batch.id"
+                  class="border-b border-gray-800/60 hover:bg-gray-800/40"
+                  :class="batch.is_expired ? 'bg-red-950/20' : ''"
+                >
+                  <TableCell class="font-mono text-xs text-gray-300">{{ batch.batch_code }}</TableCell>
+                  <TableCell class="text-right font-bold text-white">{{ batch.quantity }}</TableCell>
+                  <TableCell>
+                    <span v-if="!batch.expiration_date" class="text-gray-500 text-xs">No expiry</span>
+                    <span v-else :class="[
+                      'text-sm',
+                      batch.is_expired ? 'text-red-400' :
+                      batch.days_until_expiry <= 30 ? 'text-orange-400' : 'text-gray-200'
+                    ]">
+                      {{ formatDate(batch.expiration_date) }}
+                      <span class="block text-[10px] text-gray-500">
+                        {{ batch.is_expired ? `${Math.abs(batch.days_until_expiry)}d ago` : `${batch.days_until_expiry}d left` }}
+                      </span>
+                    </span>
+                  </TableCell>
+                  <TableCell class="text-center">
+                    <Badge :class="[
+                      'rounded-full border-0 font-medium text-[10px]',
+                      batch.is_archived ? 'bg-gray-700 text-gray-400' :
+                      batch.is_expired ? 'bg-red-500/20 text-red-300' :
+                      'bg-emerald-500/20 text-emerald-300'
+                    ]">
+                      {{ batch.is_archived ? 'Archived' : (batch.is_expired ? 'Expired' : 'Sellable') }}
+                    </Badge>
+                  </TableCell>
+                  <TableCell class="text-right">
+                    <Button
+                      v-if="batch.is_expired && !batch.is_archived"
+                      :disabled="!permissions.can_manage || archivingBatchId === batch.id"
+                      @click="archiveBatch(batch)"
+                      size="sm"
+                      variant="outline"
+                      class="border-red-800 text-red-300 hover:bg-red-900/40 hover:text-red-200 bg-transparent"
+                    >
+                      <Loader2 v-if="archivingBatchId === batch.id" class="w-3.5 h-3.5 mr-1 animate-spin" />
+                      <Archive v-else class="w-3.5 h-3.5 mr-1" />
+                      Archive
+                    </Button>
+                    <span v-else class="text-xs text-gray-600">—</span>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-gray-800 mt-2">
@@ -422,7 +700,7 @@
                          {{ alert.severity }} Shortage
                       </Badge>
                    </div>
-                   <p class="text-sm text-gray-400 mb-4">SKU: <span class="text-gray-300 font-mono">{{ alert.item.sku_code }}</span> | Current Stock: <span class="font-bold" :class="alert.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'">{{ alert.item.quantity }}</span> (Min threshold: {{ alert.item.min_stock_level }})</p>
+                   <p class="text-sm text-gray-400 mb-4">SKU: <span class="text-gray-300 font-mono">{{ alert.item.sku_code }}</span> | Sellable: <span class="font-bold" :class="alert.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'">{{ sellableOf(alert.item) }}</span> / {{ alert.item.quantity }} on hand (Min threshold: {{ alert.item.min_stock_level }})</p>
                    
                    <div class="space-y-2 bg-gray-900/60 rounded-lg p-3 md:p-4 border border-gray-800">
                       <div class="flex items-start gap-3">
@@ -542,7 +820,8 @@ import api from '@/utils/axios'
 import echo from '@/utils/websocket' // Import echo for real-time updates
 import { toast, Toaster } from 'vue-sonner'
 import { 
-  Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle, Lightbulb, Activity, TrendingDown, ArrowRight
+  Search, FileDown, Eye, PackageX, Loader2, Package, ImageOff, Plus, Store, AlertTriangle, Lightbulb, Activity, TrendingDown, ArrowRight,
+  Archive, Layers, RefreshCw
 } from 'lucide-vue-next'
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -577,6 +856,16 @@ const isLoading = ref(true)
 const inventoryItems = ref<any[]>([])
 const inactiveItems = ref<any[]>([])
 
+// ── Batches & expiry ───────────────────────────────────────────────
+// Lot-level view of the warehouse. Kept separate from `inventoryItems`
+// because the batch endpoints return a different shape and can be fetched
+// on demand without reloading the whole catalogue.
+const allBatches = ref<any[]>([])
+const isLoadingBatches = ref(false)
+const batchSearch = ref('')
+const archivingBatchId = ref<number | null>(null)
+const isArchivingAll = ref(false)
+
 const actionQuantity = ref<number | ''>('')
 const isDeployConfirmOpen = ref(false)
 const isDeactivateConfirmOpen = ref(false)
@@ -605,8 +894,31 @@ const requirePermission = (action: string, callback: Function) => {
 // Fetch API Data
 const refreshData = async (isBackground = false) => {
   if (!isBackground) isLoading.value = true
-  await Promise.all([fetchInventory(isBackground), fetchInactiveInventory(isBackground)])
+  await Promise.all([
+    fetchInventory(isBackground),
+    fetchInactiveInventory(isBackground),
+    // Lots are always loaded because the expiry alert bar sits above the tabs
+    // and must be correct regardless of which tab is open.
+    isBackground ? fetchBatches(true) : fetchBatches(),
+  ])
   if (!isBackground) isLoading.value = false
+}
+
+/** Every lot the distributor holds, oldest expiry first. */
+const fetchBatches = async (isBackground = false) => {
+  if (!isBackground) isLoadingBatches.value = true
+  try {
+    const response = await api.get('/operation-distributor/ec-inventory/batches')
+    if (response.data.success) {
+      allBatches.value = response.data.data || []
+    }
+  } catch (error) {
+    // Not fatal: the catalogue still works without lot detail, and the
+    // expiry banner simply will not appear.
+    if (!isBackground) console.error('Failed to load batches', error)
+  } finally {
+    if (!isBackground) isLoadingBatches.value = false
+  }
 }
 
 const fetchInventory = async (isBackground = false) => {
@@ -691,8 +1003,130 @@ onUnmounted(() => {
 
 // Computeds for Summary Cards
 const totalStock = computed(() => inventoryItems.value.reduce((sum, item) => sum + item.quantity, 0))
-const lowStockCount = computed(() => inventoryItems.value.filter(item => item.quantity <= item.min_stock_level).length)
+
+/**
+ * Units a customer can actually buy.
+ *
+ * `quantity` is the on-hand total and still includes expired lots, so using it
+ * for a sellable figure would let the UI promise stock that checkout refuses.
+ * The server sends `available_quantity`; the fallback keeps older payloads sane.
+ */
+const sellableOf = (item: any) => {
+  if (!item) return 0;
+  if (typeof item.available_quantity === 'number') return item.available_quantity;
+  return Number(item.quantity) || 0;
+}
+
+const expiredOf = (item: any) => (item ? Number(item.expired_quantity) || 0 : 0);
+
+const totalSellable = computed(() => inventoryItems.value.reduce((sum, item) => sum + sellableOf(item), 0))
+
+/** Lots that have lapsed and are still sitting in the active supply chain. */
+const expiredBatches = computed(() =>
+  allBatches.value.filter((b) => b.is_expired && !b.is_archived)
+)
+
+const totalExpiredUnits = computed(() =>
+  inventoryItems.value.reduce((sum, item) => sum + expiredOf(item), 0)
+)
+
+const lowStockCount = computed(() => inventoryItems.value.filter(item => sellableOf(item) <= item.min_stock_level).length)
 const deployedCount = computed(() => inventoryItems.value.filter(item => item.ecommerce_status === 'deployed').length)
+
+const filteredBatches = computed(() => {
+  if (!batchSearch.value) return allBatches.value
+  const query = batchSearch.value.toLowerCase()
+  return allBatches.value.filter(b =>
+    (b.product_name || '').toLowerCase().includes(query) ||
+    (b.sku_code || '').toLowerCase().includes(query) ||
+    (b.batch_code || '').toLowerCase().includes(query)
+  )
+})
+
+/** Colour an expiry date by urgency, shared by the table and the modal. */
+const expiryTone = (date: string) => {
+  if (!date) return 'text-gray-500'
+  const days = daysUntil(date)
+  if (days === null) return 'text-gray-500'
+  if (days < 0) return 'text-red-400'
+  if (days <= 30) return 'text-orange-400'
+  if (days <= 90) return 'text-amber-400'
+  return 'text-gray-500'
+}
+
+const daysUntil = (date: string) => {
+  if (!date) return null
+  const target = new Date(`${String(date).slice(0, 10)}T00:00:00`)
+  if (isNaN(target.getTime())) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.round((target.getTime() - today.getTime()) / 86400000)
+}
+
+const formatDate = (value: string) => {
+  if (!value) return '—'
+  const d = new Date(`${String(value).slice(0, 10)}T00:00:00`)
+  if (isNaN(d.getTime())) return String(value)
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// =========================================================================
+// ARCHIVING EXPIRED STOCK
+// =========================================================================
+
+/** "Move to Archive" on a single lot. */
+const archiveBatch = async (batch: any) => {
+  if (!window.confirm(
+    `Move batch ${batch.batch_code} (${batch.quantity} units) to the archive?\n\n` +
+    'This removes it from your active supply chain. Expired stock cannot be sold anyway, ' +
+    'so nothing sellable is lost.'
+  )) return;
+
+  archivingBatchId.value = batch.id;
+  try {
+    const { data } = await api.post(
+      `/operation-distributor/ec-inventory/batches/${batch.id}/archive`,
+      { reason: 'Expired — moved to archive by distributor' }
+    );
+    toast.success(data.message || 'Batch moved to archive');
+    await refreshData(true);
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to archive batch');
+    console.error(error);
+  } finally {
+    archivingBatchId.value = null;
+  }
+}
+
+/** Catalogue-wide sweep behind the red alert bar. */
+const archiveAllExpired = async () => {
+  if (!window.confirm(
+    'Move every expired batch in your warehouse to the archive?\n\n' +
+    'Expired stock is already excluded from what customers can buy, so nothing ' +
+    'sellable is lost.'
+  )) return;
+
+  isArchivingAll.value = true;
+  try {
+    const { data } = await api.post('/operation-distributor/ec-inventory/archive-expired', {
+      reason: 'Expired — warehouse sweep',
+    });
+
+    if (data.archived > 0) {
+      toast.success(
+        `${data.archived} expired ${data.archived === 1 ? 'batch' : 'batches'} moved to archive.`
+      );
+    } else {
+      toast.info(data.message || 'No expired stock found.');
+    }
+    await refreshData(true);
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to archive expired stock');
+    console.error(error);
+  } finally {
+    isArchivingAll.value = false;
+  }
+}
 
 const currentFilteredItems = computed(() => {
   const list = activeTab.value === 'active' ? inventoryItems.value : inactiveItems.value
@@ -717,8 +1151,10 @@ const isActionQuantityValid = computed(() => {
 const dssAlerts = computed(() => {
   const alerts: any[] = [];
   
-  // Find all items in active inventory that hit or dropped below their minimum threshold
-  const lowStockProducts = inventoryItems.value.filter(item => item.quantity <= item.min_stock_level);
+  // Shortage is measured against SELLABLE units, not the raw on-hand total.
+  // Counting expired lots as available would suppress a restock alert for a
+  // product that has, in practice, nothing left to sell.
+  const lowStockProducts = inventoryItems.value.filter(item => sellableOf(item) <= item.min_stock_level);
   
   lowStockProducts.forEach(item => {
     // Check if we have backup stock in the inactive inventory list matching the product_id
@@ -726,10 +1162,10 @@ const dssAlerts = computed(() => {
     const inactiveQty = inactiveMatch ? inactiveMatch.quantity : 0;
     
     // Calculate severity and trend text
-    let severity = item.quantity === 0 ? 'Critical' : 'Warning';
-    let trendText = item.quantity === 0 
+    let severity = sellableOf(item) === 0 ? 'Critical' : 'Warning';
+    let trendText = sellableOf(item) === 0 
       ? 'Stockout Detected: Immediate replenishment required. Trend indicates zero availability blocking sales.'
-      : (item.quantity <= item.min_stock_level / 2 
+      : (sellableOf(item) <= item.min_stock_level / 2 
           ? 'High Shortage Risk: Stock is depleting rapidly past safety threshold.' 
           : 'Moderate Shortage Risk: Inventory is approaching minimum safety levels.');
           

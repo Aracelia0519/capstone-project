@@ -547,22 +547,23 @@ class ECommerceDeliveryController extends Controller
                         'rejection_reason' => 'Delivery Failed: Returned to HQ by delivery personnel.'
                     ]);
                 
+                // Returned goods go back into the batch they were sold from, so
+                // they keep their original expiration date instead of being merged
+                // into an arbitrary lot. If that date has since passed, the service
+                // parks them in a fresh batch rather than putting expired stock
+                // straight back on sale.
                 $items = DB::table('client_order_items')->where('order_id', $delivery->order_id)->get();
                 foreach($items as $item) {
-                    $inv = DistributorInventory::where('distributor_id', $item->distributor_id)
-                        ->where('product_id', $item->product_id)
-                        ->where('ecommerce_status', 'deployed')
-                        ->first();
-                    if ($inv) {
-                        $inv->increment('quantity', $item->quantity);
-                    } else {
-                        DistributorInventory::create([
-                            'distributor_id' => $item->distributor_id,
-                            'product_id' => $item->product_id,
-                            'quantity' => $item->quantity,
-                            'ecommerce_status' => 'deployed'
-                        ]);
-                    }
+                    app(\App\Support\Inventory\BatchInventoryService::class)->restockBatch(
+                        distributorId: $item->distributor_id,
+                        productId: $item->product_id,
+                        quantity: (int) $item->quantity,
+                        batchCode: $item->batch_code,
+                        expirationDate: $item->expiration_date,
+                        actorId: $delivery->delivery_personnel_id ?? null,
+                        eventType: 'restock',
+                        notes: "Client order #{$delivery->order_id} returned to HQ"
+                    );
                 }
                 
                 $cOrder = DB::table('client_orders')->where('id', $delivery->order_id)->first();
@@ -578,20 +579,16 @@ class ECommerceDeliveryController extends Controller
                 
                 $items = DB::table('sp_order_items')->where('sp_order_id', $delivery->sp_order_id)->get();
                 foreach($items as $item) {
-                    $inv = DistributorInventory::where('distributor_id', $item->distributor_id)
-                        ->where('product_id', $item->product_id)
-                        ->where('ecommerce_status', 'deployed')
-                        ->first();
-                    if ($inv) {
-                        $inv->increment('quantity', $item->quantity);
-                    } else {
-                        DistributorInventory::create([
-                            'distributor_id' => $item->distributor_id,
-                            'product_id' => $item->product_id,
-                            'quantity' => $item->quantity,
-                            'ecommerce_status' => 'deployed'
-                        ]);
-                    }
+                    app(\App\Support\Inventory\BatchInventoryService::class)->restockBatch(
+                        distributorId: $item->distributor_id,
+                        productId: $item->product_id,
+                        quantity: (int) $item->quantity,
+                        batchCode: $item->batch_code,
+                        expirationDate: $item->expiration_date,
+                        actorId: $delivery->delivery_personnel_id ?? null,
+                        eventType: 'restock',
+                        notes: "Service provider order #{$delivery->sp_order_id} returned to HQ"
+                    );
                 }
 
                 $spOrder = DB::table('sp_orders')->where('id', $delivery->sp_order_id)->first();

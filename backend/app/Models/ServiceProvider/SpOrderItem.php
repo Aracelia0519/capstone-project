@@ -2,6 +2,7 @@
 
 namespace App\Models\ServiceProvider;
 
+use App\Casts\CalendarDate;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Distributor\Product;
 use App\Models\User; // Import the User model for the distributor
@@ -15,7 +16,15 @@ class SpOrderItem extends Model
         'distributor_id', 
         'product_id', 
         'quantity', 
-        'price'
+        'price',
+        // The batch this line was fulfilled from.
+        'batch_code',
+        'expiration_date'
+    ];
+
+    protected $casts = [
+        'quantity'        => 'integer',
+        'expiration_date' => CalendarDate::class,
     ];
 
     public function product()

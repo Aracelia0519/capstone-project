@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 
 use App\Http\Controllers\Controller;
 use App\Models\OperationDistributor\DistributorInventory;
+use App\Models\OperationDistributor\DistributorInventoryBatch;
+use App\Support\Inventory\BatchRules;
+use App\Support\Inventory\BatchInventoryService;
+use App\Support\Inventory\Exceptions\InvalidExpirationDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -141,6 +145,23 @@ class ECInventoryController extends Controller
                     $imageUrl = asset('storage/' . ltrim($imageUrl, '/'));
                 }
 
+                // ── Batch detail ─────────────────────────────────────────
+                // The parent row's `quantity` is the product total. How much of
+                // that can actually be SOLD is the sum of the unexpired batches,
+                // which is what the store and the checkout draw from. Exposing
+                // both side by side is what stops someone reading 100 units on
+                // screen while only 40 are purchasable.
+                $batchQuery = $inv->batches()
+                    ->orderByRaw(BatchRules::fefoOrderBy())
+                    ->get();
+
+                $sellableQty = (int) $batchQuery->sum(
+                    fn (DistributorInventoryBatch $b) => $b->is_sellable ? (int) $b->quantity : 0
+                );
+                $expiredQty  = (int) $batchQuery->sum(
+                    fn (DistributorInventoryBatch $b) => ($b->is_expired && ! $b->is_archived) ? (int) $b->quantity : 0
+                );
+
                 return [
                     'id' => $inv->id, // Use inventory ID for row tracking
                     'product_id' => $inv->product_id,
@@ -153,6 +174,26 @@ class ECInventoryController extends Controller
                     'price' => $product->price,
                     'cost' => $product->cost,
                     'quantity' => $inv->quantity,
+                    'available_quantity' => $sellableQty,
+                    'expired_quantity' => $expiredQty,
+                    'is_archived' => (bool) $inv->is_archived,
+                    'is_expired' => $sellableQty === 0 && (int) $inv->quantity > 0,
+                    'earliest_expiration' => $inv->expiration_date
+                        ? $inv->expiration_date->toDateString()
+                        : null,
+                    'batch_count' => $batchQuery->count(),
+                    'batches' => $batchQuery->map(fn (DistributorInventoryBatch $b) => [
+                        'id' => $b->id,
+                        'batch_code' => $b->batch_code,
+                        'quantity' => (int) $b->quantity,
+                        'expiration_date' => $b->expiration_date?->toDateString(),
+                        'is_archived' => (bool) $b->is_archived,
+                        'is_expired' => $b->is_expired,
+                        'is_sellable' => $b->is_sellable,
+                        'health' => $b->health,
+                        'days_until_expiry' => $b->days_until_expiry,
+                        'received_at' => $b->received_at?->toDateString(),
+                    ])->values(),
                     'min_stock_level' => $product->min_stock_level,
                     'max_stock_level' => $product->max_stock_level,
                     'description' => $product->description,
@@ -181,6 +222,277 @@ class ECInventoryController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // =================================================================
+    // BATCH MANAGEMENT
+    // =================================================================
+
+    /**
+     * Every lot the distributor holds, soonest expiry first.
+     *
+     * `?expired=1` narrows to lots that have passed their date, which is the
+     * queue the "Move to Archive" button is normally driven from.
+     */
+    public function batches(Request $request)
+    {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
+
+        if (! $accessData['has_access']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to view batches.'], 403);
+        }
+
+        $query = DistributorInventoryBatch::with(['product', 'inventory'])
+            ->orderByRaw(BatchRules::fefoOrderBy());
+
+        if ($user->role !== 'admin') {
+            $query->where('distributor_id', $accessData['distributor_id']);
+        }
+
+        if ($request->boolean('expired')) {
+            $query->whereNotNull('expiration_date')
+                ->whereDate('expiration_date', '<', now()->toDateString());
+        }
+
+        if ($request->filled('product_id')) {
+            $query->where('product_id', $request->integer('product_id'));
+        }
+
+        $batches = $query->get()->map(fn (DistributorInventoryBatch $b) => [
+            'id' => $b->id,
+            'inventory_id' => $b->distributor_inventory_id,
+            'product_id' => $b->product_id,
+            'product_name' => $b->product?->name,
+            'batch_code' => $b->batch_code,
+            'quantity' => (int) $b->quantity,
+            'expiration_date' => $b->expiration_date?->toDateString(),
+            'is_archived' => (bool) $b->is_archived,
+            'is_expired' => $b->is_expired,
+            'is_sellable' => $b->is_sellable,
+            'health' => $b->health,
+            'days_until_expiry' => $b->days_until_expiry,
+            // Paired with days_until_expiry so an expired lot can be shown as
+            // "12d ago" without the client having to know that the sign of
+            // days_until_expiry is what carries that meaning.
+            'days_expired' => $b->is_expired && $b->days_until_expiry !== null
+                ? abs((int) $b->days_until_expiry)
+                : null,
+            'received_at' => $b->received_at?->toDateString(),
+            'archive_reason' => $b->archive_reason,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $batches,
+            'expired_count' => $batches->where('is_expired', true)->where('is_archived', false)->count(),
+        ]);
+    }
+
+    /**
+     * Lots that have passed their expiration date and are still active.
+     *
+     * These are the ones a distributor must clear out: while they sit here they
+     * inflate the on-hand figure while being impossible to sell.
+     */
+    public function expired()
+    {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
+
+        if (! $accessData['has_access']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to view expired stock.'], 403);
+        }
+
+        $query = DistributorInventoryBatch::with(['product', 'inventory'])
+            ->where('is_archived', false)
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->whereDate('expiration_date', '<', now()->toDateString())
+            ->orderBy('expiration_date');
+
+        if ($user->role !== 'admin') {
+            $query->where('distributor_id', $accessData['distributor_id']);
+        }
+
+        $batches = $query->get()->map(fn (DistributorInventoryBatch $b) => [
+            'id' => $b->id,
+            'inventory_id' => $b->distributor_inventory_id,
+            'product_id' => $b->product_id,
+            'product_name' => $b->product?->name,
+            'sku_code' => $b->product?->sku_code,
+            'batch_code' => $b->batch_code,
+            'quantity' => (int) $b->quantity,
+            'expiration_date' => $b->expiration_date?->toDateString(),
+            'days_until_expiry' => $b->days_until_expiry,
+            'days_expired' => abs((int) $b->days_until_expiry),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $batches,
+            'count' => $batches->count(),
+            'total_quantity' => (int) $batches->sum('quantity'),
+        ]);
+    }
+
+    /**
+     * "Move to Archive" on a single lot.
+     *
+     * Refuses while the lot is still within date, because archiving fresh stock
+     * would quietly destroy sellable inventory. Expired lots pass straight
+     * through.
+     */
+    public function archiveBatch(Request $request, $batchId)
+    {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_manage');
+
+        if (! $accessData['has_access']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to archive stock.'], 403);
+        }
+
+        $request->validate(['reason' => 'nullable|string|max:255']);
+
+        $batch = DistributorInventoryBatch::with('product')->findOrFail($batchId);
+
+        if ($user->role !== 'admin' && $batch->distributor_id !== $accessData['distributor_id']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        if (! $batch->is_expired) {
+            return response()->json([
+                'success' => false,
+                'message' => sprintf(
+                    'Batch %s is not expired (expires %s). Only expired stock can be archived.',
+                    $batch->batch_code,
+                    $batch->expiration_date?->toDateString() ?? 'never'
+                ),
+            ], 422);
+        }
+
+        app(BatchInventoryService::class)->archiveDistributorBatch(
+            $batch,
+            $user->id,
+            $request->input('reason')
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => sprintf(
+                'Batch %s moved to archive. %d unit(s) left the active supply chain.',
+                $batch->batch_code,
+                (int) $batch->quantity
+            ),
+            'batch' => $batch->fresh(),
+        ]);
+    }
+
+    /**
+     * Archive every expired lot in one action.
+     *
+     * The bulk version of the button above, for the monthly sweep.
+     */
+    public function archiveAllExpired(Request $request)
+    {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_manage');
+
+        if (! $accessData['has_access']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to archive stock.'], 403);
+        }
+
+        $request->validate(['reason' => 'nullable|string|max:255']);
+
+        $target = $user->role === 'admin'
+            ? null
+            : $accessData['distributor_id'];
+
+        $candidates = DistributorInventoryBatch::query()
+            ->where('is_archived', false)
+            ->where('quantity', '>', 0)
+            ->whereNotNull('expiration_date')
+            ->whereDate('expiration_date', '<', now()->toDateString());
+
+        if ($target !== null) {
+            $candidates->where('distributor_id', $target);
+        }
+
+        // Admin sweeps every distributor, so it is done per distributor to keep
+        // the log entries attributed correctly.
+        $ids = $candidates->pluck('distributor_id')->unique();
+
+        $total = 0;
+        foreach ($ids as $distributorId) {
+            $total += app(BatchInventoryService::class)
+                ->archiveExpiredDistributorBatches(
+                    $distributorId,
+                    $user->id,
+                    $request->input('reason')
+                );
+        }
+
+        return response()->json([
+            'success'  => true,
+            'archived' => $total,
+            'message'  => $total === 0
+                ? 'No expired stock found.'
+                : sprintf('%d expired batch(es) moved to archive.', $total),
+        ]);
+    }
+
+    /**
+     * Book a delivery into stock as a new lot.
+     *
+     * Requires the expiration date, so stock cannot enter the warehouse without
+     * a known shelf life.
+     */
+    public function receiveBatch(Request $request, $inventoryId)
+    {
+        $user = Auth::user();
+        $accessData = $this->checkAccess($user, 'can_manage');
+
+        if (! $accessData['has_access']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized to receive stock.'], 403);
+        }
+
+        $validated = $request->validate([
+            'quantity'        => 'required|integer|min:1',
+            'expiration_date' => 'nullable|date_format:Y-m-d',
+            'batch_code'      => 'nullable|string|max:64',
+        ]);
+
+        $inventory = DistributorInventory::findOrFail($inventoryId);
+
+        if ($user->role !== 'admin' && $inventory->distributor_id !== $accessData['distributor_id']) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        try {
+            $batch = app(BatchInventoryService::class)->receiveBatch(
+                $inventory->distributor_id,
+                $inventory->product_id,
+                (int) $validated['quantity'],
+                $validated['expiration_date'] ?? null,
+                $user->id,
+                null,
+                null,
+                $validated['batch_code'] ?? null
+            );
+        } catch (InvalidExpirationDate $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => ['expiration_date' => [$e->getMessage()]],
+            ], 422);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'message'   => sprintf('%d unit(s) received as batch %s.', (int) $validated['quantity'], $batch->batch_code),
+            'batch'     => $batch,
+            'inventory' => $inventory->fresh(['batches']),
+        ], 201);
     }
 
     /**
