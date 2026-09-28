@@ -1984,6 +1984,12 @@ button:not(:disabled):hover {
 
 /* Ensure select dropdowns are visible */
 select {
+  /* This chevron is meant to replace the browser's own arrow, so the native one
+     has to be switched off -- without this the element draws both and every
+     select shows a doubled icon. This block is not scoped, so it reaches every
+     view in the app, not just this one. */
+  -webkit-appearance: none;
+  appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
   background-repeat: no-repeat;
