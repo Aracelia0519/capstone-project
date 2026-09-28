@@ -848,6 +848,10 @@ Route::middleware('auth:sanctum')->group(function () {
         //Fetch specific products from a partnered supplier
         Route::get('/supplier-products/{supplierId}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'supplierProducts']);
         
+        // Which partner suppliers carry a given distributor product, for the DSS
+        // "Request Procurement" shortcut that pre-fills the new-request wizard.
+        Route::get('/suppliers-for-product/{productId}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'suppliersForProduct']);
+        
         Route::post('/requests', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'store']);
         Route::get('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'show']);
         Route::put('/requests/{id}', [\App\Http\Controllers\Api\OperationDistributor\ProcurementController::class, 'update']);

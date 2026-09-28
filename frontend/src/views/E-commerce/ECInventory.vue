@@ -726,7 +726,7 @@
                    </Button>
                    <Button 
                       v-else
-                      @click="goToProcurement"
+                      @click="goToProcurement(alert.item)"
                       class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11"
                    >
                       Request Procurement
@@ -1205,12 +1205,26 @@ const handleDssReactivate = (inactiveMatch: any) => {
   });
 }
 
-const goToProcurement = () => {
+/**
+ * Hand off to the procurement wizard, already aimed at this product.
+ *
+ * The product id travels in the query so the wizard can resolve which partner
+ * supplier carries it and queue that supplier's minimum order. Without it the
+ * user lands on an empty wizard and has to find the supplier by eye.
+ */
+const goToProcurement = (item: any) => {
   requirePermission('manage', () => {
     showDssModal.value = false;
+
+    // Fall back to a plain visit when the alert has no product behind it, rather
+    // than sending a useless query.
+    const productId = item?.product_id;
+
     toast.info('Redirecting to Procurement Module...');
-    // Replace with your actual procurement path if it differs
-    router.push('/ECommerce/ECProcurement'); 
+    router.push({
+      path: '/ECommerce/ECProcurement',
+      query: productId ? { procure: String(productId) } : undefined
+    });
   });
 }
 // =========================================================================

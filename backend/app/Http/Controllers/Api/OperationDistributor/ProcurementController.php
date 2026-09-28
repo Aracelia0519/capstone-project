@@ -214,6 +214,180 @@ class ProcurementController extends Controller
         }
     }
 
+    /**
+     * Which of my partnered suppliers can supply this distributor product?
+     *
+     * Backs the DSS "Request Procurement" shortcut: instead of bouncing the user
+     * to an empty wizard to hunt through each supplier's catalogue by eye, this
+     * answers "who actually has this product, and what are their order terms"
+     * in one call so the wizard can open pre-filled.
+     *
+     * There is no durable product-to-product mapping between the distributor and
+     * supplier catalogues -- they are independently created -- so the match is made
+     * on name and size, which is how the two catalogues actually line up:
+     *
+     *   tier 0  distributor_inventories.source_raw_material_id, when this inventory
+     *           row records the supplier material it was received from. Authoritative,
+     *           but NULL on inventory created before batches existed.
+     *   tier 1  name AND size both equal. This is the normal case. Name alone is not
+     *           enough -- "Farrah Wells" and "Permacoat Primer" each exist at
+     *           several sizes on both sides.
+     *   tier 2  name matches but no size does. Reported, but flagged, because it can
+     *           be the wrong variant.
+     */
+    public function suppliersForProduct(Request $request, $productId)
+    {
+        try {
+            $user = Auth::user();
+            $accessData = $this->checkAccess($user, 'can_manage');
+            if (!$accessData['has_access']) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            $distributorId = $accessData['distributor_id'];
+
+            // Scoped to this distributor so one distributor cannot probe another's
+            // supplier catalogue.
+            $productQuery = Product::where('id', $productId);
+            if ($distributorId !== null) {
+                $productQuery->where('distributor_id', $distributorId);
+            }
+
+            $product = $productQuery->first();
+            if (!$product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Product not found.'
+                ], 404);
+            }
+
+            $terminatedSupplierIds = DB::table('account_terminations')
+                ->where('status', 'terminated')
+                ->pluck('account_id')
+                ->toArray();
+
+            $partners = SupplierPartner::where('distributor_id', $distributorId)
+                ->where('status', 'active')
+                ->with('supplier')
+                ->when($terminatedSupplierIds !== [],
+                    fn ($q) => $q->whereNotIn('supplier_id', $terminatedSupplierIds))
+                ->get();
+
+            // Authoritative provenance, when it was ever recorded.
+            $knownMaterialIds = DB::table('distributor_inventories')
+                ->where('product_id', $product->id)
+                ->when($distributorId !== null,
+                    fn ($q) => $q->where('distributor_id', $distributorId))
+                ->whereNotNull('source_raw_material_id')
+                ->distinct()
+                ->pluck('source_raw_material_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $norm = fn ($v) => mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $v)));
+            $targetName = $norm($product->name);
+            $targetSize = $norm($product->size);
+
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
+            $matches = [];
+
+            foreach ($partners as $partner) {
+                $candidates = SupplierRawMaterial::where('user_id', $partner->supplier_id)
+                    ->where('is_active', true)
+                    // Read by the available_quantity accessor below.
+                    ->with('liveBatches')
+                    ->get();
+
+                $tiered = [
+                    0 => $candidates->filter(fn ($m) => in_array((int) $m->id, $knownMaterialIds, true)),
+                    1 => $candidates->filter(
+                        fn ($m) => $norm($m->name) === $targetName && $norm($m->size) === $targetSize
+                    ),
+                    2 => $candidates->filter(fn ($m) => $norm($m->name) === $targetName),
+                ];
+
+                $tier = collect([0, 1, 2])->first(fn ($t) => $tiered[$t]->isNotEmpty());
+                if ($tier === null) {
+                    continue;
+                }
+
+                // Only one variant per supplier: a supplier listing the same product
+                // twice would otherwise offer the user a choice with no UI to make it.
+                $material = $tiered[$tier]->sortByDesc(
+                    fn ($m) => $inventoryService->supplierAvailableQuantity($m)
+                )->first();
+
+                $companyName = null;
+                try {
+                    $companyName = SupplierRequirements::where('user_id', $partner->supplier_id)
+                        ->value('company_name');
+                } catch (\Exception $e) {
+                    // A missing requirements row must not hide the supplier.
+                }
+
+                $matches[] = [
+                    'supplier_id'         => $partner->supplier_id,
+                    'supplier_name'       => $companyName
+                        ?: ($partner->supplier->full_name
+                            ?? trim(($partner->supplier->first_name ?? '') . ' ' . ($partner->supplier->last_name ?? ''))),
+                    'raw_material_id'     => $material->id,
+                    'raw_material_name'   => $material->name,
+                    'size'                => $material->size,
+                    'category'            => $material->category,
+                    'type'                => $material->type,
+                    'sku_code'            => $material->sku_code,
+                    'image_url'           => $material->image_url
+                        && ! str_starts_with($material->image_url, 'http')
+                            ? asset('storage/' . ltrim($material->image_url, '/'))
+                            : $material->image_url,
+                    'price'               => (float) $material->price,
+                    'min_order'           => max(1, (int) ($material->min_order ?? 1)),
+                    'max_order'           => $material->max_order !== null ? (int) $material->max_order : null,
+                    'available_quantity'  => $inventoryService->supplierAvailableQuantity($material),
+                    'is_archived'         => (bool) $material->is_archived,
+                    'match_tier'          => $tier,
+                    'match_basis'         => match ($tier) {
+                        0 => 'Recorded receipt from this supplier',
+                        1 => 'Matching product name and size',
+                        default => 'Matching product name, but no size match -- check the variant',
+                    },
+                ];
+            }
+
+            // Best evidence first, then the supplier who can actually ship the most.
+            usort($matches, fn ($a, $b) => $a['match_tier'] === $b['match_tier']
+                ? $b['available_quantity'] <=> $a['available_quantity']
+                : $a['match_tier'] <=> $b['match_tier']);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'product' => [
+                        'id'         => $product->id,
+                        'name'       => $product->name,
+                        'size'       => $product->size,
+                        'sku_code'   => $product->sku_code,
+                        'category'   => $product->category,
+                        'image_url'  => $product->image_url
+                            && ! str_starts_with($product->image_url, 'http')
+                                ? asset('storage/' . ltrim($product->image_url, '/'))
+                                : $product->image_url,
+                    ],
+                    'matches'      => $matches,
+                    'match_count'  => count($matches),
+                ],
+                'message' => $matches
+                    ? count($matches) . ' partner supplier(s) carry this product.'
+                    : 'No partner supplier currently lists this product.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to resolve suppliers for this product: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function formOptions(Request $request)
     {
         try {

@@ -515,10 +515,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
 import echo from '@/utils/websocket.js'
+
+const route = useRoute()
+
+// Navigation lives on the router instance. useRoute() only exposes the reactive
+// route properties (path, query, params, ...), so route.replace is undefined --
+// calling it here threw during setup and took the whole view down with it.
+const router = useRouter()
 
 // --- State ---
 const searchQuery = ref('')
@@ -867,20 +875,116 @@ const toggleGroup = (key) => {
   }
 }
 
+/**
+ * Pre-select a payment term the supplier actually accepts.
+ *
+ * Left blank when none are on file, so step 3 makes the user pick rather than
+ * quietly defaulting to a term that may not be available.
+ */
+const applyPaymentTerms = (supplier) => {
+  const settings = supplier.payment_settings
+  if (settings?.is_cod_enabled) requestForm.value.payment_terms = 'cod'
+  else if (settings?.is_gcash_enabled) requestForm.value.payment_terms = 'gcash'
+  else if (settings?.is_bank_enabled) requestForm.value.payment_terms = 'bank'
+  else requestForm.value.payment_terms = ''
+}
+
 const selectSupplierFromWizard = (supplier) => {
   requestForm.value.supplier_id = supplier.id
   requestForm.value.supplier = supplier.name
-  if (supplier.payment_settings?.is_cod_enabled) {
-    requestForm.value.payment_terms = 'cod'
-  } else if (supplier.payment_settings?.is_gcash_enabled) {
-    requestForm.value.payment_terms = 'gcash'
-  } else if (supplier.payment_settings?.is_bank_enabled) {
-    requestForm.value.payment_terms = 'bank'
-  } else {
-    requestForm.value.payment_terms = ''
-  }
+  applyPaymentTerms(supplier)
   fetchSupplierProducts(supplier.id)
 }
+
+/**
+ * Open the wizard already aimed at one distributor product.
+ *
+ * Arrives from the DSS "Request Procurement" shortcut as a `?procure=<productId>`
+ * query. Which partner supplier can supply the product, and on what terms, is
+ * resolved by the server -- the distributor and supplier catalogues are separate
+ * and the two have to be matched, so that rule lives in one place rather than
+ * being reimplemented here.
+ *
+ * Anything that cannot be resolved deliberately leaves the user on step 1 with an
+ * explanation, rather than opening a wizard they have to unpick.
+ */
+const applyProcurePrefill = async (productId) => {
+  showRequestModal.value = true
+  await fetchFormOptions()
+
+  let resolution
+  try {
+    const response = await api.get(`/procurement/suppliers-for-product/${productId}`)
+    if (response.data.success) resolution = response.data.data
+  } catch (err) {
+    submitError.value = err?.response?.data?.message || 'Could not look up which suppliers carry this product.'
+    showToast('Could not look up which suppliers carry this product.', 'error')
+    return
+  }
+
+  const productName = resolution?.product?.name
+
+  if (!resolution?.matches?.length) {
+    showToast(
+      productName
+        ? `No partner supplier currently lists ${productName}. Select a supplier to browse their catalogue.`
+        : 'No partner supplier currently lists this product. Select a supplier to browse their catalogue.',
+      'warning'
+    )
+    return
+  }
+
+  // Already sorted server-side: best evidence of a match first, then whoever has
+  // the most to sell.
+  const match = resolution.matches[0]
+  const supplier = suppliers.value.find((s) => s.id === match.supplier_id)
+
+  if (!supplier) {
+    showToast(`${match.supplier_name} is not in the selectable partner list. Select a supplier manually.`, 'warning')
+    return
+  }
+
+  requestForm.value.supplier_id = supplier.id
+  requestForm.value.supplier = supplier.name
+  applyPaymentTerms(supplier)
+
+  await fetchSupplierProducts(supplier.id)
+
+  // Take the product from the loaded catalogue rather than from the resolver's
+  // copy of it, so the queued line carries the same price and the same live stock
+  // figure the list renders and the +/- controls validate against.
+  const product = supplierProducts.value.find((p) => p.id === match.raw_material_id)
+
+  if (!product) {
+    showToast(`${match.raw_material_name} is no longer in this supplier's catalogue.`, 'warning')
+    return
+  }
+
+  if (stockOf(product) <= 0) {
+    showToast(
+      `${supplier.name} has no unexpired ${match.raw_material_name} left to procure. Select a supplier to browse their catalogue.`,
+      'warning'
+    )
+    return
+  }
+
+  // A first add lands the supplier's own minimum order and refuses, with the
+  // reason, when the shelf cannot cover it. Going through updateCart keeps the
+  // automatic path and the manual one on identical rules.
+  updateCart(product, 1)
+
+  if (cart.value.length > 0) {
+    wizardSteps.value[0].completed = true
+    currentStep.value = 2
+
+    if (match.match_tier === 2) {
+      showToast(`Matched on product name only -- check the size before submitting.`, 'warning')
+    }
+  }
+}
+
+// The ?procure watcher is registered at the end of this block, after every
+// function it can reach is declared.
 
 const updateCart = (product, change) => {
   const index = cart.value.findIndex(p => p.id === product.id)
@@ -1036,6 +1140,31 @@ const showToast = (message, type = 'info') => {
   else if (type === 'warning') toast.warning(message)
   else toast.info(message)
 }
+
+// Consume ?procure=<id> from the DSS "Request Procurement" shortcut.
+//
+// Registered last, and deliberately: `immediate: true` runs the callback
+// synchronously during setup, so anything applyProcurePrefill touches must already
+// be initialised. Declaring this next to that function left it running against a
+// half-built component -- it happened to work only because applyProcurePrefill
+// suspends at its first await before reaching updateCart.
+//
+// `immediate: true` covers arriving from another view; the watcher itself covers
+// re-navigating to the same route, which does not remount the component.
+watch(
+  () => route.query?.procure,
+  (value) => {
+    const productId = Number(value)
+    if (!Number.isInteger(productId) || productId <= 0) return
+
+    // Clear the query before doing any work: a browser refresh should not silently
+    // re-open a wizard, and coming back must not replay it.
+    router.replace({ path: route.path, query: {} })
+
+    applyProcurePrefill(productId)
+  },
+  { immediate: true }
+)
 
 // --- Lifecycle ---
 onMounted(() => {
