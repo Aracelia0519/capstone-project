@@ -121,7 +121,7 @@ import { useRouter } from 'vue-router'
 import { 
   LayoutDashboard, Users, Box, Package, Palette, Wrench, 
   FileText, ShieldCheck, Settings, LogOut, Loader2, ClipboardList, 
-  AlertTriangle, Bug
+  AlertTriangle, Bug, CalendarClock
 } from 'lucide-vue-next'
 import { 
   Sidebar, SidebarHeader, SidebarContent, SidebarFooter, 
@@ -155,6 +155,7 @@ const navigation = [
     items: [
       { name: 'Reports', path: '/admin/Reports', icon: FileText, color: 'text-pink-400' },
       { name: 'User Reports', path: '/admin/UserReports', icon: AlertTriangle, color: 'text-red-400' },
+      { name: 'Document Renewals', path: '/admin/renewals', icon: CalendarClock, color: 'text-amber-400' },
       { name: 'Technical Reports', path: '/admin/TechnicalReportsAd', icon: Bug, color: 'text-orange-400' },
       { name: 'Login Logs', path: '/admin/AuditLogs', icon: ShieldCheck, color: 'text-slate-400' },
       {

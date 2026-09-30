@@ -5,6 +5,7 @@ namespace App\Models\Distributor;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Support\Documents\DocumentFile;
 
 class DistributorRequirements extends Model
 {
@@ -19,18 +20,46 @@ class DistributorRequirements extends Model
         'id_number',
         'valid_id_photo',
         'dti_certificate_photo',
+        'dti_certificate_expiration',
         'mayor_permit_photo',
+        'mayor_permit_expiration',
         'barangay_clearance_photo',
         'business_registration_number',
         'business_registration_photo',
         'status',
-        'rejection_reason'
+        'rejection_reason',
+        'documents_verified_at',
+        'documents_verified_by',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'dti_certificate_expiration' => 'date',
+        'mayor_permit_expiration'   => 'date',
+        'documents_verified_at'     => 'datetime',
     ];
+
+    /**
+     * Admin reviews of this account's renewed DTI Certificate / Mayor's Permit.
+     *
+     * Newest first, so the pending item an admin has to act on is the first row
+     * rather than the last.
+     */
+    public function documentReviews()
+    {
+        return $this->morphMany(\App\Models\DocumentReview::class, 'reviewable')
+            ->latest('id');
+    }
+
+    /**
+     * Documents the distributor attached beyond the fixed set.
+     */
+    public function relatedDocuments()
+    {
+        return $this->morphMany(\App\Models\RelatedDocument::class, 'documentable')
+            ->latest('id');
+    }
 
     /**
      * Get the user that owns the distributor requirement.
@@ -86,13 +115,20 @@ class DistributorRequirements extends Model
     /**
      * Get the photo URL for a given field
      */
+    /**
+     * An absolute URL for one uploaded photo.
+     *
+     * DocumentFile rather than asset(): asset() builds from APP_URL, which is
+     * http://localhost with no port, so the browser would request port 80 while
+     * the API that serves storage listens on :8000.
+     */
     public function getPhotoUrl($field)
     {
         if (!$this->$field) {
             return null;
         }
-        
-        return asset('storage/' . $this->$field);
+
+        return DocumentFile::url($this->$field);
     }
 
     /**

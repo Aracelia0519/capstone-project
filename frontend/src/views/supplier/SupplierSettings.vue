@@ -727,6 +727,127 @@
                     <input ref="business_registration_photo_input" type="file" class="sr-only" accept="image/*,.pdf" @change="handleFileChange($event, 'business_registration_photo')">
                   </div>
                 </div>
+
+                <!-- Expiration dates for the two documents the administration tracks.
+                     Kept beside the upload grid rather than inside each card: a card
+                     is a click target for the file picker, and a date input nested
+                     in one would open a file dialog every time it is focused. -->
+                <div class="document-card bg-white rounded-xl border border-gray-200 p-5">
+                  <div class="flex items-center mb-1">
+                    <FileText class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
+                    <h4 class="font-bold text-gray-800">Document Expiration Dates</h4>
+                  </div>
+                  <p class="text-xs text-gray-600 mb-4">
+                    These let the administration warn you before a permit lapses. Both are required.
+                  </p>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-for="field in expirationFields" :key="field.key">
+                      <label
+                        :for="`expiration-${field.key}`"
+                        class="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        {{ field.label }} <span class="text-red-500">*</span>
+                      </label>
+                      <input
+                        :id="`expiration-${field.key}`"
+                        v-model="verificationForm[field.key]"
+                        type="date"
+                        :min="todayDate"
+                        required
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p class="text-xs text-gray-500 mt-1">Must be today or later.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Optional extra documents, named by the user. -->
+                <div class="document-card bg-white rounded-xl border border-gray-200 p-5">
+                  <div class="flex items-start justify-between gap-4 mb-1">
+                    <div class="flex items-center">
+                      <FileText class="w-5 h-5 mr-2 text-blue-500 icon-hover" />
+                      <h4 class="font-bold text-gray-800">
+                        Related Documents
+                        <span class="text-xs font-normal text-gray-500">optional</span>
+                      </h4>
+                    </div>
+                    <button
+                      type="button"
+                      @click="addRelatedDocument"
+                      class="shrink-0 rounded-lg border border-blue-300 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition"
+                    >
+                      + Add Document
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-600 mb-4">
+                    Attach anything else your business is registered with, such as an SEC registration or a lease.
+                  </p>
+
+                  <p
+                    v-if="relatedDocuments.length === 0"
+                    class="text-sm text-gray-500 text-center py-4 border border-dashed border-gray-300 rounded-lg"
+                  >
+                    No related documents added.
+                  </p>
+
+                  <div v-else class="space-y-3">
+                    <div
+                      v-for="doc in relatedDocuments"
+                      :key="doc.key"
+                      class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start rounded-lg border border-gray-200 p-3"
+                    >
+                      <div class="md:col-span-4">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                          Document Name <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                          v-model="doc.document_name"
+                          type="text"
+                          placeholder="e.g. SEC Registration"
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div class="md:col-span-3">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                          Expiration <span class="font-normal text-gray-500">optional</span>
+                        </label>
+                        <input
+                          v-model="doc.expiration_date"
+                          type="date"
+                          :min="todayDate"
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div class="md:col-span-4">
+                        <label class="block text-xs font-medium text-gray-700 mb-1">
+                          File <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          @change="onRelatedFileChange($event, doc)"
+                          class="w-full text-xs text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                        />
+                        <p v-if="doc.file" class="mt-1 text-xs text-green-600 font-medium truncate">
+                          {{ doc.file.name }}
+                        </p>
+                      </div>
+
+                      <div class="md:col-span-1 flex md:justify-end md:items-start">
+                        <button
+                          type="button"
+                          @click="removeRelatedDocument(doc.key)"
+                          class="rounded-lg border border-red-300 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div v-if="currentStep === 5" class="space-y-6">
@@ -955,6 +1076,22 @@
                     </div>
                   </div>
                 </div>
+
+                <!--
+                  Renewal, for once the account is approved. The wizard above
+                  cannot do this: store() rejects an account that has already
+                  submitted, so without this panel an expiring permit could
+                  never be replaced.
+                -->
+                <div class="pt-4 border-t border-gray-200">
+                  <DocumentRenewalPanel
+                    role="supplier"
+                    :documents="verificationData.documents"
+                    :photo-urls="verificationData.photos || {}"
+                    :account-status="userInfo.status"
+                    @renewed="onDocumentsRenewed"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1063,6 +1200,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import FaceVerificationStep from '@/components/FaceVerificationStep.vue'
+import DocumentRenewalPanel from '@/components/DocumentRenewalPanel.vue'
 
 const router = useRouter()
 
@@ -1097,6 +1235,29 @@ interface AddressData {
   longitude: string;
 }
 
+interface DocumentSummary {
+  key: string;
+  label: string;
+  expiration_at: string | null;
+  days_remaining: number | null;
+  state: 'ok' | 'warning' | 'critical' | 'expired' | 'missing';
+}
+
+interface RelatedDocumentSummary {
+  id: number;
+  document_name: string;
+  file_url: string | null;
+  expiration_at: string | null;
+}
+
+interface DocumentsPayload {
+  dti_certificate: DocumentSummary;
+  mayor_permit: DocumentSummary;
+  related_documents: RelatedDocumentSummary[];
+  documents_verified_at: string | null;
+  documents_verified_by: number | null;
+}
+
 interface VerificationData {
   id?: number;
   has_submitted: boolean;
@@ -1109,6 +1270,7 @@ interface VerificationData {
   rejection_reason?: string;
   address?: AddressData;
   photos?: Record<string, string>;
+  documents?: DocumentsPayload;
   resubmission_count: number;
   submitted_at?: string;
 }
@@ -1128,6 +1290,16 @@ interface VerificationForm {
   barangay_clearance_photo: File | null;
   business_registration_number: string;
   business_registration_photo: File | null;
+  dti_certificate_expiration: string;
+  mayor_permit_expiration: string;
+}
+
+/** One row of the optional "Related Documents" list. */
+interface RelatedDocumentRow {
+  key: string;
+  document_name: string;
+  file: File | null;
+  expiration_date: string;
 }
 
 // State
@@ -1209,8 +1381,89 @@ const verificationForm = reactive<VerificationForm>({
   mayor_permit_photo: null,
   barangay_clearance_photo: null,
   business_registration_number: '',
-  business_registration_photo: null
+  business_registration_photo: null,
+  dti_certificate_expiration: '',
+  mayor_permit_expiration: ''
 })
+
+// --- Document expiration & related documents -------------------------------
+// These mirror the server's rules so the wizard can block a bad submission
+// before it round-trips, and so the message names the field the user can see.
+// The server re-derives all of it regardless; nothing here is trusted on arrival.
+
+// The local calendar date, not toISOString(): that converts to UTC, so a user east
+// of Greenwich would see yesterday as the floor and be unable to pick today.
+const todayDate = computed(() => {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+})
+
+const expirationFields = [
+  { key: 'dti_certificate_expiration', label: 'DTI Certificate Expiration' },
+  { key: 'mayor_permit_expiration', label: "Mayor's Permit Expiration" },
+]
+
+// Both dates are required and cannot be in the past. Comparing the ISO strings
+// is a real date comparison: the format sorts lexicographically.
+const expirationsValid = computed(() => {
+  const dti = verificationForm.dti_certificate_expiration
+  const mayor = verificationForm.mayor_permit_expiration
+  return Boolean(dti && mayor && dti >= todayDate.value && mayor >= todayDate.value)
+})
+
+let relatedDocumentKey = 0
+const relatedDocuments = ref<RelatedDocumentRow[]>([])
+
+const addRelatedDocument = () => {
+  relatedDocuments.value.push({
+    key: `related-${++relatedDocumentKey}`,
+    document_name: '',
+    file: null,
+    expiration_date: '',
+  })
+}
+
+const removeRelatedDocument = (key: string) => {
+  relatedDocuments.value = relatedDocuments.value.filter((doc) => doc.key !== key)
+}
+
+const onRelatedFileChange = (event: Event, doc: RelatedDocumentRow) => {
+  doc.file = (event.target as HTMLInputElement).files?.[0] || null
+}
+
+// A row the user chose to add has to be complete. A half-filled row would come
+// back from the server as an error keyed on `related_documents.0.file`, which
+// corresponds to nothing the user can see.
+const relatedDocumentsValid = computed(() =>
+  relatedDocuments.value.every((doc) => doc.document_name.trim() !== '' && doc.file !== null)
+)
+
+/** Append the extra documents to the multipart body the endpoints expect. */
+const appendRelatedDocuments = (formData: FormData) => {
+  relatedDocuments.value.forEach((doc, index) => {
+    if (!doc.document_name.trim() || !doc.file) return
+    formData.append(`related_documents[${index}][document_name]`, doc.document_name.trim())
+    formData.append(`related_documents[${index}][expiration_date]`, doc.expiration_date || '')
+    formData.append(`related_documents[${index}][file]`, doc.file)
+  })
+}
+
+const resetRelatedDocuments = () => {
+  relatedDocuments.value = []
+}
+
+/**
+ * The renewal panel uploaded something, so the summary it renders from is stale.
+ * Replace it with what the server returned rather than re-fetching the whole
+ * endpoint, which would also reset the page's other verification state.
+ */
+const onDocumentsRenewed = (documents: DocumentsPayload) => {
+  if (!documents || !verificationData.value) return
+
+  verificationData.value.documents = documents
+}
 
 const password = reactive({
   current: '',
@@ -1275,6 +1528,8 @@ const isVerificationFormValid = computed(() => {
          verificationForm.barangay_clearance_photo &&
          verificationForm.business_registration_number &&
          verificationForm.business_registration_photo &&
+         expirationsValid.value &&
+         relatedDocumentsValid.value &&
          (!verificationData.value || verificationData.value.resubmission_count < 3)
 })
 
@@ -1314,7 +1569,7 @@ const isStepValid = (step: number) => {
     case 1: return verificationForm.company_name && verificationForm.business_registration_number
     case 2: return verificationForm.city && verificationForm.barangay && verificationForm.block_address && verificationForm.latitude && verificationForm.longitude && !locationError.value
     case 3: return verificationForm.valid_id_type && verificationForm.id_number && verificationForm.valid_id_photo
-    case 4: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo
+    case 4: return verificationForm.dti_certificate_photo && verificationForm.mayor_permit_photo && verificationForm.barangay_clearance_photo && verificationForm.business_registration_photo && expirationsValid.value && relatedDocumentsValid.value
     case 5: return isVerificationFormValid.value
     default: return false
   }
@@ -1906,6 +2161,13 @@ const submitVerification = async () => {
     if(verificationForm.barangay_clearance_photo) formData.append('barangay_clearance_photo', verificationForm.barangay_clearance_photo)
     if(verificationForm.business_registration_photo) formData.append('business_registration_photo', verificationForm.business_registration_photo)
 
+    // Expiration dates for the two tracked documents
+    formData.append('dti_certificate_expiration', verificationForm.dti_certificate_expiration)
+    formData.append('mayor_permit_expiration', verificationForm.mayor_permit_expiration)
+
+    // Optional extra documents, appended as the indexed array the endpoint reads
+    appendRelatedDocuments(formData)
+
     // Client-side identity & face verification results (face-api + tesseract OCR)
     const fv = faceVerification.value || {}
     if (fv.selfiePhoto instanceof File) formData.append('selfie_photo', fv.selfiePhoto)
@@ -1951,8 +2213,11 @@ const submitVerification = async () => {
         barangay: '',
         block_address: '',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        dti_certificate_expiration: '',
+        mayor_permit_expiration: ''
       })
+      resetRelatedDocuments()
       currentStep.value = 1
       acceptedTerms.value = false
     } else {
@@ -2074,6 +2339,33 @@ onMounted(async () => {
         await fetchUserData();
         await fetchSupplierData();
         await fetchVerificationData();
+      })
+
+      // A document was replaced -- by this supplier, or by an admin restoring an
+      // account. Either way the pushed block is the server's current state, so it
+      // replaces the local copy instead of triggering a re-fetch of the whole
+      // endpoint, which would also reset unrelated verification state.
+      .listen('.DocumentsRenewed', (e: any) => {
+        onDocumentsRenewed(e?.documents)
+      })
+
+      // An admin approved or rejected a renewal. This is the event that matters
+      // most for the rejected case: the server has already rolled the document
+      // back to the last thing it accepted, and without the push the supplier
+      // would keep seeing the rejected date until they reloaded.
+      .listen('.DocumentReviewDecided', (e: any) => {
+        if (!e?.documents) return
+
+        onDocumentsRenewed(e.documents)
+
+        if (e.decision === 'approved') {
+          toast.success(`Your renewed ${e.document_label} was approved.`, { duration: 5000 });
+        } else if (e.decision === 'rejected') {
+          toast.error(
+            `Your renewed ${e.document_label} was rejected.${e.rejection_reason ? ' ' + e.rejection_reason : ''} Please upload a valid replacement.`,
+            { duration: 10000 }
+          );
+        }
       });
   }
 })

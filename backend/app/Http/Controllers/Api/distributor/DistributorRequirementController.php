@@ -12,9 +12,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB; // Import DB for transactions
+use App\Events\Requirements\DocumentsRenewed; // <-- Added Import
 use App\Events\Requirements\RequirementSubmitted; // <-- Added Import
 use App\Models\IdentityVerificationResult;
 use App\Services\IdentityVerificationService;
+use App\Services\DocumentSubmission;
+use App\Support\Documents\DocumentExpiry;
 
 class DistributorRequirementController extends Controller
 {
@@ -72,6 +75,7 @@ class DistributorRequirementController extends Controller
                     'is_complete' => $requirements->is_complete,
                     'has_submitted' => true,
                     'photos' => $photoUrls,
+                    'documents' => DocumentSubmission::payload($requirements->load('relatedDocuments')),
                     'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $requirements->updated_at->format('Y-m-d H:i:s'),
                     'verification_result' => IdentityVerificationService::formatResult(
@@ -139,12 +143,12 @@ class DistributorRequirementController extends Controller
                 'block_address' => 'required|string|max:1000',
                 'latitude' => 'nullable|numeric|min:14.0000|max:14.6000',
                 'longitude' => 'nullable|numeric|min:120.5000|max:121.1000',
-            ], [
+            ] + DocumentSubmission::rules(), [
                 'latitude.min' => 'Location pinned must be inside Cavite.',
                 'latitude.max' => 'Location pinned must be inside Cavite.',
                 'longitude.min' => 'Location pinned must be inside Cavite.',
                 'longitude.max' => 'Location pinned must be inside Cavite.',
-            ]);
+            ] + DocumentSubmission::messages());
             
             if ($validator->fails()) {
                 return response()->json([
@@ -225,7 +229,13 @@ class DistributorRequirementController extends Controller
                 $requirements->status = 'pending';
                 $requirements->rejection_reason = null;
                 $requirements->resubmission_count = $existing ? ($existing->resubmission_count + 1) : 1;
+
+                // Expiration dates first: these also clear any earlier admin
+                // verification, which described the files being replaced.
+                DocumentSubmission::saveExpirations($request, $requirements);
                 $requirements->save();
+
+                DocumentSubmission::saveRelatedDocuments($request, $requirements, 'distributor_verification');
 
                 // Create or Update Address
                 DistributorAddress::updateOrCreate(
@@ -278,6 +288,7 @@ class DistributorRequirementController extends Controller
                         'is_complete' => $requirements->is_complete,
                         'has_submitted' => true,
                         'photos' => $photoUrls,
+                        'documents' => DocumentSubmission::payload($requirements->refresh()),
                         'submitted_at' => $requirements->created_at->format('Y-m-d H:i:s'),
                         'verification_result' => IdentityVerificationService::formatResult($verificationResult)
                     ]
@@ -597,5 +608,305 @@ class DistributorRequirementController extends Controller
                 'message' => 'Failed to update distributor information'
             ], 500);
         }
+    }
+
+    /**
+     * Submit a replacement for one of the distributor's dated documents.
+     *   POST /requirements/documents/{documentKey}
+     *
+     * Separate from store() because the two answer different situations. store() is
+     * a first application and refuses anyone already approved -- correct, since
+     * re-sending the whole packet would reset an established account. But that same
+     * refusal left an approved user with no way to replace an expiring permit, which
+     * made the admin's revoke-termination action unreachable: it requires documents
+     * newer than the termination, and there was no way to submit any.
+     *
+     * One document per request, named in the URL. The old endpoint put both
+     * documents in a single multipart body, which meant one request could open two
+     * reviews, one could be half-filled without the server noticing, and the client
+     * had to name the document twice -- once in the field name, once in the payload.
+     * Splitting it means the reviews match the documents one to one, and a
+     * distributor renewing a Mayor's Permit is not made to re-upload a DTI
+     * Certificate that is still valid.
+     *
+     * POST, not PUT, and the reason is a PHP one worth writing down so nobody
+     * "corrects" it later: PHP only runs its multipart parser for POST. A PUT or
+     * PATCH carrying multipart/form-data leaves $_POST and $_FILES empty and the
+     * body sitting unread in php://input, so $request->file() returns null and every
+     * field reads as missing -- a 422 complaining that no file was attached, sent by
+     * a client that demonstrably attached one. Measured, not assumed.
+     *
+     * POST is also the more truthful verb. Each submission opens a review and a
+     * later submission supersedes the earlier one, so this creates a resource
+     * rather than idempotently replacing one. Hence 201 and a Location header.
+     */
+    public function replaceDocument(Request $request, string $documentKey)
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'distributor') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        // 404 rather than 422 for an unknown document: "dti_certficate" is a
+        // misspelling the caller needs to see, and folding it into a validation
+        // failure would report it as a problem with the file they just uploaded.
+        if (! DocumentExpiry::isTrackable($documentKey)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unknown document',
+                'errors' => ['documentKey' => ['No such business document for this account.']]
+            ], 404);
+        }
+
+        $validator = Validator::make(
+            $request->all(),
+            DocumentSubmission::documentRules(),
+            DocumentSubmission::documentMessages($documentKey)
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+
+        if (!$requirements) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No business verification submission found'
+            ], 404);
+        }
+
+        $review = DocumentSubmission::applyDocument($request, $requirements, $documentKey, 'distributor_verification');
+
+        $label = DocumentExpiry::label($documentKey);
+
+        $documents = DocumentSubmission::payload($requirements->refresh()->load('relatedDocuments'));
+
+        // Pushed so the admin's renewals queue gains a card without anyone
+        // reloading it. Sent even though the user's own panel is the one that
+        // navigated here -- the point is that the queue is a shared screen.
+        event(new DocumentsRenewed($user->id, 'distributor', [$documentKey], $documents));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $label . ' renewed and awaiting review by an administrator.',
+            'data' => [
+                'document' => $documents[$documentKey],
+                'review'   => $review->toDisplayArray(),
+                'documents' => $documents,
+            ]
+        ], 201)
+            ->header('Location', url("/api/distributor/requirements/reviews/{$review->id}"));
+    }
+
+    /**
+     * Read back one of the distributor's own document reviews.
+     *
+     * Exists so the Location header on a submission resolves to something. Scoped
+     * through the authenticated user's own reviews, so an id belonging to another
+     * account is a 404 rather than a disclosure of what that account submitted.
+     */
+    public function showReview(Request $request, $reviewId)
+    {
+        $user = Auth::user();
+
+        if (! $user || $user->role !== 'distributor') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+
+        if (! $requirements) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No business verification submission found'
+            ], 404);
+        }
+
+        $review = $requirements->documentReviews()->find($reviewId);
+
+        if (! $review) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Review not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Review retrieved',
+            'data' => ['review' => $review->toDisplayArray()]
+        ], 200);
+    }
+
+    /**
+     * Read back one of the distributor's own extra documents.
+     *
+     * The only reason this exists is to give `storeRelatedDocument` a Location
+     * header that points at something fetchable, which is what makes that header
+     * worth sending. Scoped through the authenticated user's requirements row, so
+     * another account's document id is a 404.
+     */
+    public function showRelatedDocument(Request $request, $documentId)
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'distributor') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+
+        if (!$requirements) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No business verification submission found'
+            ], 404);
+        }
+
+        $document = $requirements->relatedDocuments()->find($documentId);
+
+        if (!$document) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Document not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Document retrieved',
+            'data' => ['document' => $document->toDisplayArray()]
+        ], 200);
+    }
+
+    /**
+     * Attach one extra document.  POST /requirements/related-documents
+     *
+     * Additive, and stays that way: a rejected document is not removed along with
+     * the rejection, so the user can replace it later. A fresh upload is always
+     * 'pending' because nothing a user attaches has been looked at yet.
+     */
+    public function storeRelatedDocument(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'distributor') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        $validator = Validator::make(
+            $request->all(),
+            DocumentSubmission::singleRelatedDocumentRules(),
+            DocumentSubmission::singleRelatedDocumentMessages()
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+
+        if (!$requirements) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No business verification submission found'
+            ], 404);
+        }
+
+        $document = DocumentSubmission::addRelatedDocument($request, $requirements, 'distributor_verification');
+
+        $documents = DocumentSubmission::payload($requirements->refresh()->load('relatedDocuments'));
+
+        event(new DocumentsRenewed($user->id, 'distributor', [], $documents));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Document added',
+            'data' => [
+                'document' => $document->toDisplayArray(),
+                'documents' => $documents,
+            ]
+        ], 201)
+            ->header('Location', url("/api/distributor/requirements/related-documents/{$document->id}"));
+    }
+
+    /**
+     * Remove one of the distributor's own extra documents.
+     *
+     * Looked up through the authenticated user's own requirements row rather than
+     * by primary key, so a guessed document id belonging to another account is a
+     * 404 instead of a deletion. The file goes with the row; leaving orphans in
+     * storage would be worse than a missed tidy-up.
+     */
+    public function destroyRelatedDocument(Request $request, $documentId)
+    {
+        $user = Auth::user();
+
+        if (! $user || $user->role !== 'distributor') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized access'
+            ], 403);
+        }
+
+        $requirements = DistributorRequirements::where('user_id', $user->id)->first();
+
+        if (! $requirements) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No business verification submission found'
+            ], 404);
+        }
+
+        $document = $requirements->relatedDocuments()->find($documentId);
+
+        if (! $document) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Document not found'
+            ], 404);
+        }
+
+        if ($document->file_path) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
+
+        $documents = DocumentSubmission::payload($requirements->refresh()->load('relatedDocuments'));
+
+        // Pushed for the same reason as an upload: the panel this was removed from
+        // should redraw without a reload, and the admin's view of the account's
+        // documents is now out of date too.
+        event(new DocumentsRenewed($user->id, 'distributor', [], $documents));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Document removed',
+            'data' => ['documents' => $documents],
+        ], 200);
     }
 }

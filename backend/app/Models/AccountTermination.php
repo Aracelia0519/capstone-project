@@ -22,6 +22,16 @@ class AccountTermination extends Model
         'reversal_reason'
     ];
 
+    /**
+     * Without these, terminated_at and reversed_at come back as raw strings and
+     * any caller that treats them as dates -- comparing them against a
+     * requirements row, or formatting them for the admin screen -- has to guess.
+     */
+    protected $casts = [
+        'terminated_at' => 'datetime',
+        'reversed_at'   => 'datetime',
+    ];
+
     public function account()
     {
         return $this->belongsTo(User::class, 'account_id');

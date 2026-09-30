@@ -14,10 +14,11 @@ use App\Models\Supplier\SupplierRequirements;
 use App\Models\IdentityVerificationResult;
 use App\Models\SupportMessage;
 use App\Services\IdentityVerificationService;
+use App\Services\DocumentSubmission;
+use App\Support\Documents\DocumentFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Events\Requirements\RequirementStatusUpdated;
@@ -242,22 +243,26 @@ class AdminUserController extends Controller
             'valid_id_type_display' => $requirement->getIdTypeNameAttribute(),
             'id_number' => $requirement->id_number,
             'valid_id_photo' => $requirement->valid_id_photo,
-            'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
+            'valid_id_photo_url' => $requirement->valid_id_photo ? DocumentFile::url($requirement->valid_id_photo) : null,
             'dti_certificate_photo' => $requirement->dti_certificate_photo,
-            'dti_certificate_photo_url' => $requirement->dti_certificate_photo ? Storage::url($requirement->dti_certificate_photo) : null,
+            'dti_certificate_photo_url' => $requirement->dti_certificate_photo ? DocumentFile::url($requirement->dti_certificate_photo) : null,
             'mayor_permit_photo' => $requirement->mayor_permit_photo,
-            'mayor_permit_photo_url' => $requirement->mayor_permit_photo ? Storage::url($requirement->mayor_permit_photo) : null,
+            'mayor_permit_photo_url' => $requirement->mayor_permit_photo ? DocumentFile::url($requirement->mayor_permit_photo) : null,
             'barangay_clearance_photo' => $requirement->barangay_clearance_photo,
-            'barangay_clearance_photo_url' => $requirement->barangay_clearance_photo ? Storage::url($requirement->barangay_clearance_photo) : null,
+            'barangay_clearance_photo_url' => $requirement->barangay_clearance_photo ? DocumentFile::url($requirement->barangay_clearance_photo) : null,
             'business_registration_number' => $requirement->business_registration_number,
             'business_registration_photo' => $requirement->business_registration_photo,
-            'business_registration_photo_url' => $requirement->business_registration_photo ? Storage::url($requirement->business_registration_photo) : null,
+            'business_registration_photo_url' => $requirement->business_registration_photo ? DocumentFile::url($requirement->business_registration_photo) : null,
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
             'resubmission_count' => $requirement->resubmission_count ?? 0,
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
             'is_complete' => $requirement->getIsCompleteAttribute(),
+            // Expiration dates + the extra documents, so the admin can compare a
+            // typed date against the file it claims to describe without leaving
+            // the user record.
+            'documents' => DocumentSubmission::payload($requirement->load('relatedDocuments')),
         ];
     }
 
@@ -277,19 +282,19 @@ class AdminUserController extends Controller
             'business_registration_number' => $requirement->business_registration_number,
             
             'valid_id_photo' => $requirement->valid_id_photo,
-            'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
+            'valid_id_photo_url' => $requirement->valid_id_photo ? DocumentFile::url($requirement->valid_id_photo) : null,
             
             'dti_certificate_photo' => $requirement->dti_certificate_photo,
-            'dti_certificate_photo_url' => $requirement->dti_certificate_photo ? Storage::url($requirement->dti_certificate_photo) : null,
+            'dti_certificate_photo_url' => $requirement->dti_certificate_photo ? DocumentFile::url($requirement->dti_certificate_photo) : null,
             
             'mayor_permit_photo' => $requirement->mayor_permit_photo,
-            'mayor_permit_photo_url' => $requirement->mayor_permit_photo ? Storage::url($requirement->mayor_permit_photo) : null,
+            'mayor_permit_photo_url' => $requirement->mayor_permit_photo ? DocumentFile::url($requirement->mayor_permit_photo) : null,
             
             'barangay_clearance_photo' => $requirement->barangay_clearance_photo,
-            'barangay_clearance_photo_url' => $requirement->barangay_clearance_photo ? Storage::url($requirement->barangay_clearance_photo) : null,
+            'barangay_clearance_photo_url' => $requirement->barangay_clearance_photo ? DocumentFile::url($requirement->barangay_clearance_photo) : null,
             
             'business_registration_photo' => $requirement->business_registration_photo,
-            'business_registration_photo_url' => $requirement->business_registration_photo ? Storage::url($requirement->business_registration_photo) : null,
+            'business_registration_photo_url' => $requirement->business_registration_photo ? DocumentFile::url($requirement->business_registration_photo) : null,
             
             'address' => $requirement->address,
             
@@ -299,6 +304,10 @@ class AdminUserController extends Controller
             'submitted_at' => $requirement->created_at,
             'reviewed_at' => $requirement->updated_at,
             'is_complete' => $requirement->is_complete,
+            // Expiration dates + the extra documents, so the admin can compare a
+            // typed date against the file it claims to describe without leaving
+            // the user record.
+            'documents' => DocumentSubmission::payload($requirement->load('relatedDocuments')),
         ];
     }
 
@@ -313,7 +322,7 @@ class AdminUserController extends Controller
             'valid_id_type_display' => $requirement->getIdTypeNameAttribute(),
             'id_number' => $requirement->id_number,
             'valid_id_photo' => $requirement->valid_id_photo,
-            'valid_id_photo_url' => $requirement->valid_id_photo ? Storage::url($requirement->valid_id_photo) : null,
+            'valid_id_photo_url' => $requirement->valid_id_photo ? DocumentFile::url($requirement->valid_id_photo) : null,
             'status' => $requirement->status,
             'rejection_reason' => $requirement->rejection_reason,
             'resubmission_count' => $requirement->resubmission_count ?? 0,

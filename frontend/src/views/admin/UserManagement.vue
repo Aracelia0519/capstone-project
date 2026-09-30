@@ -573,6 +573,180 @@
                             </div>
                         </div>
 
+                        <!-- Document expiration verification.
+                             Shows each uploaded file directly above the date the user
+                             typed for it, because the whole task is comparing the two. -->
+                        <div v-if="verificationDocuments.length > 0" class="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                <h4 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                                    <i class="fas fa-calendar-check text-slate-400"></i> Document Expiration Verification
+                                </h4>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="documentsVerifiedAt" class="text-xs text-emerald-700">
+                                        Confirmed {{ formatExpiryDate(documentsVerifiedAt) }}
+                                    </span>
+                                    <!-- Hidden, not disabled, while a renewal waits: the
+                                         server refuses it, and a greyed-out button
+                                         beside the real action only invites a
+                                         click that cannot succeed. -->
+                                    <Button v-if="!pendingReviews.length" size="sm" variant="outline" :disabled="verifyingDocuments" @click="verifyDocuments">
+                                        {{ verifyingDocuments ? 'Confirming...' : 'Confirm Dates Match' }}
+                                    </Button>
+                                    <span v-else class="text-xs text-amber-700 font-medium">
+                                        {{ pendingReviews.length }} renewal(s) awaiting your decision below
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Renewal review. Sits above the date cards because this
+                                 is the action to take when a renewal is pending, and
+                                 the file under review is the snapshot of what the
+                                 user actually submitted. -->
+                            <div v-if="pendingReviews.length"
+                                class="mb-4 p-4 rounded-lg border-2 border-amber-300 bg-amber-50/50">
+                                <p class="text-sm font-semibold text-amber-900">
+                                    Renewal awaiting your decision ({{ pendingReviews.length }})
+                                </p>
+                                <p class="text-xs text-amber-800 mt-1">
+                                    Check the submitted file against the expiration date printed on it.
+                                    The file shown is the exact upload that was submitted.
+                                </p>
+
+                                <div class="mt-3 space-y-3">
+                                    <div v-for="review in pendingReviews" :key="review.id"
+                                        class="rounded-lg border border-amber-200 bg-white p-3">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-semibold text-slate-900">{{ review.label }}</p>
+                                                <p class="text-xs text-slate-500">
+                                                    Submitted {{ formatExpiryDate(review.submitted_at) }} &middot;
+                                                    expires {{ formatExpiryDate(review.expiration_at) }}
+                                                </p>
+                                            </div>
+                                            <a v-if="review.file_url" :href="review.file_url" target="_blank" rel="noopener"
+                                                class="text-xs font-semibold text-indigo-600 hover:underline">
+                                                Open submitted file
+                                            </a>
+                                        </div>
+
+                                        <div v-if="rejectionReasons[review.document_key] !== undefined"
+                                            class="mt-3 p-3 rounded-md border border-red-200 bg-red-50">
+                                            <label class="block text-xs font-semibold text-red-800"
+                                                :for="`um-reject-${review.document_key}`">Reason for rejection</label>
+                                            <p class="text-[11px] text-red-700 mt-0.5">
+                                                Shown to the user. Say what is wrong so they know what to re-upload.
+                                            </p>
+                                            <textarea :id="`um-reject-${review.document_key}`"
+                                                v-model="rejectionReasons[review.document_key]" rows="2" maxlength="2000"
+                                                placeholder="e.g. The permit is unreadable and the expiration printed on it is 2026-04-30, not 2027-04-30."
+                                                class="mt-1 w-full rounded-md border border-red-300 bg-white px-2 py-1 text-xs text-slate-900 focus:border-red-500 focus:outline-none"></textarea>
+                                            <div class="mt-2 flex gap-2 justify-end">
+                                                <Button size="sm" variant="ghost" :disabled="reviewingDocument"
+                                                    @click="cancelRejection(review.document_key)">Cancel</Button>
+                                                <Button size="sm" :disabled="reviewingDocument || !rejectionReasonFor(review.document_key)"
+                                                    class="bg-red-600 text-white hover:bg-red-700"
+                                                    @click="reviewDocument(review.document_key, 'rejected')">
+                                                    {{ reviewingDocument ? 'Rejecting...' : 'Confirm Rejection' }}
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div v-else class="mt-3 flex gap-2 justify-end">
+                                            <Button size="sm" variant="ghost" class="text-emerald-700 hover:bg-emerald-50"
+                                                :disabled="reviewingDocument"
+                                                @click="reviewDocument(review.document_key, 'approved')">Approve</Button>
+                                            <Button size="sm" variant="ghost" class="text-red-700 hover:bg-red-50"
+                                                :disabled="reviewingDocument"
+                                                @click="startRejection(review.document_key)">Reject</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Earlier decisions, so a repeat rejection is legible as
+                                 "submitted again" rather than looking like one refusal. -->
+                            <div v-else-if="decidedReviews.length" class="mb-4 p-3 rounded-lg border border-slate-200 bg-white">
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Renewal Decisions</p>
+                                <div class="space-y-2">
+                                    <div v-for="review in decidedReviews" :key="review.id"
+                                        class="rounded-md border border-slate-200 p-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="text-xs font-semibold text-slate-800">{{ review.label }}</p>
+                                            <Badge :class="relatedStatusClass(review.status)">{{ review.status }}</Badge>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 mt-0.5">
+                                            Expiring {{ formatExpiryDate(review.expiration_at) }} &middot;
+                                            decided {{ formatExpiryDate(review.reviewed_at) }}
+                                        </p>
+                                        <p v-if="review.rejection_reason" class="text-[11px] text-red-700 mt-1">
+                                            {{ review.rejection_reason }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-for="doc in verificationDocuments" :key="doc.key"
+                                    class="rounded-lg border bg-white p-3" :class="expiryBorderClass(doc.state)">
+                                    <div class="flex items-center justify-between gap-2 mb-2">
+                                        <span class="text-sm font-semibold text-slate-900">{{ doc.label }}</span>
+                                        <Badge :class="expiryStateClass(doc.state)">{{ expiryStateLabel(doc) }}</Badge>
+                                    </div>
+
+                                    <p class="text-xs text-slate-500 mb-1">Entered expiration date</p>
+                                    <p class="text-lg font-bold text-slate-900 mb-1">
+                                        {{ formatExpiryDate(doc.expiration_at) }}
+                                    </p>
+                                    <p v-if="doc.days_remaining !== null" class="text-xs mb-3"
+                                        :class="doc.days_remaining < 0 ? 'text-red-600 font-semibold' : 'text-slate-500'">
+                                        {{ expiryCountdown(doc.days_remaining) }}
+                                    </p>
+
+                                    <p class="text-xs text-slate-500 mb-1">Uploaded file</p>
+                                    <template v-if="doc.file_url">
+                                        <a :href="doc.file_url" target="_blank" rel="noopener"
+                                            class="text-xs font-semibold text-indigo-600 hover:underline">
+                                            Open full size
+                                        </a>
+                                        <img :src="doc.file_url" :alt="doc.label"
+                                            class="mt-2 w-full rounded-md border border-slate-200 object-contain max-h-40 cursor-zoom-in"
+                                            @click="showImageModal(doc.file_url, doc.label)">
+                                    </template>
+                                    <p v-else class="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                                        No file was uploaded, so this date cannot be verified.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div v-if="verificationRelatedDocuments.length > 0" class="mt-4">
+                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                    Additional Documents ({{ verificationRelatedDocuments.length }})
+                                </p>
+                                <div class="space-y-2">
+                                    <div v-for="rel in verificationRelatedDocuments" :key="rel.id"
+                                        class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-slate-900 truncate">{{ rel.document_name }}</p>
+                                            <p class="text-xs text-slate-500">
+                                                <span v-if="rel.expiration_at">Expires {{ formatExpiryDate(rel.expiration_at) }}</span>
+                                                <span v-else>No expiration date</span>
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <Badge :class="relatedStatusClass(rel.status)">{{ rel.status }}</Badge>
+                                            <a v-if="rel.file_url" :href="rel.file_url" target="_blank" rel="noopener"
+                                                class="text-xs font-semibold text-indigo-600 hover:underline">Open</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-slate-500 mt-3">
+                                Check the printed expiration on each file against the date above. If they differ,
+                                reject the submission below with a reason instead of confirming.
+                            </p>
+                        </div>
+
                         <div v-if="(viewingUser.role === 'client' && userRequirements.client) || (viewingUser.role === 'service_provider' && userRequirements.service_provider)">
                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-100 mb-6 flex items-center justify-between">
                             <div class="space-y-1">
@@ -1166,6 +1340,12 @@ export default {
       manualReviewReason: '',
       userToManualReview: null,
       processingManualReview: false,
+
+      // Renewal review, keyed by document key rather than held in one shared box:
+      // a renewal usually has both permits waiting, and a single field would make
+      // it look like one reason covers both.
+      rejectionReasons: {},
+      reviewingDocument: false,
       
       loading: false,
       loadingRequirements: false,
@@ -1220,6 +1400,7 @@ export default {
       },
       viewingUser: {},
       userRequirements: null,
+      verifyingDocuments: false,
       currentImageUrl: '',
       currentImageTitle: '',
       debounceTimer: null,
@@ -1276,6 +1457,72 @@ export default {
         { text: 'Number', met: /\d/.test(p) },
         { text: 'Special', met: /[!@#$%^&*(),.?":{}|<>]/.test(p) }
       ];
+    },
+
+    /**
+     * The two dated documents for whichever role is open, with the uploaded file
+     * paired to its date.
+     *
+     * The `state`, `days_remaining` and `can_terminate` fields come straight from
+     * the server, which owns the thresholds. This only re-pairs each document with
+     * the photo URL already built by fetchUserRequirements -- it decides nothing,
+     * so the badge here and the button on the renewals page cannot disagree.
+     */
+    verificationDocuments() {
+      const source = this.userRequirements
+        && (this.userRequirements.supplier || this.userRequirements.distributor);
+
+      if (!source || !source.documents) return [];
+
+      const photoFields = {
+        dti_certificate: 'dti_certificate_photo_url',
+        mayor_permit: 'mayor_permit_photo_url'
+      };
+
+      return Object.values(source.documents)
+        .filter((doc) => doc && doc.key)
+        .map((doc) => ({ ...doc, file_url: source[photoFields[doc.key]] || null }));
+    },
+
+    verificationRelatedDocuments() {
+      const source = this.userRequirements
+        && (this.userRequirements.supplier || this.userRequirements.distributor);
+
+      return (source && source.documents && source.documents.related_documents) || [];
+    },
+
+    documentsVerifiedAt() {
+      const source = this.userRequirements
+        && (this.userRequirements.supplier || this.userRequirements.distributor);
+
+      return (source && source.documents && source.documents.documents_verified_at) || null;
+    },
+
+    /**
+     * Renewals waiting on a decision, then the ones already decided.
+     *
+     * The server sends the latest decision per document under `reviews`; the
+     * pending list is derived from it. A superseded row -- the user submitted,
+     * then re-uploaded before the admin looked -- is never actionable, so it is
+     * filtered out rather than shown as something to decide.
+     */
+    verificationReviews() {
+      const source = this.userRequirements
+        && (this.userRequirements.supplier || this.userRequirements.distributor);
+
+      const reviews = (source && source.documents && source.documents.reviews) || {};
+
+      return Object.values(reviews).filter(Boolean);
+    },
+
+    pendingReviews() {
+      return this.verificationReviews.filter((review) => review.status === 'pending');
+    },
+
+    decidedReviews() {
+      return this.verificationReviews.filter(
+        (review) => review.status !== 'pending' && review.status !== 'superseded'
+      );
     }
   },
   mounted() {
@@ -1301,10 +1548,31 @@ export default {
                 this.fetchUsers();
             }
         });
+
+    // 🔔 Renewals, on their own channel from admin.requirements: a review
+    // decision removes a card from the queue and can put the account back in the
+    // window, so these two lists refresh for opposite reasons and sharing a
+    // channel would make both refetch for either.
+    echo.private('admin.renewals')
+        .listen('.DocumentsRenewed', (e) => {
+            // Only the open modal renders documents; the user list does not, so
+            // there is nothing to refresh when no account is being inspected.
+            if (this.showViewModal && this.viewingUser?.id === e?.user_id) {
+                this.fetchUserRequirements(e.user_id);
+            }
+        })
+        .listen('.DocumentReviewDecided', (e) => {
+            // Scoped to the account on screen. Reloading on any decision would
+            // swap the admin's open modal to a different supplier.
+            if (this.showViewModal && this.viewingUser?.id === e?.user_id) {
+                this.fetchUserRequirements(e.user_id);
+            }
+        });
   },
   beforeUnmount() {
       echo.leave('admin.requirements');
       echo.leave('admin.support');
+      echo.leave('admin.renewals');
       if (this.activeChatUser) {
           echo.leave(`support.user.${this.activeChatUser.id}`);
       }
@@ -1567,6 +1835,154 @@ export default {
       this.currentImageTitle = title;
       this.showImageModalFlag = true;
     },
+
+    /**
+     * Record that the uploaded files were compared against the typed dates.
+     *
+     * Refetches afterwards rather than patching local state: the stamp and the
+     * per-document state both come from the server, and a second read is cheaper
+     * than a hand-rolled cache that could show a confirmation that never landed.
+     */
+    async verifyDocuments() {
+      const userId = this.viewingUser && this.viewingUser.id;
+
+      if (!userId || this.verifyingDocuments) return;
+
+      this.verifyingDocuments = true;
+
+      try {
+        const response = await api.post(`/admin/renewals/${userId}/verify-documents`, {});
+        toast.success(response.data.message || 'Documents verified.');
+        await this.fetchUserRequirements(userId);
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || 'Could not confirm the documents. Please try again.'
+        );
+      } finally {
+        this.verifyingDocuments = false;
+      }
+    },
+
+    rejectionReasonFor(documentKey) {
+      return (this.rejectionReasons[documentKey] || '').trim();
+    },
+
+    startRejection(documentKey) {
+      this.$set(this.rejectionReasons, documentKey, this.rejectionReasons[documentKey] || '');
+    },
+
+    cancelRejection(documentKey) {
+      this.$delete(this.rejectionReasons, documentKey);
+    },
+
+    /**
+     * Approve or reject one renewed document.
+     *
+     * Approval is a single click -- a renewal normally has two permits waiting and
+     * the admin reads each file once. Rejection is two steps by design: it notifies
+     * the user, and a reason typed on autopilot is worse than none.
+     */
+    async reviewDocument(documentKey, decision) {
+      const userId = this.viewingUser && this.viewingUser.id;
+
+      if (!userId || this.reviewingDocument) return;
+
+      const rejecting = decision === 'rejected';
+      const reason = this.rejectionReasonFor(documentKey);
+
+      if (rejecting && !reason) {
+        toast.error('Give a reason for the rejection so the user knows what to fix.');
+        return;
+      }
+
+      this.reviewingDocument = true;
+
+      try {
+        const response = await api.post(
+          `/admin/renewals/${userId}/documents/${documentKey}/review`,
+          { decision, rejection_reason: rejecting ? reason : null }
+        );
+
+        toast.success(response.data.message || `Document ${decision}.`);
+
+        this.$delete(this.rejectionReasons, documentKey);
+
+        // Refetched rather than patched: approving the last pending document also
+        // stamps the account's verification, so the badge above changes with it.
+        await this.fetchUserRequirements(userId);
+      } catch (error) {
+        toast.error(
+          error.response?.data?.message || `Could not ${decision} the document. Please try again.`
+        );
+      } finally {
+        this.reviewingDocument = false;
+      }
+    },
+
+    /**
+     * Date-only strings are formatted without `new Date(string)`.
+     *
+     * A bare 'YYYY-MM-DD' is parsed as UTC midnight, which renders as the previous
+     * day anywhere west of Greenwich -- so a permit would appear to expire a day
+     * early. Constructing from parts avoids the timezone entirely.
+     */
+    formatExpiryDate(value) {
+      if (!value) return 'Not set';
+
+      const [year, month, day] = String(value).slice(0, 10).split('-');
+
+      if (!year || !month || !day) return String(value);
+
+      return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    },
+
+    expiryCountdown(days) {
+      if (days === null || days === undefined) return '';
+
+      if (days < 0) return `Expired ${Math.abs(days)} day(s) ago`;
+
+      if (days === 0) return 'Expires today';
+
+      if (days === 1) return 'Expires tomorrow';
+
+      return `Expires in ${days} day(s)`;
+    },
+
+    expiryStateLabel(doc) {
+      switch (doc.state) {
+        case 'expired': return 'Expired';
+        case 'critical': return 'Urgent';
+        case 'warning': return 'Nearing expiry';
+        case 'missing': return 'No date';
+        default: return 'Valid';
+      }
+    },
+
+    expiryStateClass(state) {
+      switch (state) {
+        case 'expired': return 'bg-red-100 text-red-700';
+        case 'critical': return 'bg-red-50 text-red-700';
+        case 'warning': return 'bg-amber-100 text-amber-800';
+        case 'missing': return 'bg-slate-100 text-slate-600';
+        default: return 'bg-emerald-100 text-emerald-700';
+      }
+    },
+
+    expiryBorderClass(state) {
+      if (state === 'expired' || state === 'critical') return 'border-red-300';
+      if (state === 'warning') return 'border-amber-300';
+      return 'border-slate-200';
+    },
+
+    relatedStatusClass(status) {
+      if (status === 'approved') return 'bg-emerald-100 text-emerald-700';
+      if (status === 'rejected') return 'bg-red-100 text-red-700';
+      return 'bg-amber-100 text-amber-800';
+    },
     
     closeImageModal() {
       this.showImageModalFlag = false;
@@ -1600,6 +2016,12 @@ export default {
     async viewUser(user) {
       this.viewingUser = { ...user };
       this.showViewModal = true;
+
+      // Cleared, not kept: a rejection reason half-typed for the previous account
+      // must not follow the admin to the next one, where it would look like a
+      // considered judgement about somebody else's document.
+      this.rejectionReasons = {};
+
       await this.fetchUserRequirements(user.id);
     },
 

@@ -584,6 +584,26 @@ Route::middleware('auth:sanctum')->group(function () {
                 
                 Route::get('/statistics', [DistributorRequirementController::class, 'statistics']);
             });
+
+            // The dated documents as resources of their own. The key is in the URL
+            // so the body carries plain 'file' / 'expiration_date' fields, and one
+            // submission can never open two reviews by accident.
+            //
+            // POST, not PUT: PHP only parses multipart bodies for POST, so a PUT
+            // here would arrive with an empty $_POST/$_FILES and 422 a client that
+            // had plainly attached a file. Each call also opens a review rather
+            // than idempotently replacing one, so POST is the accurate verb anyway.
+            Route::post('/documents/{documentKey}', [DistributorRequirementController::class, 'replaceDocument']);
+
+            // Resolves the Location header returned by the submission above.
+            Route::get('/reviews/{reviewId}', [DistributorRequirementController::class, 'showReview']);
+
+            // Extras the distributor attached beyond the fixed document set.
+            // The show/store pair exists so the create can return a Location
+            // header that actually resolves.
+            Route::get('/related-documents/{documentId}', [DistributorRequirementController::class, 'showRelatedDocument']);
+            Route::post('/related-documents', [DistributorRequirementController::class, 'storeRelatedDocument']);
+            Route::delete('/related-documents/{documentId}', [DistributorRequirementController::class, 'destroyRelatedDocument']);
         });
         
 
@@ -757,6 +777,22 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'index']);
             Route::get('/statistics', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'statistics']);
             Route::put('/{id}/status', [\App\Http\Controllers\Api\Admin\TechnicalReportController::class, 'updateStatus']);
+        });
+
+        // --- ADMIN DOCUMENT RENEWALS ---
+        // Suppliers/distributors whose DTI Certificate or Mayor's Permit is inside
+        // the renewal window, plus the notify/terminate/revoke actions on it.
+        // No role middleware exists on this API, so the controller re-checks the
+        // admin role in every method.
+        Route::prefix('renewals')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'index']);
+            Route::get('/{userId}', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'show']);
+            Route::post('/{userId}/notify', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'sendNotification']);
+            Route::post('/{userId}/terminate', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'terminate']);
+            Route::post('/{userId}/revoke-termination', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'revokeTermination']);
+            Route::post('/{userId}/verify-documents', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'verifyDocuments']);
+            Route::post('/{userId}/documents/{documentKey}/review', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'reviewDocument']);
+            Route::post('/{userId}/related-documents/{documentId}/review', [\App\Http\Controllers\Api\Admin\RenewalController::class, 'reviewRelatedDocument']);
         });
 
         Route::prefix('users')->group(function () {
@@ -998,6 +1034,26 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'store']);
             
             Route::put('/info', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'updateSupplierInfo']);
+
+            // The dated documents as resources of their own. The key is in the URL
+            // so the body carries plain 'file' / 'expiration_date' fields, and one
+            // submission can never open two reviews by accident.
+            //
+            // POST, not PUT: PHP only parses multipart bodies for POST, so a PUT
+            // here would arrive with an empty $_POST/$_FILES and 422 a client that
+            // had plainly attached a file. Each call also opens a review rather
+            // than idempotently replacing one, so POST is the accurate verb anyway.
+            Route::post('/documents/{documentKey}', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'replaceDocument']);
+
+            // Resolves the Location header returned by the submission above.
+            Route::get('/reviews/{reviewId}', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'showReview']);
+
+            // Extras the supplier attached beyond the fixed document set.
+            // The show/store pair exists so the create can return a Location
+            // header that actually resolves.
+            Route::get('/related-documents/{documentId}', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'showRelatedDocument']);
+            Route::post('/related-documents', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'storeRelatedDocument']);
+            Route::delete('/related-documents/{documentId}', [\App\Http\Controllers\Api\Supplier\SupplierRequirementController::class, 'destroyRelatedDocument']);
 
             Route::prefix('address')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Api\Supplier\SupplierAddressController::class, 'index']);

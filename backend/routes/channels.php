@@ -334,6 +334,15 @@ Broadcast::channel('admin.requirements', function ($user) {
     return $user->role === 'admin';
 });
 
+// The renewal review queue, as opposed to first-time submissions. A separate
+// channel because the two lists refresh for opposite reasons: a new submission
+// only ever adds to admin.requirements, while a review decision removes the card
+// from the renewals queue and can re-add the account to it. Sharing one channel
+// would make every subscriber refetch both.
+Broadcast::channel('admin.renewals', function ($user) {
+    return $user->role === 'admin';
+});
+
 Broadcast::channel('user.{id}.requirements', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });

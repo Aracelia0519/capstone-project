@@ -18,6 +18,7 @@ import TechnicalReportsAd from '@/views/admin/TechnicalReportsAd.vue'
 import securitySettingsAd from '@/views/admin/securitySettingsAd.vue'
 import CardsAndRenewal from '@/views/admin/CardsAndRenewal.vue'
 import ECBannedUser from '@/views/admin/ECBannedUser.vue'
+import Renewals from '@/views/admin/Renewals.vue'
 
 
 import DistributorLayout from '@/layouts/DistributorLayout.vue'
@@ -592,6 +593,11 @@ const routes = [
         path: 'CardsAndRenewal',
         name: 'CardsAndRenewal',
         component: CardsAndRenewal
+      },
+      {
+        path: 'renewals',
+        name: 'Renewals',
+        component: Renewals
       },
       {
         path: 'ECBannedUser',
