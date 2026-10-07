@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\OperationDistributor;
 use App\Http\Controllers\Controller;
 use App\Models\OperationDistributor\DistributorInventory;
 use App\Models\OperationDistributor\DistributorInventoryBatch;
+use App\Models\OperationDistributor\InventoryLog;
 use App\Support\Inventory\BatchRules;
 use App\Support\Inventory\BatchInventoryService;
 use App\Support\Inventory\Exceptions\InvalidExpirationDate;
@@ -518,6 +519,8 @@ class ECInventoryController extends Controller
                 ->select(
                     'inactive_distributor_inventories.id',
                     'inactive_distributor_inventories.quantity',
+                    'inactive_distributor_inventories.batch_code',
+                    'inactive_distributor_inventories.expiration_date',
                     'inactive_distributor_inventories.previous_ecommerce_status',
                     'distributor_products.id as product_id',
                     'distributor_products.name',
@@ -545,6 +548,9 @@ class ECInventoryController extends Controller
                 }
                 
                 $item->image_url = $imageUrl;
+                // Surfaced so the Unavailable list can show the lot's original
+                // deadline while the stock waits to be reactivated.
+                $item->earliest_expiration = $item->expiration_date;
                 $item->ecommerce_status = 'inactive'; // Override status for UI consistency
                 return $item;
             });
@@ -651,39 +657,142 @@ class ECInventoryController extends Controller
 
             DB::beginTransaction();
 
-            // Check if an inactive record already exists for this specific product
+            // Record (or top up) the product-level inactive row first, so the
+            // per-lot rows below can hang off its id.
             $existingInactive = DB::table('inactive_distributor_inventories')
                 ->where('distributor_id', $inventory->distributor_id)
                 ->where('product_id', $inventory->product_id)
                 ->first();
 
             if ($existingInactive) {
-                // Increment the quantity in the existing inactive record
+                $inactiveId = $existingInactive->id;
+
                 DB::table('inactive_distributor_inventories')
-                    ->where('id', $existingInactive->id)
+                    ->where('id', $inactiveId)
                     ->update([
-                        'quantity' => $existingInactive->quantity + $qtyToDeactivate,
-                        'updated_at' => now()
+                        'quantity'   => $existingInactive->quantity + $qtyToDeactivate,
+                        'updated_at' => now(),
                     ]);
             } else {
-                // Insert a new inactive record
-                DB::table('inactive_distributor_inventories')->insert([
-                    'distributor_id' => $inventory->distributor_id,
-                    'product_id' => $inventory->product_id,
-                    'quantity' => $qtyToDeactivate,
+                $inactiveId = DB::table('inactive_distributor_inventories')->insertGetId([
+                    'distributor_id'            => $inventory->distributor_id,
+                    'product_id'                => $inventory->product_id,
+                    'quantity'                  => $qtyToDeactivate,
                     'previous_ecommerce_status' => $inventory->ecommerce_status,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
                 ]);
             }
 
-            // Deduct the quantity from active inventory
-            $inventory->quantity -= $qtyToDeactivate;
+            // ── Pull the units out of their lots FIRST ───────────────────
+            // Checkout draws stock from distributor_inventory_batches (FEFO),
+            // not from this row's cached `quantity`. A quantity that only
+            // leaves the rollup is still sellable — which is exactly how stock
+            // "marked unavailable" kept being purchased. Draining the lots
+            // (soonest expiry first, dead stock included) makes the units
+            // genuinely unsellable, and the inactive table keeps the record.
+            $liveBatches = DistributorInventoryBatch::query()
+                ->where('distributor_inventory_id', $inventory->id)
+                ->where('is_archived', false)
+                ->where('quantity', '>', 0)
+                ->orderByRaw(BatchRules::fefoOrderBy())
+                ->lockForUpdate()
+                ->get();
+
+            $remaining = (int) $qtyToDeactivate;
+
+            foreach ($liveBatches as $batch) {
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $take = min((int) $batch->quantity, $remaining);
+
+                $batch->decrement('quantity', $take);
+                $remaining -= $take;
+
+                if ((int) $batch->quantity <= 0) {
+                    $batch->delete();
+                }
+
+                // Keep the lot's identity with the units so reactivation can
+                // rebuild the very same batch code and expiration date.
+                DB::table('inactive_distributor_inventory_batches')->insert([
+                    'inactive_distributor_inventory_id' => $inactiveId,
+                    'distributor_id'                    => $inventory->distributor_id,
+                    'product_id'                        => $inventory->product_id,
+                    'batch_code'                        => $batch->batch_code,
+                    'expiration_date'                   => $batch->expiration_date?->toDateString(),
+                    'quantity'                          => $take,
+                    'created_at'                        => now(),
+                    'updated_at'                        => now(),
+                ]);
+
+                InventoryLog::create([
+                    'distributor_id'   => $inventory->distributor_id,
+                    'product_id'       => $inventory->product_id,
+                    'inventory_id'     => $inventory->id,
+                    'batch_code'       => $batch->batch_code,
+                    'expiration_date'  => $batch->expiration_date?->toDateString(),
+                    'quantity_added'   => 0,
+                    'quantity_removed' => $take,
+                    'event_type'       => 'deactivation',
+                    'user_id'          => $user->id,
+                    'notes'            => 'Marked unavailable for selling.',
+                ]);
+            }
+
+            // A stale rollup can claim more units than the lots actually hold.
+            // Move the remainder too so the on-screen stock and the inactive
+            // record still agree, and leave the drift visible in the audit.
+            if ($remaining > 0) {
+                DB::table('inactive_distributor_inventory_batches')->insert([
+                    'inactive_distributor_inventory_id' => $inactiveId,
+                    'distributor_id'                    => $inventory->distributor_id,
+                    'product_id'                        => $inventory->product_id,
+                    'batch_code'                        => null,
+                    'expiration_date'                   => null,
+                    'quantity'                          => $remaining,
+                    'created_at'                        => now(),
+                    'updated_at'                        => now(),
+                ]);
+
+                InventoryLog::create([
+                    'distributor_id'   => $inventory->distributor_id,
+                    'product_id'       => $inventory->product_id,
+                    'inventory_id'     => $inventory->id,
+                    'batch_code'       => null,
+                    'expiration_date'  => null,
+                    'quantity_added'   => 0,
+                    'quantity_removed' => $remaining,
+                    'event_type'       => 'deactivation',
+                    'user_id'          => $user->id,
+                    'notes'            => 'Stale rollup: no live lot held these units.',
+                ]);
+            }
+
+            // Keep the product-level row's display lot in step with what was
+            // actually moved (soonest expiry first, blanks last).
+            $summaryLot = DB::table('inactive_distributor_inventory_batches')
+                ->where('inactive_distributor_inventory_id', $inactiveId)
+                ->orderByRaw(BatchRules::fefoOrderBy())
+                ->first();
+
+            DB::table('inactive_distributor_inventories')
+                ->where('id', $inactiveId)
+                ->update([
+                    'batch_code'      => $summaryLot->batch_code ?? null,
+                    'expiration_date' => $summaryLot->expiration_date ?? null,
+                    'updated_at'      => now(),
+                ]);
+
+            // Rebuild the cached rollup from the lots that survived instead of
+            // subtracting by hand, so the two can never disagree. The row is
+            // retired once nothing sellable is left (its empty lots cascade).
+            $inventory->syncBatchTotals();
 
             if ($inventory->quantity <= 0) {
                 $inventory->delete();
-            } else {
-                $inventory->save();
             }
 
             DB::commit();
@@ -737,21 +846,85 @@ class ECInventoryController extends Controller
 
             DB::beginTransaction();
 
-            // Check if active inventory record exists for this product
+            // ── Put the units back into a REAL lot ────────────────────────
+            // The store and the checkout draw from distributor_inventory_batches
+            // (FEFO), so a quantity that only lands on the parent rollup can
+            // never be sold: the product looks restocked but every checkout
+            // fails with "insufficient stock". restockBatch() creates the lot
+            // and re-syncs the rollup, so activation is real.
             $activeInventory = DistributorInventory::where('distributor_id', $inactiveItem->distributor_id)
                 ->where('product_id', $inactiveItem->product_id)
                 ->first();
 
-            if ($activeInventory) {
-                $activeInventory->quantity += $qtyToReactivate;
-                $activeInventory->save();
-            } else {
+            if (! $activeInventory) {
+                // Fully deactivated products lost their row, so rebuild it with
+                // the e-commerce status it held before it was pulled away.
                 DistributorInventory::create([
                     'distributor_id' => $inactiveItem->distributor_id,
                     'product_id' => $inactiveItem->product_id,
-                    'quantity' => $qtyToReactivate,
+                    'quantity' => 0,
                     'ecommerce_status' => $inactiveItem->previous_ecommerce_status ?? 'not_deployed'
                 ]);
+            }
+
+            $service = app(BatchInventoryService::class);
+
+            // Rebuild the exact lots that were moved away: same batch code and
+            // same expiration date, consumed soonest-expiry first.
+            $inactiveLots = DB::table('inactive_distributor_inventory_batches')
+                ->where('inactive_distributor_inventory_id', $id)
+                ->where('quantity', '>', 0)
+                ->orderByRaw(BatchRules::fefoOrderBy())
+                ->get();
+
+            $remaining = (int) $qtyToReactivate;
+
+            foreach ($inactiveLots as $lot) {
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $take = min((int) $lot->quantity, $remaining);
+
+                $service->restockBatch(
+                    (int) $inactiveItem->distributor_id,
+                    (int) $inactiveItem->product_id,
+                    $take,
+                    $lot->batch_code ?: $service->generateBatchCode((int) $inactiveItem->product_id, 'DIST-RA'),
+                    $lot->expiration_date ?: BatchRules::minimumExpirationDate()->toDateString(),
+                    $user->id,
+                    'reactivation',
+                    'Returned from inactive storage.'
+                );
+
+                $remaining -= $take;
+
+                if ((int) $lot->quantity <= $take) {
+                    DB::table('inactive_distributor_inventory_batches')->where('id', $lot->id)->delete();
+                } else {
+                    DB::table('inactive_distributor_inventory_batches')
+                        ->where('id', $lot->id)
+                        ->update([
+                            'quantity'   => (int) $lot->quantity - $take,
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+
+            // Inactive rows created before lot tracking carry no per-lot rows.
+            // Fall back to the single lot remembered on the parent row (or a
+            // fresh one) so activation still works.
+            if ($remaining > 0) {
+                $service->restockBatch(
+                    (int) $inactiveItem->distributor_id,
+                    (int) $inactiveItem->product_id,
+                    $remaining,
+                    $inactiveItem->batch_code ?: $service->generateBatchCode((int) $inactiveItem->product_id, 'DIST-RA'),
+                    $inactiveItem->expiration_date ?: BatchRules::minimumExpirationDate()->toDateString(),
+                    $user->id,
+                    'reactivation',
+                    'Returned from inactive storage.'
+                );
             }
 
             // Deduct the quantity from the inactive inventory
@@ -760,11 +933,20 @@ class ECInventoryController extends Controller
             if ($newInactiveQty <= 0) {
                 DB::table('inactive_distributor_inventories')->where('id', $id)->delete();
             } else {
+                // Point the product-level row at whichever lot is left next.
+                $nextLot = DB::table('inactive_distributor_inventory_batches')
+                    ->where('inactive_distributor_inventory_id', $id)
+                    ->where('quantity', '>', 0)
+                    ->orderByRaw(BatchRules::fefoOrderBy())
+                    ->first();
+
                 DB::table('inactive_distributor_inventories')
                     ->where('id', $id)
                     ->update([
-                        'quantity' => $newInactiveQty,
-                        'updated_at' => now()
+                        'quantity'        => $newInactiveQty,
+                        'batch_code'      => $nextLot->batch_code ?? $inactiveItem->batch_code,
+                        'expiration_date' => $nextLot->expiration_date ?? $inactiveItem->expiration_date,
+                        'updated_at'      => now(),
                     ]);
             }
 

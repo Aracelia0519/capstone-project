@@ -640,13 +640,42 @@ class CartController extends Controller
             $distributorTotals = [];
             $totalQuantity = 0;
 
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
+
             foreach ($cacheData['items'] as $item) {
+                // ── Deduct stock FEFO BEFORE recording the line ───────────
+                // distributor_inventories.quantity is only a cache of the batch
+                // totals; checkout and the shop draw from
+                // distributor_inventory_batches. The old rollup-only deduction
+                // therefore left the real stock untouched — a paid GCash order
+                // never reduced what the store could sell. Runs first so an
+                // insufficient-stock failure aborts the whole order.
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: (int) $item['distributor_id'],
+                        productId: (int) $item['product_id'],
+                        quantity: (int) $item['quantity'],
+                        actorId: (int) $cacheData['user_id'],
+                        eventType: 'sale',
+                        notes: "Client order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                // The soonest-dated batch that supplied this line, recorded on the
+                // order item so a failed delivery can return the goods to the very
+                // lot they came from.
+                $primaryBatch = collect($drawnBatches)->first();
+
                 ClientOrderItem::create([
                     'order_id' => $order->id,
                     'distributor_id' => $item['distributor_id'],
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
-                    'price' => $item['price'] 
+                    'price' => $item['price'],
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $totalQuantity += $item['quantity'];
@@ -663,34 +692,10 @@ class CartController extends Controller
                     'distributor_name' => $item['distributor_name'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
-                    'total' => $itemTotal
+                    'total' => $itemTotal,
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ];
-
-                $remainingToDeduct = $item['quantity'];
-                $inventories = DistributorInventory::where('product_id', $item['product_id'])
-                    ->where('distributor_id', $item['distributor_id'])
-                    ->where('ecommerce_status', 'deployed')
-                    ->where('quantity', '>', 0)
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inventory) {
-                    if ($remainingToDeduct <= 0) break;
-                    if ($inventory->quantity >= $remainingToDeduct) {
-                        $inventory->quantity -= $remainingToDeduct;
-                        $inventory->save();
-                        $remainingToDeduct = 0;
-                    } else {
-                        $remainingToDeduct -= $inventory->quantity;
-                        $inventory->quantity = 0;
-                        $inventory->save();
-                    }
-                }
-
-                if ($remainingToDeduct > 0) {
-                    throw new \Exception("Not enough stock remaining for {$item['product_name']}.");
-                }
             }
 
             foreach ($distributorTotals as $distributorId => $itemsTotal) {

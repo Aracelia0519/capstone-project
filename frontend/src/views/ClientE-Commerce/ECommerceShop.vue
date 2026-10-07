@@ -100,20 +100,7 @@
           </div>
         </div>
 
-        <div class="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <Label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Brand</Label>
-            <Select v-model="selectedBrand">
-              <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
-                <SelectValue placeholder="All Brands" />
-              </SelectTrigger>
-              <SelectContent class="z-[10000]">
-                <SelectItem value="all_brands_reset">All Brands</SelectItem>
-                <SelectItem v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div class="mt-5 grid grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <Label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Type</Label>
             <Select v-model="selectedType">
@@ -128,14 +115,14 @@
           </div>
 
           <div>
-            <Label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Finish</Label>
-            <Select v-model="selectedFinish">
+            <Label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category</Label>
+            <Select v-model="selectedCategory">
               <SelectTrigger class="rounded-xl bg-gray-50 border-transparent hover:bg-gray-100 transition-colors">
-                <SelectValue placeholder="All Finishes" />
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent class="z-[10000]">
-                <SelectItem value="all_finishes_reset">All Finishes</SelectItem>
-                <SelectItem v-for="finish in finishes" :key="finish" :value="finish">{{ finish }}</SelectItem>
+                <SelectItem value="all_categories_reset">All Categories</SelectItem>
+                <SelectItem v-for="category in categories" :key="category" :value="category">{{ category }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -148,7 +135,7 @@
               </SelectTrigger>
               <SelectContent class="z-[10000]">
                 <SelectItem value="all_prices_reset">All Prices</SelectItem>
-                <SelectItem v-for="price in priceRanges" :key="price" :value="price">{{ price }}</SelectItem>
+                <SelectItem v-for="price in priceRanges" :key="price.label" :value="price.label">{{ price.label }}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -197,6 +184,7 @@
                   <SelectItem value="name">Name</SelectItem>
                   <SelectItem value="price-low">Price: Low to High</SelectItem>
                   <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -245,19 +233,7 @@
                     <p class="text-sm text-gray-500 line-clamp-1">{{ variant.type }} </p>
                   </div>
 
-                  <div class="mt-3 w-full" @click.stop>
-                    <Label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">Select Variant Option</Label>
-                    <Select v-model="selectedGroupVariants[group.id]">
-                      <SelectTrigger class="w-full h-8 text-xs bg-gray-50 border-gray-200">
-                        <SelectValue placeholder="Choose a variant" />
-                      </SelectTrigger>
-                      <SelectContent class="z-[10000]">
-                        <SelectItem v-for="v in group.variants" :key="v.id.toString()" :value="v.id.toString()" class="text-xs">
-                           {{ v.size || 'Standard' }} <template v-if="v.color && v.color !== '#ffffff'"> • {{ v.color }}</template> <span class="text-gray-400 ml-1">₱{{ formatCurrency(v.price) }}</span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  
 
                   <div class="mt-4 flex justify-between items-end">
                     <div>
@@ -285,35 +261,7 @@
                     </span>
                   </div>
                   
-                  <div class="flex gap-2 w-full">
-                    <Button
-                      @click.stop="openCartModal(variant)"
-                      :disabled="variant.stock <= 0"
-                      variant="outline"
-                      :class="[
-                        'flex-1 rounded-xl transition-all',
-                        variant.stock <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400 border-gray-100' : 'border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold'
-                      ]"
-                    >
-                      <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                      </svg>
-                      Cart
-                    </Button>
-                    
-                    <Button
-                      @click.stop="openOrderModal(variant)"
-                      :disabled="variant.stock <= 0"
-                      :class="[
-                        'flex-1 rounded-xl font-semibold transition-all border-0',
-                        variant.stock <= 0
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed hover:bg-gray-200'
-                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg'
-                      ]"
-                    >
-                      {{ variant.stock <= 0 ? 'Out of Stock' : 'Order Now' }}
-                    </Button>
-                  </div>
+                  
                 </CardFooter>
               </div>
             </template>
@@ -1346,74 +1294,155 @@ const verifyGcashPayment = async (orderNumber) => {
   }
 }
 
-const quickFilters = ref([
-  { id: 'interior', label: 'Interior', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-  { id: 'exterior', label: 'Exterior', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064' },
-  { id: 'low-price', label: 'Under ₱1,500', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { id: 'eco', label: 'Eco-Friendly', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
-])
+// ---------------------------------------------------------------------------
+// FILTER OPTIONS
+// Every option below is derived from the products actually returned by the
+// API (i.e. the distributor_products / distributor_inventories tables), so
+// the controls always reflect real database values instead of hardcoded ones.
+// ---------------------------------------------------------------------------
+const uniqueValues = (key) => computed(() =>
+  [...new Set(products.value.map(p => p && p[key]).filter(Boolean))]
+    .sort((a, b) => String(a).localeCompare(String(b)))
+)
 
-const brands = ref(['Distributor Brand', 'CaviteGo', 'EcoPaint', 'ColorMax'])
-const types = ref(['Latex / Acrylic', 'Water-based', 'Waterproof', 'Interior', 'Exterior', 'Primer', 'Top Coat'])
-const finishes = ref(['Standard', 'Matte', 'Gloss', 'Satin', 'Semi-Gloss', 'Flat'])
-const priceRanges = ref(['Under ₱1,000', '₱1,000 - ₱2,000', '₱2,000 - ₱3,000', 'Over ₱3,000'])
+// Real database columns: category, type
+const categories = uniqueValues('category')
+const types = uniqueValues('type')
+
+const validPrices = computed(() =>
+  products.value.map(p => Number(p.price)).filter(v => Number.isFinite(v) && v > 0)
+)
+
+// Price buckets generated from the actual price spread in the database
+const priceRanges = computed(() => {
+  const prices = validPrices.value
+  if (prices.length < 2) return []
+
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  if (max <= min) return []
+
+  const steps = [50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000]
+  const target = (max - min) / 4
+  const step = steps.find(s => s >= target) || Math.ceil(target / 1000) * 1000
+  const start = Math.floor(min / step) * step
+  const money = (v) => Number(v).toLocaleString('en-PH')
+
+  const buckets = []
+  for (let bucketMin = start; bucketMin <= max; bucketMin += step) {
+    const bucketMax = bucketMin + step
+    if (bucketMax > max) {
+      buckets.push({ label: `₱${money(bucketMin)} & Above`, min: bucketMin, max: null })
+      break
+    }
+    if (bucketMin < min) {
+      buckets.push({ label: `Under ₱${money(bucketMax)}`, min: bucketMin, max: bucketMax })
+    } else {
+      buckets.push({ label: `₱${money(bucketMin)} - ₱${money(bucketMax)}`, min: bucketMin, max: bucketMax })
+    }
+  }
+  return buckets
+})
+
+// Median of the live prices, rounded up to the nearest 50 — used by the
+// budget quick chip so it always splits the current data meaningfully.
+const budgetThreshold = computed(() => {
+  const prices = validPrices.value
+  if (prices.length < 2) return null
+
+  const sorted = [...prices].sort((a, b) => a - b)
+  if (sorted[sorted.length - 1] <= sorted[0]) return null
+
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+  return Math.ceil(median / 50) * 50
+})
+
+// Quick chips are only shown when the database actually contains matching data
+const quickFilters = computed(() => {
+  const hasCategory = (needle) => products.value.some(p => p.category && p.category.toLowerCase().includes(needle))
+  const chips = []
+
+  if (hasCategory('interior')) {
+    chips.push({ id: 'interior', label: 'Interior', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' })
+  }
+  if (hasCategory('exterior')) {
+    chips.push({ id: 'exterior', label: 'Exterior', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064' })
+  }
+  if (products.value.some(p => p.promotion)) {
+    chips.push({ id: 'sale', label: 'On Sale', icon: 'M19 5L5 19M6.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM20.5 15.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z' })
+  }
+  if (budgetThreshold.value !== null) {
+    chips.push({
+      id: 'budget',
+      label: `Under ₱${budgetThreshold.value.toLocaleString('en-PH')}`,
+      icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    })
+  }
+  return chips
+})
 
 const searchQuery = ref('')
 const activeFilters = ref([])
-const selectedBrand = ref('')
 const selectedType = ref('')
-const selectedFinish = ref('')
+const selectedCategory = ref('')
 const selectedPrice = ref('')
 const sortBy = ref('name')
 
-watch([selectedBrand, selectedType, selectedFinish, selectedPrice], ([newBrand, newType, newFinish, newPrice]) => {
-    if (newBrand === 'all_brands_reset') selectedBrand.value = ''
+watch([selectedType, selectedCategory, selectedPrice], ([newType, newCategory, newPrice]) => {
     if (newType === 'all_types_reset') selectedType.value = ''
-    if (newFinish === 'all_finishes_reset') selectedFinish.value = ''
+    if (newCategory === 'all_categories_reset') selectedCategory.value = ''
     if (newPrice === 'all_prices_reset') selectedPrice.value = ''
+})
+
+// Remove any active chip whose source data is no longer present
+watch(quickFilters, (chips) => {
+  const ids = chips.map(chip => chip.id)
+  activeFilters.value = activeFilters.value.filter(id => ids.includes(id))
 })
 
 const filteredProducts = computed(() => {
   let filtered = [...products.value]
 
   if (searchQuery.value) {
-    filtered = filtered.filter(p => 
-      (p.name && p.name.toLowerCase().includes(searchQuery.value.toLowerCase())) ||
-      (p.brand && p.brand.toLowerCase().includes(searchQuery.value.toLowerCase()))
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p =>
+      (p.name && p.name.toLowerCase().includes(query)) ||
+      (p.brand && p.brand.toLowerCase().includes(query)) ||
+      (p.category && p.category.toLowerCase().includes(query)) ||
+      (p.type && p.type.toLowerCase().includes(query)) ||
+      (p.size && p.size.toLowerCase().includes(query))
     )
   }
 
+  // Quick chips — matched against real database columns
   if (activeFilters.value.includes('interior')) {
-    filtered = filtered.filter(p => p.type && p.type.toLowerCase().includes('interior'))
+    filtered = filtered.filter(p => p.category && p.category.toLowerCase().includes('interior'))
   }
   if (activeFilters.value.includes('exterior')) {
-    filtered = filtered.filter(p => p.type && p.type.toLowerCase().includes('exterior'))
+    filtered = filtered.filter(p => p.category && p.category.toLowerCase().includes('exterior'))
   }
-  if (activeFilters.value.includes('low-price')) {
-    filtered = filtered.filter(p => p.price < 1500)
+  if (activeFilters.value.includes('sale')) {
+    filtered = filtered.filter(p => !!p.promotion)
   }
-  if (activeFilters.value.includes('eco')) {
-    filtered = filtered.filter(p => p.brand === 'EcoPaint')
+  if (activeFilters.value.includes('budget') && budgetThreshold.value !== null) {
+    filtered = filtered.filter(p => Number(p.price) < budgetThreshold.value)
   }
 
-  if (selectedBrand.value && selectedBrand.value !== 'all_brands_reset') {
-    filtered = filtered.filter(p => p.brand === selectedBrand.value)
-  }
   if (selectedType.value && selectedType.value !== 'all_types_reset') {
     filtered = filtered.filter(p => p.type === selectedType.value)
   }
-  if (selectedFinish.value && selectedFinish.value !== 'all_finishes_reset') {
-    filtered = filtered.filter(p => p.finish === selectedFinish.value)
+  if (selectedCategory.value && selectedCategory.value !== 'all_categories_reset') {
+    filtered = filtered.filter(p => p.category === selectedCategory.value)
   }
   if (selectedPrice.value && selectedPrice.value !== 'all_prices_reset') {
-    if (selectedPrice.value === 'Under ₱1,000') {
-      filtered = filtered.filter(p => p.price < 1000)
-    } else if (selectedPrice.value === '₱1,000 - ₱2,000') {
-      filtered = filtered.filter(p => p.price >= 1000 && p.price <= 2000)
-    } else if (selectedPrice.value === '₱2,000 - ₱3,000') {
-      filtered = filtered.filter(p => p.price >= 2000 && p.price <= 3000)
-    } else if (selectedPrice.value === 'Over ₱3,000') {
-      filtered = filtered.filter(p => p.price > 3000)
+    const bucket = priceRanges.value.find(b => b.label === selectedPrice.value)
+    if (bucket) {
+      const upperBound = bucket.max === null ? Infinity : bucket.max
+      filtered = filtered.filter(p => {
+        const price = Number(p.price)
+        return Number.isFinite(price) && price >= bucket.min && price < upperBound
+      })
     }
   }
   
@@ -1433,6 +1462,7 @@ const groupedProducts = computed(() => {
         brand: p.brand,
         type: p.type,
         category: p.category,
+        createdAt: '',
         variants: [],
         minPrice: Number(p.price) || 0,
         maxPrice: Number(p.price) || 0
@@ -1444,6 +1474,9 @@ const groupedProducts = computed(() => {
     const price = Number(p.price) || 0
     if (price < groups[key].minPrice) groups[key].minPrice = price
     if (price > groups[key].maxPrice) groups[key].maxPrice = price
+
+    const createdAt = p.created_at ? String(p.created_at) : ''
+    if (createdAt > groups[key].createdAt) groups[key].createdAt = createdAt
   })
   
   return Object.values(groups)
@@ -1473,6 +1506,8 @@ const sortedGroups = computed(() => {
     res.sort((a, b) => a.minPrice - b.minPrice)
   } else if (sortBy.value === 'price-high') {
     res.sort((a, b) => b.maxPrice - a.maxPrice)
+  } else if (sortBy.value === 'newest') {
+    res.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
   }
   
   return res
@@ -1482,17 +1517,24 @@ const toggleFilter = (filterId) => {
   const index = activeFilters.value.indexOf(filterId)
   if (index > -1) {
     activeFilters.value.splice(index, 1)
-  } else {
-    activeFilters.value.push(filterId)
+    return
   }
+
+  // Interior/Exterior come from the same database column, so only one
+  // category chip can be active at a time.
+  const categoryChips = ['interior', 'exterior']
+  if (categoryChips.includes(filterId)) {
+    activeFilters.value = activeFilters.value.filter(id => !categoryChips.includes(id))
+  }
+
+  activeFilters.value.push(filterId)
 }
 
 const clearFilters = () => {
   searchQuery.value = ''
   activeFilters.value = []
-  selectedBrand.value = ''
   selectedType.value = ''
-  selectedFinish.value = ''
+  selectedCategory.value = ''
   selectedPrice.value = ''
   sortBy.value = 'name'
 }

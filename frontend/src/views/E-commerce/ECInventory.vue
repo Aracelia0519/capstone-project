@@ -375,7 +375,7 @@
                       Min: {{ item.min_stock_level }}
                     </span>
                     <span
-                      v-if="activeTab === 'active' && item.earliest_expiration"
+                      v-if="item.earliest_expiration"
                       class="text-[10px] uppercase tracking-wider"
                       :class="expiryTone(item.earliest_expiration)"
                     >

@@ -718,43 +718,41 @@ class ShopController extends Controller
                 ]);
             }
 
+            // ── Deduct stock FEFO BEFORE recording the line ───────────
+            // distributor_inventories.quantity is only a cache of the batch
+            // totals; the store and checkout draw from
+            // distributor_inventory_batches. Deducting the rollup alone left the
+            // real stock untouched, so an "Order Now" sale never reduced what
+            // could actually be sold. sellFefo() throws on a shortfall, rolling
+            // the whole order back instead of overselling.
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
+            try {
+                $drawnBatches = $inventoryService->sellFefo(
+                    distributorId: (int) $request->distributor_id,
+                    productId: (int) $product->id,
+                    quantity: (int) $request->quantity,
+                    actorId: $user->id,
+                    eventType: 'sale',
+                    notes: "Client order #{$order->id}"
+                );
+            } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                throw new \Exception($e->getMessage(), 0, $e);
+            }
+
+            $primaryBatch = collect($drawnBatches)->first();
+
             ClientOrderItem::create([
                 'order_id' => $order->id,
                 'distributor_id' => $request->distributor_id,
                 'product_id' => $product->id,
                 'quantity' => $request->quantity,
-                'price' => $discountedPrice 
+                'price' => $discountedPrice,
+                'batch_code' => $primaryBatch?->batch_code,
+                'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
             ]);
 
             if ($promotion) {
                 DB::table('crm_promotions')->where('id', $promotion->id)->increment('used_count');
-            }
-
-            $remainingToDeduct = $request->quantity;
-            $inventories = DistributorInventory::where('product_id', $product->id)
-                ->where('distributor_id', $request->distributor_id)
-                ->where('ecommerce_status', 'deployed')
-                ->where('quantity', '>', 0)
-                ->orderBy('created_at', 'asc') 
-                ->lockForUpdate() 
-                ->get();
-
-            foreach ($inventories as $inventory) {
-                if ($remainingToDeduct <= 0) break;
-
-                if ($inventory->quantity >= $remainingToDeduct) {
-                    $inventory->quantity -= $remainingToDeduct;
-                    $inventory->save();
-                    $remainingToDeduct = 0;
-                } else {
-                    $remainingToDeduct -= $inventory->quantity;
-                    $inventory->quantity = 0;
-                    $inventory->save();
-                }
-            }
-
-            if ($remainingToDeduct > 0) {
-                throw new \Exception('Not enough active stock across inventory records.');
             }
 
             DB::commit();
@@ -873,14 +871,33 @@ class ShopController extends Controller
 
             $receiptItems = [];
             $distributorIdToCredit = null;
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
             foreach ($cacheData['items'] as $item) {
+                // Deduct the real FEFO batch stock first (see orderNow).
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: (int) $item['distributor_id'],
+                        productId: (int) $item['product_id'],
+                        quantity: (int) $item['quantity'],
+                        actorId: (int) $cacheData['user_id'],
+                        eventType: 'sale',
+                        notes: "Client order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                $primaryBatch = collect($drawnBatches)->first();
+
                 ClientOrderItem::create([
                     'order_id' => $order->id,
                     'distributor_id' => $item['distributor_id'],
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
-                    'price' => $item['price'] 
+                    'price' => $item['price'],
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $distributorIdToCredit = $item['distributor_id'];
@@ -892,32 +909,6 @@ class ShopController extends Controller
                     'price' => $item['price'],
                     'total' => $item['price'] * $item['quantity']
                 ];
-
-                $remainingToDeduct = $item['quantity'];
-                $inventories = DistributorInventory::where('product_id', $item['product_id'])
-                    ->where('distributor_id', $item['distributor_id'])
-                    ->where('ecommerce_status', 'deployed')
-                    ->where('quantity', '>', 0)
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inventory) {
-                    if ($remainingToDeduct <= 0) break;
-                    if ($inventory->quantity >= $remainingToDeduct) {
-                        $inventory->quantity -= $remainingToDeduct;
-                        $inventory->save();
-                        $remainingToDeduct = 0;
-                    } else {
-                        $remainingToDeduct -= $inventory->quantity;
-                        $inventory->quantity = 0;
-                        $inventory->save();
-                    }
-                }
-
-                if ($remainingToDeduct > 0) {
-                    throw new \Exception("Not enough stock remaining for {$item['product_name']}.");
-                }
             }
 
             if ($distributorIdToCredit) {

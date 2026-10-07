@@ -793,12 +793,33 @@ class SpShopController extends Controller
                 'delivery_address' => $fullAddress,
             ]);
 
+            // Deduct real FEFO batch stock before recording the line. The rollup
+            // is only a cache of the batch totals, so deducting it alone left the
+            // real stock untouched (see the client shop).
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
+            try {
+                $drawnBatches = $inventoryService->sellFefo(
+                    distributorId: (int) $request->distributor_id,
+                    productId: (int) $product->id,
+                    quantity: (int) $request->quantity,
+                    actorId: $user->id,
+                    eventType: 'sale',
+                    notes: "Service provider order #{$order->id}"
+                );
+            } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                throw new \Exception($e->getMessage(), 0, $e);
+            }
+
+            $primaryBatch = collect($drawnBatches)->first();
+
             SpOrderItem::create([
                 'sp_order_id' => $order->id,
                 'distributor_id' => $request->distributor_id,
                 'product_id' => $product->id,
                 'quantity' => $request->quantity,
                 'price' => $discountedPrice,
+                'batch_code' => $primaryBatch?->batch_code,
+                'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
             ]);
 
             DB::table('order_vat_deductions')->insert([
@@ -811,32 +832,6 @@ class SpShopController extends Controller
 
             if ($promotion) {
                 DB::table('crm_promotions')->where('id', $promotion->id)->increment('used_count');
-            }
-
-            $deduction = $request->quantity;
-            $inventories = DistributorInventory::where('product_id', $product->id)
-                ->where('distributor_id', $request->distributor_id)
-                ->where('ecommerce_status', 'deployed')
-                ->where('quantity', '>', 0)
-                ->orderBy('created_at', 'asc')
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($inventories as $inv) {
-                if ($deduction <= 0) break;
-                if ($inv->quantity >= $deduction) {
-                    $inv->quantity -= $deduction;
-                    $inv->save();
-                    $deduction = 0;
-                } else {
-                    $deduction -= $inv->quantity;
-                    $inv->quantity = 0;
-                    $inv->save();
-                }
-            }
-
-            if ($deduction > 0) {
-                throw new \Exception('Not enough active stock to fulfill this order.');
             }
 
             DB::commit();
@@ -955,14 +950,33 @@ class SpShopController extends Controller
 
             $receiptItems = [];
             $distributorIdToCredit = null;
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
 
             foreach ($cacheData['items'] as $item) {
+                // Deduct the real FEFO batch stock first (see orderNow).
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: (int) $item['distributor_id'],
+                        productId: (int) $item['product_id'],
+                        quantity: (int) $item['quantity'],
+                        actorId: (int) $cacheData['service_provider_id'],
+                        eventType: 'sale',
+                        notes: "Service provider order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                $primaryBatch = collect($drawnBatches)->first();
+
                 SpOrderItem::create([
                     'sp_order_id' => $order->id,
                     'distributor_id' => $item['distributor_id'],
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $distributorIdToCredit = $item['distributor_id'];
@@ -974,32 +988,6 @@ class SpShopController extends Controller
                     'price' => $item['price'],
                     'total' => $item['price'] * $item['quantity']
                 ];
-
-                $deduction = $item['quantity'];
-                $inventories = DistributorInventory::where('product_id', $item['product_id'])
-                    ->where('distributor_id', $item['distributor_id'])
-                    ->where('ecommerce_status', 'deployed')
-                    ->where('quantity', '>', 0)
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inv) {
-                    if ($deduction <= 0) break;
-                    if ($inv->quantity >= $deduction) {
-                        $inv->quantity -= $deduction;
-                        $inv->save();
-                        $deduction = 0;
-                    } else {
-                        $deduction -= $inv->quantity;
-                        $inv->quantity = 0;
-                        $inv->save();
-                    }
-                }
-                
-                if ($deduction > 0) {
-                    throw new \Exception("Not enough stock remaining for {$item['product_name']}.");
-                }
             }
 
             DB::table('order_vat_deductions')->insert([

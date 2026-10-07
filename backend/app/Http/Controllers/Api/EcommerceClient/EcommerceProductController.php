@@ -54,6 +54,7 @@ class EcommerceProductController extends Controller
             $products = $query->select(
                 'dp.id', 'dp.distributor_id', 'dp.name', 'dp.category', 'dp.type', 
                 'dp.size', 'dp.color_code as color', 'dp.price', 'dp.image_url',
+                'dp.created_at',
                 'u.full_name as distributor_name',
                 'di.quantity as stock'
             )->get();
@@ -61,10 +62,12 @@ class EcommerceProductController extends Controller
             // 3. Independent safe mapping for Distributor Addresses to prevent LeftJoin NULL crashes
             $distributorIds = $products->pluck('distributor_id')->unique();
             $addresses = [];
+            $companyNames = [];
             
             foreach ($distributorIds as $dId) {
                 $req = DB::table('distributor_requirements')->where('user_id', $dId)->first();
                 if ($req) {
+                    $companyNames[$dId] = $req->company_name;
                     $addr = DB::table('distributor_addresses')->where('distributor_requirements_id', $req->id)->first();
                     if ($addr) {
                         $addresses[$dId] = [
@@ -95,9 +98,13 @@ class EcommerceProductController extends Controller
                 ->keyBy('product_id');
 
             // 5. Format Output for Vue (Injecting Coordinates & Hashids cleanly)
-            $formatted = $products->map(function($p) use ($promotions, $reviews, $addresses) {
+            $formatted = $products->map(function($p) use ($promotions, $reviews, $addresses, $companyNames) {
                 $promo = $promotions->get($p->id);
                 $review = $reviews->get($p->id);
+
+                // Display the distributor's registered company name on products,
+                // falling back to their full name when none is registered.
+                $sellerName = ($companyNames[$p->distributor_id] ?? null) ?: $p->distributor_name;
                 
                 $originalPrice = $p->price;
                 $currentPrice = $p->price;
@@ -119,13 +126,14 @@ class EcommerceProductController extends Controller
                     'hash_id' => Hashids::encode($p->id),
                     'distributor_id' => $p->distributor_id,
                     'name' => $p->name,
-                    'brand' => $p->distributor_name, 
-                    'distributor_name' => $p->distributor_name,
+                    'brand' => $sellerName, 
+                    'distributor_name' => $sellerName,
                     'category' => $p->category,
                     'type' => $p->type,
                     'finish' => 'Standard',
                     'size' => $p->size,
                     'color' => $p->color,
+                    'created_at' => $p->created_at,
                     'price' => (float)$currentPrice,
                     'original_price' => (float)$originalPrice,
                     'stock' => (int)$p->stock,
@@ -215,6 +223,10 @@ class EcommerceProductController extends Controller
             $lat = $addr ? $addr->latitude : 0;
             $lng = $addr ? $addr->longitude : 0;
 
+            // Display the distributor's registered company name on the product,
+            // falling back to their full name when none is registered.
+            $sellerName = ($req->company_name ?? null) ?: $p->distributor_name;
+
             // Variants Query
             $variantsQuery = DB::table('distributor_products as dp')
                 ->leftJoin('distributor_inventories as di', 'dp.id', '=', 'di.product_id')
@@ -257,8 +269,8 @@ class EcommerceProductController extends Controller
                 'hash_id' => Hashids::encode($p->id),
                 'distributor_id' => $p->distributor_id,
                 'name' => $p->name,
-                'brand' => $p->distributor_name,
-                'distributor_name' => $p->distributor_name,
+                'brand' => $sellerName,
+                'distributor_name' => $sellerName,
                 'type' => $p->type,
                 'category' => $p->category,
                 'price' => (float)$p->price,

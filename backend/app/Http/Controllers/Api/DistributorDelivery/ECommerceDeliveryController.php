@@ -560,7 +560,10 @@ class ECommerceDeliveryController extends Controller
                         quantity: (int) $item->quantity,
                         batchCode: $item->batch_code,
                         expirationDate: $item->expiration_date,
-                        actorId: $delivery->delivery_personnel_id ?? null,
+                        // actorId lands in inventory_logs.user_id, which is a FK to
+                        // users. delivery_personnel_id is an hr_employees id, so it
+                        // is NOT a valid user id and made the restock roll back.
+                        actorId: $user->id,
                         eventType: 'restock',
                         notes: "Client order #{$delivery->order_id} returned to HQ"
                     );
@@ -585,7 +588,9 @@ class ECommerceDeliveryController extends Controller
                         quantity: (int) $item->quantity,
                         batchCode: $item->batch_code,
                         expirationDate: $item->expiration_date,
-                        actorId: $delivery->delivery_personnel_id ?? null,
+                        // See the client branch: actorId must be a users.id, not
+                        // the hr_employees id stored in delivery_personnel_id.
+                        actorId: $user->id,
                         eventType: 'restock',
                         notes: "Service provider order #{$delivery->sp_order_id} returned to HQ"
                     );

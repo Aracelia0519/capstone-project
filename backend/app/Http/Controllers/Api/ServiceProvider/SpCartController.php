@@ -615,13 +615,37 @@ class SpCartController extends Controller
             $distributorTotals = [];
             $totalQuantity = 0;
 
+            $inventoryService = app(\App\Support\Inventory\BatchInventoryService::class);
+
             foreach ($cacheData['items'] as $cItem) {
+                // ── Deduct stock FEFO BEFORE recording the line ───────────
+                // Same reasoning as the client cart: the batch lots are the real
+                // stock. The old rollup-only deduction let GCash orders ship
+                // without ever reducing what checkout could sell, and it ignored
+                // ecommerce_status entirely, so it could even eat inactive stock.
+                try {
+                    $drawnBatches = $inventoryService->sellFefo(
+                        distributorId: (int) $cItem['distributor_id'],
+                        productId: (int) $cItem['product_id'],
+                        quantity: (int) $cItem['quantity'],
+                        actorId: (int) $cacheData['service_provider_id'],
+                        eventType: 'sale',
+                        notes: "Service provider order #{$order->id}"
+                    );
+                } catch (\App\Support\Inventory\Exceptions\InsufficientStock $e) {
+                    throw new \Exception($e->getMessage(), 0, $e);
+                }
+
+                $primaryBatch = collect($drawnBatches)->first();
+
                 SpOrderItem::create([
                     'sp_order_id' => $order->id,
                     'distributor_id' => $cItem['distributor_id'],
                     'product_id' => $cItem['product_id'],
                     'quantity' => $cItem['quantity'],
                     'price' => $cItem['price'],
+                    'batch_code' => $primaryBatch?->batch_code,
+                    'expiration_date' => $primaryBatch?->expiration_date?->toDateString(),
                 ]);
 
                 $totalQuantity += $cItem['quantity'];
@@ -640,26 +664,6 @@ class SpCartController extends Controller
                     'price' => $cItem['price'],
                     'total' => $itemTotal
                 ];
-
-                $deduction = $cItem['quantity'];
-                $inventories = DistributorInventory::where('product_id', $cItem['product_id'])
-                    ->where('distributor_id', $cItem['distributor_id'])
-                    ->orderBy('created_at', 'asc')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($inventories as $inv) {
-                    if ($deduction <= 0) break;
-                    if ($inv->quantity >= $deduction) {
-                        $inv->quantity -= $deduction;
-                        $inv->save();
-                        $deduction = 0;
-                    } else {
-                        $deduction -= $inv->quantity;
-                        $inv->quantity = 0;
-                        $inv->save();
-                    }
-                }
             }
 
             // ========================================================================

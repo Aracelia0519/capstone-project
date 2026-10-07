@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *   manual_adjustment    a correction made by staff
  *   archive              units pulled out of the active supply chain
  *   deactivation         units moved to the inactive table
+ *   reactivation         units returned from the inactive table
  */
 class InventoryLog extends Model
 {

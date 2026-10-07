@@ -365,6 +365,7 @@
                       <span>Estimated Shipping</span>
                       <span>
                         <span v-if="paymentMethod === 'pick-up'" class="text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded">WAIVED</span>
+                        <span v-else-if="isGuest" class="text-gray-400 italic text-xs">Sign in to view</span>
                         <span v-else-if="isCalculatingShipping" class="text-gray-400 italic text-xs animate-pulse">Calculating...</span>
                         <span v-else-if="shippingFeeEst === 0" class="text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">FREE</span>
                         <span v-else>₱{{ formatCurrency(shippingFeeEst) }}</span>
@@ -374,19 +375,20 @@
                     <div class="pt-3 border-t border-gray-700/50 space-y-1">
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>VATable Sales</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatableSales(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping && !isGuest">₱{{ formatCurrency(getVatableSales(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                       <div class="flex justify-between text-xs text-gray-400">
                         <span>VAT Amount (12%)</span>
-                        <span v-if="!isCalculatingShipping">₱{{ formatCurrency(getVatAmount(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
+                        <span v-if="!isCalculatingShipping && !isGuest">₱{{ formatCurrency(getVatAmount(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst))) }}</span>
                         <span v-else>--</span>
                       </div>
                     </div>
 
                     <div class="flex justify-between items-end pt-3 border-t border-gray-600">
                       <span class="text-sm font-medium text-gray-300">Grand Total</span>
-                      <span class="text-3xl font-black text-white">₱{{ formatCurrency(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
+                      <span v-if="!isGuest" class="text-3xl font-black text-white">₱{{ formatCurrency(((selectedVariant?.price || selectedProduct.price) * orderQuantity) + (paymentMethod === 'pick-up' ? 0 : shippingFeeEst)) }}</span>
+                      <span v-else class="text-3xl font-black text-gray-400">--</span>
                     </div>
                   </div>
                 </div>
@@ -462,8 +464,28 @@
     <!-- Alert Dialogs -->
     <Teleport to="body">
       <transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="isCartAlertOpen || isOrderAlertOpen || isAuthAlertOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
+        <div v-if="isCartAlertOpen || isOrderAlertOpen || isAuthAlertOpen || isAccessRestrictedOpen" class="fixed inset-0 z-[9999] bg-gray-900/60 backdrop-blur-md pointer-events-none"></div>
       </transition>
+
+      <AlertDialog :open="isAccessRestrictedOpen" @update:open="isAccessRestrictedOpen = $event">
+        <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle class="text-xl font-bold flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Access Restricted
+            </AlertDialogTitle>
+            <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
+              You must be signed in to access this page. Please log in to your account before proceeding. If you do not have an account yet, you may register to create one.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter class="mt-6 sm:space-x-3">
+            <AlertDialogCancel @click="isAccessRestrictedOpen = false" class="rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50 h-11">Continue Browsing</AlertDialogCancel>
+            <AlertDialogAction @click="router.push('/Landing/logIn')" class="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white h-11 px-6 shadow-md shadow-blue-600/20">
+              Sign In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog :open="isAuthAlertOpen" @update:open="isAuthAlertOpen = $event">
         <AlertDialogContent class="rounded-2xl border-0 shadow-2xl max-w-md z-[10000]">
@@ -473,7 +495,7 @@
               Authentication Required
             </AlertDialogTitle>
             <AlertDialogDescription class="text-gray-500 font-medium text-base mt-3">
-              You must be logged in to make a purchase or add items to your cart. Please log in or create an account to continue.
+              Please log in before accessing this feature. You must be authenticated to make a purchase or add items to your cart. Please sign in or create an account to continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter class="mt-6 sm:space-x-3">
@@ -553,6 +575,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios'
+import { getCurrentUser } from '@/utils/auth'
 import { 
   ArrowLeft,
   ArrowRight,
@@ -613,6 +636,11 @@ const isProcessing = ref(false)
 const isAuthAlertOpen = ref(false)
 const isCartAlertOpen = ref(false)
 const isOrderAlertOpen = ref(false)
+const isAccessRestrictedOpen = ref(false)
+
+// Guest (unauthenticated) state — detected synchronously so no protected
+// endpoint is ever called before we know the visitor's auth status.
+const isGuest = ref(!localStorage.getItem('auth_token'))
 
 // Form States
 const orderQuantity = ref(1)
@@ -835,6 +863,14 @@ watch(orderQuantity, () => {
 })
 
 const calculateLiveShipping = () => {
+  // Guests cannot access this protected endpoint (401 would force a silent
+  // redirect to the login page), so the fee is only shown once signed in.
+  if (isGuest.value) {
+    shippingFeeEst.value = 0
+    isCalculatingShipping.value = false
+    return
+  }
+
   if (!selectedVariant.value) return
   
   clearTimeout(shippingCalcTimeout)
@@ -1068,7 +1104,30 @@ watch(() => route.params.id, (newId) => {
   }
 })
 
+// Verifies the visitor's authentication status. Unauthenticated (guest)
+// visitors are notified with a formal access-restricted notice instead of
+// being redirected silently.
+const checkGuestAccess = async () => {
+  if (isGuest.value) {
+    isAccessRestrictedOpen.value = true
+    return
+  }
+
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      isGuest.value = true
+      isAccessRestrictedOpen.value = true
+    }
+  } catch (error) {
+    // Expired/invalid session — the global auth interceptor handles it.
+    console.warn('Unable to verify authentication status.', error)
+  }
+}
+
 onMounted(() => {
+  checkGuestAccess()
+
   if (route.query.order_number) { 
     verifyGcashPayment(route.query.order_number) 
   } else if (route.params.id) {
