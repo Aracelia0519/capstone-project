@@ -25,13 +25,16 @@
 
     <!-- Webcam capture pane -->
     <div v-if="mode === 'webcam'" class="space-y-3">
-      <div class="relative rounded-xl overflow-hidden bg-gray-900 border border-gray-300">
+      <!-- Full-width, tall pane: breaks out of the card padding for extra width and
+           is tall enough that the camera frame is never cropped, so the whole user
+           stays visible (object-contain shows the complete camera frame). -->
+      <div class="relative -mx-4 rounded-xl overflow-hidden bg-gray-900 border border-gray-300 h-[clamp(300px,50vw,560px)]">
         <video
           ref="video"
           autoplay
           muted
           playsinline
-          class="w-full h-64 object-cover"
+          class="w-full h-full object-contain"
         ></video>
         <div v-if="!streamActive" class="absolute inset-0 flex flex-col items-center justify-center text-gray-300 gap-2">
           <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +210,7 @@
  * If the ID photo is a PDF (allowed for clients), OCR cannot run - the step shows a
  * clear notice and returns verification with reasons instead of crashing.
  */
-import { ref, computed, h, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
   namesMatch,
   idNumbersMatch,
@@ -294,7 +297,7 @@ async function refreshVideoDevices() {
     } else if (deviceIndex.value >= videoDevices.value.length) {
       deviceIndex.value = Math.max(0, videoDevices.value.length - 1)
     }
-  } catch (e) {
+  } catch {
     videoDevices.value = []
   }
 }
@@ -556,7 +559,7 @@ async function runVerification() {
       const ocr = await runOcr(idPhoto)
       ocr_text = ocr.ocr_text || ''
       ocr_id_number = ocr.ocr_id_number || null
-    } catch (e) {
+    } catch {
       ocr_text = ''
     }
 
