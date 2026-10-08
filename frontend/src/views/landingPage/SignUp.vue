@@ -1,310 +1,154 @@
 <template>
-    <div ref="pageContainer"
-        class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4 overflow-hidden relative">
+    <div class="min-h-screen bg-[#070a14] flex items-center justify-center p-4 overflow-hidden relative">
 
-        <!-- ===== CANVAS PARTICLE BACKGROUND ===== -->
-        <canvas ref="particleCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+        <!-- ===== STATIC BACKGROUND (painted once, no blur / no animation) ===== -->
+        <div class="absolute inset-0"
+            style="background: radial-gradient(600px 400px at 15% 20%, rgba(59,130,246,0.16), transparent 70%), radial-gradient(600px 400px at 85% 80%, rgba(168,85,247,0.14), transparent 70%), radial-gradient(500px 350px at 50% 110%, rgba(236,72,153,0.10), transparent 70%);"></div>
 
-        <!-- ===== EXISTING AMBIENT BACKGROUND (enhanced) ===== -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
-            <!-- Glowing orbs with enhanced colors -->
-            <div class="absolute top-1/4 left-1/4 w-96 h-96">
-                <div class="absolute w-48 h-48 bg-gradient-to-r from-blue-500/25 to-cyan-400/25 rounded-full blur-3xl animate-float-slow">
-                </div>
-                <div class="absolute top-12 left-12 w-32 h-32 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-2xl animate-float-medium">
-                </div>
-            </div>
-            <div class="absolute bottom-1/4 right-1/4 w-96 h-96">
-                <div class="absolute w-48 h-48 bg-gradient-to-r from-emerald-500/20 to-teal-400/20 rounded-full blur-3xl animate-float-slow delay-1000">
-                </div>
-                <div class="absolute bottom-12 right-12 w-32 h-32 bg-gradient-to-r from-amber-500/15 to-yellow-400/15 rounded-full blur-2xl animate-float-medium delay-500">
-                </div>
-            </div>
-            <!-- Extra accent orbs -->
-            <div class="absolute top-1/2 left-3/4 w-64 h-64">
-                <div class="absolute w-40 h-40 bg-gradient-to-r from-pink-500/10 to-rose-400/10 rounded-full blur-3xl animate-float-slow delay-1500">
-                </div>
-            </div>
-            <div class="absolute bottom-1/3 left-1/5 w-56 h-56">
-                <div class="absolute w-36 h-36 bg-gradient-to-r from-indigo-500/10 to-blue-400/10 rounded-full blur-3xl animate-float-medium delay-800">
-                </div>
-            </div>
+        <!-- ===== MAIN CARD ===== -->
+        <div class="relative w-full max-w-4xl z-10 my-6">
+            <div class="auth-card bg-gray-900/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
 
-            <!-- Brush strokes with enhanced opacity -->
-            <div class="absolute top-1/3 right-1/3 w-64 h-96 opacity-15">
-                <div class="absolute w-8 h-40 bg-gradient-to-b from-blue-400 to-transparent rounded-full transform rotate-45 animate-brush-stroke-1">
-                </div>
-            </div>
-            <div class="absolute bottom-1/3 left-1/3 w-64 h-96 opacity-15">
-                <div class="absolute w-8 h-32 bg-gradient-to-t from-purple-400 to-transparent rounded-full transform -rotate-12 animate-brush-stroke-2">
-                </div>
-            </div>
+                <!-- Accent bar -->
+                <div class="h-1.5 bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500"></div>
 
-            <!-- Bouncing droplets with enhanced colors -->
-            <div class="absolute top-20 left-20 w-8 h-8 bg-gradient-to-r from-blue-400/40 to-cyan-300/40 rounded-full animate-bounce-droplet shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-            </div>
-            <div class="absolute top-40 right-40 w-6 h-6 bg-gradient-to-r from-purple-400/40 to-pink-300/40 rounded-full animate-bounce-droplet delay-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-            </div>
-            <div class="absolute bottom-20 left-32 w-7 h-7 bg-gradient-to-r from-emerald-400/40 to-teal-300/40 rounded-full animate-bounce-droplet delay-700 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            </div>
-            <div class="absolute bottom-40 right-20 w-5 h-5 bg-gradient-to-r from-amber-400/40 to-yellow-300/40 rounded-full animate-bounce-droplet delay-1000 shadow-[0_0_12px_rgba(245,158,11,0.3)]">
-            </div>
-            <!-- Extra droplets -->
-            <div class="absolute top-60 left-10 w-4 h-4 bg-gradient-to-r from-rose-400/30 to-pink-300/30 rounded-full animate-bounce-droplet delay-500 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
-            </div>
-            <div class="absolute bottom-60 right-10 w-5 h-5 bg-gradient-to-r from-indigo-400/30 to-blue-300/30 rounded-full animate-bounce-droplet delay-1200 shadow-[0_0_12px_rgba(99,102,241,0.2)]">
-            </div>
+                <div class="flex flex-col lg:flex-row">
 
-            <!-- Concentric rings with glow -->
-            <div class="absolute top-10 right-10 w-24 h-24 opacity-10">
-                <div class="absolute inset-0 border-2 border-blue-400/40 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.1)]"></div>
-                <div class="absolute inset-4 border-2 border-purple-400/40 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.1)]"></div>
-                <div class="absolute inset-8 border-2 border-emerald-400/40 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.1)]"></div>
-                <div class="absolute inset-12 border-2 border-amber-400/40 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.1)]"></div>
-            </div>
-            <div class="absolute bottom-10 left-10 w-32 h-32 opacity-10">
-                <div class="absolute inset-0 border-2 border-cyan-400/40 rounded-full shadow-[0_0_30px_rgba(6,182,212,0.1)]"></div>
-                <div class="absolute inset-6 border-2 border-pink-400/40 rounded-full shadow-[0_0_20px_rgba(236,72,153,0.1)]"></div>
-                <div class="absolute inset-12 border-2 border-teal-400/40 rounded-full shadow-[0_0_15px_rgba(20,184,166,0.1)]"></div>
-                <div class="absolute inset-18 border-2 border-yellow-400/40 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.1)]"></div>
-            </div>
-            <!-- Extra rings -->
-            <div class="absolute top-1/2 left-5 w-40 h-40 opacity-8">
-                <div class="absolute inset-0 border border-white/5 rounded-full animate-spin-slow"></div>
-                <div class="absolute inset-8 border border-white/5 rounded-full animate-spin-slow-reverse"></div>
-            </div>
-        </div>
-
-        <!-- ===== CURSOR GLOW ===== -->
-        <div ref="cursorGlow"
-            class="fixed pointer-events-none z-0 w-96 h-96 rounded-full bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-3xl transition-all duration-300"
-            style="transform: translate(-50%, -50%); opacity: 0;"></div>
-
-        <!-- ===== MAIN CARD WITH 3D TILT ===== -->
-        <div ref="signupCard"
-            class="relative w-full max-w-4xl z-10 opacity-0 translate-y-10 mx-auto my-6 [perspective:1200px]">
-            <div ref="card3d"
-                class="relative transition-transform duration-200 ease-out [transform-style:preserve-3d] will-change-transform">
-
-                <!-- ===== ANIMATED GRADIENT BORDER ===== -->
-                <div
-                    class="absolute -inset-[2px] rounded-3xl bg-gradient-to-r from-blue-500/60 via-purple-500/60 to-pink-500/60 animate-border-rotate blur-sm">
-                </div>
-                <div
-                    class="absolute -inset-[2px] rounded-3xl bg-gradient-to-r from-blue-500/40 via-purple-500/40 to-pink-500/40 animate-border-rotate blur-xl opacity-70">
-                </div>
-
-                <!-- ===== CARD BODY ===== -->
-                <div
-                    class="relative flex flex-col lg:flex-row bg-gray-800/40 backdrop-blur-3xl rounded-3xl shadow-2xl border border-gray-700/30 overflow-hidden [transform:translateZ(0)]">
-
-                    <!-- ===== GLASS REFLECTION SHIMMER ===== -->
+                    <!-- ===== LEFT PANEL (Branding + Stepper) ===== -->
                     <div
-                        class="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-1000">
-                        <div class="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-br from-white/10 via-transparent to-transparent rotate-12 animate-shimmer">
-                        </div>
-                    </div>
+                        class="lg:w-2/6 p-6 sm:p-8 bg-white/[0.03] border-b lg:border-b-0 lg:border-r border-white/10 flex flex-col justify-center items-center text-center">
 
-                    <!-- ===== LEFT PANEL (Role selection side) ===== -->
-                    <div
-                        class="lg:w-2/6 p-6 lg:p-8 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20 flex flex-col justify-center items-center relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5"></div>
+                        <img src="/favicon.svg" class="w-14 h-14" alt="CaviteGo Paint" />
+                        <h1 class="text-xl font-bold text-white mt-3 tracking-tight">CaviteGo Paint</h1>
+                        <p class="text-slate-400 text-sm mt-1">Join Our Colorful Community</p>
 
-                        <!-- Floating icons decoration -->
-                        <div class="absolute top-4 right-4 opacity-20 animate-float-slow">
-                            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                            </svg>
-                        </div>
-                        <div class="absolute bottom-4 left-4 opacity-20 animate-float-medium delay-700">
-                            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                        </div>
+                        <div class="w-full max-w-xs mt-6 space-y-5">
+                            <!-- ===== PROGRESS + STEPPER ===== -->
+                            <div>
+                                <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+                                        :style="{ width: (currentStep / steps.length) * 100 + '%' }"></div>
+                                </div>
 
-                        <div class="relative mb-5 text-center">
-                            <div
-                                class="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 shadow-2xl flex items-center justify-center mb-3 mx-auto transform transition-all duration-500 hover:rotate-12 hover:scale-110 shadow-[0_0_40px_rgba(168,85,247,0.3)]">
-                                <img src="/favicon.svg" class="w-15 h-15" alt="icon" />
-                            </div>
-                            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">
-                                CaviteGo Paint
-                            </h1>
-                            <p class="text-gray-300/80 mt-1 text-sm">Join Our Colorful Community</p>
-                        </div>
-
-                        <div class="w-full max-w-xs space-y-5">
-                            <!-- ===== ENHANCED PROGRESS BAR ===== -->
-                            <div class="relative">
-                                <Progress :model-value="(currentStep / steps.length) * 100"
-                                    class="h-1.5 bg-gray-700/50 rounded-full overflow-visible"
-                                    indicator-class="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative after:content-[''] after:absolute after:inset-0 after:bg-gradient-to-r after:from-blue-500/50 after:via-purple-500/50 after:to-pink-500/50 after:blur-md after:-z-10" />
-
-                                <div class="flex justify-between -mt-3 relative z-10">
-                                    <div v-for="(step, index) in steps" :key="step.id" class="flex flex-col items-center">
-                                        <button @click="goToStep(index + 1)" :disabled="index + 1 > currentStep"
-                                            class="relative w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 border-2 group"
+                                <div class="flex justify-between mt-3">
+                                    <button v-for="(step, index) in steps" :key="step.id" @click="goToStep(index + 1)"
+                                        :disabled="index + 1 > currentStep"
+                                        class="flex flex-col items-center gap-1.5 disabled:cursor-default">
+                                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-colors"
                                             :class="[
-                                                index + 1 < currentStep ? 'bg-green-500 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' :
-                                                index + 1 === currentStep ? 'bg-blue-500 border-blue-400 ring-2 ring-blue-500/50 shadow-[0_0_25px_rgba(59,130,246,0.5)]' :
-                                                'bg-gray-800 border-gray-600'
+                                                index + 1 < currentStep ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                                index + 1 === currentStep ? 'bg-blue-500 border-blue-400 text-white' :
+                                                'bg-white/5 border-white/15 text-slate-500'
                                             ]">
-                                            <svg v-if="index + 1 < currentStep" class="w-3 h-3 text-white" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg v-if="index + 1 < currentStep" class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
                                                     d="M5 13l4 4L19 7" />
                                             </svg>
-                                            <span v-else-if="index + 1 === currentStep"
-                                                class="text-[10px] font-bold text-white">{{ index + 1 }}</span>
-                                            <span v-else class="text-[10px] font-medium text-gray-500">{{ index + 1 }}</span>
-                                            <!-- Pulse ring for current -->
-                                            <span v-if="index + 1 === currentStep"
-                                                class="absolute inset-[-6px] rounded-full border-2 border-blue-400/30 animate-ping"></span>
-                                        </button>
-                                        <span class="mt-2 text-[9px] font-medium uppercase tracking-wider"
-                                            :class="index + 1 === currentStep ? 'text-white' : 'text-gray-500'">
+                                            <span v-else>{{ index + 1 }}</span>
+                                        </span>
+                                        <span class="text-[9px] font-medium uppercase tracking-wider"
+                                            :class="index + 1 === currentStep ? 'text-white' : 'text-slate-500'">
                                             {{ step.title }}
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
 
                             <!-- ===== STEP INFO CARD ===== -->
-                            <Card class="bg-gray-900/40 border-gray-700/30 backdrop-blur-sm relative overflow-hidden">
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5">
-                                </div>
-                                <CardContent class="p-3 relative">
-                                    <h3 class="text-white font-semibold mb-1 text-sm flex items-center gap-2">
-                                        <span
-                                            class="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 animate-pulse"></span>
-                                        {{ steps[currentStep - 1].title }}
-                                    </h3>
-                                    <p class="text-gray-300 text-xs leading-relaxed">
-                                        {{ steps[currentStep - 1].description }}
-                                    </p>
-                                    <div v-if="steps[currentStep - 1].tips"
-                                        class="mt-2 text-[10px] text-gray-400 italic flex items-center gap-1">
-                                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        {{ steps[currentStep - 1].tips }}
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-left">
+                                <h3 class="text-white font-semibold mb-1 text-sm">{{ steps[currentStep - 1].title }}</h3>
+                                <p class="text-slate-400 text-xs leading-relaxed">
+                                    {{ steps[currentStep - 1].description }}
+                                </p>
+                                <p v-if="steps[currentStep - 1].tips" class="mt-2 text-[10px] text-slate-500 italic">
+                                    {{ steps[currentStep - 1].tips }}
+                                </p>
+                            </div>
 
                             <!-- ===== SELECTED ROLE DISPLAY ===== -->
                             <div v-if="form.role"
-                                class="p-3 rounded-xl bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-700/30 backdrop-blur-sm flex items-center space-x-3 relative overflow-hidden group">
-                                <div class="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                </div>
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center relative"
+                                class="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center gap-3 text-left">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                                     :class="getRoleGradient(form.role)">
                                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path v-for="path in getRoleIcon(form.role)" :key="path" stroke-linecap="round"
                                             stroke-linejoin="round" stroke-width="2" :d="path"></path>
                                     </svg>
                                 </div>
-                                <div class="relative">
+                                <div>
                                     <p class="text-sm font-medium text-white">{{ getRoleLabel(form.role) }}</p>
-                                    <p class="text-[10px] text-gray-300">Selected Role</p>
+                                    <p class="text-[10px] text-slate-400">Selected Role</p>
                                 </div>
-                                <div
-                                    class="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]">
-                                </div>
+                                <span class="ml-auto w-2 h-2 rounded-full bg-emerald-400"></span>
                             </div>
                         </div>
 
-                        <div class="mt-6 text-center">
-                            <p class="text-gray-400/70 text-xs italic">"Color Your World With Us"</p>
-                        </div>
+                        <p class="hidden lg:block mt-6 text-xs text-slate-500 italic">"Color Your World With Us"</p>
                     </div>
 
                     <!-- ===== RIGHT PANEL (Form) ===== -->
-                    <div class="lg:w-4/6 p-6 lg:p-8 relative">
+                    <div class="lg:w-4/6 p-6 sm:p-8">
                         <div class="text-center mb-6">
-                            <h2 class="text-xl font-bold text-white mb-1">Create Your Account</h2>
-                            <p class="text-gray-400 text-sm flex items-center justify-center gap-2">
-                                <span
-                                    class="inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 animate-pulse"></span>
+                            <h2 class="text-xl font-bold text-white">Create Your Account</h2>
+                            <p class="text-slate-400 text-sm mt-1">
                                 Step {{ currentStep }} of {{ steps.length }}: {{ steps[currentStep - 1].title }}
                             </p>
                         </div>
 
-                        <!-- ===== STEP CONTENT WITH 3D TRANSITIONS ===== -->
-                        <div class="step-content relative min-h-[350px]">
-                            <transition name="step-3d" mode="out-in">
+                        <!-- ===== STEP CONTENT ===== -->
+                        <div class="min-h-[340px]">
+                            <transition name="step-fade" mode="out-in">
                                 <!-- STEP 1: ROLE SELECTION -->
                                 <div v-if="currentStep === 1" key="step1">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div v-for="role in roles" :key="role.value" @click="selectRole(role.value)"
-                                            class="cursor-pointer group relative">
-                                            <div class="h-full p-3 rounded-xl border-2 transition-all duration-300 transform hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl"
-                                                :class="[
-                                                    form.role === role.value
-                                                        ? 'border-opacity-100 scale-[1.02] -translate-y-1 shadow-2xl bg-gray-800/80'
-                                                        : 'border-gray-700/50 bg-gray-900/40 hover:border-gray-600'
-                                                ]" :style="{
-                                                    borderColor: form.role === role.value ? getRoleBorderColor(role.value) : ''
-                                                }">
-                                                <!-- Glow effect on selected -->
+                                            class="cursor-pointer p-3 rounded-xl border transition-colors text-left"
+                                            :class="[
+                                                form.role === role.value
+                                                    ? 'bg-white/[0.06]'
+                                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                                            ]"
+                                            :style="form.role === role.value ? { borderColor: getRoleBorderColor(role.value) } : {}">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                                                    :class="role.gradient">
+                                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path v-for="path in role.icon" :key="path" stroke-linecap="round"
+                                                            stroke-linejoin="round" stroke-width="2" :d="path"></path>
+                                                    </svg>
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <h4 class="text-sm font-semibold text-white">{{ role.label }}</h4>
+                                                    <span v-if="form.role === role.value"
+                                                        class="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-medium"
+                                                        :class="getRoleBadgeClass(role.value)">
+                                                        Selected
+                                                    </span>
+                                                </div>
                                                 <div v-if="form.role === role.value"
-                                                    class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 blur-xl -z-0">
+                                                    class="ml-auto w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/40 shrink-0">
+                                                    <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                                            d="M5 13l4 4L19 7" />
+                                                    </svg>
                                                 </div>
-                                                <div class="flex items-center space-x-3 mb-2 relative z-10">
-                                                    <div
-                                                        class="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg"
-                                                        :class="role.gradient">
-                                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path v-for="path in role.icon" :key="path"
-                                                                stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" :d="path"></path>
-                                                        </svg>
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="text-sm font-semibold text-white">{{ role.label }}</h4>
-                                                        <div v-if="form.role === role.value">
-                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-medium"
-                                                                :class="getRoleBadgeClass(role.value)">
-                                                                <span class="w-1 h-1 rounded-full bg-current mr-1 animate-pulse"></span>
-                                                                Selected
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <!-- Checkmark on selected -->
-                                                    <div v-if="form.role === role.value"
-                                                        class="ml-auto w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
-                                                        <svg class="w-3 h-3 text-green-400" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="3" d="M5 13l4 4L19 7" />
-                                                        </svg>
-                                                    </div>
-                                                </div>
-                                                <p class="text-gray-400 text-xs pl-1 relative z-10">{{ role.description }}
-                                                </p>
                                             </div>
-                                            <!-- Ripple effect container -->
-                                            <div class="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
-                                                <div class="ripple-effect"></div>
-                                            </div>
+                                            <p class="text-slate-400 text-xs mt-2">{{ role.description }}</p>
                                         </div>
                                     </div>
 
-                                    <div class="mt-6 p-3 rounded-xl bg-blue-900/10 border border-blue-700/20 flex items-start space-x-3">
-                                        <svg class="w-4 h-4 text-blue-400 mt-0.5 animate-pulse" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="mt-5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
+                                        <svg class="w-4 h-4 text-blue-400 mt-0.5 shrink-0" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <div>
                                             <p class="text-xs text-white font-medium mb-0.5">Need help choosing?</p>
-                                            <p class="text-[10px] text-gray-300">
+                                            <p class="text-[10px] text-slate-300">
                                                 Roles define your account permissions. Suppliers provide materials,
                                                 Distributors sell, and Service Providers offer labor.
                                             </p>
@@ -316,52 +160,40 @@
                                 <div v-else-if="currentStep === 2" key="step2" class="space-y-4">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div class="space-y-1.5">
-                                            <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                                First Name
-                                                <span class="text-red-400">*</span>
+                                            <Label for="su-firstname" class="text-slate-300 text-xs">
+                                                First Name <span class="text-red-400">*</span>
                                             </Label>
-                                            <div class="relative group">
-                                                <Input v-model="form.firstName" placeholder="Julian"
-                                                    class="pl-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                    :class="{ 'border-red-500/50': validationErrors.firstName }"
+                                            <div class="relative">
+                                                <Input id="su-firstname" v-model="form.firstName" placeholder="Julian"
+                                                    class="pl-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                    :class="{ 'border-red-500/60': validationErrors.firstName }"
                                                     @input="validateStep2" />
-                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-blue-400 transition-colors duration-200"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                             </div>
-                                            <span v-if="validationErrors.firstName"
-                                                class="text-[10px] text-red-400 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
+                                            <span v-if="validationErrors.firstName" class="text-[10px] text-red-400">
                                                 {{ validationErrors.firstName }}
                                             </span>
                                         </div>
                                         <div class="space-y-1.5">
-                                            <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                                Last Name
-                                                <span class="text-red-400">*</span>
+                                            <Label for="su-lastname" class="text-slate-300 text-xs">
+                                                Last Name <span class="text-red-400">*</span>
                                             </Label>
-                                            <div class="relative group">
-                                                <Input v-model="form.lastName" placeholder="Namoc"
-                                                    class="pl-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                    :class="{ 'border-red-500/50': validationErrors.lastName }"
+                                            <div class="relative">
+                                                <Input id="su-lastname" v-model="form.lastName" placeholder="Namoc"
+                                                    class="pl-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                    :class="{ 'border-red-500/60': validationErrors.lastName }"
                                                     @input="validateStep2" />
-                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-purple-400 transition-colors duration-200"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                 </svg>
                                             </div>
-                                            <span v-if="validationErrors.lastName"
-                                                class="text-[10px] text-red-400 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
+                                            <span v-if="validationErrors.lastName" class="text-[10px] text-red-400">
                                                 {{ validationErrors.lastName }}
                                             </span>
                                         </div>
@@ -369,60 +201,43 @@
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div class="space-y-1.5">
-                                            <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                                Email Address
-                                                <span class="text-red-400">*</span>
+                                            <Label for="su-email" class="text-slate-300 text-xs">
+                                                Email Address <span class="text-red-400">*</span>
                                             </Label>
-                                            <div class="relative group">
-                                                <Input v-model="form.email" type="email" placeholder="juji@example.com"
-                                                    class="pl-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-blue-500/50 focus:ring-blue-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                    :class="{ 'border-red-500/50': validationErrors.email }"
+                                            <div class="relative">
+                                                <Input id="su-email" v-model="form.email" type="email" placeholder="juji@example.com"
+                                                    class="pl-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                    :class="{ 'border-red-500/60': validationErrors.email }"
                                                     @input="validateStep2" />
-                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-blue-400 transition-colors duration-200"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                                                 </svg>
                                             </div>
-                                            <span v-if="validationErrors.email"
-                                                class="text-[10px] text-red-400 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
+                                            <span v-if="validationErrors.email" class="text-[10px] text-red-400">
                                                 {{ validationErrors.email }}
                                             </span>
                                         </div>
                                         <div class="space-y-1.5">
-                                            <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                                Phone Number
-                                                <span class="text-red-400">*</span>
+                                            <Label for="su-phone" class="text-slate-300 text-xs">
+                                                Phone Number <span class="text-red-400">*</span>
                                             </Label>
-                                            <div class="relative group">
-                                                <Input v-model="form.phone" placeholder="0912 345 6789"
-                                                    class="pl-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-cyan-500/50 focus:ring-cyan-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                    :class="{ 'border-red-500/50': validationErrors.phone }"
+                                            <div class="relative">
+                                                <Input id="su-phone" v-model="form.phone" placeholder="0912 345 6789"
+                                                    class="pl-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                    :class="{ 'border-red-500/60': validationErrors.phone }"
                                                     @input="formatPhoneNumber" />
-                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-cyan-400 transition-colors duration-200"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                    stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                                 </svg>
                                             </div>
-                                            <span v-if="validationErrors.phone"
-                                                class="text-[10px] text-red-400 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
+                                            <span v-if="validationErrors.phone" class="text-[10px] text-red-400">
                                                 {{ validationErrors.phone }}
                                             </span>
-                                            <span v-else-if="form.phone"
-                                                class="text-[10px] text-cyan-400 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
+                                            <span v-else-if="form.phone" class="text-[10px] text-slate-500">
                                                 Format: 09XX XXX XXXX
                                             </span>
                                         </div>
@@ -432,26 +247,26 @@
                                 <!-- STEP 3: SECURITY -->
                                 <div v-else-if="currentStep === 3" key="step3" class="space-y-4">
                                     <div class="space-y-1.5">
-                                        <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                            Password
-                                            <span class="text-red-400">*</span>
+                                        <Label for="su-password" class="text-slate-300 text-xs">
+                                            Password <span class="text-red-400">*</span>
                                         </Label>
-                                        <div class="relative group">
-                                            <Input v-model="form.password"
+                                        <div class="relative">
+                                            <Input id="su-password" v-model="form.password"
                                                 :type="showPassword ? 'text' : 'password'" placeholder="Create a strong password"
-                                                class="pl-9 pr-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-purple-500/50 focus:ring-purple-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                :class="{ 'border-red-500/50': validationErrors.password }"
+                                                class="pl-9 pr-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                :class="{ 'border-red-500/60': validationErrors.password }"
                                                 @input="validateStep3" />
-                                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-purple-400 transition-colors duration-200"
-                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                             </svg>
                                             <button type="button" @click="showPassword = !showPassword"
-                                                class="absolute right-3 top-2.5 text-gray-500 hover:text-white transition-colors duration-200">
+                                                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                                                class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition-colors">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path v-if="showPassword" stroke-linecap="round"
-                                                        stroke-linejoin="round" stroke-width="2"
+                                                    <path v-if="showPassword" stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
                                                         d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                                                     <path v-else stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2"
@@ -462,51 +277,47 @@
 
                                         <div v-if="form.password" class="space-y-2">
                                             <div class="flex items-center gap-2">
-                                                <Progress :model-value="passwordStrengthScore" class="h-1.5 flex-1 bg-gray-700 rounded-full overflow-visible"
-                                                    :indicator-class="`${passwordStrengthClass} relative after:content-[''] after:absolute after:inset-0 after:${passwordStrengthClass.replace('bg-', 'bg-')}/30 after:blur-sm`" />
+                                                <div class="h-1.5 flex-1 bg-white/10 rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full" :class="passwordStrengthClass"
+                                                        :style="{ width: passwordStrengthScore + '%' }"></div>
+                                                </div>
                                                 <span class="text-[10px] font-medium" :class="passwordStrengthTextClass">
                                                     {{ passwordStrength }}
                                                 </span>
                                             </div>
                                             <div class="grid grid-cols-2 gap-1">
                                                 <div v-for="(req, i) in passwordRequirements" :key="i"
-                                                    class="flex items-center space-x-2 text-[10px] transition-all duration-300"
-                                                    :class="req.met ? 'text-green-400' : 'text-gray-500'">
-                                                    <span class="w-1.5 h-1.5 rounded-full transition-all duration-300"
-                                                        :class="req.met ? 'bg-green-400 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : 'bg-gray-600'">
-                                                    </span>
+                                                    class="flex items-center gap-2 text-[10px] transition-colors"
+                                                    :class="req.met ? 'text-emerald-400' : 'text-slate-500'">
+                                                    <span class="w-1.5 h-1.5 rounded-full"
+                                                        :class="req.met ? 'bg-emerald-400' : 'bg-slate-600'"></span>
                                                     <span>{{ req.text }}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <span v-if="validationErrors.password"
-                                            class="text-[10px] text-red-400 flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
+                                        <span v-if="validationErrors.password" class="text-[10px] text-red-400">
                                             {{ validationErrors.password }}
                                         </span>
                                     </div>
 
                                     <div class="space-y-1.5">
-                                        <Label class="text-gray-300 text-xs flex items-center gap-1">
-                                            Confirm Password
-                                            <span class="text-red-400">*</span>
+                                        <Label for="su-confirm" class="text-slate-300 text-xs">
+                                            Confirm Password <span class="text-red-400">*</span>
                                         </Label>
-                                        <div class="relative group">
-                                            <Input v-model="form.confirmPassword"
+                                        <div class="relative">
+                                            <Input id="su-confirm" v-model="form.confirmPassword"
                                                 :type="showConfirmPassword ? 'text' : 'password'" placeholder="Re-enter password"
-                                                class="pl-9 pr-9 h-9 text-sm bg-gray-900/50 border-gray-700/50 text-white placeholder:text-gray-600 focus:border-green-500/50 focus:ring-green-500/20 transition-all duration-200 group-hover:border-gray-600"
-                                                :class="{ 'border-red-500/50': validationErrors.confirmPassword }"
+                                                class="pl-9 pr-9 h-9 text-sm bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/60 focus:ring-blue-500/20"
+                                                :class="{ 'border-red-500/60': validationErrors.confirmPassword }"
                                                 @input="validateStep3" />
-                                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-green-400 transition-colors duration-200"
-                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                             </svg>
                                             <button type="button" @click="showConfirmPassword = !showConfirmPassword"
-                                                class="absolute right-3 top-2.5 text-gray-500 hover:text-white transition-colors duration-200">
+                                                :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'"
+                                                class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition-colors">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path v-if="showConfirmPassword" stroke-linecap="round"
                                                         stroke-linejoin="round" stroke-width="2"
@@ -517,12 +328,7 @@
                                                 </svg>
                                             </button>
                                         </div>
-                                        <span v-if="validationErrors.confirmPassword"
-                                            class="text-[10px] text-red-400 flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
+                                        <span v-if="validationErrors.confirmPassword" class="text-[10px] text-red-400">
                                             {{ validationErrors.confirmPassword }}
                                         </span>
                                     </div>
@@ -530,96 +336,86 @@
 
                                 <!-- STEP 4: REVIEW -->
                                 <div v-else-if="currentStep === 4" key="step4" class="space-y-4">
-                                    <Card class="bg-gray-900/50 border-gray-700/30 relative overflow-hidden">
-                                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5">
-                                        </div>
-                                        <CardHeader class="p-4 pb-2 relative">
-                                            <CardTitle class="text-white text-base flex items-center gap-2">
+                                    <div class="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <h4 class="text-sm font-semibold text-white flex items-center gap-2">
                                                 <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                                 Account Summary
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent class="p-4 pt-2 space-y-3 relative">
-                                            <div class="flex items-center justify-between p-2 rounded-lg bg-gray-800/50 border border-gray-700/30">
-                                                <div class="flex items-center space-x-3">
-                                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg"
-                                                        :class="getRoleGradient(form.role)">
-                                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path v-for="path in getRoleIcon(form.role)" :key="path"
-                                                                stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2" :d="path"></path>
-                                                        </svg>
-                                                    </div>
-                                                    <div>
-                                                        <p class="text-sm font-medium text-white">Role</p>
-                                                        <p class="text-xs text-gray-300">{{ getRoleLabel(form.role) }}</p>
-                                                    </div>
+                                            </h4>
+                                        </div>
+
+                                        <!-- Role -->
+                                        <div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.04] border border-white/10">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                                                    :class="getRoleGradient(form.role)">
+                                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path v-for="path in getRoleIcon(form.role)" :key="path"
+                                                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            :d="path"></path>
+                                                    </svg>
                                                 </div>
-                                                <Button variant="ghost" size="sm" @click="goToStep(1)"
-                                                    class="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 text-xs h-7 transition-all duration-200">
+                                                <div>
+                                                    <p class="text-sm font-medium text-white">Role</p>
+                                                    <p class="text-xs text-slate-400">{{ getRoleLabel(form.role) }}</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" @click="goToStep(1)"
+                                                class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                                Edit
+                                            </button>
+                                        </div>
+
+                                        <!-- Personal info -->
+                                        <div class="p-3 rounded-lg bg-white/[0.04] border border-white/10 space-y-2">
+                                            <div class="flex justify-between items-center">
+                                                <h5 class="text-xs font-medium text-white">Personal Information</h5>
+                                                <button type="button" @click="goToStep(2)"
+                                                    class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                                                     Edit
-                                                </Button>
+                                                </button>
                                             </div>
-
-                                            <div class="p-3 rounded-lg bg-gray-800/50 border border-gray-700/30 space-y-2">
-                                                <div class="flex justify-between items-center">
-                                                    <h5 class="text-xs font-medium text-white flex items-center gap-1">
-                                                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                        </svg>
-                                                        Personal Information
-                                                    </h5>
-                                                    <Button variant="ghost" size="sm" @click="goToStep(2)"
-                                                        class="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-auto p-0 text-xs transition-all duration-200">
-                                                        Edit
-                                                    </Button>
+                                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                                <div>
+                                                    <p class="text-slate-500">Name</p>
+                                                    <p class="text-white font-medium">{{ form.firstName }} {{ form.lastName }}
+                                                    </p>
                                                 </div>
-                                                <div class="grid grid-cols-2 gap-2 text-xs">
-                                                    <div>
-                                                        <p class="text-gray-500">Name</p>
-                                                        <p class="text-white font-medium">{{ form.firstName }} {{ form.lastName }}
-                                                        </p>
-                                                    </div>
-                                                    <div>
-                                                        <p class="text-gray-500">Phone</p>
-                                                        <p class="text-white font-medium">{{ form.phone }}</p>
-                                                    </div>
-                                                    <div class="col-span-2">
-                                                        <p class="text-gray-500">Email</p>
-                                                        <p class="text-white font-medium">{{ form.email }}</p>
-                                                    </div>
+                                                <div>
+                                                    <p class="text-slate-500">Phone</p>
+                                                    <p class="text-white font-medium">{{ form.phone }}</p>
+                                                </div>
+                                                <div class="col-span-2">
+                                                    <p class="text-slate-500">Email</p>
+                                                    <p class="text-white font-medium">{{ form.email }}</p>
                                                 </div>
                                             </div>
-                                        </CardContent>
-                                    </Card>
+                                        </div>
+                                    </div>
 
-                                    <div class="flex items-start space-x-3 p-3 rounded-xl bg-blue-900/10 border border-blue-700/20">
+                                    <div class="flex items-start gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                                         <Checkbox id="terms" v-model="form.terms"
-                                            class="mt-1 border-gray-500 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 w-4 h-4 transition-all duration-200" />
+                                            class="mt-1 border-white/30 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 w-4 h-4" />
                                         <div class="grid gap-1 leading-none">
-                                            <Label for="terms" class="text-xs font-medium text-gray-300 cursor-pointer">
+                                            <Label for="terms" class="text-xs font-medium text-slate-300 cursor-pointer">
                                                 I agree to the <span class="text-blue-400 hover:underline cursor-pointer"
-                                                    @click.stop="showTerms">Terms & Conditions</span> and <span
-                                                    class="text-purple-400 hover:underline cursor-pointer"
-                                                    @click.stop="showPrivacy">Privacy Policy</span>.
+                                                    role="button" tabindex="0"
+                                                    @click.stop="showTerms"
+                                                    @keydown.enter.prevent.stop="showTerms">Terms & Conditions</span> and <span
+                                                    class="text-violet-400 hover:underline cursor-pointer"
+                                                    role="button" tabindex="0"
+                                                    @click.stop="showPrivacy"
+                                                    @keydown.enter.prevent.stop="showPrivacy">Privacy Policy</span>.
                                             </Label>
-                                            <p class="text-[10px] text-gray-400">
+                                            <p class="text-[10px] text-slate-400">
                                                 I understand that my account will be verified based on my selected role.
                                             </p>
-                                            <p v-if="validationErrors.terms"
-                                                class="text-[10px] text-red-400 mt-1 flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
+                                            <p v-if="validationErrors.terms" class="text-[10px] text-red-400 mt-1">
                                                 {{ validationErrors.terms }}
                                             </p>
                                         </div>
@@ -629,9 +425,9 @@
                         </div>
 
                         <!-- ===== NAVIGATION BUTTONS ===== -->
-                        <div class="mt-6 pt-4 border-t border-gray-700/30 flex justify-between items-center">
+                        <div class="mt-6 pt-4 border-t border-white/10 flex justify-between items-center gap-3">
                             <Button v-if="currentStep > 1" variant="outline" @click="prevStep"
-                                class="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500 h-9 text-xs transition-all duration-200">
+                                class="border-white/15 text-slate-300 hover:bg-white/5 hover:text-white h-9 text-xs transition-colors">
                                 <svg class="w-3 h-3 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
@@ -640,7 +436,7 @@
                             <div v-else></div>
 
                             <Button v-if="currentStep < steps.length" @click="nextStep" :disabled="!isStepValid"
-                                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 h-9 text-xs shadow-[0_0_30px_rgba(59,130,246,0.2)] hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] transition-all duration-300">
+                                class="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white border-0 h-9 text-xs transition-colors">
                                 {{ steps[currentStep - 1].nextButton || 'Continue' }}
                                 <svg class="w-3 h-3 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -649,18 +445,9 @@
                             </Button>
 
                             <Button v-else @click="handleSignup" :disabled="!isStepValid || isLoading"
-                                class="relative overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 px-6 py-4 group h-10 text-sm shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all duration-300">
-                                <div
-                                    class="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:translate-x-[400%] transition-all duration-1000">
-                                </div>
-                                <span v-if="isLoading" class="flex items-center">
-                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                            stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                        </path>
-                                    </svg>
+                                class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 px-6 h-10 text-sm transition-colors">
+                                <span v-if="isLoading" class="flex items-center gap-2">
+                                    <span class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
                                     Creating...
                                 </span>
                                 <span v-else class="flex items-center gap-2">
@@ -677,31 +464,83 @@
             </div>
         </div>
 
+        <!-- ===== LEGAL MODAL (Terms & Privacy) ===== -->
+        <transition
+            enter-active-class="transition-opacity duration-200 ease-out"
+            leave-active-class="transition-opacity duration-150 ease-in"
+            enter-from-class="opacity-0"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="legalModal"
+                class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4"
+                @click.self="closeLegal">
+                <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+
+                    <!-- Header -->
+                    <div class="p-5 sm:p-6 border-b border-white/10 flex items-start gap-3 shrink-0">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border"
+                            :class="legalModal === 'terms'
+                                ? 'bg-blue-500/15 border-blue-500/25 text-blue-400'
+                                : 'bg-violet-500/15 border-violet-500/25 text-violet-400'">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="text-lg font-bold text-white tracking-tight">{{ legalTitle }}</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">CaviteGo Paint · Last updated: October 8, 2026</p>
+                        </div>
+                        <button type="button" @click="closeLegal" aria-label="Close"
+                            class="ml-auto shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="legal-body overflow-y-auto p-5 sm:p-6 space-y-5">
+                        <p class="text-[13px] leading-relaxed text-slate-400 italic">{{ legalIntro }}</p>
+
+                        <section v-for="(s, i) in legalSections" :key="i" class="space-y-2">
+                            <h4 class="text-sm font-semibold text-white">{{ s.h }}</h4>
+                            <p v-for="(para, j) in (s.p || [])" :key="'p' + j"
+                                class="text-[13px] leading-relaxed text-slate-400">{{ para }}</p>
+                            <ul v-if="s.li" class="list-disc pl-5 space-y-1.5 text-[13px] leading-relaxed text-slate-400 marker:text-blue-400">
+                                <li v-for="(item, k) in s.li" :key="'li' + k">{{ item }}</li>
+                            </ul>
+                            <p v-if="s.note" class="text-[13px] leading-relaxed font-medium text-slate-300">{{ s.note }}</p>
+                        </section>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-5 sm:p-6 border-t border-white/10 flex justify-end shrink-0">
+                        <button type="button" @click="closeLegal"
+                            class="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 rounded-lg transition-colors">
+                            I Understand
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <Toaster theme="dark" position="bottom-right" />
     </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Progress } from '@/components/ui/progress'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'vue-sonner'
 import api from '@/utils/axios' // ✅ Import the axios instance
 
 const router = useRouter()
-
-// ===== REFS =====
-const pageContainer = ref(null)
-const signupCard = ref(null)
-const card3d = ref(null)
-const particleCanvas = ref(null)
-const cursorGlow = ref(null)
 
 // ===== WIZARD STATE =====
 const currentStep = ref(1)
@@ -946,157 +785,204 @@ const handleSignup = async () => {
     }
 }
 
-const showTerms = () => toast.info('Terms & Conditions', { description: 'Coming soon...' })
-const showPrivacy = () => toast.info('Privacy Policy', { description: 'Coming soon...' })
+// ===== LEGAL MODALS (Terms & Privacy) =====
+const legalModal = ref(null) // 'terms' | 'privacy' | null
 
-// ===== PARTICLE SYSTEM =====
-let particles = []
-let particleAnimationId = null
-
-const initParticles = () => {
-    const canvas = particleCanvas.value
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const resize = () => {
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
-    }
-    window.addEventListener('resize', resize)
-    resize()
-
-    const count = 80
-    particles = []
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 0.3,
-            vy: (Math.random() - 0.5) * 0.3,
-            r: Math.random() * 2 + 1,
-            alpha: Math.random() * 0.4 + 0.1,
-            color: ['rgba(59,130,246,', 'rgba(168,85,247,', 'rgba(236,72,153,', 'rgba(16,185,129,', 'rgba(245,158,11,'][Math.floor(Math.random() * 5)]
-        })
-    }
-
-    let mouseX = canvas.width / 2
-    let mouseY = canvas.height / 2
-
-    const animate = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        for (const p of particles) {
-            p.x += p.vx
-            p.y += p.vy
-            if (p.x < 0 || p.x > canvas.width) p.vx *= -1
-            if (p.y < 0 || p.y > canvas.height) p.vy *= -1
-            // Mouse repulsion
-            const dx = p.x - mouseX
-            const dy = p.y - mouseY
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist < 150) {
-                const force = (150 - dist) / 150 * 0.5
-                p.x += (dx / dist) * force
-                p.y += (dy / dist) * force
+const legalContent = {
+    terms: {
+        title: 'Terms & Conditions',
+        intro: 'These Terms govern your account and your use of the CaviteGo Paint system — including the paint catalog, e-commerce store, order management, and role-based dashboards.',
+        sections: [
+            {
+                h: '1. Acceptance of These Terms',
+                p: [
+                    'By creating a CaviteGo Paint account and ticking the agreement box during registration, you accept these Terms & Conditions and our Privacy Policy in full. If you do not agree with any part of them, do not create an account.'
+                ]
+            },
+            {
+                h: '2. Eligibility and Account Registration',
+                p: ['To register you must:'],
+                li: [
+                    'be at least 18 years old, or be supervised by a legal guardian;',
+                    'provide accurate and complete registration details — legal first name, last name, an active email address, and an active Philippine mobile number in 09XX XXX XXXX format;',
+                    'keep your details up to date from your profile settings.'
+                ],
+                note: 'You are responsible for keeping your email access and password secure. One account is allowed per person and per email address.'
+            },
+            {
+                h: '3. Account Roles and Verification',
+                p: [
+                    'CaviteGo Paint is a role-based system. The roles available at registration are Client, Distributor, Service Provider, and Supplier, while staff and administrator roles are assigned internally by CaviteGo Paint.',
+                    'The role you select determines which dashboard, features, and records you can access. Your selected role is subject to verification and approval by an administrator before full access is granted.'
+                ],
+                li: [
+                    'Distributors and Suppliers may be asked to submit business documents (e.g., DTI/SEC registration or permits) to verify their role;',
+                    'An administrator may approve, reject, or reassign a role at any time;',
+                    'Registering under a role you do not legitimately belong to is grounds for suspension.'
+                ]
+            },
+            {
+                h: '4. Account Security and Two-Step Verification',
+                p: [
+                    'Your account is protected by your password plus two-step verification. When you sign in from an unrecognized device or browser, the system sends a 6-digit one-time password (OTP) to your primary email, or to your recovery email if you select it, and may also ask for the answer to your security question.',
+                    'You are responsible for all activity performed under your account. Never share your password or OTP codes. Report any suspected unauthorized access to CaviteGo Paint support immediately.'
+                ]
+            },
+            {
+                h: '5. Orders, Pricing, and Services',
+                p: [
+                    'Product prices, stock availability, and delivery schedules shown in the store may change without notice. An order you submit is a request and is only confirmed once its status in the system changes to confirmed.',
+                    'Quotations, consultations, and service bookings made through the platform are requests as well, and are only binding once confirmed by the other party.'
+                ],
+                li: [
+                    'Providing fake order details, payment references, or delivery addresses may lead to account suspension;',
+                    'Distributor pricing and bulk quantities apply only to verified distributor accounts.'
+                ]
+            },
+            {
+                h: '6. Acceptable Use',
+                p: ['You agree not to misuse the system.'], li: [
+                    'attempt to breach or bypass security features, including guessing OTP codes or using stolen credentials;',
+                    'scrape, harvest, or copy other users\u2019 data, product listings, or images;',
+                    'impersonate another person or misrepresent your role or business affiliation;',
+                    'use the system for any fraudulent, unlawful, or harassing activity;',
+                    'upload malicious content or interfere with the system\u2019s operation.'
+                ]
+            },
+            {
+                h: '7. Suspension and Termination',
+                p: [
+                    'CaviteGo Paint may suspend or close an account that violates these Terms, fails role verification after repeated attempts, is involved in fraud, or poses a security risk. You may request account deletion at any time through the support channel.'
+                ]
+            },
+            {
+                h: '8. Disclaimer and Limitation of Liability',
+                p: [
+                    'The system is provided on an "as is" and "as available" basis. To the fullest extent permitted by law, CaviteGo Paint is not liable for indirect, incidental, or consequential damages arising from your use of the platform. Catalog descriptions and product information are maintained in good faith, but errors may occur.'
+                ]
+            },
+            {
+                h: '9. Changes to These Terms',
+                p: [
+                    'Updated Terms will be posted inside the system with a new effective date. Continued use of your account after that date means you accept the changes. Material changes will also be announced through the system or by email.'
+                ]
+            },
+            {
+                h: '10. Contact Us',
+                p: [
+                    'Questions about these Terms may be sent through the Support/Contact page inside the system, or by emailing support@cavitegopaint.com.'
+                ]
             }
-            ctx.beginPath()
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-            ctx.fillStyle = p.color + p.alpha + ')'
-            ctx.fill()
-        }
-        // Draw connections
-        for (let i = 0; i < particles.length; i++) {
-            for (let j = i + 1; j < particles.length; j++) {
-                const dx = particles[i].x - particles[j].x
-                const dy = particles[i].y - particles[j].y
-                const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist < 120) {
-                    ctx.beginPath()
-                    ctx.moveTo(particles[i].x, particles[i].y)
-                    ctx.lineTo(particles[j].x, particles[j].y)
-                    ctx.strokeStyle = `rgba(255,255,255,${0.06 * (1 - dist / 120)})`
-                    ctx.lineWidth = 0.5
-                    ctx.stroke()
-                }
+        ]
+    },
+    privacy: {
+        title: 'Privacy Policy',
+        intro: 'This Policy explains what personal information the CaviteGo Paint system collects when you register, how it is used, who can see it, and how you can control it. We handle personal data in accordance with the Data Privacy Act of 2012 (RA 10173) of the Philippines.',
+        sections: [
+            {
+                h: '1. Information We Collect',
+                p: ['When you register and use the system, we collect:'],
+                li: [
+                    'your first name, last name, email address, mobile number, and the role you selected;',
+                    'your password, which is stored only as a salted one-way hash, plus your security question and answer;',
+                    'technical details such as IP address, browser, device type, and login timestamps — used for two-step verification and fraud protection;',
+                    'records of your activity: orders, quotations, service requests, supply orders, and other transactions you make.'
+                ]
+            },
+            {
+                h: '2. How We Use Your Information',
+                p: ['We use your data to:'],
+                li: [
+                    'create and manage your account and apply the correct role-based permissions;',
+                    'verify your identity through OTP codes, security questions, and role verification;',
+                    'process your orders and transactions and power your dashboards and reports;',
+                    'send transactional messages such as verification codes, order updates, and account notices;',
+                    'detect and prevent fraud, abuse, and unauthorized access, and to keep the system running reliably.'
+                ]
+            },
+            {
+                h: '3. How We Store and Protect It',
+                p: [
+                    'Passwords are never saved in plain text. After you sign in, the system keeps an authentication token (auth_token) and your basic account data (user_data) in your browser\u2019s local storage so that you stay signed in; logging out or clearing your browser data removes them.',
+                    'Data is transmitted over encrypted HTTPS connections, and access to records is limited by role, so staff only see the information they need to perform their function.'
+                ]
+            },
+            {
+                h: '4. Cookies and Local Storage',
+                p: [
+                    'The system uses cookies and local storage only to keep you signed in and to remember essential preferences. We do not use third-party advertising or cross-site tracking cookies.'
+                ]
+            },
+            {
+                h: '5. Who Can See Your Information',
+                p: ['Your information is shared only with:'],
+                li: [
+                    'authorized CaviteGo Paint personnel, based on their role — for example, operations and distributor staff who process your orders, finance staff for payments, and administrators who manage accounts;',
+                    'service providers that host the system and deliver verification emails, under confidentiality obligations;',
+                    'authorities, when required by law or a lawful order.'
+                ],
+                note: 'We never sell your personal information.'
+            },
+            {
+                h: '6. Data Retention and Deletion',
+                p: [
+                    'Your personal data is kept while your account is active and for as long as required by law and accounting rules. Transaction records may be retained even after account closure where the law requires it. You may request deletion of your account and personal data through the support channel.'
+                ]
+            },
+            {
+                h: '7. Your Rights',
+                p: ['You may at any time:'], li: [
+                    'view and correct your personal details in your profile settings;',
+                    'request a copy of the data we hold about you;',
+                    'request deletion of your account and associated personal data;',
+                    'withdraw your consent by closing your account, with the understanding that essential transaction records may be retained as required by law.'
+                ]
+            },
+            {
+                h: '8. Protection of Minors',
+                p: [
+                    'The system is intended for users who are 18 years of age and older. If we learn that a minor has registered an account, we will delete the account and its data.'
+                ]
+            },
+            {
+                h: '9. Changes to This Policy',
+                p: [
+                    'We may update this Privacy Policy from time to time. The revised version will be posted inside the system with an updated effective date, and continued use of your account means you accept it.'
+                ]
+            },
+            {
+                h: '10. Contact Us',
+                p: [
+                    'For questions or requests about your personal data, contact us through the Support/Contact page inside the system, or by emailing support@cavitegopaint.com.'
+                ]
             }
-        }
-        particleAnimationId = requestAnimationFrame(animate)
-    }
-    animate()
-
-    // Mouse tracking for particles
-    const onMouseMove = (e) => {
-        mouseX = e.clientX
-        mouseY = e.clientY
-    }
-    window.addEventListener('mousemove', onMouseMove)
-    return () => {
-        window.removeEventListener('resize', resize)
-        window.removeEventListener('mousemove', onMouseMove)
-        if (particleAnimationId) cancelAnimationFrame(particleAnimationId)
+        ]
     }
 }
 
-// ===== 3D CARD TILT =====
-const init3DTilt = () => {
-    const card = card3d.value
-    if (!card) return
-    let isHovering = false
+const legalTitle = computed(() => legalContent[legalModal.value]?.title || '')
+const legalIntro = computed(() => legalContent[legalModal.value]?.intro || '')
+const legalSections = computed(() => legalContent[legalModal.value]?.sections || [])
 
-    const onMouseMove = (e) => {
-        if (!isHovering) return
-        const rect = card.getBoundingClientRect()
-        const x = (e.clientX - rect.left) / rect.width - 0.5
-        const y = (e.clientY - rect.top) / rect.height - 0.5
-        const rotateX = -y * 6
-        const rotateY = x * 6
-        card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`
-        // Update cursor glow
-        if (cursorGlow.value) {
-            cursorGlow.value.style.left = e.clientX + 'px'
-            cursorGlow.value.style.top = e.clientY + 'px'
-            cursorGlow.value.style.opacity = '1'
-        }
-    }
+const showTerms = () => { legalModal.value = 'terms' }
+const showPrivacy = () => { legalModal.value = 'privacy' }
+const closeLegal = () => { legalModal.value = null }
 
-    const onMouseEnter = () => { isHovering = true }
-    const onMouseLeave = () => {
-        isHovering = false
-        card.style.transform = 'rotateX(0deg) rotateY(0deg)'
-        if (cursorGlow.value) cursorGlow.value.style.opacity = '0'
-    }
+const onLegalKeydown = (e) => { if (e.key === 'Escape') closeLegal() }
 
-    card.addEventListener('mousemove', onMouseMove)
-    card.addEventListener('mouseenter', onMouseEnter)
-    card.addEventListener('mouseleave', onMouseLeave)
-    return () => {
-        card.removeEventListener('mousemove', onMouseMove)
-        card.removeEventListener('mouseenter', onMouseEnter)
-        card.removeEventListener('mouseleave', onMouseLeave)
+watch(legalModal, (value) => {
+    if (value) {
+        document.body.style.overflow = 'hidden'
+        window.addEventListener('keydown', onLegalKeydown)
+    } else {
+        document.body.style.overflow = ''
+        window.removeEventListener('keydown', onLegalKeydown)
     }
-}
-
-// ===== MOUNT =====
-onMounted(async () => {
-    await nextTick()
-    // Fade in card
-    if (pageContainer.value) pageContainer.value.style.opacity = '1'
-    if (signupCard.value) {
-        setTimeout(() => {
-            signupCard.value.style.opacity = '1'
-            signupCard.value.style.transform = 'translateY(0)'
-        }, 300)
-    }
-    // Init particles
-    const cleanupParticles = initParticles()
-    // Init 3D tilt
-    const cleanupTilt = init3DTilt()
-    // Store cleanup
-    window.__cleanupParticles = cleanupParticles
-    window.__cleanupTilt = cleanupTilt
 })
 
-onUnmounted(() => {
-    if (window.__cleanupParticles) window.__cleanupParticles()
-    if (window.__cleanupTilt) window.__cleanupTilt()
+onBeforeUnmount(() => {
+    document.body.style.overflow = ''
+    window.removeEventListener('keydown', onLegalKeydown)
 })
 
 watch(currentStep, () => {
@@ -1105,181 +991,39 @@ watch(currentStep, () => {
 </script>
 
 <style scoped>
-/* ===== STEP 3D TRANSITIONS ===== */
-.step-3d-enter-active {
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
+/* One-shot entrance animation (no infinite loops, no filters) */
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
-.step-3d-leave-active {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
-    position: absolute;
-    width: 100%;
+.auth-card { animation: fade-up 0.4s ease-out both; }
+
+/* ===== LEGAL MODAL SCROLLBAR ===== */
+.legal-body::-webkit-scrollbar { width: 6px; }
+.legal-body::-webkit-scrollbar-track { background: transparent; }
+.legal-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+.legal-body::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ===== STEP TRANSITION (lightweight fade) ===== */
+.step-fade-enter-active,
+.step-fade-leave-active {
+    transition: opacity 0.18s ease, transform 0.18s ease;
 }
-.step-3d-enter-from {
+.step-fade-enter-from {
     opacity: 0;
-    transform: rotateY(-15deg) scale(0.95) translateX(30px);
+    transform: translateY(6px);
 }
-.step-3d-leave-to {
+.step-fade-leave-to {
     opacity: 0;
-    transform: rotateY(15deg) scale(0.95) translateX(-30px);
-}
-.step-3d-enter-to {
-    opacity: 1;
-    transform: rotateY(0deg) scale(1) translateX(0);
-}
-.step-3d-leave-from {
-    opacity: 1;
-    transform: rotateY(0deg) scale(1) translateX(0);
+    transform: translateY(-6px);
 }
 
-/* ===== AMBIENT ANIMATIONS ===== */
-@keyframes float-slow {
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg) scale(1);
-    }
-    50% {
-        transform: translateY(-25px) rotate(5deg) scale(1.05);
-    }
-}
-@keyframes float-medium {
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg) scale(1);
-    }
-    50% {
-        transform: translateY(-18px) rotate(-3deg) scale(1.08);
-    }
-}
-@keyframes brush-stroke-1 {
-    0%,
-    100% {
-        transform: translateX(0) rotate(45deg) scale(1);
-    }
-    50% {
-        transform: translateX(25px) rotate(55deg) scale(1.1);
-    }
-}
-@keyframes brush-stroke-2 {
-    0%,
-    100% {
-        transform: translateX(0) rotate(-12deg) scale(1);
-    }
-    50% {
-        transform: translateX(-20px) rotate(-8deg) scale(1.1);
-    }
-}
-@keyframes bounce-droplet {
-    0%,
-    100% {
-        transform: translateY(0) scale(1);
-    }
-    50% {
-        transform: translateY(-25px) scale(1.2);
-    }
-}
-@keyframes spin-slow {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-@keyframes spin-slow-reverse {
-    from {
-        transform: rotate(360deg);
-    }
-    to {
-        transform: rotate(0deg);
-    }
-}
-@keyframes shimmer {
-    0% {
-        transform: translateX(-100%) rotate(12deg);
-    }
-    100% {
-        transform: translateX(100%) rotate(12deg);
-    }
-}
-@keyframes border-rotate {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-.animate-float-slow {
-    animation: float-slow 8s ease-in-out infinite;
-}
-.animate-float-medium {
-    animation: float-medium 6s ease-in-out infinite;
-}
-.animate-brush-stroke-1 {
-    animation: brush-stroke-1 10s ease-in-out infinite;
-}
-.animate-brush-stroke-2 {
-    animation: brush-stroke-2 12s ease-in-out infinite;
-}
-.animate-bounce-droplet {
-    animation: bounce-droplet 4s ease-in-out infinite;
-}
-.animate-spin-slow {
-    animation: spin-slow 20s linear infinite;
-}
-.animate-spin-slow-reverse {
-    animation: spin-slow-reverse 25s linear infinite;
-}
-.animate-shimmer {
-    animation: shimmer 6s ease-in-out infinite;
-}
-.animate-border-rotate {
-    background-size: 200% 200%;
-    animation: border-rotate 4s ease-in-out infinite;
-}
-
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar {
-    width: 8px;
-}
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-}
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, #3b82f6, #8b5cf6, #ec4899);
-    border-radius: 4px;
-}
-
-/* ===== CARD PERSPECTIVE FIX ===== */
-[perspective] {
-    perspective: 1200px;
-}
-[transform-style="preserve-3d"] {
-    transform-style: preserve-3d;
-}
-.will-change-transform {
-    will-change: transform;
-}
-
-/* ===== RIPPLE EFFECT ===== */
-.ripple-effect {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(0);
-    animation: ripple-anim 0.6s linear forwards;
-    pointer-events: none;
-}
-@keyframes ripple-anim {
-    to {
-        transform: scale(4);
-        opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+    .auth-card,
+    .step-fade-enter-active,
+    .step-fade-leave-active {
+        animation: none;
+        transition: none;
     }
 }
 </style>
