@@ -364,11 +364,7 @@
                               :class="identityVerificationBlocked(viewingUser) ? 'opacity-50 cursor-not-allowed' : ''">
                              <i class="fas fa-check-circle"></i> Approve User
                           </Button>
-                          <Button v-if="(identityVerificationPartial(viewingUser) || viewingUser.identity_verification?.manual_review_status) && !identityVerificationBlocked(viewingUser)"
-                              @click="openManualReviewModal(viewingUser)"
-                              class="w-full justify-start gap-2 bg-amber-500 hover:bg-amber-600 text-white">
-                             <i class="fas fa-clipboard-check"></i> Manual Review
-                          </Button>
+                          
                           <Button @click="openRejectModal(viewingUser)" variant="destructive" class="w-full justify-start gap-2">
                              <i class="fas fa-times-circle"></i> Reject User
                           </Button>

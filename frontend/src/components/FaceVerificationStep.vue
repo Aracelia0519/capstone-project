@@ -149,21 +149,7 @@
       <div v-if="result.failure_reason" class="text-xs text-red-600 bg-red-100/70 rounded p-2">{{ result.failure_reason }}</div>
 
       <!-- Manual review request: shown when at least ONE check passed but not all -->
-      <label
-        v-if="result.any_match === true && !result.credentials_matched"
-        class="flex items-start gap-2 p-3 rounded-lg border border-amber-300 bg-amber-50 cursor-pointer"
-      >
-        <input
-          type="checkbox"
-          v-model="manualReviewRequested"
-          class="mt-0.5 w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
-        />
-        <span class="text-xs text-amber-800 leading-relaxed">
-          <span class="font-semibold">Submit for manual review by admin</span> — at least one automatic check
-          (face / name / ID number) passed, but not all. Your details will be sent for the admin to manually
-          review your requirements and verification before deciding.
-        </span>
-      </label>
+      
 
       <!-- All checks failed (verification actually ran): admin will not be able to approve -->
       <div
