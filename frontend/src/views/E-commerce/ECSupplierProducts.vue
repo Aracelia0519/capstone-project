@@ -133,7 +133,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import api from '@/utils/axios'; 
+import api, { storageBaseURL } from '@/utils/axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -180,11 +180,20 @@ const formatCurrency = (value) => {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value || 0);
 };
 
+// 2. Replace formatImage with this version
 const formatImage = (path) => {
     if (!path) return '';
-    if (path.startsWith('http')) return path;
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-    return `${baseUrl}/storage/${path}`;
+
+    const baseUrl = (storageBaseURL || api.defaults.baseURL || window.location.origin)
+        .replace(/\/api\/?$/, '')
+        .replace(/\/+$/, '');
+
+    if (path.startsWith('http')) {
+        return path.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/, baseUrl);
+    }
+
+    const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '');
+    return `${baseUrl}/storage/${cleanPath}`;
 };
 
 onMounted(() => {
