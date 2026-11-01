@@ -400,7 +400,6 @@ const navigation = [
     title: 'Financials',
     hideOnTerminate: true,
     items: [
-      { name: 'Invoices', path: '/supplier/Invoices', icon: FileText, color: 'text-cyan-400', requiresVerify: true, hideOnTerminate: true },
       { name: 'Payments', path: '/supplier/SupplierPayments', icon: Wallet, color: 'text-green-400', requiresVerify: true, hideOnTerminate: true }
     ]
   },

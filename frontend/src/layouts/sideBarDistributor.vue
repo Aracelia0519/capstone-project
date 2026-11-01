@@ -328,14 +328,6 @@ const baseNavigation = [
     ]
   },
   {
-    title: 'Analytics',
-    hideOnTerminate: true,
-    items: [
-      { name: 'Color Demand Insights', path: '/distributor/ColorDemandInsights', icon: Lightbulb, color: 'text-purple-400', isAi: true, badgeColor: 'bg-purple-500/20 text-purple-300', requiresVerify: true, hideOnTerminate: true },
-      { name: 'Sales History', path: '/distributor/SalesHistory', icon: History, color: 'text-indigo-400', requiresVerify: true, hideOnTerminate: true }
-    ]
-  },
-  {
     title: 'Network',
     hideOnTerminate: true,
     items: [

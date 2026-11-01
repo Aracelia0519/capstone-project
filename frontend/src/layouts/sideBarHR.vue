@@ -155,9 +155,7 @@ const hrNavItems = ref([
   { id: 'dashboard', text: 'Dashboard', route: '/HR/HRdashboard', permissionKey: 'dashboard' },
   { id: 'employees', text: 'Employee List', route: '/HR/employeesListHR', permissionKey: 'employee_list' },
   { id: 'positions', text: 'Positions & Roles', route: '/HR/positionRolesHR', permissionKey: 'positions_roles' },
-  { id: 'departments', text: 'Departments', route: '/HR/departmentsHR', permissionKey: 'departments' },
-  { id: 'status', text: 'Employment Status', route: '/HR/employmentStatusHR', permissionKey: 'employment_status' },
-  { id: 'recruitment', text: 'Recruitment Application', route: '/HR/recruitmentApplication', permissionKey: 'recruitment' },
+  
   { id: 'payroll', text: 'Payroll Management', route: '/HR/payrollHR', permissionKey: 'payroll_management' },
   { id: 'attendanceRequest', text: 'Attendance Request', route: '/HR/attendanceRequestHR', permissionKey: 'attendance_request' },
   { id: 'leaveRequest', text: 'Leave Request', route: '/HR/leaveRequestHR', permissionKey: 'leave_request' }

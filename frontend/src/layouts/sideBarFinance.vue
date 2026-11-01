@@ -139,7 +139,6 @@ const navigation = [
     items: [
       { name: 'Dashboard', path: '/finance/financeDashboard', icon: LayoutDashboard, color: 'text-emerald-400', badge: 'Live' },
       { name: 'Transactions', path: '/finance/transactions', icon: ArrowLeftRight, color: 'text-teal-400', badge: '24' },
-      { name: 'Payment Methods', path: '/finance/paymentMethods', icon: CreditCard, color: 'text-cyan-400' }
     ]
   },
   {
