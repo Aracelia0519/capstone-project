@@ -82,7 +82,7 @@
             <div>
               <div class="flex justify-between items-end mb-2">
                 <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
-                  <PaintBucket class="w-3.5 h-3.5" /> Paint Load
+                  <PaintBucket class="w-3.5 h-3.5" /> Product Load
                 </span>
                 <span class="font-black text-emerald-600">{{ vehicle.paint_capacity }} <span class="text-xs font-semibold text-emerald-400/70">kg</span></span>
               </div>
@@ -250,7 +250,7 @@
                 <p class="text-xs text-slate-500 mt-1">Total physical carrying limit of the vehicle.</p>
               </div>
               <div class="space-y-2">
-                <Label for="paintCapacity" class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Paint Capacity (kg) <span class="text-red-500">*</span></Label>
+                <Label for="paintCapacity" class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Product Capacity (kg) <span class="text-red-500">*</span></Label>
                 <Input id="paintCapacity" type="number" v-model="newVehicle.paint_capacity" placeholder="e.g. 1000" class="rounded-xl h-12 bg-white border-slate-200 shadow-sm ring-offset-emerald-50 focus-visible:ring-emerald-500 text-lg font-bold" />
                 <p class="text-xs text-slate-500 mt-1">Cannot exceed the Gross Weight Limit.</p>
               </div>
