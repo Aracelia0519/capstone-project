@@ -16,6 +16,14 @@
             Smart Picks
           </Button>
 
+          <Button 
+            @click="openNearestShops"
+            class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90 border-0 shadow-lg rounded-xl font-medium"
+          >
+            <MapPin class="w-4 h-4 mr-2" />
+            Nearest Shops
+          </Button>
+
           <Button @click="router.push('/ECommerceClient/EccommerceCart')" variant="outline" class="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium">
             <ShoppingCart class="w-4 h-4 mr-2" />
             Cart
@@ -43,6 +51,10 @@
                   <Button @click="showDssModal = true; showMobileMenu = false" class="w-full justify-start rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium h-12 border-0">
                     <Lightbulb class="w-5 h-5 mr-3" />
                     Smart Picks
+                  </Button>
+                  <Button @click="openNearestShops(); showMobileMenu = false" class="w-full justify-start rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium h-12 border-0">
+                    <MapPin class="w-5 h-5 mr-3" />
+                    Nearest Shops
                   </Button>
                   <Button @click="router.push('/ECommerceClient/EccommerceCart'); showMobileMenu = false" variant="outline" class="w-full justify-start rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors font-medium h-12">
                     <ShoppingCart class="w-5 h-5 mr-3" />
@@ -326,7 +338,7 @@
 
     <Teleport to="body">
       <Dialog :open="showDssModal" @update:open="(val) => !val && (showDssModal = false)">
-        <DialogContent class="bg-white border-0 shadow-2xl rounded-3xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 z-[10001]">
+        <DialogContent class="bg-white border-0 shadow-2xl rounded-3xl w-full max-w-[calc(100%-2rem)] sm:max-w-6xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 z-[10001]">
           <div class="px-6 py-6 border-b border-gray-100 bg-white sticky top-0 z-20 flex justify-between items-start">
             <div>
               <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
@@ -405,6 +417,148 @@
                    </Card>
                 </div>
              </div>
+
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Teleport>
+
+    <Teleport to="body">
+      <Dialog :open="showNearestShopsModal" @update:open="(val) => !val && closeNearestShopsModal()">
+        <DialogContent class="bg-white border-0 shadow-2xl rounded-3xl w-full max-w-[calc(100%-2rem)] sm:max-w-6xl overflow-hidden flex flex-col max-h-[90vh] ring-1 ring-black/5 p-0 z-[10001]">
+          <div class="px-6 py-6 border-b border-gray-100 bg-white sticky top-0 z-20 flex justify-between items-start">
+            <div>
+              <DialogTitle class="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                <MapPin class="w-6 h-6 text-emerald-500" />
+                Nearest Shops
+              </DialogTitle>
+              <DialogDescription class="text-gray-500 font-medium mt-1">
+                {{ selectedShop ? 'Available products from the shop you selected.' : 'Shops ranked by distance from your saved delivery address.' }}
+              </DialogDescription>
+            </div>
+            <button @click="closeNearestShopsModal" class="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
+
+          <div class="px-6 py-6 overflow-y-auto flex-1 custom-scrollbar bg-gray-50/50">
+
+            <!-- Loading shops -->
+            <div v-if="isFetchingShops" class="text-center py-16 flex flex-col items-center">
+              <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mb-4"></div>
+              <p class="text-gray-500 font-medium">Finding the shops nearest to you...</p>
+            </div>
+
+            <!-- Guest -->
+            <div v-else-if="shopsNeedsLogin" class="text-center py-16">
+              <div class="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center text-gray-300 shadow-sm border border-gray-100">
+                <MapPin class="w-10 h-10" />
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Log in to see nearby shops</h3>
+              <p class="text-gray-500 max-w-sm mx-auto mb-6">We use the address saved on your account to calculate how far each shop is from you.</p>
+              <Button @click="router.push('/Landing/logIn')" class="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-8">
+                Log In
+              </Button>
+            </div>
+
+            <!-- Selected shop's products -->
+            <div v-else-if="selectedShop">
+              <button @click="backToShopList" class="flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-emerald-600 transition-colors mb-4">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                Back to shops
+              </button>
+
+              <div class="mb-5 flex items-center justify-between gap-4 bg-emerald-50/70 border border-emerald-100 rounded-2xl p-4">
+                <div class="min-w-0">
+                  <h3 class="font-bold text-gray-900 truncate">{{ selectedShop.shop_name }}</h3>
+                  <p v-if="selectedShop.address" class="text-xs text-gray-500 truncate mt-0.5">{{ selectedShop.address }}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-lg font-black text-emerald-600">{{ selectedShop.distance_text || '—' }}</p>
+                  <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">from your address</p>
+                </div>
+              </div>
+
+              <div v-if="isLoadingShopProducts" class="text-center py-12 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-3"></div>
+                <p class="text-gray-500 font-medium text-sm">Loading products...</p>
+              </div>
+
+              <div v-else-if="shopProducts.length === 0" class="text-center py-12">
+                <div class="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center text-gray-300 shadow-sm border border-gray-100">
+                  <Store class="w-8 h-8" />
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-1">No products available</h3>
+                <p class="text-gray-500 text-sm">This shop does not have any products deployed right now.</p>
+              </div>
+
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div
+                  v-for="product in shopProducts"
+                  :key="product.id"
+                  @click="goToProductDetails(product.hash_id || product.id); closeNearestShopsModal();"
+                  class="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-emerald-400 transition-all cursor-pointer flex flex-row overflow-hidden"
+                >
+                  <div class="w-28 h-auto bg-gray-100 flex items-center justify-center shrink-0">
+                    <img v-if="product.image_url" :src="getImageUrl(product.image_url)" class="object-cover w-full h-full" />
+                    <div v-else class="w-12 h-12 rounded-full border-2 border-white shadow" :style="{ backgroundColor: product.color || '#e5e7eb' }"></div>
+                  </div>
+                  <div class="p-3 flex flex-col justify-center flex-1 min-w-0">
+                    <p class="text-[10px] font-bold tracking-wider text-emerald-600 uppercase mb-0.5 truncate">{{ product.type || product.category }}</p>
+                    <h4 class="font-bold text-sm text-gray-900 line-clamp-2">{{ product.name }}</h4>
+                    <div class="flex items-center justify-between gap-2 mt-2">
+                      <span class="text-sm font-black text-gray-900">₱{{ formatCurrency(product.price) }}</span>
+                      <span :class="['text-[10px] font-bold', product.stock > 0 ? 'text-green-600' : 'text-red-500']">
+                        {{ product.stock > 0 ? `${product.stock} left` : 'Out of stock' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Shop list -->
+            <div v-else>
+              <div v-if="shopsAddressMissing" class="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <p class="text-sm text-amber-800 font-medium">We could not find coordinates for your saved address, so distances cannot be calculated yet. Please update your address in your profile.</p>
+              </div>
+
+              <div v-if="nearbyShops.length === 0" class="text-center py-16">
+                <div class="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center text-gray-300 shadow-sm border border-gray-100">
+                  <Store class="w-10 h-10" />
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">No shops available</h3>
+                <p class="text-gray-500 max-w-sm mx-auto">There are no distributor shops with available products at the moment.</p>
+              </div>
+
+              <div v-else class="space-y-3">
+                <button
+                  v-for="(shop, index) in nearbyShops"
+                  :key="shop.distributor_id"
+                  @click="selectShop(shop)"
+                  class="w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-emerald-400 hover:shadow-md transition-all p-4 flex items-center gap-4 group"
+                >
+                  <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Store class="w-6 h-6" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h4 class="font-bold text-gray-900 truncate">{{ shop.shop_name }}</h4>
+                      <Badge v-if="index === 0 && shop.distance_km !== null" class="bg-emerald-100 text-emerald-700 border-0 text-[10px] uppercase">Nearest</Badge>
+                    </div>
+                    <p v-if="shop.address" class="text-xs text-gray-500 truncate mt-0.5">{{ shop.address }}</p>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <p :class="['text-sm font-bold', shop.distance_km !== null ? 'text-emerald-600' : 'text-gray-400']">
+                      {{ shop.distance_km !== null ? shop.distance_text : 'No distance' }}
+                    </p>
+                    <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">away</p>
+                  </div>
+                  <svg class="w-5 h-5 text-gray-300 group-hover:text-emerald-500 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+              </div>
+            </div>
 
           </div>
         </DialogContent>
@@ -807,7 +961,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/utils/axios'
 import { toast } from 'vue-sonner'
-import { Menu, ShoppingCart, Package, Star, MessageSquare, CornerDownRight, ShieldCheck, Lightbulb, TrendingUp } from 'lucide-vue-next'
+import { Menu, ShoppingCart, Package, Star, MessageSquare, CornerDownRight, ShieldCheck, Lightbulb, TrendingUp, MapPin, Store } from 'lucide-vue-next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -874,6 +1028,17 @@ const isCartModalOpen = ref(false)
 const isOrderModalOpen = ref(false)
 const isReviewsModalOpen = ref(false)
 const showDssModal = ref(false)
+
+// Nearest Shop DSS States
+const showNearestShopsModal = ref(false)
+const isFetchingShops = ref(false)
+const nearbyShops = ref([])
+const shopsAddressMissing = ref(false)
+const shopsNeedsLogin = ref(false)
+const selectedShop = ref(null)
+const shopProducts = ref([])
+const isLoadingShopProducts = ref(false)
+
 const selectedProduct = ref(null)
 
 // Group variant tracking
@@ -1012,6 +1177,94 @@ const dssRecommendations = computed(() => {
   return { topRated, trending };
 });
 // =========================================================================
+
+// =========================================================================
+// DSS: NEAREST AVAILABLE DISTRIBUTOR SHOP
+// Distances are computed in the backend from the client's saved address
+// (client_addresses) and each distributor's address (distributor_addresses).
+// =========================================================================
+const fetchNearestShops = async () => {
+  try {
+    isFetchingShops.value = true
+    const response = await api.get('/client/shop/nearest-distributors')
+
+    if (response.data.success) {
+      nearbyShops.value = response.data.data || []
+      shopsAddressMissing.value = !!response.data.address_missing
+      shopsNeedsLogin.value = !!response.data.needs_login
+    } else {
+      nearbyShops.value = []
+      shopsAddressMissing.value = false
+      shopsNeedsLogin.value = false
+      if (response.data.shop_disabled) {
+        closeNearestShopsModal()
+        shopDisabled.value = true
+        shopDisabledMessage.value = response.data.message || ''
+      } else {
+        toast.error(response.data.message || 'Unable to load nearby shops')
+      }
+    }
+  } catch (error) {
+    nearbyShops.value = []
+    toast.error(error.response?.data?.message || 'Unable to load nearby shops')
+    console.error('Error fetching nearest shops:', error)
+  } finally {
+    isFetchingShops.value = false
+  }
+}
+
+const openNearestShops = () => {
+  if (!props.user) {
+    isAuthAlertOpen.value = true
+    return
+  }
+
+  showNearestShopsModal.value = true
+  selectedShop.value = null
+  shopProducts.value = []
+  fetchNearestShops()
+}
+
+const closeNearestShopsModal = () => {
+  showNearestShopsModal.value = false
+  selectedShop.value = null
+  shopProducts.value = []
+}
+
+const backToShopList = () => {
+  selectedShop.value = null
+  shopProducts.value = []
+}
+
+const fetchShopProducts = async (distributorId) => {
+  try {
+    isLoadingShopProducts.value = true
+    const response = await api.get('/client/shop/products', {
+      params: { distributor_id: distributorId }
+    })
+
+    if (response.data.success) {
+      shopProducts.value = response.data.data || []
+    } else {
+      shopProducts.value = []
+      toast.error(response.data.message || 'Unable to load this shop\'s products')
+    }
+  } catch (error) {
+    shopProducts.value = []
+    toast.error(error.response?.data?.message || 'Unable to load this shop\'s products')
+    console.error('Error fetching shop products:', error)
+  } finally {
+    isLoadingShopProducts.value = false
+  }
+}
+
+const selectShop = async (shop) => {
+  selectedShop.value = shop
+  shopProducts.value = []
+  await fetchShopProducts(shop.distributor_id)
+}
+// =========================================================================
+
 
 const goToProductDetails = (id) => {
   router.push(`/ECommerceClient/ProductDetails/${id}`)

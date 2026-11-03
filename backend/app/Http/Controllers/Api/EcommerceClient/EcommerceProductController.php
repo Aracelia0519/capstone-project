@@ -45,6 +45,12 @@ class EcommerceProductController extends Controller
                 ->leftJoin('distributor_inventories as di', 'dp.id', '=', 'di.product_id')
                 ->where('dp.is_active', 1)
                 ->where('di.ecommerce_status', 'deployed');
+
+            // Optional filter used by the nearest-shop DSS so a client only sees
+            // the products of the distributor they picked.
+            if ($request->filled('distributor_id')) {
+                $query->where('dp.distributor_id', $request->input('distributor_id'));
+            }
             
             // Apply restriction block if records exist
             if (!empty($terminatedIds)) {
@@ -159,6 +165,184 @@ class EcommerceProductController extends Controller
             Log::error('Error fetching E-Commerce Products: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to fetch products'], 500);
         }
+    }
+
+    /**
+     * Decision Support (DSS): list the distributor shops that currently have
+     * deployed stock, ordered by their distance from the logged-in client's
+     * saved address.
+     *
+     * Client coordinates come from `client_addresses` (through
+     * `client_requirements.user_id`). Distributor coordinates come from
+     * `distributor_addresses` (through `distributor_requirements.user_id`).
+     */
+    public function getNearestDistributors(Request $request)
+    {
+        try {
+            $user = $request->user('sanctum') ?? auth('sanctum')->user();
+
+            // Guests can browse the shop, but distance needs a saved client address.
+            if (!$user) {
+                return response()->json([
+                    'success' => true,
+                    'needs_login' => true,
+                    'address_missing' => false,
+                    'data' => [],
+                ]);
+            }
+
+            $failedDeliveriesCount = DB::table('failed_deliveries')
+                ->where('user_id', $user->id)
+                ->count();
+
+            if ($failedDeliveriesCount >= 3) {
+                return response()->json([
+                    'success' => false,
+                    'shop_disabled' => true,
+                    'message' => 'Access to the e-commerce shop has been restricted. Due to multiple failed delivery attempts associated with your account, ordering privileges and product visibility have been temporarily disabled.',
+                    'data' => [],
+                ]);
+            }
+
+            $clientAddress = DB::table('client_addresses')
+                ->join('client_requirements', 'client_addresses.client_requirements_id', '=', 'client_requirements.id')
+                ->where('client_requirements.user_id', $user->id)
+                ->select('client_addresses.latitude', 'client_addresses.longitude')
+                ->first();
+
+            $clientLat = $clientAddress ? $clientAddress->latitude : null;
+            $clientLng = $clientAddress ? $clientAddress->longitude : null;
+            $hasClientCoords = $clientLat !== null && $clientLng !== null
+                && !((float) $clientLat === 0.0 && (float) $clientLng === 0.0);
+
+            $terminatedIds = DB::table('account_terminations')
+                ->where('status', 'terminated')
+                ->whereIn('role', ['distributor', 'operational_distributor'])
+                ->pluck('account_id')
+                ->toArray();
+
+            // Only shops that actually have something available to buy.
+            $distributorIds = DB::table('distributor_products as dp')
+                ->join('distributor_inventories as di', 'dp.id', '=', 'di.product_id')
+                ->where('dp.is_active', 1)
+                ->where('di.ecommerce_status', 'deployed')
+                ->where('di.quantity', '>', 0);
+
+            if (!empty($terminatedIds)) {
+                $distributorIds->whereNotIn('dp.distributor_id', $terminatedIds);
+            }
+
+            $distributorIds = $distributorIds
+                ->distinct()
+                ->pluck('dp.distributor_id');
+
+            if ($distributorIds->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'needs_login' => false,
+                    'address_missing' => !$hasClientCoords,
+                    'data' => [],
+                ]);
+            }
+
+            $requirements = DB::table('distributor_requirements')
+                ->whereIn('user_id', $distributorIds)
+                ->get()
+                ->keyBy('user_id');
+
+            $addresses = DB::table('distributor_addresses')
+                ->whereIn('distributor_requirements_id', $requirements->pluck('id'))
+                ->get()
+                ->keyBy('distributor_requirements_id');
+
+            $distributorUsers = DB::table('users')
+                ->whereIn('id', $distributorIds)
+                ->get()
+                ->keyBy('id');
+
+            $shops = $distributorIds->map(function ($distributorId) use ($requirements, $addresses, $distributorUsers, $hasClientCoords, $clientLat, $clientLng) {
+                $requirement = $requirements->get($distributorId);
+                $address = $requirement ? $addresses->get($requirement->id) : null;
+                $distributorUser = $distributorUsers->get($distributorId);
+
+                $shopName = ($requirement->company_name ?? null)
+                    ?: ($distributorUser->full_name ?? 'Distributor');
+
+                $shopLat = $address ? $address->latitude : null;
+                $shopLng = $address ? $address->longitude : null;
+                $hasShopCoords = $shopLat !== null && $shopLng !== null
+                    && !((float) $shopLat === 0.0 && (float) $shopLng === 0.0);
+
+                $distanceKm = null;
+                if ($hasClientCoords && $hasShopCoords) {
+                    $distanceKm = round($this->calculateDistanceKm($clientLat, $clientLng, $shopLat, $shopLng), 2);
+                }
+
+                $addressText = $address
+                    ? trim(implode(', ', array_filter([
+                        $address->block_address,
+                        $address->barangay,
+                        $address->city,
+                        $address->province,
+                    ])))
+                    : null;
+
+                return [
+                    'distributor_id' => $distributorId,
+                    'shop_name' => $shopName,
+                    'address' => $addressText ?: null,
+                    'latitude' => $hasShopCoords ? (float) $shopLat : null,
+                    'longitude' => $hasShopCoords ? (float) $shopLng : null,
+                    'distance_km' => $distanceKm,
+                    'distance_text' => $this->formatDistanceText($distanceKm),
+                ];
+            })->sortBy(function ($shop) {
+                return $shop['distance_km'] === null ? PHP_FLOAT_MAX : $shop['distance_km'];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'needs_login' => false,
+                'address_missing' => !$hasClientCoords,
+                'data' => $shops,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching nearest distributors: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to fetch nearby shops'], 500);
+        }
+    }
+
+    /**
+     * Haversine distance between two coordinate pairs, in kilometres.
+     */
+    private function calculateDistanceKm($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Human readable distance label.
+     */
+    private function formatDistanceText($distanceKm)
+    {
+        if ($distanceKm === null) {
+            return null;
+        }
+
+        if ($distanceKm < 1) {
+            return max(1, (int) round($distanceKm * 1000)) . ' m';
+        }
+
+        return number_format($distanceKm, 1) . ' km';
     }
 
     /**
