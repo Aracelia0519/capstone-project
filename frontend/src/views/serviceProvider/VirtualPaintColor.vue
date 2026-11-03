@@ -207,6 +207,149 @@
               </div>
             </CardContent>
           </Card>
+
+          <Card class="bg-slate-900/40 border-slate-700/50 backdrop-blur-xl overflow-hidden border">
+            <CardHeader>
+              <CardTitle class="text-xl font-bold text-white flex items-center gap-2">
+                <Droplets class="w-5 h-5 text-emerald-400" />
+                Instant Color from Image
+              </CardTitle>
+              <p class="text-sm text-slate-400 mt-2">
+                Upload an image, then click or tap the exact spot whose color you want to extract.
+              </p>
+            </CardHeader>
+            <CardContent class="space-y-4">
+              <input
+                ref="instantFileInput"
+                type="file"
+                accept="image/*"
+                class="hidden"
+                @change="handleInstantImageUpload"
+              />
+
+              <div
+                v-if="!instantImageSrc"
+                @click="triggerInstantImageInput"
+                @dragover.prevent
+                @drop.prevent="handleInstantImageDrop"
+                class="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 hover:bg-emerald-500/5 rounded-2xl p-10 text-center cursor-pointer transition-all"
+              >
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <Upload class="w-8 h-8" />
+                </div>
+                <p class="font-bold text-white">Click to upload an image</p>
+                <p class="text-sm text-slate-400 mt-1">or drag and drop it here</p>
+                <p class="text-[10px] text-slate-500 mt-3 uppercase tracking-widest">PNG, JPG or WEBP · Max 10MB</p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div class="flex items-center justify-between gap-3 bg-black/30 border border-white/5 rounded-xl p-3">
+                  <div class="min-w-0 flex items-center gap-2">
+                    <ImagePlus class="w-4 h-4 text-emerald-400 shrink-0" />
+                    <p class="text-sm text-slate-300 truncate font-medium">{{ instantImageName }}</p>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0">
+                    <Button
+                      @click="triggerInstantImageInput"
+                      variant="secondary"
+                      size="sm"
+                      class="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-600/30"
+                    >
+                      <ImagePlus class="w-4 h-4 mr-1.5" /> Change
+                    </Button>
+                    <Button @click="clearInstantImage" variant="ghost" size="sm" class="text-slate-400 hover:text-red-400">
+                      <Trash2 class="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl overflow-hidden border border-white/10 bg-slate-950">
+                  <div class="max-h-[420px] overflow-auto custom-scrollbar">
+                    <div class="relative w-full">
+                      <img
+                        ref="instantImageEl"
+                        :src="instantImageSrc"
+                        @load="prepareInstantCanvas"
+                        @click="sampleInstantColor"
+                        class="w-full h-auto block cursor-crosshair select-none"
+                        draggable="false"
+                        alt="Uploaded image for instant color sampling"
+                      />
+
+                      <div
+                        v-if="instantMarker && extractedColor"
+                        class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                        :style="{ left: instantMarker.left, top: instantMarker.top }"
+                      >
+                        <div class="relative flex items-center justify-center">
+                          <div
+                            class="w-9 h-9 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(0,0,0,0.45),0_4px_12px_rgba(0,0,0,0.6)]"
+                            :style="{ backgroundColor: extractedColor.hex }"
+                          ></div>
+                          <Droplets class="w-4 h-4 text-white absolute drop-shadow" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="extractedColor" class="space-y-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="flex items-center gap-3 bg-black/40 rounded-xl p-3 border border-white/5">
+                      <div class="w-14 h-14 rounded-lg border border-white/20 shadow-inner shrink-0" :style="{ backgroundColor: extractedColor.hex }"></div>
+                      <div class="min-w-0">
+                        <div class="text-sm font-mono font-bold text-white tracking-wider">{{ extractedColor.hex }}</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">RGB {{ extractedColor.rgb }}</div>
+                        <div class="text-[10px] text-slate-500">HSL {{ extractedColor.hue }}°, {{ extractedColor.saturation }}%, {{ extractedColor.lightness }}%</div>
+                      </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <Button
+                        @click="openMixerSlotPicker"
+                        class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg"
+                      >
+                        <Plus class="w-4 h-4 mr-2" />
+                        {{ isChoosingMixerSlot ? 'Choose a Color Slot' : 'Add to Mixer' }}
+                      </Button>
+                      <Button @click="clearExtractedColor" variant="ghost" class="w-full text-slate-400 hover:text-white">
+                        <Undo2 class="w-4 h-4 mr-2" /> Clear Pin
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div v-if="isChoosingMixerSlot" class="bg-black/40 border border-emerald-500/30 rounded-xl p-3 space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="text-[10px] uppercase tracking-widest text-emerald-300 font-bold">Apply to which color?</p>
+                      <button @click="isChoosingMixerSlot = false" class="text-[10px] text-slate-400 hover:text-white">Cancel</button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <button
+                        v-for="(color, index) in colors"
+                        :key="color.id"
+                        @click="applyExtractedColorToSlot(index)"
+                        class="flex items-center gap-2 p-2 rounded-lg border-2 text-left transition-all"
+                        :class="color.active
+                          ? 'border-white/10 bg-white/5 hover:border-emerald-400 hover:bg-emerald-500/10'
+                          : 'border-slate-700 bg-slate-800/40 opacity-75 hover:border-emerald-400 hover:bg-emerald-500/10'"
+                      >
+                        <span class="w-7 h-7 rounded-md border border-white/20 shrink-0" :style="{ backgroundColor: color.hex }"></span>
+                        <span class="min-w-0 flex-1">
+                          <span class="block text-[11px] font-bold text-white">Color {{ index + 1 }}</span>
+                          <span class="block text-[9px] font-mono text-slate-400 truncate">{{ color.hex }}</span>
+                        </span>
+                        <span v-if="!color.active" class="text-[8px] uppercase text-slate-500 font-bold">Off</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="flex items-center gap-2 text-xs text-slate-500 bg-black/20 border border-white/5 rounded-xl p-3">
+                  <Droplet class="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Click the part of the image whose color you want to extract.</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <aside class="space-y-6 sm:space-y-8">
@@ -276,7 +419,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
@@ -289,7 +432,8 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Beaker, Settings2, Sparkles, RefreshCcw, Scale, Undo2, 
-  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap, Trash2
+  Plus, Save, Info, Lightbulb, ChevronRight, Palette, CheckCircle2, Zap, Trash2,
+  Droplets, Droplet, Upload, ImagePlus
 } from 'lucide-vue-next'
 import api from '@/utils/axios'
 
@@ -641,12 +785,201 @@ const applySuggestion = (s) => {
   target.rgb = `${r}, ${g}, ${b}`;
 }
 
+// =========================================================================
+// INSTANT COLOR FROM IMAGE (Service Provider)
+// Upload an image and click anywhere on it to sample the exact pixel color.
+// =========================================================================
+const instantFileInput = ref(null)
+const instantImageEl = ref(null)
+const instantImageSrc = ref('')
+const instantImageName = ref('')
+const instantMarker = ref(null)
+const extractedColor = ref(null)
+const isChoosingMixerSlot = ref(false)
+
+let instantObjectUrl = ''
+let instantSourceCanvas = null
+
+const showToastMessage = (message, isError = false) => {
+  isErrorNotification.value = isError
+  notificationText.value = message
+  showSaveNotification.value = true
+  setTimeout(() => showSaveNotification.value = false, isError ? 3500 : 2000)
+}
+
+const triggerInstantImageInput = () => {
+  instantFileInput.value?.click()
+}
+
+const loadInstantImageFile = (file) => {
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    showToastMessage('Please upload a valid image file.', true)
+    return
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToastMessage('Image is too large. Maximum size is 10MB.', true)
+    return
+  }
+
+  if (instantObjectUrl) {
+    URL.revokeObjectURL(instantObjectUrl)
+  }
+
+  instantObjectUrl = URL.createObjectURL(file)
+  instantImageSrc.value = instantObjectUrl
+  instantImageName.value = file.name
+  instantMarker.value = null
+  extractedColor.value = null
+  isChoosingMixerSlot.value = false
+  instantSourceCanvas = null
+}
+
+const handleInstantImageUpload = (event) => {
+  const file = event.target.files?.[0]
+  if (file) loadInstantImageFile(file)
+  event.target.value = ''
+}
+
+const handleInstantImageDrop = (event) => {
+  const file = event.dataTransfer?.files?.[0]
+  if (file) loadInstantImageFile(file)
+}
+
+// Draw the uploaded image into an offscreen canvas once so pixel lookups are fast.
+const prepareInstantCanvas = () => {
+  const img = instantImageEl.value
+  if (!img || !img.naturalWidth || !img.naturalHeight) return
+
+  // Cap the sampling canvas so very large photos do not exhaust memory.
+  const maxDimension = 2400
+  const scale = Math.min(1, maxDimension / Math.max(img.naturalWidth, img.naturalHeight))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale))
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return
+
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  instantSourceCanvas = canvas
+}
+
+const sampleInstantColor = (event) => {
+  const img = instantImageEl.value
+  if (!img || !instantSourceCanvas) return
+
+  const rect = img.getBoundingClientRect()
+  if (!rect.width || !rect.height) return
+
+  const ratioX = (event.clientX - rect.left) / rect.width
+  const ratioY = (event.clientY - rect.top) / rect.height
+
+  if (ratioX < 0 || ratioX > 1 || ratioY < 0 || ratioY > 1) return
+
+  const x = Math.min(instantSourceCanvas.width - 1, Math.max(0, Math.floor(ratioX * instantSourceCanvas.width)))
+  const y = Math.min(instantSourceCanvas.height - 1, Math.max(0, Math.floor(ratioY * instantSourceCanvas.height)))
+
+  const ctx = instantSourceCanvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return
+
+  let pixel
+  try {
+    pixel = ctx.getImageData(x, y, 1, 1).data
+  } catch (error) {
+    showToastMessage('Could not read this image. Try a different file.', true)
+    return
+  }
+
+  if (pixel[3] === 0) {
+    showToastMessage('That spot is transparent. Try another part of the image.', true)
+    return
+  }
+
+  const r = pixel[0]
+  const g = pixel[1]
+  const b = pixel[2]
+  const hex = `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase()}`
+  const hsl = rgbToHSL(r, g, b)
+
+  extractedColor.value = {
+    hex,
+    rgb: `${r}, ${g}, ${b}`,
+    r,
+    g,
+    b,
+    hue: Math.round(hsl.h),
+    saturation: Math.round(hsl.s * 100),
+    lightness: Math.round(hsl.l * 100)
+  }
+
+  instantMarker.value = {
+    left: `${(x / instantSourceCanvas.width) * 100}%`,
+    top: `${(y / instantSourceCanvas.height) * 100}%`
+  }
+
+  isChoosingMixerSlot.value = false
+
+  showToastMessage(`Color extracted: ${hex}`)
+}
+
+const openMixerSlotPicker = () => {
+  if (!extractedColor.value) return
+  isChoosingMixerSlot.value = !isChoosingMixerSlot.value
+}
+
+const applyExtractedColorToSlot = (index) => {
+  if (!extractedColor.value) return
+
+  const target = colors.value[index]
+  if (!target) return
+
+  target.hex = extractedColor.value.hex
+  target.rgb = extractedColor.value.rgb
+
+  if (!target.active) {
+    target.active = true
+    balanceWeights()
+  }
+
+  isChoosingMixerSlot.value = false
+  showToastMessage(`Extracted color applied to Color ${index + 1}!`)
+}
+
+const clearExtractedColor = () => {
+  extractedColor.value = null
+  instantMarker.value = null
+  isChoosingMixerSlot.value = false
+}
+
+const clearInstantImage = () => {
+  if (instantObjectUrl) {
+    URL.revokeObjectURL(instantObjectUrl)
+    instantObjectUrl = ''
+  }
+
+  instantImageSrc.value = ''
+  instantImageName.value = ''
+  instantSourceCanvas = null
+  clearExtractedColor()
+}
+
 const nextTip = () => currentTip.value = (currentTip.value + 1) % tips.length
 
 watch(colors, calculateMixedColor, { deep: true })
 onMounted(() => {
   balanceWeights(); 
   calculateMixedColor();
+})
+
+onBeforeUnmount(() => {
+  if (instantObjectUrl) {
+    URL.revokeObjectURL(instantObjectUrl)
+    instantObjectUrl = ''
+  }
 })
 </script>
 
