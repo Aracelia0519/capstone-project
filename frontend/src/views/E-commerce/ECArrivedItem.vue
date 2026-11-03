@@ -154,7 +154,6 @@
                       <span class="font-bold text-white">{{ item.product?.name || item.raw_material_details?.name || item.product_name }}</span>
                       <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                         <span v-if="item.product?.sku_code || item.raw_material_details?.sku_code">SKU: {{ item.product?.sku_code || item.raw_material_details?.sku_code }}</span>
-                        <span v-if="item.product?.size || item.raw_material_details?.size">• Size: {{ item.product?.size || item.raw_material_details?.size }}</span>
                         <span v-if="item.product?.weight || item.raw_material_details?.weight || item.weight">• W: {{ item.product?.weight || item.raw_material_details?.weight || item.weight }}</span>
                         <span v-if="item.product?.type || item.raw_material_details?.type">• {{ item.product?.type || item.raw_material_details?.type }}</span>
                       </div>

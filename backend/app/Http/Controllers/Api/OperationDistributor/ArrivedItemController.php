@@ -296,7 +296,8 @@ class ArrivedItemController extends Controller
                 actorId: $user->id,
                 procurement: $procurement,
                 sourceRawMaterialId: $procurement->product_id,
-                batchCode: $request->input('batch_code')
+                batchCode: $request->input('batch_code'),
+                enforceMinimumShelfLife: false
             );
 
             // The reserved units have physically left the supplier.
@@ -393,7 +394,8 @@ class ArrivedItemController extends Controller
                 actorId: $user->id,
                 procurement: $procurement,
                 sourceRawMaterialId: $procurement?->product_id,
-                batchCode: $request->input('batch_code')
+                batchCode: $request->input('batch_code'),
+                enforceMinimumShelfLife: false
             );
 
             // Mark return as completed

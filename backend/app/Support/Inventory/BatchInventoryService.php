@@ -400,15 +400,33 @@ class BatchInventoryService
         ?int $actorId = null,
         ?ProcurementRequest $procurement = null,
         ?int $sourceRawMaterialId = null,
-        ?string $batchCode = null
+        ?string $batchCode = null,
+        bool $enforceMinimumShelfLife = true
     ): DistributorInventoryBatch {
         if ($quantity < 1) {
             throw new \InvalidArgumentException('Quantity must be at least 1.');
         }
 
         // A category is not always known here (the product is a distributor
-        // product, not a supplier material), so the blanket one-year rule applies.
-        $this->assertExpirationIsValid(null, $expirationDate);
+        // product, not a supplier material), so the blanket one-year rule applies
+        // unless the caller explicitly opts out. The arrived-items screen does
+        // this for deliveries that were procured earlier: their recorded expiry
+        // can be less than a year away even though the goods are perfectly valid.
+        if ($enforceMinimumShelfLife) {
+            $this->assertExpirationIsValid(null, $expirationDate);
+        } elseif ($expirationDate !== null && trim($expirationDate) !== '') {
+            // Even with the one-year minimum waived, a supplied date still has to
+            // be a real YYYY-MM-DD value so the batch cannot store garbage.
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($expirationDate))) {
+                throw new Exceptions\InvalidExpirationDate('The expiration date must be a valid date in YYYY-MM-DD format.');
+            }
+
+            [$year, $month, $day] = array_map('intval', explode('-', trim($expirationDate)));
+
+            if (! checkdate($month, $day, $year)) {
+                throw new Exceptions\InvalidExpirationDate('The expiration date must be a valid date in YYYY-MM-DD format.');
+            }
+        }
 
         return DB::transaction(function () use (
             $distributorId, $productId, $quantity, $expirationDate,
