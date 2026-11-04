@@ -342,13 +342,13 @@
              </Button>
 
              <div v-if="selectedJob.originalData.survey_agreement.status === 'signed'" class="mt-4">
-                 <Button @click="handleSurveyAction('start')" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'start_survey')" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
+                 <Button @click="promptStartSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'start_survey')" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Start Survey</span>
                  </Button>
              </div>
              <div v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'" class="mt-4">
-                 <Button @click="handleSurveyAction('complete')" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'complete_survey')" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
+                 <Button @click="promptEndSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'complete_survey')" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> End & Complete Survey</span>
                  </Button>
@@ -1186,6 +1186,64 @@
       </AlertDialogContent>
     </AlertDialog>
 
+    <AlertDialog v-model:open="showStartSurveyDialog">
+      <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Start Survey?</AlertDialogTitle>
+          <AlertDialogDescription class="text-slate-400">
+            This will officially mark the survey as in progress for this job request. Please make sure you are at the client's location before proceeding.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+             @click="handleSurveyAction('start')"
+             :disabled="isSurveyProcessing"
+             class="bg-cyan-600 hover:bg-cyan-700 text-white">
+            <span v-if="isSurveyProcessing" class="flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+            </span>
+            <span v-else>Yes, Start Survey</span>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog v-model:open="showEndSurveyDialog">
+      <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle>End Survey?</AlertDialogTitle>
+          <AlertDialogDescription class="text-slate-400">
+            This will mark the survey as completed, and you may then proceed to formally approve or reject the job request. A proof of visitation is required before ending the survey.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div class="py-4">
+          <p class="text-sm font-bold text-slate-300 mb-2">Upload Proof of Visitation <span class="text-red-400">*</span></p>
+          <input
+            type="file"
+            ref="surveyProofInput"
+            accept="image/*"
+            @change="onSurveyProofChange"
+            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer"
+          />
+          <p v-if="surveyProofFile" class="text-xs text-emerald-400 mt-2 truncate">Selected: {{ surveyProofFile.name }}</p>
+          <p v-else class="text-xs text-amber-400 mt-2">You must upload a photo as proof of visitation before ending the survey.</p>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+             @click="confirmEndSurvey"
+             :disabled="isSurveyProcessing || !surveyProofFile"
+             class="bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50">
+            <span v-if="isSurveyProcessing" class="flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+            </span>
+            <span v-else>End &amp; Complete Survey</span>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
   </div>
 </template>
 
@@ -1371,6 +1429,10 @@ const gcashDetails = ref(null)
 
 const isGeneratingAgreement = ref(false)
 const isSurveyProcessing = ref(false)
+const showStartSurveyDialog = ref(false)
+const showEndSurveyDialog = ref(false)
+const surveyProofInput = ref(null)
+const surveyProofFile = ref(null)
 const showGenerateAgreementModal = ref(false)
 const showViewAgreementModal = ref(false)
 
@@ -1864,13 +1926,26 @@ const downloadAgreement = () => {
     }, 750);
 }
 
-const handleSurveyAction = async (action) => {
+const handleSurveyAction = async (action, proofFile = null) => {
     if(!selectedJob.value) return;
+    if (action === 'complete' && !proofFile) {
+        toast.error('Please upload a proof of visitation before ending the survey.');
+        return;
+    }
     isSurveyProcessing.value = true;
     await runGroupAction(selectedJob.value, action === 'start' ? 'start_survey' : 'complete_survey', async () => {
         try {
             const endpoint = action === 'start' ? 'start-survey' : 'complete-survey';
-            const response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
+            let response;
+            if (action === 'complete') {
+                const formData = new FormData();
+                formData.append('proof_of_visitation', proofFile);
+                response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                response = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/${endpoint}`);
+            }
             if(response.data.success) {
                 toast.success(response.data.message);
                 fetchJobRequests(true);
@@ -1880,6 +1955,30 @@ const handleSurveyAction = async (action) => {
         }
     });
     isSurveyProcessing.value = false;
+}
+
+const promptStartSurvey = () => {
+   if (!selectedJob.value) return
+   showStartSurveyDialog.value = true
+}
+
+const promptEndSurvey = () => {
+   if (!selectedJob.value) return
+   surveyProofFile.value = null
+   if (surveyProofInput.value) surveyProofInput.value.value = ''
+   showEndSurveyDialog.value = true
+}
+
+const onSurveyProofChange = (event) => {
+   surveyProofFile.value = event.target.files?.[0] || null
+}
+
+const confirmEndSurvey = () => {
+   if (!surveyProofFile.value) {
+      toast.error('Please upload a proof of visitation before ending the survey.')
+      return
+   }
+   handleSurveyAction('complete', surveyProofFile.value)
 }
 
 const promptCompleteJob = (job) => {

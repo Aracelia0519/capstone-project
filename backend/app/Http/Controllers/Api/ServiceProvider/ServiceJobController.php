@@ -83,6 +83,9 @@ class ServiceJobController extends Controller
                     if ($surveyAgreement->client_signature) {
                         $surveyAgreement->client_signature_url = $baseUrl . '/storage/' . $surveyAgreement->client_signature;
                     }
+                    if ($surveyAgreement->proof_of_visitation) {
+                        $surveyAgreement->proof_of_visitation_url = $baseUrl . '/storage/' . $surveyAgreement->proof_of_visitation;
+                    }
                 }
 
                 $req->official_deal = $deal;
@@ -284,19 +287,26 @@ class ServiceJobController extends Controller
         }
     }
 
-    public function completeSurvey($id)
+    public function completeSurvey(Request $request, $id)
     {
+        $request->validate([
+            'proof_of_visitation' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120'
+        ]);
+
         try {
             $providerId = Auth::id();
             $job = $this->findGroupJob($id);
             $denied = $this->groupJobGuard($job, 'complete_survey');
             if ($denied) return $denied;
 
+            $proofPath = $request->file('proof_of_visitation')->store('survey_agreements/proofs', 'public');
+
             DB::table('service_survey_agreements')
                 ->where('client_service_request_id', $job->id)
                 ->update([
                     'status' => 'completed',
-                    'survey_completed_at' => now()
+                    'survey_completed_at' => now(),
+                    'proof_of_visitation' => $proofPath
                 ]);
             
             // Broadcast Event
