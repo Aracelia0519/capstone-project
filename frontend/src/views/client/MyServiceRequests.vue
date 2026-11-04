@@ -241,6 +241,9 @@
       </p>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SERVICE REQUEST DETAILS MODAL (refactored into clickable cards)   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
     <Dialog v-model:open="isModalOpen">
       <DialogContent class="bg-gray-900 border-gray-800 text-slate-200 md:max-w-[1000px] rounded-2xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0">
         <div class="sticky top-0 z-10 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 px-6 py-5">
@@ -250,44 +253,88 @@
           </DialogTitle>
         </div>
         
-        <div v-if="selectedRequest" class="px-6 py-5 space-y-6">
+        <div v-if="selectedRequest" class="px-6 py-5">
 
-           <div v-if="selectedRequest.status === 'pending' && selectedRequest.raw.survey_agreement" class="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-2xl p-5 border border-indigo-700/50 shadow-inner">
-             
-             <h4 v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-               <CheckCircle2 class="w-4 h-4" />
-               Action Required: Sign Survey Agreement
-             </h4>
-             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-               <CheckCircle2 class="w-4 h-4" />
-               Survey Agreement Signed
-             </h4>
-             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-               <Clock class="w-4 h-4" />
-               Survey Currently In Progress
-             </h4>
-             <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'completed'" class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-               <CheckCircle2 class="w-4 h-4" />
-               Survey Completed - Pending Final Approval
-             </h4>
+          <!-- ───────────────────────── CARD OVERVIEW ───────────────────────── -->
+          <div v-if="!activeDetailCard || !currentCard" class="space-y-4">
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              <span>Select a section below to view its details</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                v-for="card in availableDetailCards"
+                :key="card.id"
+                @click="activeDetailCard = card.id"
+                class="group relative flex items-start gap-3 bg-gradient-to-br from-gray-800/60 to-gray-900/60 hover:from-gray-800/90 hover:to-gray-900/90 border border-gray-700/60 hover:border-cyan-500/40 rounded-xl p-4 transition-all text-left"
+              >
+                <div :class="['p-2.5 rounded-xl shrink-0', card.iconBg]">
+                  <component :is="card.icon" :class="['w-5 h-5', card.iconColor]" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <p class="text-sm font-bold text-white leading-tight">{{ card.title }}</p>
+                    <Badge v-if="card.badge" :class="['text-[9px] px-1.5 py-0 uppercase tracking-wider border', card.badgeColor]">
+                      {{ card.badge }}
+                    </Badge>
+                  </div>
+                  <p class="text-[11px] text-gray-400 leading-snug line-clamp-2">{{ card.description }}</p>
+                </div>
+                <ChevronRight class="w-4 h-4 text-gray-500 group-hover:text-cyan-400 shrink-0 mt-1" />
+              </button>
+            </div>
+          </div>
 
-             <p v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-xs text-gray-300 mb-4">The service provider has generated a formal agreement to conduct a site survey. Please review and sign to proceed.</p>
-             <p v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-xs text-gray-300 mb-4">You have agreed to the survey terms. The provider will begin the survey shortly.</p>
-             <p v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-xs text-gray-300 mb-4">The provider is currently evaluating the site.</p>
+          <!-- ───────────────────────── DETAIL VIEW ───────────────────────── -->
+          <div v-else class="space-y-5">
+            <div class="flex items-center gap-3">
+              <Button variant="outline" size="sm" @click="activeDetailCard = null" class="bg-gray-800/50 hover:bg-gray-800 text-gray-300 border-gray-700 hover:border-cyan-500/50 rounded-xl gap-1">
+                <ChevronLeft class="w-4 h-4" /> Back
+              </Button>
+              <div class="flex items-center gap-2 min-w-0">
+                <div :class="['p-1.5 rounded-lg shrink-0', currentCard.iconBg]">
+                  <component :is="currentCard.icon" :class="['w-4 h-4', currentCard.iconColor]" />
+                </div>
+                <h3 class="text-base sm:text-lg font-bold text-white truncate">{{ currentCard.title }}</h3>
+              </div>
+            </div>
 
-             <div v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="flex gap-3 pt-2">
+            <!-- ═══ SURVEY AGREEMENT ═══ -->
+            <div v-if="activeDetailCard === 'survey_agreement'" class="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-2xl p-5 border border-indigo-700/50 shadow-inner">
+              <h4 v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <CheckCircle2 class="w-4 h-4" />
+                Action Required: Sign Survey Agreement
+              </h4>
+              <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <CheckCircle2 class="w-4 h-4" />
+                Survey Agreement Signed
+              </h4>
+              <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <Clock class="w-4 h-4" />
+                Survey Currently In Progress
+              </h4>
+              <h4 v-else-if="selectedRequest.raw.survey_agreement.status === 'completed'" class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <CheckCircle2 class="w-4 h-4" />
+                Survey Completed - Pending Final Approval
+              </h4>
+
+              <p v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="text-xs text-gray-300 mb-4">The service provider has generated a formal agreement to conduct a site survey. Please review and sign to proceed.</p>
+              <p v-else-if="selectedRequest.raw.survey_agreement.status === 'signed'" class="text-xs text-gray-300 mb-4">You have agreed to the survey terms. The provider will begin the survey shortly.</p>
+              <p v-else-if="selectedRequest.raw.survey_agreement.status === 'in_progress'" class="text-xs text-gray-300 mb-4">The provider is currently evaluating the site.</p>
+
+              <div v-if="selectedRequest.raw.survey_agreement.status === 'pending_client'" class="flex gap-3 pt-2">
                 <Button @click="openSignAgreementModal" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-900/20 animate-pulse-slow">
-                   Review & Sign Agreement
+                  Review & Sign Agreement
                 </Button>
-             </div>
-             <div v-else class="flex gap-3 pt-2">
+              </div>
+              <div v-else class="flex gap-3 pt-2">
                 <Button @click="openSignAgreementModal" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white shadow-lg border border-slate-700">
-                   View Signed Agreement
+                  View Signed Agreement
                 </Button>
-             </div>
-           </div>
+              </div>
+            </div>
 
-           <div v-if="selectedRequest.raw.work_progress && selectedRequest.raw.work_progress.length" class="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 rounded-2xl p-5 border border-cyan-700/50 shadow-inner">
+            <!-- ═══ WORK PROGRESS ═══ -->
+            <div v-if="activeDetailCard === 'work_progress'" class="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 rounded-2xl p-5 border border-cyan-700/50 shadow-inner">
               <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
                 <ClipboardList class="w-4 h-4" />
                 Work Progress
@@ -296,467 +343,472 @@
               <p class="text-[11px] text-gray-400 mt-3">
                 Progress updates are provided by your service provider.
               </p>
-           </div>
+            </div>
 
-           <div v-if="selectedRequest.status === 'completion_review'" class="bg-gradient-to-br from-pink-900/20 to-pink-800/20 rounded-2xl p-5 border border-pink-700/50 shadow-inner">
-             <h4 class="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-               <CheckCircle2 class="w-4 h-4" />
-               Provider Submitted Proof of Completion
-             </h4>
-             <p class="text-xs text-gray-300 mb-4">The service provider has marked this job as finished. Please review the attached proofs below.</p>
-             
-             <div class="grid grid-cols-2 gap-2 mb-4">
+            <!-- ═══ COMPLETION REVIEW ═══ -->
+            <div v-if="activeDetailCard === 'completion_review'" class="bg-gradient-to-br from-pink-900/20 to-pink-800/20 rounded-2xl p-5 border border-pink-700/50 shadow-inner">
+              <h4 class="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                <CheckCircle2 class="w-4 h-4" />
+                Provider Submitted Proof of Completion
+              </h4>
+              <p class="text-xs text-gray-300 mb-4">The service provider has marked this job as finished. Please review the attached proofs below.</p>
+              
+              <div class="grid grid-cols-2 gap-2 mb-4">
                 <div v-for="(img, idx) in selectedRequest.raw.latest_completion?.proof_images_url" :key="idx" class="h-32 rounded-lg overflow-hidden border border-slate-700">
-                   <img :src="img" class="w-full h-full object-cover hover:scale-105 transition-transform" />
+                  <img :src="img" class="w-full h-full object-cover hover:scale-105 transition-transform" />
                 </div>
-             </div>
+              </div>
 
-             <div class="flex gap-3 pt-2">
+              <div class="flex gap-3 pt-2">
                 <Button @click="openRejectModal" class="flex-1 bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30">
-                   Reject & Request Fix
+                  Reject & Request Fix
                 </Button>
                 <Button @click="approveCompletion" :disabled="isApprovingWork" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
-                   <span v-if="isApprovingWork" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                   <span v-else>Approve & Finish Job</span>
+                  <span v-if="isApprovingWork" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                  <span v-else>Approve & Finish Job</span>
                 </Button>
-             </div>
-           </div>
+              </div>
+            </div>
 
-           <div v-if="selectedRequest.status === 'ongoing' && selectedRequest.raw.latest_completion && selectedRequest.raw.latest_completion.status === 'rejected'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
-             <p class="text-sm font-bold text-red-400 mb-1">You rejected the previous completion proof</p>
-             <p class="text-xs text-gray-300 italic border-l-2 border-red-500/50 pl-2">"{{ selectedRequest.raw.latest_completion.rejection_reason }}"</p>
-             <p class="text-xs text-gray-400 mt-2">The provider is currently working to address your feedback.</p>
-           </div>
+            <!-- ═══ REJECTION NOTICE ═══ -->
+            <div v-if="activeDetailCard === 'rejection_notice'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
+              <p class="text-sm font-bold text-red-400 mb-1">You rejected the previous completion proof</p>
+              <p class="text-xs text-gray-300 italic border-l-2 border-red-500/50 pl-2">"{{ selectedRequest.raw.latest_completion.rejection_reason }}"</p>
+              <p class="text-xs text-gray-400 mt-2">The provider is currently working to address your feedback.</p>
+            </div>
 
-           <div class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
-             <h4 class="text-sm font-bold text-blue-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-               <User class="w-4 h-4 text-blue-400" />
-               My Request Details
-             </h4>
+            <!-- ═══ MY REQUEST DETAILS ═══ -->
+            <div v-if="activeDetailCard === 'my_details'" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
+              <h4 class="text-sm font-bold text-blue-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                <User class="w-4 h-4 text-blue-400" />
+                My Request Details
+              </h4>
 
-             <div class="space-y-1.5 mb-5">
-               <p class="text-[10px] text-gray-500 uppercase tracking-wider">My Notes / Instructions</p>
-               <p class="text-sm bg-gray-950 border border-gray-800 p-4 rounded-xl text-gray-300 leading-relaxed italic">
-                 "{{ selectedRequest.description || 'No additional notes provided.' }}"
-               </p>
-             </div>
+              <div class="space-y-1.5 mb-5">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider">My Notes / Instructions</p>
+                <p class="text-sm bg-gray-950 border border-gray-800 p-4 rounded-xl text-gray-300 leading-relaxed italic">
+                  "{{ selectedRequest.description || 'No additional notes provided.' }}"
+                </p>
+              </div>
 
-             <div class="grid grid-cols-2 gap-x-4 gap-y-5">
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar class="w-3 h-3 text-gray-400"/> Preferred Date</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.requestedDate }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock class="w-3 h-3 text-gray-400"/> Arrival Time</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.time_preference || 'Flexible' }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Phone class="w-3 h-3 text-gray-400"/> Contact</p>
-                 <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.contact_number || 'N/A' }}</p>
-               </div>
-               <div class="space-y-1">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
-                 <Badge :class="getStatusClasses(selectedRequest.status, selectedRequest.raw.survey_agreement)" class="mt-0.5">{{ getCustomStatusLabel(selectedRequest) }}</Badge>
-               </div>
-             </div>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-5">
+                <div class="space-y-1">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar class="w-3 h-3 text-gray-400"/> Preferred Date</p>
+                  <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.requestedDate }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Clock class="w-3 h-3 text-gray-400"/> Arrival Time</p>
+                  <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.time_preference || 'Flexible' }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Phone class="w-3 h-3 text-gray-400"/> Contact</p>
+                  <p class="text-sm text-gray-200 font-semibold">{{ selectedRequest.raw.contact_number || 'N/A' }}</p>
+                </div>
+                <div class="space-y-1">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider">Status</p>
+                  <Badge :class="getStatusClasses(selectedRequest.status, selectedRequest.raw.survey_agreement)" class="mt-0.5">{{ getCustomStatusLabel(selectedRequest) }}</Badge>
+                </div>
+              </div>
 
-             <div class="space-y-1.5 pt-4 border-t border-gray-800 mt-5">
-               <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin class="w-3 h-3 text-gray-400"/> Complete Address</p>
-               <p class="text-sm text-gray-300">{{ selectedRequest.raw.address || 'N/A' }}</p>
-             </div>
-           </div>
-           
-           <div v-if="selectedRequest.raw.payment_term" class="bg-gradient-to-br from-yellow-900/10 to-yellow-800/20 rounded-2xl p-5 border border-yellow-700/50 shadow-inner">
-             <h4 class="text-sm font-bold text-yellow-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-               <CreditCard class="w-4 h-4" />
-               Official Payment Terms
-             </h4>
+              <div class="space-y-1.5 pt-4 border-t border-gray-800 mt-5">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin class="w-3 h-3 text-gray-400"/> Complete Address</p>
+                <p class="text-sm text-gray-300">{{ selectedRequest.raw.address || 'N/A' }}</p>
+              </div>
+            </div>
 
-             <!-- Proof-of-payment rejection notice (any billing mode) -->
-             <div v-if="selectedRequest.raw.payment_term?.proof_rejection_reason" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
+            <!-- ═══ OFFICIAL PAYMENT TERMS ═══ -->
+            <div v-if="activeDetailCard === 'payment_terms'" class="bg-gradient-to-br from-yellow-900/10 to-yellow-800/20 rounded-2xl p-5 border border-yellow-700/50 shadow-inner">
+              <h4 class="text-sm font-bold text-yellow-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                <CreditCard class="w-4 h-4" />
+                Official Payment Terms
+              </h4>
+
+              <!-- Proof-of-payment rejection notice (any billing mode) -->
+              <div v-if="selectedRequest.raw.payment_term?.proof_rejection_reason" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
                 <p class="text-sm font-bold text-red-400 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> Proof Rejected</p>
                 <p class="text-xs text-gray-300 mt-1">The Service Provider rejected your proof of payment: <span class="italic text-red-300">"{{ selectedRequest.raw.payment_term.proof_rejection_reason }}"</span>. This payment was NOT counted. Please settle the payment again.</p>
-             </div>
+              </div>
 
-             <!-- ============ SERVICE PROVIDER INVENTORY (client-initiated) ============ -->
-             <div v-if="(['ongoing', 'completion_review'].includes(selectedRequest.status) || selectedRequest.raw.product_use_requests?.length) && selectedRequest.raw.official_deal" class="mb-4 bg-amber-900/10 border border-amber-700/40 rounded-xl p-3 space-y-3">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                   <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                      Service Provider Inventory
-                   </p>
-                   <Button v-if="['ongoing', 'completion_review'].includes(selectedRequest.status)" @click="openProviderInventory" :disabled="isFetchingInventory" class="bg-amber-600 hover:bg-amber-700 text-white font-bold h-8 text-xs">
-                      <span v-if="isFetchingInventory" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Loading...</span>
-                      <span v-else>Browse Inventory</span>
-                   </Button>
+              <template v-if="!selectedRequest.raw.daily_billing">
+                <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800 mb-4">
+                  <div>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Method</p>
+                    <p class="text-xs text-yellow-300 font-bold uppercase">{{ selectedRequest.raw.payment_term.payment_method }}</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Term Condition</p>
+                    <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.payment_term.payment_term }}</p>
+                  </div>
                 </div>
 
-                <p class="text-[11px] text-gray-400">
-                   Request products from your service provider's inventory. The provider will approve or reject each request.
-                </p>
-
-                <div v-if="selectedRequest.raw.product_use_requests?.length" class="space-y-2">
-                   <div v-for="useRequest in selectedRequest.raw.product_use_requests" :key="useRequest.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
-                      <div class="flex items-start justify-between gap-2">
-                         <div class="flex items-center gap-2 min-w-0">
-                            <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
-                            <div class="min-w-0">
-                               <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
-                               <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
-                            </div>
-                         </div>
-                         <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
-                            {{ useRequest.status.replace('_', ' ') }}
-                         </Badge>
-                      </div>
-
-                      <p v-if="useRequest.status === 'pending_provider'" class="text-[11px] text-amber-400">
-                         Waiting for the service provider to approve or reject this request.
-                      </p>
-
-                      <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
-                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-400">Markup offered</span>
-                            <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
-                         </div>
-                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-400">Price with markup</span>
-                            <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
-                         </div>
-                         <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
-                            <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
-                         </div>
-
-                         <p v-if="useRequest.offer_by === 'client'" class="text-[11px] text-cyan-400">
-                            Your counter offer is {{ useRequest.offer_percentage }}%. Waiting for the service provider to approve or counter it.
-                         </p>
-                         <div v-else class="flex gap-2 pt-1">
-                            <Button @click="promptMarkupResponse(useRequest, 'approve')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
-                               Approve Markup
-                            </Button>
-                            <Button @click="promptMarkupResponse(useRequest, 'counter')" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
-                               Counter Offer
-                            </Button>
-                         </div>
-                      </div>
-
-                      <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
-                         <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
-                         <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
-                      </div>
-
-                      <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
-                         <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
-                         <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
-                         <p class="text-[10px] text-gray-500">This has been added to your materials payment.</p>
-                      </div>
-                   </div>
-                </div>
-             </div>
-             <!-- ====================================================================== -->
-
-             <!-- ============ MATERIALS REIMBURSEMENT (provider-bought) ============ -->
-             <div v-if="selectedRequest.raw.materials?.length" class="mb-4 bg-amber-900/10 border border-amber-700/40 rounded-xl p-3 space-y-3">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                   <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                      Materials Reimbursement
-                   </p>
-                   <span v-if="selectedRequest.raw.materials_summary && selectedRequest.raw.materials_summary.balance > 0" class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Balance: ₱{{ Number(selectedRequest.raw.materials_summary.balance).toLocaleString() }}</span>
+                <div class="grid grid-cols-2 gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700 mb-4 shadow-sm">
+                  <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid So Far</p>
+                    <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
+                    <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
+                  </div>
                 </div>
 
-                <div v-for="batch in selectedRequest.raw.materials" :key="batch.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
-                   <div class="flex items-center justify-between gap-2">
-                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
-                      <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
-                   </div>
-
-                   <div class="space-y-1">
-                      <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
-                         <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
-                         <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
-                         <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
-                      </div>
-                   </div>
-
-                   <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
-                      <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
-                      <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
-                   </div>
-
-                   <div v-if="batch.proof_photo_url" class="mt-1">
-                      <img :src="batch.proof_photo_url" class="h-24 rounded-lg border border-slate-700 object-cover cursor-pointer" @click="openImageInNewTab(batch.proof_photo_url)" />
-                   </div>
-
-                   <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
-                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
-                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
-                   </div>
-
-                   <div v-if="batch.status === 'pending'" class="flex gap-2 pt-1">
-                      <Button @click="approveMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
-                         {{ isProcessingMaterials ? 'Processing...' : 'Approve' }}
-                      </Button>
-                      <Button @click="rejectMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-red-600 hover:bg-red-700 text-white font-bold h-8 text-xs flex-1">
-                         {{ isProcessingMaterials ? 'Processing...' : 'Reject' }}
-                      </Button>
-                   </div>
+                <div v-if="selectedRequest.raw.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl">
+                  <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><CheckCircle2 class="w-4 h-4"/> PWD DISCOUNT APPLIED</p>
+                  <p class="text-xs text-gray-300 mt-1">{{ selectedRequest.raw.invoice_details.pwd_discount_text }}</p>
                 </div>
 
-                <!-- Materials payment (created when the client approves) -->
-                <div v-if="selectedRequest.raw.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedRequest.raw.materials_term.status)" class="bg-slate-950 border border-amber-700/40 rounded-lg p-3 space-y-3">
-                   <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
-                   <div class="grid grid-cols-3 gap-2">
-                      <div>
-                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
-                         <p class="text-sm text-white font-bold">₱{{ Number(selectedRequest.raw.materials_term.amount).toLocaleString() }}</p>
-                      </div>
-                      <div>
-                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
-                         <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.total_paid).toLocaleString() }}</p>
-                      </div>
-                      <div>
-                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
-                         <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</p>
-                      </div>
-                   </div>
-                   <p class="text-xs text-gray-400">Payment method: <span class="font-bold text-yellow-300 uppercase">{{ selectedRequest.raw.materials_term.payment_method }}</span> ({{ selectedRequest.raw.materials_term.payment_term }})</p>
-
-                   <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'gcash'" class="text-center">
-                      <Button @click="payWithGcash(selectedRequest.raw.materials_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 rounded-xl text-xs">
-                         <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                         <span v-else>Pay Materials via GCash — ₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</span>
-                      </Button>
-                   </div>
-
-                   <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'on_hand'" class="text-center">
-                      <p class="text-xs text-gray-400 mb-2">Hand the materials payment physically and upload the receipt/proof here.</p>
-                      <input type="file" ref="materialsProofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
-                      <Button @click="uploadMaterialsProof(selectedRequest.raw.materials_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-9 rounded-xl text-xs">
-                         <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
-                         <span v-else>Upload Proof for Materials</span>
-                      </Button>
-                   </div>
-
-                   <div v-if="selectedRequest.raw.materials_term.status === 'awaiting_proof_approval'" class="text-center bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
-                      <p class="text-xs font-bold text-blue-400">Proof uploaded — waiting for provider verification.</p>
-                   </div>
-
-                   <div v-if="selectedRequest.raw.materials_term.status === 'paid' && selectedRequest.raw.materials_term.balance <= 0" class="text-center">
-                      <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid.</p>
-                   </div>
+                <div v-if="selectedRequest.raw.payment_term.legal_report_path" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
+                  <p class="text-sm font-bold text-red-500 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> FINAL NOTICE / LEGAL REPORT ISSUED</p>
+                  <p class="text-xs text-gray-300 mt-1">Due to non-payment of the remaining balance after 3 reminders, the Service Provider has generated a formal non-payment report for potential legal action. Please settle your balance immediately.</p>
                 </div>
-             </div>
-             <!-- ================================================================ -->
-
-             <!-- ============ DAILY BILLING PANEL (Daily-priced services) ============ -->
-             <div v-if="selectedRequest.raw.daily_billing" class="space-y-4">
-               <div class="bg-blue-900/20 border border-blue-500/40 rounded-xl p-3 flex items-start gap-3">
-                 <Calendar class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                 <div>
-                   <p class="text-sm font-bold text-blue-300 uppercase tracking-wider">Daily Billing Active</p>
-                   <p class="text-xs text-gray-300 mt-1">
-                     You pay <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
-                     for every day the provider works (counting from {{ selectedRequest.raw.daily_billing.billing_started_at }}).
-                     Days the provider marks as <span class="font-bold text-gray-100">not worked</span> are free.
-                   </p>
-                 </div>
-               </div>
-
-               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
-                   <p class="text-sm text-white font-bold">{{ selectedRequest.raw.daily_billing.days_elapsed }}</p>
-                 </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
-                   <p class="text-sm text-gray-300 font-bold">{{ selectedRequest.raw.daily_billing.days_exempt }}</p>
-                 </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
-                   <p class="text-sm text-emerald-400 font-bold">{{ selectedRequest.raw.daily_billing.days_paid }}</p>
-                 </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
-                   <p class="text-sm text-red-400 font-bold">{{ selectedRequest.raw.daily_billing.days_outstanding }}</p>
-                 </div>
-               </div>
-
-               <div class="grid grid-cols-2 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due So Far</p>
-                   <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_due).toLocaleString() }}</p>
-                 </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
-                   <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_paid).toLocaleString() }}</p>
-                 </div>
-               </div>
-
-               <div v-if="selectedRequest.raw.daily_billing.payment_log.length" class="bg-gray-900/60 border border-gray-800 rounded-xl p-3 max-h-44 overflow-y-auto">
-                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
-                 <div v-for="entry in selectedRequest.raw.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-gray-800/60 last:border-0">
-                   <div class="flex items-center gap-2">
-                     <CheckCircle2 class="w-4 h-4 text-emerald-400" />
-                     <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
-                   </div>
-                   <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
-                 </div>
-               </div>
-
-               <template v-if="selectedRequest.status === 'ongoing' && selectedRequest.raw.payment_term.status === 'agreed'">
-                 <div v-if="selectedRequest.raw.daily_billing.today_exempt" class="bg-gray-800/60 border border-gray-600/50 rounded-xl p-3 text-center">
-                   <p class="text-sm font-bold text-gray-300">No payment due today</p>
-                   <p class="text-xs text-gray-400 mt-1">The Service Provider marked today as not worked, so today is free of charge.</p>
-                 </div>
-                 <div v-else-if="selectedRequest.raw.daily_billing.today_paid" class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-center gap-2">
-                   <CheckCircle2 class="w-5 h-5 text-emerald-400" />
-                   <p class="text-sm font-bold text-emerald-400">Today's daily fee is settled</p>
-                 </div>
-                 <div v-else>
-                   <p class="text-xs text-gray-400 mb-3 text-center">
-                     Today's fee of <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
-                     (due {{ selectedRequest.raw.daily_billing.next_due_date }}) is pending settlement.
-                   </p>
-                   <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-1">
-                     <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
-                       <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                       <span v-else>Pay Today's Daily Fee via GCash</span>
-                     </Button>
-                   </div>
-                   <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-1">
-                     <p class="text-xs text-gray-400 mb-2 text-center">Hand the daily payment physically, then upload the receipt/proof below.</p>
-                     <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
-                     <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
-                       <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
-                       <span v-else>Upload Proof of Daily Payment</span>
-                     </Button>
-                   </div>
-                 </div>
-               </template>
-
-               <div v-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl text-center">
-                 <p class="text-sm font-bold text-blue-400">Daily Proof Uploaded</p>
-                 <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify today's payment.</p>
-               </div>
-
-               <div v-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
-                 Awaiting your agreement to the payment terms in the chat section.
-               </div>
-
-               <div v-if="selectedRequest.status === 'completion_review'" class="bg-pink-900/20 border border-pink-500/30 rounded-xl p-3 text-center">
-                 <p class="text-sm font-bold text-pink-400">Service complete — awaiting your approval</p>
-                 <p class="text-xs text-gray-300 mt-1">No new daily fees will accrue. Any unpaid days above remain due.</p>
-               </div>
-
-               <template v-if="selectedRequest.status === 'completed'">
-                 <div class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 text-center">
-                   <CheckCircle2 class="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-                   <p class="text-sm font-bold text-emerald-400">Service completed &amp; approved</p>
-                 </div>
-                 <div v-if="selectedRequest.raw.daily_billing.days_outstanding > 0" class="bg-amber-900/30 border border-amber-500/50 rounded-xl p-3 text-center">
-                   <AlertCircle class="w-5 h-5 text-amber-400 mx-auto mb-1" />
-                   <p class="text-sm font-bold text-amber-400">{{ selectedRequest.raw.daily_billing.days_outstanding }} unpaid day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }} (₱{{ Number(selectedRequest.raw.daily_billing.outstanding).toLocaleString() }})</p>
-                   <p class="text-xs text-gray-300 mt-1">Please settle the outstanding amount with your provider.</p>
-                 </div>
-               </template>
-             </div>
-             <!-- ================================================================ -->
-
-             <template v-if="!selectedRequest.raw.daily_billing">
-             <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800 mb-4">
-               <div>
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Payment Method</p>
-                 <p class="text-xs text-yellow-300 font-bold uppercase">{{ selectedRequest.raw.payment_term.payment_method }}</p>
-               </div>
-               <div>
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Term Condition</p>
-                 <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.payment_term.payment_term }}</p>
-               </div>
-             </div>
-
-             <div class="grid grid-cols-2 gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-700 mb-4 shadow-sm">
-               <div>
-                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid So Far</p>
-                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.total_paid || 0).toLocaleString() }}</p>
-               </div>
-               <div>
-                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedRequest.raw.payment_term.balance || 0).toLocaleString() }}</p>
-               </div>
-             </div>
-
-             <div v-if="selectedRequest.raw.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl">
-                 <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><CheckCircle2 class="w-4 h-4"/> PWD DISCOUNT APPLIED</p>
-                 <p class="text-xs text-gray-300 mt-1">{{ selectedRequest.raw.invoice_details.pwd_discount_text }}</p>
-             </div>
-
-             <div v-if="selectedRequest.raw.payment_term.legal_report_path" class="mb-4 bg-red-900/30 border border-red-500/50 p-3 rounded-xl">
-                <p class="text-sm font-bold text-red-500 flex items-center gap-2"><AlertTriangle class="w-4 h-4"/> FINAL NOTICE / LEGAL REPORT ISSUED</p>
-                <p class="text-xs text-gray-300 mt-1">Due to non-payment of the remaining balance after 3 reminders, the Service Provider has generated a formal non-payment report for potential legal action. Please settle your balance immediately.</p>
-             </div>
-             <div v-else-if="selectedRequest.raw.payment_term.reminder_count > 0" class="mb-4 bg-amber-900/30 border border-amber-500/50 p-3 rounded-xl">
-                <p class="text-sm font-bold text-amber-500 flex items-center gap-2"><AlertCircle class="w-4 h-4"/> PAYMENT REMINDER</p>
-                <p class="text-xs text-gray-300 mt-1">You have received <span class="font-bold">{{ selectedRequest.raw.payment_term.reminder_count }}</span> reminder(s) from the Service Provider to pay your remaining balance. Failure to pay after 3 reminders will result in a formal non-payment report.</p>
-             </div>
-
-             <div v-if="selectedRequest.raw.payment_term.status === 'agreed' || (selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0)">
-                
-                <div v-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0" class="mb-4 text-center border-b border-gray-800 pb-3">
-                   <p class="text-sm text-emerald-400 font-bold mb-1 flex items-center justify-center gap-1.5"><CheckCircle2 class="w-4 h-4"/> Initial payment settled!</p>
-                   <p class="text-xs text-gray-400">You can now pay the remaining balance to fully settle the account.</p>
+                <div v-else-if="selectedRequest.raw.payment_term.reminder_count > 0" class="mb-4 bg-amber-900/30 border border-amber-500/50 p-3 rounded-xl">
+                  <p class="text-sm font-bold text-amber-500 flex items-center gap-2"><AlertCircle class="w-4 h-4"/> PAYMENT REMINDER</p>
+                  <p class="text-xs text-gray-300 mt-1">You have received <span class="font-bold">{{ selectedRequest.raw.payment_term.reminder_count }}</span> reminder(s) from the Service Provider to pay your remaining balance. Failure to pay after 3 reminders will result in a formal non-payment report.</p>
                 </div>
 
-                <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-2">
-                   <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please proceed with the payment.</p>
-                   <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
+                <div v-if="selectedRequest.raw.payment_term.status === 'agreed' || (selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0)">
+                  
+                  <div v-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance > 0" class="mb-4 text-center border-b border-gray-800 pb-3">
+                    <p class="text-sm text-emerald-400 font-bold mb-1 flex items-center justify-center gap-1.5"><CheckCircle2 class="w-4 h-4"/> Initial payment settled!</p>
+                    <p class="text-xs text-gray-400">You can now pay the remaining balance to fully settle the account.</p>
+                  </div>
+
+                  <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-2">
+                    <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please proceed with the payment.</p>
+                    <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
                       <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
                       <span v-else>
                         {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Pay Remaining Balance via GCash' : 'Pay via GCash' }}
                       </span>
-                   </Button>
-                </div>
-                
-                <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-2">
-                   <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please hand the payment physically and upload the receipt/proof here.</p>
-                   <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
-                   
-                   <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
+                    </Button>
+                  </div>
+                  
+                  <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-2">
+                    <p v-if="selectedRequest.raw.payment_term.status === 'agreed'" class="text-xs text-gray-400 mb-3">You have agreed to the terms. Please hand the payment physically and upload the receipt/proof here.</p>
+                    <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                    
+                    <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
                       <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
                       <span v-else>
-                         {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Upload Proof for Remaining Balance' : 'Upload Proof of Payment' }}
+                        {{ selectedRequest.raw.payment_term.total_paid > 0 ? 'Upload Proof for Remaining Balance' : 'Upload Proof of Payment' }}
                       </span>
-                   </Button>
+                    </Button>
+                  </div>
                 </div>
-             </div>
 
-             <div v-else-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="text-center pt-2">
-                <div class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
-                   <p class="text-sm font-bold text-blue-400">Proof Uploaded Successfully</p>
-                   <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify your payment.</p>
-                   
-                   <div v-if="selectedRequest.raw.payment_term.proof_of_payment_url" class="mt-3 w-full h-32 rounded-lg overflow-hidden border border-gray-700">
+                <div v-else-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="text-center pt-2">
+                  <div class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
+                    <p class="text-sm font-bold text-blue-400">Proof Uploaded Successfully</p>
+                    <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify your payment.</p>
+                    
+                    <div v-if="selectedRequest.raw.payment_term.proof_of_payment_url" class="mt-3 w-full h-32 rounded-lg overflow-hidden border border-gray-700">
                       <img :src="selectedRequest.raw.payment_term.proof_of_payment_url" class="w-full h-full object-cover hover:scale-105 transition-transform" />
-                   </div>
+                    </div>
+                  </div>
                 </div>
-             </div>
 
-             <div v-else-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance <= 0" class="text-center pt-2">
-                <div class="bg-emerald-900/30 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-center gap-2">
-                   <CheckCircle2 class="w-5 h-5 text-emerald-400" />
-                   <p class="text-sm font-bold text-emerald-400">Fully Paid & Completed!</p>
+                <div v-else-if="selectedRequest.raw.payment_term.status === 'paid' && selectedRequest.raw.payment_term.balance <= 0" class="text-center pt-2">
+                  <div class="bg-emerald-900/30 border border-emerald-500/30 p-3 rounded-xl flex items-center justify-center gap-2">
+                    <CheckCircle2 class="w-5 h-5 text-emerald-400" />
+                    <p class="text-sm font-bold text-emerald-400">Fully Paid & Completed!</p>
+                  </div>
                 </div>
-             </div>
 
-             <div v-else-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
-                Awaiting your agreement in the chat section.
-             </div>
-             </template>
-           </div>
+                <div v-else-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
+                  Awaiting your agreement in the chat section.
+                </div>
+              </template>
 
-           <!-- ═══════════ TEAM REVENUE BREAKDOWN (group services) ═══════════ -->
-           <div v-if="selectedRequest.raw.revenue_summary && selectedRequest.raw.revenue_summary.is_group" class="bg-gradient-to-br from-emerald-900/10 to-emerald-800/20 rounded-2xl p-5 border border-emerald-700/50 shadow-inner">
+              <div v-else class="text-xs text-gray-400 italic text-center py-2">
+                This service uses Daily Billing. Please open the <span class="font-bold text-blue-300">Daily Billing</span> card for billing details and payment actions.
+              </div>
+            </div>
+
+            <!-- ═══ SERVICE PROVIDER INVENTORY ═══ -->
+            <div v-if="activeDetailCard === 'sp_inventory'" class="bg-amber-900/10 border border-amber-700/40 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                  Service Provider Inventory
+                </p>
+                <Button v-if="['ongoing', 'completion_review'].includes(selectedRequest.status)" @click="openProviderInventory" :disabled="isFetchingInventory" class="bg-amber-600 hover:bg-amber-700 text-white font-bold h-8 text-xs">
+                  <span v-if="isFetchingInventory" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Loading...</span>
+                  <span v-else>Browse Inventory</span>
+                </Button>
+              </div>
+
+              <p class="text-[11px] text-gray-400">
+                Request products from your service provider's inventory. The provider will approve or reject each request.
+              </p>
+
+              <div v-if="selectedRequest.raw.product_use_requests?.length" class="space-y-2">
+                <div v-for="useRequest in selectedRequest.raw.product_use_requests" :key="useRequest.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                      <div class="min-w-0">
+                        <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
+                        <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
+                      </div>
+                    </div>
+                    <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
+                      {{ useRequest.status.replace('_', ' ') }}
+                    </Badge>
+                  </div>
+
+                  <p v-if="useRequest.status === 'pending_provider'" class="text-[11px] text-amber-400">
+                    Waiting for the service provider to approve or reject this request.
+                  </p>
+
+                  <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Markup offered</span>
+                      <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Price with markup</span>
+                      <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
+                      <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
+                    </div>
+
+                    <p v-if="useRequest.offer_by === 'client'" class="text-[11px] text-cyan-400">
+                      Your counter offer is {{ useRequest.offer_percentage }}%. Waiting for the service provider to approve or counter it.
+                    </p>
+                    <div v-else class="flex gap-2 pt-1">
+                      <Button @click="promptMarkupResponse(useRequest, 'approve')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                        Approve Markup
+                      </Button>
+                      <Button @click="promptMarkupResponse(useRequest, 'counter')" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
+                        Counter Offer
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                    <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                    <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
+                  </div>
+
+                  <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
+                    <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
+                    <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
+                    <p class="text-[10px] text-gray-500">This has been added to your materials payment.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ MATERIALS REIMBURSEMENT ═══ -->
+            <div v-if="activeDetailCard === 'materials'" class="bg-amber-900/10 border border-amber-700/40 rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                  Materials Reimbursement
+                </p>
+                <span v-if="selectedRequest.raw.materials_summary && selectedRequest.raw.materials_summary.balance > 0" class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Balance: ₱{{ Number(selectedRequest.raw.materials_summary.balance).toLocaleString() }}</span>
+              </div>
+
+              <div v-for="batch in selectedRequest.raw.materials" :key="batch.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                  <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
+                </div>
+
+                <div class="space-y-1">
+                  <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
+                    <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
+                    <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
+                    <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
+                  <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
+                  <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
+                </div>
+
+                <div v-if="batch.proof_photo_url" class="mt-1">
+                  <img :src="batch.proof_photo_url" class="h-24 rounded-lg border border-slate-700 object-cover cursor-pointer" @click="openImageInNewTab(batch.proof_photo_url)" />
+                </div>
+
+                <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                  <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                  <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
+                </div>
+
+                <div v-if="batch.status === 'pending'" class="flex gap-2 pt-1">
+                  <Button @click="approveMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                    {{ isProcessingMaterials ? 'Processing...' : 'Approve' }}
+                  </Button>
+                  <Button @click="rejectMaterials(batch.id)" :disabled="isProcessingMaterials" class="bg-red-600 hover:bg-red-700 text-white font-bold h-8 text-xs flex-1">
+                    {{ isProcessingMaterials ? 'Processing...' : 'Reject' }}
+                  </Button>
+                </div>
+              </div>
+
+              <!-- Materials payment (created when the client approves) -->
+              <div v-if="selectedRequest.raw.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedRequest.raw.materials_term.status)" class="bg-slate-950 border border-amber-700/40 rounded-lg p-3 space-y-3">
+                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                    <p class="text-sm text-white font-bold">₱{{ Number(selectedRequest.raw.materials_term.amount).toLocaleString() }}</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
+                    <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.total_paid).toLocaleString() }}</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
+                    <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</p>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-400">Payment method: <span class="font-bold text-yellow-300 uppercase">{{ selectedRequest.raw.materials_term.payment_method }}</span> ({{ selectedRequest.raw.materials_term.payment_term }})</p>
+
+                <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'gcash'" class="text-center">
+                  <Button @click="payWithGcash(selectedRequest.raw.materials_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-9 rounded-xl text-xs">
+                    <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                    <span v-else>Pay Materials via GCash — ₱{{ Number(selectedRequest.raw.materials_term.balance).toLocaleString() }}</span>
+                  </Button>
+                </div>
+
+                <div v-if="selectedRequest.raw.materials_term.status === 'agreed' && selectedRequest.raw.materials_term.balance > 0 && selectedRequest.raw.materials_term.payment_method === 'on_hand'" class="text-center">
+                  <p class="text-xs text-gray-400 mb-2">Hand the materials payment physically and upload the receipt/proof here.</p>
+                  <input type="file" ref="materialsProofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                  <Button @click="uploadMaterialsProof(selectedRequest.raw.materials_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-9 rounded-xl text-xs">
+                    <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                    <span v-else>Upload Proof for Materials</span>
+                  </Button>
+                </div>
+
+                <div v-if="selectedRequest.raw.materials_term.status === 'awaiting_proof_approval'" class="text-center bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl">
+                  <p class="text-xs font-bold text-blue-400">Proof uploaded — waiting for provider verification.</p>
+                </div>
+
+                <div v-if="selectedRequest.raw.materials_term.status === 'paid' && selectedRequest.raw.materials_term.balance <= 0" class="text-center">
+                  <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ═══ DAILY BILLING ═══ -->
+            <div v-if="activeDetailCard === 'daily_billing'" class="space-y-4">
+              <div class="bg-blue-900/20 border border-blue-500/40 rounded-xl p-3 flex items-start gap-3">
+                <Calendar class="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p class="text-sm font-bold text-blue-300 uppercase tracking-wider">Daily Billing Active</p>
+                  <p class="text-xs text-gray-300 mt-1">
+                    You pay <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
+                    for every day the provider works (counting from {{ selectedRequest.raw.daily_billing.billing_started_at }}).
+                    Days the provider marks as <span class="font-bold text-gray-100">not worked</span> are free.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
+                  <p class="text-sm text-white font-bold">{{ selectedRequest.raw.daily_billing.days_elapsed }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
+                  <p class="text-sm text-gray-300 font-bold">{{ selectedRequest.raw.daily_billing.days_exempt }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
+                  <p class="text-sm text-emerald-400 font-bold">{{ selectedRequest.raw.daily_billing.days_paid }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
+                  <p class="text-sm text-red-400 font-bold">{{ selectedRequest.raw.daily_billing.days_outstanding }}</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due So Far</p>
+                  <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_due).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
+                  <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedRequest.raw.daily_billing.total_paid).toLocaleString() }}</p>
+                </div>
+              </div>
+
+              <div v-if="selectedRequest.raw.daily_billing.payment_log.length" class="bg-gray-900/60 border border-gray-800 rounded-xl p-3 max-h-44 overflow-y-auto">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
+                <div v-for="entry in selectedRequest.raw.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-gray-800/60 last:border-0">
+                  <div class="flex items-center gap-2">
+                    <CheckCircle2 class="w-4 h-4 text-emerald-400" />
+                    <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
+                  </div>
+                  <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
+                </div>
+              </div>
+
+              <template v-if="selectedRequest.status === 'ongoing' && selectedRequest.raw.payment_term.status === 'agreed'">
+                <div v-if="selectedRequest.raw.daily_billing.today_exempt" class="bg-gray-800/60 border border-gray-600/50 rounded-xl p-3 text-center">
+                  <p class="text-sm font-bold text-gray-300">No payment due today</p>
+                  <p class="text-xs text-gray-400 mt-1">The Service Provider marked today as not worked, so today is free of charge.</p>
+                </div>
+                <div v-else-if="selectedRequest.raw.daily_billing.today_paid" class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-center gap-2">
+                  <CheckCircle2 class="w-5 h-5 text-emerald-400" />
+                  <p class="text-sm font-bold text-emerald-400">Today's daily fee is settled</p>
+                </div>
+                <div v-else>
+                  <p class="text-xs text-gray-400 mb-3 text-center">
+                    Today's fee of <span class="font-bold text-white">₱{{ Number(selectedRequest.raw.daily_billing.daily_rate).toLocaleString() }}</span>
+                    (due {{ selectedRequest.raw.daily_billing.next_due_date }}) is pending settlement.
+                  </p>
+                  <div v-if="selectedRequest.raw.payment_term.payment_method === 'gcash'" class="text-center pt-1">
+                    <Button @click="payWithGcash(selectedRequest.raw.payment_term.id)" :disabled="isPaying" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 rounded-xl">
+                      <span v-if="isPaying" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                      <span v-else>Pay Today's Daily Fee via GCash</span>
+                    </Button>
+                  </div>
+                  <div v-if="selectedRequest.raw.payment_term.payment_method === 'on_hand'" class="pt-1">
+                    <p class="text-xs text-gray-400 mb-2 text-center">Hand the daily payment physically, then upload the receipt/proof below.</p>
+                    <input type="file" ref="proofInput" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-500/10 file:text-yellow-400 hover:file:bg-yellow-500/20 mb-3 cursor-pointer" />
+                    <Button @click="uploadProofOfPayment(selectedRequest.raw.payment_term.id)" :disabled="isUploadingProof" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold h-10 rounded-xl">
+                      <span v-if="isUploadingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Uploading...</span>
+                      <span v-else>Upload Proof of Daily Payment</span>
+                    </Button>
+                  </div>
+                </div>
+              </template>
+
+              <div v-if="selectedRequest.raw.payment_term.status === 'awaiting_proof_approval'" class="bg-blue-900/30 border border-blue-500/30 p-3 rounded-xl text-center">
+                <p class="text-sm font-bold text-blue-400">Daily Proof Uploaded</p>
+                <p class="text-xs text-gray-300 mt-1">Waiting for the Service Provider to verify today's payment.</p>
+              </div>
+
+              <div v-if="selectedRequest.raw.payment_term.status === 'pending'" class="text-center pt-2 text-xs text-gray-500">
+                Awaiting your agreement to the payment terms in the chat section.
+              </div>
+
+              <div v-if="selectedRequest.status === 'completion_review'" class="bg-pink-900/20 border border-pink-500/30 rounded-xl p-3 text-center">
+                <p class="text-sm font-bold text-pink-400">Service complete — awaiting your approval</p>
+                <p class="text-xs text-gray-300 mt-1">No new daily fees will accrue. Any unpaid days above remain due.</p>
+              </div>
+
+              <template v-if="selectedRequest.status === 'completed'">
+                <div class="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-3 text-center">
+                  <CheckCircle2 class="w-5 h-5 text-emerald-400 mx-auto mb-1" />
+                  <p class="text-sm font-bold text-emerald-400">Service completed &amp; approved</p>
+                </div>
+                <div v-if="selectedRequest.raw.daily_billing.days_outstanding > 0" class="bg-amber-900/30 border border-amber-500/50 rounded-xl p-3 text-center">
+                  <AlertCircle class="w-5 h-5 text-amber-400 mx-auto mb-1" />
+                  <p class="text-sm font-bold text-amber-400">{{ selectedRequest.raw.daily_billing.days_outstanding }} unpaid day{{ selectedRequest.raw.daily_billing.days_outstanding === 1 ? '' : 's' }} (₱{{ Number(selectedRequest.raw.daily_billing.outstanding).toLocaleString() }})</p>
+                  <p class="text-xs text-gray-300 mt-1">Please settle the outstanding amount with your provider.</p>
+                </div>
+              </template>
+            </div>
+
+            <!-- ═══ TEAM REVENUE BREAKDOWN ═══ -->
+            <div v-if="activeDetailCard === 'team_revenue'" class="bg-gradient-to-br from-emerald-900/10 to-emerald-800/20 rounded-2xl p-5 border border-emerald-700/50 shadow-inner">
               <h4 class="text-sm font-bold text-emerald-400 mb-1 flex items-center gap-2 uppercase tracking-wider">
                 <UsersRound class="w-4 h-4" />
                 Team Revenue Breakdown
@@ -784,17 +836,17 @@
               <p v-if="selectedRequest.raw.revenue_summary.is_daily" class="text-[10px] text-gray-500 mt-2">This is a daily-billed service — the team shares it equally.</p>
               <p v-else-if="!selectedRequest.raw.revenue_summary.split_locked" class="text-[10px] text-amber-400 mt-2">The team is still finalizing their split.</p>
               <p v-else class="text-[10px] text-emerald-500 mt-2">Split locked — each member receives their listed share.</p>
-           </div>
-           <!-- ══════════════════════════════════════════════════════════ -->
+            </div>
 
-           <div v-if="selectedRequest.raw.service_review" class="bg-gradient-to-br from-amber-900/10 to-amber-800/20 border border-amber-800/30 p-5 rounded-2xl shadow-inner">
+            <!-- ═══ YOUR SUBMITTED REVIEW ═══ -->
+            <div v-if="activeDetailCard === 'service_review'" class="bg-gradient-to-br from-amber-900/10 to-amber-800/20 border border-amber-800/30 p-5 rounded-2xl shadow-inner">
               <h4 class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
                 <Star class="w-4 h-4 fill-amber-400" />
                 Your Submitted Review
               </h4>
               <div class="flex items-center gap-1 mb-3">
-                 <Star v-for="n in 5" :key="n" :class="['w-4 h-4', n <= selectedRequest.raw.service_review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600']" />
-                 <span class="text-xs font-bold text-amber-500 ml-2 bg-amber-500/10 px-2 py-0.5 rounded-full">{{ selectedRequest.raw.service_review.rating }}.0</span>
+                <Star v-for="n in 5" :key="n" :class="['w-4 h-4', n <= selectedRequest.raw.service_review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-600']" />
+                <span class="text-xs font-bold text-amber-500 ml-2 bg-amber-500/10 px-2 py-0.5 rounded-full">{{ selectedRequest.raw.service_review.rating }}.0</span>
               </div>
               <p class="text-sm text-gray-300 italic bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">"{{ selectedRequest.raw.service_review.comment || 'No specific comment provided.' }}"</p>
               
@@ -803,83 +855,86 @@
               </div>
 
               <div v-if="selectedRequest.raw.service_review.reply" class="mt-4 bg-blue-900/20 border border-blue-800/50 rounded-lg p-3 relative ml-4">
-                 <div class="absolute -left-3 top-3 text-blue-500"><CornerDownRight class="w-4 h-4" /></div>
-                 <p class="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Provider's Response</p>
-                 <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.reply }}</p>
+                <div class="absolute -left-3 top-3 text-blue-500"><CornerDownRight class="w-4 h-4" /></div>
+                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Provider's Response</p>
+                <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.reply }}</p>
               </div>
 
               <div v-if="selectedRequest.raw.service_review.reply && !selectedRequest.raw.service_review.client_reply" class="mt-3 ml-8">
-                 <div class="flex flex-col gap-2">
-                    <textarea v-model="clientReplyText" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-amber-500 focus:outline-none" placeholder="Type your final response to the provider..."></textarea>
-                    <Button size="sm" class="self-end bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs" :disabled="isSubmittingReply || !clientReplyText.trim()" @click="submitClientReply(selectedRequest.raw.service_review.id)">
-                       <span v-if="isSubmittingReply">Sending...</span>
-                       <span v-else>Post Reply</span>
-                    </Button>
-                 </div>
+                <div class="flex flex-col gap-2">
+                  <textarea v-model="clientReplyText" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-amber-500 focus:outline-none" placeholder="Type your final response to the provider..."></textarea>
+                  <Button size="sm" class="self-end bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs" :disabled="isSubmittingReply || !clientReplyText.trim()" @click="submitClientReply(selectedRequest.raw.service_review.id)">
+                    <span v-if="isSubmittingReply">Sending...</span>
+                    <span v-else>Post Reply</span>
+                  </Button>
+                </div>
               </div>
 
               <div v-else-if="selectedRequest.raw.service_review.client_reply" class="mt-3 bg-slate-800/50 border border-slate-700 rounded-lg p-3 relative ml-8">
-                 <div class="absolute -left-3 top-3 text-slate-500"><CornerDownRight class="w-4 h-4" /></div>
-                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Your Reply</p>
-                 <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.client_reply }}</p>
+                <div class="absolute -left-3 top-3 text-slate-500"><CornerDownRight class="w-4 h-4" /></div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Your Reply</p>
+                <p class="text-xs text-gray-300">{{ selectedRequest.raw.service_review.client_reply }}</p>
               </div>
-           </div>
+            </div>
 
-           <div v-if="selectedRequest.raw.service_offering" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
-             <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-               <Briefcase class="w-4 h-4" />
-               Service Package Info
-             </h4>
-             
-             <div class="flex flex-col sm:flex-row gap-4 mb-4">
-               <div v-if="selectedRequest.imageUrl" class="w-full sm:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 shadow-md border border-gray-700/50">
-                 <img :src="selectedRequest.imageUrl" class="w-full h-full object-cover" />
-               </div>
-               
-               <div class="flex-1 space-y-4">
-                 <div>
-                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Service Title</p>
-                   <p class="font-semibold text-base text-white">{{ selectedRequest.raw.service_offering.title }}</p>
-                 </div>
-                 
-                 <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
-                   <div>
-                     <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Category</p>
-                     <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.category }}</p>
-                   </div>
-                   <div>
-                     <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
-                     <p class="text-xs text-emerald-400 font-bold">
-                       ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
-                       <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
-                     </p>
-                   </div>
-                 </div>
-               </div>
-             </div>
+            <!-- ═══ SERVICE PACKAGE INFO ═══ -->
+            <div v-if="activeDetailCard === 'service_package'" class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50 shadow-inner">
+              <div v-if="selectedRequest.raw.service_offering">
+                <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                  <Briefcase class="w-4 h-4" />
+                  Service Package Info
+                </h4>
+                
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                  <div v-if="selectedRequest.imageUrl" class="w-full sm:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 shadow-md border border-gray-700/50">
+                    <img :src="selectedRequest.imageUrl" class="w-full h-full object-cover" />
+                  </div>
+                  
+                  <div class="flex-1 space-y-4">
+                    <div>
+                      <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Service Title</p>
+                      <p class="font-semibold text-base text-white">{{ selectedRequest.raw.service_offering.title }}</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+                      <div>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Category</p>
+                        <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.category }}</p>
+                      </div>
+                      <div>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Base Price</p>
+                        <p class="text-xs text-emerald-400 font-bold">
+                          ₱{{ Number(selectedRequest.raw.service_offering.price).toLocaleString() }} 
+                          <span class="text-gray-400 font-normal uppercase text-[9px]">/ {{ selectedRequest.raw.service_offering.price_type.replace('-', ' ') }}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-             <div class="grid grid-cols-1 mb-4">
-               <div class="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
-                 <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Duration</p>
-                 <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.duration }}</p>
-               </div>
-             </div>
+                <div class="grid grid-cols-1 mb-4">
+                  <div class="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Duration</p>
+                    <p class="text-xs text-gray-200 font-medium">{{ selectedRequest.raw.service_offering.duration }}</p>
+                  </div>
+                </div>
 
-             <div v-if="selectedRequest.raw.service_offering.description">
-               <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Package Description</p>
-               <p class="text-xs text-gray-400 leading-relaxed">{{ selectedRequest.raw.service_offering.description }}</p>
-             </div>
-           </div>
+                <div v-if="selectedRequest.raw.service_offering.description">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Package Description</p>
+                  <p class="text-xs text-gray-400 leading-relaxed">{{ selectedRequest.raw.service_offering.description }}</p>
+                </div>
+              </div>
+              <div v-else>
+                <p class="text-sm text-gray-400 italic">Custom Service Request (No predefined package selected)</p>
+              </div>
+            </div>
 
-           <div v-else class="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50">
-              <p class="text-sm text-gray-400 italic">Custom Service Request (No predefined package selected)</p>
-           </div>
-
-           
-           <div class="h-2"></div>
+          </div>
+          <!-- ────────────────────── END DETAIL VIEW ────────────────────── -->
         </div>
       </DialogContent>
     </Dialog>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
 
     <Dialog v-model:open="showSignAgreementModal">
        <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]">
@@ -1281,7 +1336,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import WorkProgressChart from '@/components/WorkProgressChart.vue'
 import { 
-  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt, UsersRound
+  Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt, UsersRound, ChevronLeft, ChevronRight
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -1296,6 +1351,8 @@ const activeClientId = ref(null)
 
 const isModalOpen = ref(false)
 const selectedRequest = ref(null)
+// Which detail card is currently open (null = card overview)
+const activeDetailCard = ref(null)
 
 const proofInput = ref(null)
 const isUploadingProof = ref(false)
@@ -1537,6 +1594,183 @@ watch(showSignAgreementModal, async (isOpen) => {
 watch(activeFilter, () => {
   showAllServices.value = false
 })
+
+// ──────────────────────────────────────────────────────────────────
+// DETAIL CARD CATEGORIZATION
+// ──────────────────────────────────────────────────────────────────
+const availableDetailCards = computed(() => {
+  if (!selectedRequest.value) return []
+  const req = selectedRequest.value
+  const cards = []
+
+  if (req.status === 'pending' && req.raw.survey_agreement) {
+    const s = req.raw.survey_agreement.status
+    const labels = {
+      pending_client: 'Awaiting your signature',
+      signed: 'Signed — awaiting survey start',
+      in_progress: 'Survey in progress',
+      completed: 'Survey complete'
+    }
+    cards.push({
+      id: 'survey_agreement',
+      title: 'Survey Agreement',
+      description: labels[s] || 'Survey agreement details',
+      icon: ClipboardList,
+      iconBg: 'bg-indigo-500/15',
+      iconColor: 'text-indigo-400',
+      badge: s === 'pending_client' ? 'Action Required' : null,
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+    })
+  }
+
+  if (req.raw.work_progress?.length) {
+    cards.push({
+      id: 'work_progress',
+      title: 'Work Progress',
+      description: `${req.raw.work_progress.length} update${req.raw.work_progress.length > 1 ? 's' : ''} from provider`,
+      icon: ClipboardList,
+      iconBg: 'bg-cyan-500/15',
+      iconColor: 'text-cyan-400'
+    })
+  }
+
+  if (req.status === 'completion_review') {
+    cards.push({
+      id: 'completion_review',
+      title: 'Work Completion Review',
+      description: 'Review proofs submitted by your provider',
+      icon: CheckCircle2,
+      iconBg: 'bg-pink-500/15',
+      iconColor: 'text-pink-400',
+      badge: 'Action Required',
+      badgeColor: 'bg-pink-500/20 text-pink-300 border-pink-500/40'
+    })
+  }
+
+  if (req.status === 'ongoing' && req.raw.latest_completion?.status === 'rejected') {
+    cards.push({
+      id: 'rejection_notice',
+      title: 'Rejection Notice',
+      description: 'You rejected the previous completion proof',
+      icon: AlertTriangle,
+      iconBg: 'bg-red-500/15',
+      iconColor: 'text-red-400'
+    })
+  }
+
+  cards.push({
+    id: 'my_details',
+    title: 'My Request Details',
+    description: 'Your notes, address, and contact info',
+    icon: User,
+    iconBg: 'bg-blue-500/15',
+    iconColor: 'text-blue-400'
+  })
+
+  if (req.raw.payment_term) {
+    const pt = req.raw.payment_term
+    let badge = null
+    let badgeColor = ''
+    if (pt.proof_rejection_reason) {
+      badge = 'Proof Rejected'
+      badgeColor = 'bg-red-500/20 text-red-300 border-red-500/40'
+    } else if (pt.status === 'agreed' && pt.balance > 0) {
+      badge = 'Payment Due'
+      badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+    } else if (pt.status === 'awaiting_proof_approval') {
+      badge = 'Verifying'
+      badgeColor = 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+    } else if (pt.status === 'paid' && pt.balance <= 0) {
+      badge = 'Paid'
+      badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+    }
+    cards.push({
+      id: 'payment_terms',
+      title: 'Official Payment Terms',
+      description: req.raw.daily_billing
+        ? 'This job uses Daily Billing — see Daily Billing card'
+        : 'Payment method, balances, and payment actions',
+      icon: CreditCard,
+      iconBg: 'bg-yellow-500/15',
+      iconColor: 'text-yellow-400',
+      badge,
+      badgeColor
+    })
+  }
+
+  if (req.raw.payment_term && (['ongoing', 'completion_review'].includes(req.status) || req.raw.product_use_requests?.length) && req.raw.official_deal) {
+    cards.push({
+      id: 'sp_inventory',
+      title: 'Service Provider Inventory',
+      description: `${req.raw.product_use_requests?.length || 0} product request(s)`,
+      icon: Briefcase,
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400'
+    })
+  }
+
+  if (req.raw.payment_term && req.raw.materials?.length) {
+    cards.push({
+      id: 'materials',
+      title: 'Materials Reimbursement',
+      description: `${req.raw.materials.length} batch(es) of materials`,
+      icon: Briefcase,
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400'
+    })
+  }
+
+  if (req.raw.payment_term && req.raw.daily_billing) {
+    cards.push({
+      id: 'daily_billing',
+      title: 'Daily Billing',
+      description: `${req.raw.daily_billing.days_outstanding || 0} unpaid day(s)`,
+      icon: Calendar,
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400'
+    })
+  }
+
+  if (req.raw.revenue_summary?.is_group) {
+    cards.push({
+      id: 'team_revenue',
+      title: 'Team Revenue Breakdown',
+      description: 'How the team shares your payment',
+      icon: UsersRound,
+      iconBg: 'bg-emerald-500/15',
+      iconColor: 'text-emerald-400'
+    })
+  }
+
+  if (req.raw.service_review) {
+    cards.push({
+      id: 'service_review',
+      title: 'Your Submitted Review',
+      description: `${req.raw.service_review.rating}.0 star rating`,
+      icon: Star,
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400'
+    })
+  }
+
+  cards.push({
+    id: 'service_package',
+    title: 'Service Package Info',
+    description: req.raw.service_offering?.title || 'Custom service request',
+    icon: Briefcase,
+    iconBg: 'bg-cyan-500/15',
+    iconColor: 'text-cyan-400'
+  })
+
+  return cards
+})
+
+const currentCard = computed(() => {
+  if (!activeDetailCard.value) return null
+  return availableDetailCards.value.find(c => c.id === activeDetailCard.value) || null
+})
+
+// ──────────────────────────────────────────────────────────────────
 
 const getPos = (e) => {
    const rect = signaturePad.value.getBoundingClientRect()
@@ -2131,6 +2365,7 @@ const getStatusMessage = (status, survey = null) => {
 
 const viewDetails = (request) => {
   selectedRequest.value = request
+  activeDetailCard.value = null // reset to card overview on open
   isModalOpen.value = true
 }
 

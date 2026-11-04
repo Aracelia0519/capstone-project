@@ -262,740 +262,791 @@
       </div>
     </div>
 
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- JOB REQUEST DETAILS MODAL (refactored into clickable cards)        -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
     <Dialog v-model:open="showDetailsModal">
       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[95vw] max-w-[95vw] md:max-w-[1100px] max-h-[90vh] overflow-y-auto custom-scrollbar">
         <DialogHeader>
           <DialogTitle>Job Request Details</DialogTitle>
         </DialogHeader>
         
-        <div v-if="selectedJob" class="py-4 space-y-6">
+        <div v-if="selectedJob" class="py-4">
 
-          <!-- ═══════════ ALERTS ═══════════ -->
-          <div v-if="selectedJob.originalData.latest_completion && selectedJob.originalData.latest_completion.status === 'rejected'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
-             <h4 class="text-sm font-bold text-red-400 flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                Client rejected the previous completion proof
-             </h4>
-             <p class="text-gray-300 text-sm italic border-l-2 border-red-500/50 pl-3">"{{ selectedJob.originalData.latest_completion.rejection_reason }}"</p>
+          <!-- ───────────────────── CARD OVERVIEW ───────────────────── -->
+          <div v-if="!activeDetailCard || !currentCard" class="space-y-4">
+            <p class="text-xs text-gray-500">Select a section below to view its details</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                v-for="card in availableDetailCards"
+                :key="card.id"
+                @click="activeDetailCard = card.id"
+                class="group relative flex items-start gap-3 bg-gradient-to-br from-slate-800/60 to-slate-900/60 hover:from-slate-800/90 hover:to-slate-900/90 border border-slate-700/60 hover:border-cyan-500/40 rounded-xl p-4 transition-all text-left"
+              >
+                <div :class="['p-2.5 rounded-xl shrink-0', card.iconBg]">
+                  <component :is="card.icon" :class="['w-5 h-5', card.iconColor]" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <p class="text-sm font-bold text-white leading-tight">{{ card.title }}</p>
+                    <Badge v-if="card.badge" :class="['text-[9px] px-1.5 py-0 uppercase tracking-wider border', card.badgeColor]">
+                      {{ card.badge }}
+                    </Badge>
+                  </div>
+                  <p class="text-[11px] text-gray-400 leading-snug line-clamp-2">{{ card.description }}</p>
+                </div>
+                <ChevronRight class="w-4 h-4 text-gray-500 group-hover:text-cyan-400 shrink-0 mt-1" />
+              </button>
+            </div>
           </div>
 
-          <div v-if="selectedJob.status === 'completion_review'" class="bg-blue-900/20 border border-blue-800/50 p-4 rounded-xl">
-             <h4 class="text-sm font-bold text-blue-400 flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <!-- ───────────────────── DETAIL VIEW ───────────────────── -->
+          <div v-else class="space-y-5">
+            <div class="flex items-center gap-3">
+              <Button variant="outline" size="sm" @click="activeDetailCard = null" class="bg-slate-800/50 hover:bg-slate-800 text-gray-300 border-slate-700 hover:border-cyan-500/50 rounded-xl gap-1">
+                <ChevronLeft class="w-4 h-4" /> Back
+              </Button>
+              <div class="flex items-center gap-2 min-w-0">
+                <div :class="['p-1.5 rounded-lg shrink-0', currentCard.iconBg]">
+                  <component :is="currentCard.icon" :class="['w-4 h-4', currentCard.iconColor]" />
+                </div>
+                <h3 class="text-base sm:text-lg font-bold text-white truncate">{{ currentCard.title }}</h3>
+              </div>
+            </div>
+
+            <!-- ═══════════ TEAM JOB INFO ═══════════ -->
+            <div v-if="activeDetailCard === 'team_job'" class="bg-fuchsia-950/30 border border-fuchsia-700/50 p-4 rounded-xl">
+              <h4 class="text-sm font-bold text-fuchsia-400 flex items-center gap-2 mb-2">
+                <UsersRound class="w-4 h-4" /> Team Job — {{ selectedJob.originalData.group?.group_name }}
+              </h4>
+              <p class="text-gray-300 text-sm mb-2">
+                This request was booked with a team of {{ selectedJob.originalData.group?.member_count }} verified providers. Any team member can handle it — but only ONE action may run at a time.
+              </p>
+              <div v-if="activeGroupLocks.length" class="space-y-1 mb-2">
+                <p v-for="l in activeGroupLocks" :key="l.id" class="text-xs text-amber-400/90 flex items-center gap-1.5">
+                  <Lock class="w-3.5 h-3.5 shrink-0" /> {{ l.member_name }} is handling the "{{ l.action.replace(/_/g, ' ') }}" action — those buttons are temporarily disabled (auto-releases in 10 minutes).
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <span v-for="m in selectedJob.originalData.group?.members || []" :key="m.id" class="text-[10px] px-2 py-0.5 rounded-full border font-medium" :class="Number(m.id) === Number(currentUserId) ? 'border-fuchsia-500/50 text-fuchsia-300 bg-fuchsia-500/10' : 'border-slate-700 bg-slate-800/60 text-slate-300'">
+                  {{ m.name }}<span v-if="m.role === 'leader'"> · Leader</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- ═══════════ REJECTION NOTICE ═══════════ -->
+            <div v-if="activeDetailCard === 'rejection_notice'" class="bg-red-900/20 border border-red-800/50 p-4 rounded-xl">
+              <h4 class="text-sm font-bold text-red-400 flex items-center gap-2 mb-2">
+                <AlertTriangle class="w-4 h-4" />
+                Client rejected the previous completion proof
+              </h4>
+              <p class="text-gray-300 text-sm italic border-l-2 border-red-500/50 pl-3">"{{ selectedJob.originalData.latest_completion.rejection_reason }}"</p>
+            </div>
+
+            <!-- ═══════════ COMPLETION STATUS (waiting for client) ═══════════ -->
+            <div v-if="activeDetailCard === 'completion_status'" class="bg-blue-900/20 border border-blue-800/50 p-4 rounded-xl">
+              <h4 class="text-sm font-bold text-blue-400 flex items-center gap-2 mb-2">
+                <CheckCircle2 class="w-4 h-4" />
                 Waiting for Client Approval
-             </h4>
-             <p class="text-gray-300 text-sm mb-3">You have submitted proof that this job is completed. The client is currently reviewing your submission.</p>
-             <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+              </h4>
+              <p class="text-gray-300 text-sm mb-3">You have submitted proof that this job is completed. The client is currently reviewing your submission.</p>
+              <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                 <div v-for="(img, idx) in selectedJob.originalData.latest_completion?.proof_images_url" :key="idx" class="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border border-slate-700">
                    <img :src="img" class="w-full h-full object-cover hover:scale-105 transition-transform" />
                 </div>
-             </div>
-          </div>
-
-          <!-- ═══════════ GROUP (TEAM) JOB ═══════════ -->
-          <div v-if="selectedJob.originalData.is_group" class="bg-fuchsia-950/30 border border-fuchsia-700/50 p-4 rounded-xl">
-            <h4 class="text-sm font-bold text-fuchsia-400 flex items-center gap-2 mb-2">
-              <UsersRound class="w-4 h-4" /> Team Job — {{ selectedJob.originalData.group?.group_name }}
-            </h4>
-            <p class="text-gray-300 text-sm mb-2">
-              This request was booked with a team of {{ selectedJob.originalData.group?.member_count }} verified providers. Any team member can handle it — but only ONE action may run at a time.
-            </p>
-            <div v-if="activeGroupLocks.length" class="space-y-1 mb-2">
-              <p v-for="l in activeGroupLocks" :key="l.id" class="text-xs text-amber-400/90 flex items-center gap-1.5">
-                <Lock class="w-3.5 h-3.5 shrink-0" /> {{ l.member_name }} is handling the "{{ l.action.replace(/_/g, ' ') }}" action — those buttons are temporarily disabled (auto-releases in 10 minutes).
-              </p>
+              </div>
             </div>
-            <div class="flex flex-wrap gap-1.5">
-              <span v-for="m in selectedJob.originalData.group?.members || []" :key="m.id" class="text-[10px] px-2 py-0.5 rounded-full border font-medium" :class="Number(m.id) === Number(currentUserId) ? 'border-fuchsia-500/50 text-fuchsia-300 bg-fuchsia-500/10' : 'border-slate-700 bg-slate-800/60 text-slate-300'">
-                {{ m.name }}<span v-if="m.role === 'leader'"> · Leader</span>
-              </span>
-            </div>
-          </div>
 
-          <!-- ═══════════ SURVEY AGREEMENT ═══════════ -->
-          <div v-if="selectedJob.status === 'pending' && selectedJob.originalData.survey_agreement" class="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-xl">
-             <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <!-- ═══════════ SURVEY AGREEMENT ═══════════ -->
+            <div v-if="activeDetailCard === 'survey_agreement'" class="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-xl">
+              <h4 class="text-sm font-bold text-indigo-400 flex items-center gap-2 mb-2">
+                <FileText class="w-4 h-4" />
                 Survey Agreement Status
-             </h4>
-             <p class="text-gray-300 text-sm">
+              </h4>
+              <p class="text-gray-300 text-sm">
                 <span v-if="selectedJob.originalData.survey_agreement.status === 'pending_client'">Agreement created. Waiting for client's formal signature.</span>
                 <span v-else-if="selectedJob.originalData.survey_agreement.status === 'signed'">Client has signed the agreement! You may now proceed to survey the area.</span>
                 <span v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'">Survey currently in progress. Please log your measurements.</span>
                 <span v-else-if="selectedJob.originalData.survey_agreement.status === 'completed'">Survey Phase completed successfully. Ready for formal Approval.</span>
-             </p>
-             
-             <div v-if="selectedJob.originalData.survey_agreement.status !== 'pending_client'" class="mt-4 pt-3 border-t border-indigo-800/30 grid grid-cols-2 gap-4">
-                <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Your Signature</p>
-                   <img :src="selectedJob.originalData.survey_agreement.provider_signature_url" class="h-10 invert opacity-80" />
-                </div>
-                <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Client Signature</p>
-                   <img :src="selectedJob.originalData.survey_agreement.client_signature_url" class="h-10 invert opacity-80" />
-                </div>
-             </div>
-
-             <Button @click="showViewAgreementModal = true" size="sm" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 shadow-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                View Full Agreement Document
-             </Button>
-
-             <div v-if="selectedJob.originalData.survey_agreement.status === 'signed'" class="mt-4">
-                 <Button @click="promptStartSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'start_survey')" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
-                     <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                     <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Start Survey</span>
-                 </Button>
-             </div>
-             <div v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'" class="mt-4">
-                 <Button @click="promptEndSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'complete_survey')" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
-                     <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
-                     <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> End & Complete Survey</span>
-                 </Button>
-             </div>
-          </div>
-
-          <!-- ═══════════ WORK PROGRESS ═══════════ -->
-          <div v-if="selectedJob.status === 'ongoing' || workProgressItems.length" class="bg-slate-950/60 border border-cyan-800/50 rounded-xl p-4">
-             <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 class="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                   Work Progress
-                </h4>
-                <Badge v-if="incompleteWorkProgress.length" variant="outline" class="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] uppercase">
-                   {{ incompleteWorkProgress.length }} not at 100%
-                </Badge>
-                <Badge v-else-if="workProgressItems.length" variant="outline" class="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-[10px] uppercase">
-                   All tasks complete
-                </Badge>
-             </div>
-
-             <WorkProgressChart
-                :items="workProgressItems"
-                :editable="selectedJob.status === 'ongoing'"
-                :busy="isUpdatingProgress"
-                @update="updateWorkProgress"
-             />
-
-             <div v-if="selectedJob.status === 'ongoing'" class="mt-4 border-t border-cyan-800/30 pt-4 space-y-2">
-                <p class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">Add Work Progress</p>
-                <div class="flex flex-col sm:flex-row gap-2">
-                   <input v-model="progressTitle" type="text" placeholder="Title (e.g. Wall painting)" class="flex-1 bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
-                   <div class="relative w-full sm:w-32">
-                      <input v-model.number="progressPercentage" type="number" min="0" max="100" step="1" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 pr-8 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
-                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
-                   </div>
-                   <Button @click="addWorkProgress" :disabled="isAddingProgress" class="bg-cyan-600 hover:bg-cyan-700 text-white text-xs h-9 px-4">
-                      <span v-if="isAddingProgress" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Adding...</span>
-                      <span v-else>Add Progress</span>
-                   </Button>
-                </div>
-             </div>
-
-             <p v-if="incompleteWorkProgress.length" class="text-[11px] text-amber-400 mt-3">
-                All work progress items must be at 100% before you can mark this job as complete.
-             </p>
-          </div>
-
-          <!-- ═══════════ REQUEST OVERVIEW ═══════════ -->
-          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-             <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                Request Overview
-             </h4>
-             <div class="grid grid-cols-2 gap-4">
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
-                   <p class="text-white font-medium">{{ selectedJob.client }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Status</p>
-                   <Badge variant="outline" :class="[
-                        selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
-                        selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
-                        selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
-                        selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
-                        selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
-                     ]">
-                        {{ getCustomStatusText(selectedJob) }}
-                     </Badge>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Preferred Date</p>
-                   <p class="text-white">{{ selectedJob.date }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Time Preference</p>
-                   <p class="text-white">{{ selectedJob.paintBrand }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Contact Details</p>
-                   <p class="text-white">{{ selectedJob.paintType }}</p>
-                </div>
-             </div>
-             <div class="mt-4">
-                <p class="text-slate-400 text-xs uppercase mb-1">Complete Location</p>
-                <p class="text-white bg-slate-900 p-2 rounded-lg border border-slate-800 text-sm">{{ selectedJob.location }}</p>
-             </div>
-             <div class="mt-4">
-                <p class="text-slate-400 text-xs uppercase mb-1">Client Description / Notes</p>
-                <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
-                   {{ selectedJob.serviceDetails.description || 'No additional description provided.' }}
-                </div>
-             </div>
-          </div>
-
-          <!-- ═══════════ SERVICE OFFERING ═══════════ -->
-          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
-             <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                Service Offering Details
-             </h4>
-             <div class="grid grid-cols-2 gap-4">
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Service Category</p>
-                   <p class="text-white">{{ selectedJob.serviceDetails.category }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Service Title</p>
-                   <p class="text-white">{{ selectedJob.serviceDetails.title }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Service Rate</p>
-                   <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type || 'N/A' }}</p>
-                </div>
-                <div>
-                   <p class="text-slate-400 text-xs uppercase mb-1">Est. Duration</p>
-                   <p class="text-white">{{ selectedJob.serviceDetails.duration }}</p>
-                </div>
-             </div>
-          </div>
-
-          <!-- ═══════════ OFFICIAL DEAL & PAYMENT DETAILS ═══════════ -->
-          <div v-if="selectedJob.originalData.official_deal" class="bg-slate-950/60 border border-blue-800/50 rounded-xl p-4">
-             <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Official Deal & Payment Details
-             </h4>
-
-             <!-- Legacy (fixed-price) deal summary -->
-             <template v-if="!selectedJob.originalData.daily_billing">
-             <div class="grid grid-cols-2 gap-4">
+              </p>
+              
+              <div v-if="selectedJob.originalData.survey_agreement.status !== 'pending_client'" class="mt-4 pt-3 border-t border-indigo-800/30 grid grid-cols-2 gap-4">
                  <div>
-                    <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
-                    <p class="text-emerald-400 font-bold text-lg">₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }}</p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Your Signature</p>
+                    <img :src="selectedJob.originalData.survey_agreement.provider_signature_url" class="h-10 invert opacity-80" />
                  </div>
-                 <div v-if="selectedJob.originalData.payment_term">
-                    <p class="text-slate-400 text-xs uppercase mb-1">Payment Method & Term</p>
-                    <p class="text-white text-sm uppercase font-semibold">{{ selectedJob.originalData.payment_term.payment_method.replace('_', ' ') }}</p>
-                    <p class="text-gray-300 text-xs mt-0.5">{{ selectedJob.originalData.payment_term.payment_term }}</p>
+                 <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Client Signature</p>
+                    <img :src="selectedJob.originalData.survey_agreement.client_signature_url" class="h-10 invert opacity-80" />
                  </div>
-             </div>
+              </div>
 
-             <div v-if="selectedJob.originalData.payment_term" class="grid grid-cols-2 gap-4 bg-slate-900 p-3 rounded-xl border border-slate-800 mb-4 mt-3">
-               <div>
-                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid By Client</p>
-                 <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.total_paid || 0).toLocaleString() }}</p>
-               </div>
-               <div>
-                 <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
-                 <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.balance || 0).toLocaleString() }}</p>
-               </div>
-             </div>
+              <Button @click="showViewAgreementModal = true" size="sm" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 shadow-sm">
+                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                 View Full Agreement Document
+              </Button>
 
-             <!-- Invoice PWD Discount Visibility Block -->
-             <div v-if="selectedJob.originalData.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl mt-3">
-                 <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> PWD DISCOUNT APPLIED</p>
-                 <p class="text-xs text-gray-300 mt-1">{{ selectedJob.originalData.invoice_details.pwd_discount_text }}</p>
-             </div>
+              <div v-if="selectedJob.originalData.survey_agreement.status === 'signed'" class="mt-4">
+                  <Button @click="promptStartSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'start_survey')" class="w-full h-12 text-base font-bold bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-900/20 transition-all hover:scale-[1.02]">
+                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> Start Survey</span>
+                  </Button>
+              </div>
+              <div v-else-if="selectedJob.originalData.survey_agreement.status === 'in_progress'" class="mt-4">
+                  <Button @click="promptEndSurvey" :disabled="isSurveyProcessing || isActionLocked(selectedJob, 'complete_survey')" class="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]">
+                      <span v-if="isSurveyProcessing" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                      <span v-else class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> End & Complete Survey</span>
+                  </Button>
+              </div>
+            </div>
 
-             <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mb-4 mt-4 border-t border-blue-800/30 pt-4">
-                <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
-                <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
-                   <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
-                </div>
-                <div class="flex gap-2 flex-wrap">
-                   <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
-                      <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                      <span v-else>Approve & Verify Payment</span>
-                   </Button>
-                   <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
-                      <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
-                      <span v-else>Reject Proof</span>
-                   </Button>
-                </div>
-             </div>
-
-             <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4">
-                <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">Fully Paid & Completed</Badge>
-             </div>
-             <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance > 0" class="mt-4">
-                <Badge class="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">Initial Payment Verified - Pending Balance</Badge>
-             </div>
-             <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4">
-                <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
-             </div>
-
-             <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-4">
-                 <p class="text-red-400 text-sm font-bold mb-2">Unpaid Balance Action</p>
-                 <p class="text-xs text-gray-300 mb-3">Client has not fully paid. Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
-
-                 <div class="flex gap-2 flex-wrap">
-                    <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
-                       <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
-                       <span v-else>Send Email Reminder</span>
-                    </Button>
-
-                    <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
-                       <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
-                       <span v-else>Generate Legal Report</span>
-                    </Button>
-
-                    <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
-                       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                       Download Legal Report (PDF)
-                    </a>
-                 </div>
-             </div>
-             </template>
-
-             <!-- ═══════════ GROUP REVENUE SPLIT (non-daily team jobs) ═══════════ -->
-             <div v-if="split" class="mt-4 border-t border-fuchsia-800/40 pt-4">
-               <p class="text-[11px] font-black text-fuchsia-300 uppercase tracking-widest mb-1 flex items-center gap-2">
-                 <UsersRound class="w-4 h-4" /> Team Revenue Split
-               </p>
-               <p class="text-xs text-gray-400 mb-3">
-                 Each member proposes the % of this job they keep — every other member must approve each proposal, and they must total 100% before the split is locked.
-               </p>
-
-               <!-- Locked -->
-               <div v-if="split.status === 'locked'" class="bg-fuchsia-900/20 border border-fuchsia-700/40 rounded-xl p-3">
-                 <p class="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5"><Lock class="w-3.5 h-3.5" /> Split locked — final allocations:</p>
-                 <div v-for="a in split.allocations" :key="a.member_id" class="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0">
-                   <span class="text-gray-300">{{ a.member_name }}</span>
-                   <span class="text-white font-bold">{{ a.percentage }}%</span>
-                 </div>
-                 <p class="text-[10px] text-gray-500 mt-2">On a ₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }} deal, each member is entitled to their listed share.</p>
+            <!-- ═══════════ WORK PROGRESS ═══════════ -->
+            <div v-if="activeDetailCard === 'work_progress'" class="bg-slate-950/60 border border-cyan-800/50 rounded-xl p-4">
+               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                  <h4 class="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                     <ClipboardList class="w-4 h-4" />
+                     Work Progress
+                  </h4>
+                  <Badge v-if="incompleteWorkProgress.length" variant="outline" class="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] uppercase">
+                     {{ incompleteWorkProgress.length }} not at 100%
+                  </Badge>
+                  <Badge v-else-if="workProgressItems.length" variant="outline" class="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-[10px] uppercase">
+                     All tasks complete
+                  </Badge>
                </div>
 
-               <!-- In-progress / none -->
-               <div v-else class="space-y-2">
-                 <div v-if="!split.proposals?.length" class="text-xs text-gray-500 italic">No proposals yet — propose your share below.</div>
+               <WorkProgressChart
+                  :items="workProgressItems"
+                  :editable="selectedJob.status === 'ongoing'"
+                  :busy="isUpdatingProgress"
+                  @update="updateWorkProgress"
+               />
 
-                 <div v-for="p in split.proposals" :key="p.id" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
-                   <div class="flex items-center justify-between gap-2 flex-wrap">
-                     <span class="text-sm font-semibold text-white">{{ p.member_name }} — <span class="text-fuchsia-300">{{ p.percentage }}%</span></span>
-                     <Badge variant="outline" :class="p.status === 'approved' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : p.status === 'rejected' ? 'border-rose-500/40 text-rose-400 bg-rose-500/10' : 'border-amber-500/40 text-amber-400 bg-amber-500/10'" class="text-[10px] uppercase">{{ p.status }}</Badge>
-                   </div>
-                   <p v-if="p.rejection_reason" class="text-[11px] text-rose-400 mt-1 italic">"{{ p.rejection_reason }}"</p>
-                   <div class="flex flex-wrap gap-1.5 mt-2">
-                     <span v-for="a in p.approvals" :key="a.member_id" class="text-[10px] px-1.5 py-0.5 rounded-md border" :class="a.status === 'approved' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : a.status === 'rejected' ? 'border-rose-500/30 text-rose-400 bg-rose-500/10' : 'border-slate-600 text-slate-400 bg-slate-800'">
-                       {{ shortName(a.member_name) }}: {{ a.status }}
-                     </span>
-                   </div>
-                   <div v-if="canDecideProposal(p)" class="flex gap-2 mt-2">
-                     <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'approve')">Approve</Button>
-                     <Button size="sm" variant="outline" class="bg-slate-800 border-rose-700/50 text-rose-400 hover:bg-rose-500/10 text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'reject')">Reject</Button>
-                   </div>
-                   <p v-else-if="myDecisionOn(p)" class="text-[10px] text-gray-500 mt-2">Your decision: {{ myDecisionOn(p) }}</p>
-                 </div>
-
-                 <div v-if="canProposeSplit" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
-                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Propose your share (%)</p>
-                   <div class="flex gap-2 items-center">
-                     <input v-model.number="splitProposalPercent" type="number" min="1" max="100" step="0.01" placeholder="e.g. 40" class="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600" @keyup.enter="proposeSplit" />
-                     <Button size="sm" class="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white text-xs h-9" :disabled="splitBusy" @click="proposeSplit">
-                       <Loader2 v-if="splitBusy" class="w-3.5 h-3.5 mr-1 animate-spin" />
-                       <span v-else class="mr-1">⇪</span>
-                       Submit Share
+               <div v-if="selectedJob.status === 'ongoing'" class="mt-4 border-t border-cyan-800/30 pt-4 space-y-2">
+                  <p class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">Add Work Progress</p>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                     <input v-model="progressTitle" type="text" placeholder="Title (e.g. Wall painting)" class="flex-1 bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+                     <div class="relative w-full sm:w-32">
+                        <input v-model.number="progressPercentage" type="number" min="0" max="100" step="1" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 pr-8 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                     </div>
+                     <Button @click="addWorkProgress" :disabled="isAddingProgress" class="bg-cyan-600 hover:bg-cyan-700 text-white text-xs h-9 px-4">
+                        <span v-if="isAddingProgress" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Adding...</span>
+                        <span v-else>Add Progress</span>
                      </Button>
-                   </div>
-                   <p class="text-[10px] text-gray-500 mt-2">Approved proposals so far: {{ split.total_proposed }}% — must reach exactly 100% for the split to lock.</p>
-                 </div>
-                 <p v-else-if="split.my_proposal" class="text-[10px] text-gray-500">
-                   Your proposal ({{ split.my_proposal.percentage }}%) is recorded — status: {{ split.my_proposal.status }}.
-                 </p>
+                  </div>
                </div>
-             </div>
 
-             <!-- ═══════════ TEAM REVENUE BREAKDOWN (group jobs) ═══════════ -->
-             <div v-if="revenueSummary && revenueSummary.is_group" class="mt-4 border-t border-emerald-800/40 pt-4">
-               <p class="text-[11px] font-black text-emerald-300 uppercase tracking-widest mb-1 flex items-center gap-2">
-                 <UsersRound class="w-4 h-4" /> Team Revenue Breakdown
+               <p v-if="incompleteWorkProgress.length" class="text-[11px] text-amber-400 mt-3">
+                  All work progress items must be at 100% before you can mark this job as complete.
                </p>
-               <p class="text-xs text-gray-400 mb-3">
-                 What the team earned on this job and each member's share — <span class="text-emerald-300 font-semibold">{{ revenueSummary.group_name }}</span>.
-               </p>
+            </div>
 
-               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/70 border border-emerald-700/30 rounded-xl p-3 mb-3">
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Team Earned</p>
-                   <p class="text-sm text-emerald-400 font-bold">₱{{ Number(revenueSummary.team_earned || 0).toLocaleString() }}</p>
+            <!-- ═══════════ REQUEST OVERVIEW ═══════════ -->
+            <div v-if="activeDetailCard === 'request_overview'" class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+               <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <User class="w-4 h-4" />
+                  Request Overview
+               </h4>
+               <div class="grid grid-cols-2 gap-4">
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Client Name</p>
+                     <p class="text-white font-medium">{{ selectedJob.client }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Status</p>
+                     <Badge variant="outline" :class="[
+                          selectedJob.status === 'pending' ? 'border-amber-500/30 text-amber-500 bg-amber-500/10' : 
+                          selectedJob.status === 'verifying' ? 'border-purple-500/30 text-purple-500 bg-purple-500/10' : 
+                          selectedJob.status === 'ongoing' ? 'border-blue-500/30 text-blue-500 bg-blue-500/10' : 
+                          selectedJob.status === 'completion_review' ? 'border-pink-500/30 text-pink-500 bg-pink-500/10' :
+                          selectedJob.status === 'completed' ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10' : 'border-red-500/30 text-red-500 bg-red-500/10'
+                       ]">
+                          {{ getCustomStatusText(selectedJob) }}
+                       </Badge>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Preferred Date</p>
+                     <p class="text-white">{{ selectedJob.date }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Time Preference</p>
+                     <p class="text-white">{{ selectedJob.paintBrand }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Contact Details</p>
+                     <p class="text-white">{{ selectedJob.paintType }}</p>
+                  </div>
+               </div>
+               <div class="mt-4">
+                  <p class="text-slate-400 text-xs uppercase mb-1">Complete Location</p>
+                  <p class="text-white bg-slate-900 p-2 rounded-lg border border-slate-800 text-sm">{{ selectedJob.location }}</p>
+               </div>
+               <div class="mt-4">
+                  <p class="text-slate-400 text-xs uppercase mb-1">Client Description / Notes</p>
+                  <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 text-sm whitespace-pre-wrap leading-relaxed">
+                     {{ selectedJob.serviceDetails.description || 'No additional description provided.' }}
+                  </div>
+               </div>
+            </div>
+
+            <!-- ═══════════ SERVICE OFFERING ═══════════ -->
+            <div v-if="activeDetailCard === 'service_offering'" class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
+               <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Briefcase class="w-4 h-4" />
+                  Service Offering Details
+               </h4>
+               <div class="grid grid-cols-2 gap-4">
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Service Category</p>
+                     <p class="text-white">{{ selectedJob.serviceDetails.category }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Service Title</p>
+                     <p class="text-white">{{ selectedJob.serviceDetails.title }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Service Rate</p>
+                     <p class="text-white">₱{{ parseFloat(selectedJob.serviceDetails.price).toLocaleString() }} / {{ selectedJob.serviceDetails.price_type || 'N/A' }}</p>
+                  </div>
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Est. Duration</p>
+                     <p class="text-white">{{ selectedJob.serviceDetails.duration }}</p>
+                  </div>
+               </div>
+            </div>
+
+            <!-- ═══════════ PAYMENT DETAILS (fixed-price deal) ═══════════ -->
+            <div v-if="activeDetailCard === 'payment_details'" class="bg-slate-950/60 border border-blue-800/50 rounded-xl p-4">
+              <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                 <CreditCard class="w-4 h-4" />
+                 Official Deal &amp; Payment Details
+              </h4>
+
+              <div class="grid grid-cols-2 gap-4">
+                  <div>
+                     <p class="text-slate-400 text-xs uppercase mb-1">Agreed Final Price</p>
+                     <p class="text-emerald-400 font-bold text-lg">₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }}</p>
+                  </div>
+                  <div v-if="selectedJob.originalData.payment_term">
+                     <p class="text-slate-400 text-xs uppercase mb-1">Payment Method &amp; Term</p>
+                     <p class="text-white text-sm uppercase font-semibold">{{ selectedJob.originalData.payment_term.payment_method.replace('_', ' ') }}</p>
+                     <p class="text-gray-300 text-xs mt-0.5">{{ selectedJob.originalData.payment_term.payment_term }}</p>
+                  </div>
+              </div>
+
+              <div v-if="selectedJob.originalData.payment_term" class="grid grid-cols-2 gap-4 bg-slate-900 p-3 rounded-xl border border-slate-800 mb-4 mt-3">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid By Client</p>
+                  <p class="text-sm text-emerald-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.total_paid || 0).toLocaleString() }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Remaining Balance</p>
+                  <p class="text-sm text-red-400 font-bold tracking-tight">₱{{ Number(selectedJob.originalData.payment_term.balance || 0).toLocaleString() }}</p>
+                </div>
+              </div>
+
+              <!-- Invoice PWD Discount Visibility Block -->
+              <div v-if="selectedJob.originalData.invoice_details?.pwd_discount_applied" class="mb-4 bg-indigo-900/30 border border-indigo-500/50 p-3 rounded-xl mt-3">
+                  <p class="text-sm font-bold text-indigo-400 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> PWD DISCOUNT APPLIED</p>
+                  <p class="text-xs text-gray-300 mt-1">{{ selectedJob.originalData.invoice_details.pwd_discount_text }}</p>
+              </div>
+
+              <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.payment_method === 'on_hand' && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="mb-4 mt-4 border-t border-blue-800/30 pt-4">
+                 <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Proof of Payment</p>
+                 <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                    <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
                  </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid By Client</p>
-                   <p class="text-sm text-white font-bold">₱{{ Number(revenueSummary.paid_total || 0).toLocaleString() }}</p>
+                 <div class="flex gap-2 flex-wrap">
+                    <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                       <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                       <span v-else>Approve &amp; Verify Payment</span>
+                    </Button>
+                    <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                       <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                       <span v-else>Reject Proof</span>
+                    </Button>
                  </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
-                   <p class="text-sm text-red-400 font-bold">₱{{ Number(revenueSummary.outstanding || 0).toLocaleString() }}</p>
-                 </div>
-                 <div>
-                   <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Materials Reimbursed</p>
-                   <p class="text-sm text-amber-300 font-bold">₱{{ Number(revenueSummary.materials_paid || 0).toLocaleString() }}</p>
-                 </div>
+              </div>
+
+              <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance <= 0" class="mt-4">
+                 <Badge class="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 px-3 py-1">Fully Paid &amp; Completed</Badge>
+              </div>
+              <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'paid' && selectedJob.originalData.payment_term.balance > 0" class="mt-4">
+                 <Badge class="bg-blue-500/20 text-blue-400 border-blue-500/30 px-3 py-1">Initial Payment Verified - Pending Balance</Badge>
+              </div>
+              <div v-else-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status !== 'pending' && selectedJob.originalData.payment_term.status !== 'agreed'" class="mt-4">
+                 <p class="text-slate-400 text-xs">Payment Status: {{ selectedJob.originalData.payment_term.status.replace('_', ' ') }}</p>
+              </div>
+
+              <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.balance > 0" class="mt-4 border-t border-blue-800/30 pt-4">
+                  <p class="text-red-400 text-sm font-bold mb-2">Unpaid Balance Action</p>
+                  <p class="text-xs text-gray-300 mb-3">Client has not fully paid. Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+
+                  <div class="flex gap-2 flex-wrap">
+                     <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                        <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                        <span v-else>Send Email Reminder</span>
+                     </Button>
+
+                     <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                        <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                        <span v-else>Generate Legal Report</span>
+                     </Button>
+
+                     <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        Download Legal Report (PDF)
+                     </a>
+                  </div>
+              </div>
+            </div>
+
+            <!-- ═══════════ DAILY BILLING ═══════════ -->
+            <div v-if="activeDetailCard === 'daily_billing'" class="space-y-4">
+               <div class="bg-blue-900/30 border border-blue-500/40 rounded-xl p-3">
+                  <p class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-1">Daily Billing Active</p>
+                  <p class="text-xs text-gray-300">Client is billed <span class="font-bold text-white">₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</span> per day since {{ selectedJob.originalData.daily_billing.billing_started_at }} until the service is completed &amp; approved.</p>
                </div>
 
-               <div class="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-3">
-                 <div class="flex justify-between items-center mb-2">
-                   <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Member Shares</p>
-                   <span v-if="revenueSummary.is_daily" class="text-[10px] text-gray-400">Daily job — paid equally</span>
-                   <span v-else-if="revenueSummary.split_locked" class="text-[10px] text-emerald-400">Split locked at 100%</span>
-                   <span v-else class="text-[10px] text-amber-400">Split in negotiation</span>
-                 </div>
-                 <div v-for="m in revenueSummary.members" :key="m.member_id" class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800 last:border-0" :class="{ 'bg-emerald-500/10 rounded px-1': m.member_id === revenueSummary.you }">
-                   <span class="text-gray-300 flex items-center gap-1.5">
-                     {{ m.member_name }}
-                     <span v-if="m.member_id === revenueSummary.you" class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">You</span>
-                   </span>
-                   <span class="text-white font-bold">{{ m.percentage }}% · ₱{{ Number(m.share_amount || 0).toLocaleString() }}</span>
-                 </div>
-                 <div class="flex items-center justify-between pt-2 mt-1 border-t border-emerald-700/30">
-                   <span class="text-xs font-bold text-emerald-300">Your estimated share</span>
-                   <span class="text-sm font-black text-emerald-400">₱{{ Number(revenueSummary.your_share_amount || 0).toLocaleString() }}</span>
-                 </div>
+               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
+                     <p class="text-sm text-white font-bold">{{ selectedJob.originalData.daily_billing.days_elapsed }}</p>
+                  </div>
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
+                     <p class="text-sm text-gray-300 font-bold">{{ selectedJob.originalData.daily_billing.days_exempt }}</p>
+                  </div>
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
+                     <p class="text-sm text-emerald-400 font-bold">{{ selectedJob.originalData.daily_billing.days_paid }}</p>
+                  </div>
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedJob.originalData.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
+                     <p class="text-sm text-red-400 font-bold">{{ selectedJob.originalData.daily_billing.days_outstanding }}</p>
+                  </div>
                </div>
-             </div>
 
-             <!-- Daily billing panel -->
-             <div v-if="selectedJob.originalData.daily_billing" class="space-y-4">
-                <div class="bg-blue-900/30 border border-blue-500/40 rounded-xl p-3">
-                   <p class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-1">Daily Billing Active</p>
-                   <p class="text-xs text-gray-300">Client is billed <span class="font-bold text-white">₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</span> per day since {{ selectedJob.originalData.daily_billing.billing_started_at }} until the service is completed &amp; approved.</p>
+               <div class="grid grid-cols-3 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due</p>
+                     <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_due).toLocaleString() }}</p>
+                  </div>
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
+                     <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_paid).toLocaleString() }}</p>
+                  </div>
+                  <div>
+                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
+                     <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}</p>
+                  </div>
+               </div>
+
+               <div v-if="['ongoing', 'completion_review'].includes(selectedJob.status)" class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                  <div class="flex items-center justify-between mb-2">
+                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Work Day Tracker</p>
+                     <button type="button" @click="workDayBypass = !workDayBypass" :class="workDayBypass ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors">
+                        {{ workDayBypass ? 'Bypass ON' : 'Bypass' }}
+                     </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mb-2">Mark a day as <span class="text-red-400 font-bold">NOT worked</span> to waive the client's fee for that day. Unmarked days are treated as worked.</p>
+
+                  <!-- Bypass (presentation mode): pick ANY date and mark it worked / not worked -->
+                  <div v-if="workDayBypass" class="bg-blue-900/20 border border-blue-500/40 rounded-lg p-3 mb-3 space-y-2">
+                     <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
+                     <div class="flex items-center gap-2 flex-wrap">
+                        <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
+                        <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                           <span v-if="isMarkingWorkDay">Marking...</span>
+                           <span v-else>Mark Worked</span>
+                        </button>
+                        <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
+                           <span v-if="isMarkingWorkDay">Marking...</span>
+                           <span v-else>Mark Not Worked</span>
+                        </button>
+                     </div>
+                  </div>
+
+                  <div class="max-h-44 overflow-y-auto space-y-1 pr-1">
+                     <div v-for="day in getWorkDays(selectedJob.originalData.daily_billing)" :key="day.date" class="flex items-center justify-between rounded-lg px-2 py-1.5 border border-slate-800 bg-slate-900/60">
+                        <div class="flex items-center gap-2">
+                           <span class="text-xs font-medium text-gray-300">{{ day.label }}</span>
+                           <span v-if="day.isToday" class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Today</span>
+                           <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
+                        </div>
+                        <div class="flex gap-1">
+                           <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                              Worked
+                           </button>
+                           <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
+                              Not Worked
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <div v-if="selectedJob.status === 'ongoing'" class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                  <div v-if="selectedJob.originalData.daily_billing.today_exempt" class="text-center">
+                     <p class="text-sm font-bold text-gray-400">No daily fee today</p>
+                     <p class="text-xs text-gray-500 mt-1">You marked today as not worked, so the client does not owe today's fee.</p>
+                  </div>
+                  <div v-else-if="selectedJob.originalData.daily_billing.today_paid" class="flex items-center justify-center gap-2">
+                     <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                     <p class="text-sm font-bold text-emerald-400">Client settled today's daily fee</p>
+                  </div>
+                  <div v-else class="flex items-center justify-center gap-2">
+                     <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                     <p class="text-sm font-bold text-amber-400">Awaiting today's daily fee of ₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</p>
+                  </div>
+               </div>
+
+               <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="border-t border-blue-800/30 pt-3">
+                  <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Daily Payment Proof</p>
+                  <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                     <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                  </div>
+                  <div class="flex gap-2 flex-wrap">
+                     <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
+                        <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                        <span v-else>Approve &amp; Verify Payment</span>
+                     </Button>
+                     <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
+                        <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                        <span v-else>Reject Proof</span>
+                     </Button>
+                  </div>
+               </div>
+
+               <div v-if="selectedJob.originalData.daily_billing.payment_log.length" class="bg-slate-900 border border-slate-800 rounded-xl p-3 max-h-44 overflow-y-auto">
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
+                  <div v-for="entry in selectedJob.originalData.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
+                     <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
+                     </div>
+                     <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
+                  </div>
+               </div>
+
+               <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.daily_billing.days_outstanding > 0" class="border-t border-blue-800/30 pt-3">
+                  <p class="text-red-400 text-sm font-bold mb-2">Unpaid Daily Balance Action</p>
+                  <p class="text-xs text-gray-300 mb-3">{{ selectedJob.originalData.daily_billing.days_outstanding }} unpaid day(s) remaining (₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}). Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
+                  <div class="flex gap-2 flex-wrap">
+                     <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
+                        <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
+                        <span v-else>Send Email Reminder</span>
+                     </Button>
+                     <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
+                        <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
+                        <span v-else>Generate Legal Report</span>
+                     </Button>
+                     <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        Download Legal Report (PDF)
+                     </a>
+                  </div>
+               </div>
+            </div>
+
+            <!-- ═══════════ TEAM REVENUE SPLIT ═══════════ -->
+            <div v-if="activeDetailCard === 'team_revenue_split'" class="bg-slate-950/60 border border-fuchsia-800/40 rounded-xl p-4">
+              <p class="text-[11px] font-black text-fuchsia-300 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <UsersRound class="w-4 h-4" /> Team Revenue Split
+              </p>
+              <p class="text-xs text-gray-400 mb-3">
+                Each member proposes the % of this job they keep — every other member must approve each proposal, and they must total 100% before the split is locked.
+              </p>
+
+              <!-- Locked -->
+              <div v-if="split.status === 'locked'" class="bg-fuchsia-900/20 border border-fuchsia-700/40 rounded-xl p-3">
+                <p class="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-1.5"><Lock class="w-3.5 h-3.5" /> Split locked — final allocations:</p>
+                <div v-for="a in split.allocations" :key="a.member_id" class="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0">
+                  <span class="text-gray-300">{{ a.member_name }}</span>
+                  <span class="text-white font-bold">{{ a.percentage }}%</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2">On a ₱{{ parseFloat(selectedJob.originalData.official_deal.price).toLocaleString() }} deal, each member is entitled to their listed share.</p>
+              </div>
+
+              <!-- In-progress / none -->
+              <div v-else class="space-y-2">
+                <div v-if="!split.proposals?.length" class="text-xs text-gray-500 italic">No proposals yet — propose your share below.</div>
+
+                <div v-for="p in split.proposals" :key="p.id" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-sm font-semibold text-white">{{ p.member_name }} — <span class="text-fuchsia-300">{{ p.percentage }}%</span></span>
+                    <Badge variant="outline" :class="p.status === 'approved' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' : p.status === 'rejected' ? 'border-rose-500/40 text-rose-400 bg-rose-500/10' : 'border-amber-500/40 text-amber-400 bg-amber-500/10'" class="text-[10px] uppercase">{{ p.status }}</Badge>
+                  </div>
+                  <p v-if="p.rejection_reason" class="text-[11px] text-rose-400 mt-1 italic">"{{ p.rejection_reason }}"</p>
+                  <div class="flex flex-wrap gap-1.5 mt-2">
+                    <span v-for="a in p.approvals" :key="a.member_id" class="text-[10px] px-1.5 py-0.5 rounded-md border" :class="a.status === 'approved' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : a.status === 'rejected' ? 'border-rose-500/30 text-rose-400 bg-rose-500/10' : 'border-slate-600 text-slate-400 bg-slate-800'">
+                      {{ shortName(a.member_name) }}: {{ a.status }}
+                    </span>
+                  </div>
+                  <div v-if="canDecideProposal(p)" class="flex gap-2 mt-2">
+                    <Button size="sm" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'approve')">Approve</Button>
+                    <Button size="sm" variant="outline" class="bg-slate-800 border-rose-700/50 text-rose-400 hover:bg-rose-500/10 text-xs h-8" :disabled="splitBusy" @click="decideProposal(p, 'reject')">Reject</Button>
+                  </div>
+                  <p v-else-if="myDecisionOn(p)" class="text-[10px] text-gray-500 mt-2">Your decision: {{ myDecisionOn(p) }}</p>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Worked</p>
-                      <p class="text-sm text-white font-bold">{{ selectedJob.originalData.daily_billing.days_elapsed }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Exempted</p>
-                      <p class="text-sm text-gray-300 font-bold">{{ selectedJob.originalData.daily_billing.days_exempt }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Days Paid</p>
-                      <p class="text-sm text-emerald-400 font-bold">{{ selectedJob.originalData.daily_billing.days_paid }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Unpaid Day{{ selectedJob.originalData.daily_billing.days_outstanding === 1 ? '' : 's' }}</p>
-                      <p class="text-sm text-red-400 font-bold">{{ selectedJob.originalData.daily_billing.days_outstanding }}</p>
-                   </div>
+                <div v-if="canProposeSplit" class="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                  <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Propose your share (%)</p>
+                  <div class="flex gap-2 items-center">
+                    <input v-model.number="splitProposalPercent" type="number" min="1" max="100" step="0.01" placeholder="e.g. 40" class="w-28 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-600" @keyup.enter="proposeSplit" />
+                    <Button size="sm" class="bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white text-xs h-9" :disabled="splitBusy" @click="proposeSplit">
+                      <Loader2 v-if="splitBusy" class="w-3.5 h-3.5 mr-1 animate-spin" />
+                      <span v-else class="mr-1">⇪</span>
+                      Submit Share
+                    </Button>
+                  </div>
+                  <p class="text-[10px] text-gray-500 mt-2">Approved proposals so far: {{ split.total_proposed }}% — must reach exactly 100% for the split to lock.</p>
                 </div>
+                <p v-else-if="split.my_proposal" class="text-[10px] text-gray-500">
+                  Your proposal ({{ split.my_proposal.percentage }}%) is recorded — status: {{ split.my_proposal.status }}.
+                </p>
+              </div>
+            </div>
 
-                <div class="grid grid-cols-3 gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Due</p>
-                      <p class="text-sm text-gray-200 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_due).toLocaleString() }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total Paid</p>
-                      <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.total_paid).toLocaleString() }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
-                      <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}</p>
-                   </div>
+            <!-- ═══════════ TEAM REVENUE BREAKDOWN ═══════════ -->
+            <div v-if="activeDetailCard === 'team_revenue_breakdown'" class="bg-slate-950/60 border border-emerald-800/40 rounded-xl p-4">
+              <p class="text-[11px] font-black text-emerald-300 uppercase tracking-widest mb-1 flex items-center gap-2">
+                <UsersRound class="w-4 h-4" /> Team Revenue Breakdown
+              </p>
+              <p class="text-xs text-gray-400 mb-3">
+                What the team earned on this job and each member's share — <span class="text-emerald-300 font-semibold">{{ revenueSummary.group_name }}</span>.
+              </p>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/70 border border-emerald-700/30 rounded-xl p-3 mb-3">
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Team Earned</p>
+                  <p class="text-sm text-emerald-400 font-bold">₱{{ Number(revenueSummary.team_earned || 0).toLocaleString() }}</p>
                 </div>
-
-                <div v-if="['ongoing', 'completion_review'].includes(selectedJob.status)" class="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                   <div class="flex items-center justify-between mb-2">
-                      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Work Day Tracker</p>
-                      <button type="button" @click="workDayBypass = !workDayBypass" :class="workDayBypass ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors">
-                         {{ workDayBypass ? 'Bypass ON' : 'Bypass' }}
-                      </button>
-                   </div>
-                   <p class="text-xs text-gray-500 mb-2">Mark a day as <span class="text-red-400 font-bold">NOT worked</span> to waive the client's fee for that day. Unmarked days are treated as worked.</p>
-
-                   <!-- Bypass (presentation mode): pick ANY date and mark it worked / not worked -->
-                   <div v-if="workDayBypass" class="bg-blue-900/20 border border-blue-500/40 rounded-lg p-3 mb-3 space-y-2">
-                      <p class="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Bypass — Mark Any Date</p>
-                      <div class="flex items-center gap-2 flex-wrap">
-                         <input type="date" v-model="workDayBypassDate" class="bg-slate-900 border border-slate-700 rounded-md text-xs text-gray-200 px-2 py-1.5 min-w-[150px]" />
-                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-emerald-600/30 text-emerald-400 border border-emerald-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
-                            <span v-if="isMarkingWorkDay">Marking...</span>
-                            <span v-else>Mark Worked</span>
-                         </button>
-                         <button type="button" @click="markBypassDay(selectedJob.originalData.id, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day')" class="bg-red-600/30 text-red-400 border border-red-600/40 text-[10px] font-bold h-7 px-3 rounded-md transition-colors disabled:opacity-60">
-                            <span v-if="isMarkingWorkDay">Marking...</span>
-                            <span v-else>Mark Not Worked</span>
-                         </button>
-                      </div>
-                   </div>
-
-                   <div class="max-h-44 overflow-y-auto space-y-1 pr-1">
-                      <div v-for="day in getWorkDays(selectedJob.originalData.daily_billing)" :key="day.date" class="flex items-center justify-between rounded-lg px-2 py-1.5 border border-slate-800 bg-slate-900/60">
-                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-medium text-gray-300">{{ day.label }}</span>
-                            <span v-if="day.isToday" class="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Today</span>
-                            <span v-if="day.worked === false" class="text-[9px] px-2 py-0.5 rounded-full bg-gray-600/30 text-gray-400 border border-gray-600/50">Exempted</span>
-                         </div>
-                         <div class="flex gap-1">
-                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, true)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === true" :class="day.worked === true ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
-                               Worked
-                            </button>
-                            <button type="button" @click="markWorkDay(selectedJob.originalData.id, day.date, false)" :disabled="isMarkingWorkDay || isActionLocked(selectedJob, 'work_day') || day.worked === false" :class="day.worked === false ? 'bg-red-600/30 text-red-400 border border-red-600/40' : 'bg-slate-800 text-gray-400 border border-slate-700 hover:bg-slate-700'" class="text-[10px] font-bold h-6 px-2 rounded-md transition-colors disabled:opacity-60">
-                               Not Worked
-                            </button>
-                         </div>
-                      </div>
-                   </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid By Client</p>
+                  <p class="text-sm text-white font-bold">₱{{ Number(revenueSummary.paid_total || 0).toLocaleString() }}</p>
                 </div>
-
-                <div v-if="selectedJob.status === 'ongoing'" class="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                   <div v-if="selectedJob.originalData.daily_billing.today_exempt" class="text-center">
-                      <p class="text-sm font-bold text-gray-400">No daily fee today</p>
-                      <p class="text-xs text-gray-500 mt-1">You marked today as not worked, so the client does not owe today's fee.</p>
-                   </div>
-                   <div v-else-if="selectedJob.originalData.daily_billing.today_paid" class="flex items-center justify-center gap-2">
-                      <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <p class="text-sm font-bold text-emerald-400">Client settled today's daily fee</p>
-                   </div>
-                   <div v-else class="flex items-center justify-center gap-2">
-                      <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <p class="text-sm font-bold text-amber-400">Awaiting today's daily fee of ₱{{ Number(selectedJob.originalData.daily_billing.daily_rate).toLocaleString() }}</p>
-                   </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Outstanding</p>
+                  <p class="text-sm text-red-400 font-bold">₱{{ Number(revenueSummary.outstanding || 0).toLocaleString() }}</p>
                 </div>
-
-                <div v-if="selectedJob.originalData.payment_term && selectedJob.originalData.payment_term.status === 'awaiting_proof_approval'" class="border-t border-blue-800/30 pt-3">
-                   <p class="text-yellow-400 text-sm font-bold mb-2">Client Uploaded Daily Payment Proof</p>
-                   <div class="w-full max-w-[200px] rounded-lg overflow-hidden border border-slate-700 mb-3">
-                      <img :src="selectedJob.originalData.payment_term.proof_of_payment_url" class="w-full h-auto object-cover" />
-                   </div>
-                   <div class="flex gap-2 flex-wrap">
-                      <Button @click="approveProof(selectedJob.originalData.payment_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9">
-                         <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                         <span v-else>Approve & Verify Payment</span>
-                      </Button>
-                      <Button @click="rejectProof(selectedJob.originalData.payment_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.payment_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-9 border border-red-500/30">
-                         <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
-                         <span v-else>Reject Proof</span>
-                      </Button>
-                   </div>
+                <div>
+                  <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Materials Reimbursed</p>
+                  <p class="text-sm text-amber-300 font-bold">₱{{ Number(revenueSummary.materials_paid || 0).toLocaleString() }}</p>
                 </div>
+              </div>
 
-                <div v-if="selectedJob.originalData.daily_billing.payment_log.length" class="bg-slate-900 border border-slate-800 rounded-xl p-3 max-h-44 overflow-y-auto">
-                   <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Daily Payment Log</p>
-                   <div v-for="entry in selectedJob.originalData.daily_billing.payment_log" :key="entry.paid_date" class="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
-                      <div class="flex items-center gap-2">
-                         <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                         <span class="text-xs text-gray-300">Payment for {{ entry.covers_date }}</span>
-                      </div>
-                      <span class="text-xs font-bold text-emerald-400">₱{{ Number(entry.amount).toLocaleString() }}</span>
-                   </div>
+              <div class="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <p class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Member Shares</p>
+                  <span v-if="revenueSummary.is_daily" class="text-[10px] text-gray-400">Daily job — paid equally</span>
+                  <span v-else-if="revenueSummary.split_locked" class="text-[10px] text-emerald-400">Split locked at 100%</span>
+                  <span v-else class="text-[10px] text-amber-400">Split in negotiation</span>
                 </div>
-
-                <div v-if="selectedJob.status === 'completed' && selectedJob.originalData.daily_billing.days_outstanding > 0" class="border-t border-blue-800/30 pt-3">
-                   <p class="text-red-400 text-sm font-bold mb-2">Unpaid Daily Balance Action</p>
-                   <p class="text-xs text-gray-300 mb-3">{{ selectedJob.originalData.daily_billing.days_outstanding }} unpaid day(s) remaining (₱{{ Number(selectedJob.originalData.daily_billing.outstanding).toLocaleString() }}). Reminders sent: <span class="font-bold">{{ selectedJob.originalData.payment_term.reminder_count || 0 }}</span>/3</p>
-                   <div class="flex gap-2 flex-wrap">
-                      <Button @click="sendReminder(selectedJob.originalData.payment_term.id)" :disabled="isSendingReminder || (selectedJob.originalData.payment_term.reminder_count >= 3)" class="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9">
-                         <span v-if="isSendingReminder" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Sending...</span>
-                         <span v-else>Send Email Reminder</span>
-                      </Button>
-                      <Button v-if="selectedJob.originalData.payment_term.reminder_count >= 3 && !selectedJob.originalData.payment_term.legal_report_path" @click="generateReport(selectedJob.originalData.payment_term.id)" :disabled="isGeneratingReport" class="bg-red-600 hover:bg-red-700 text-white text-xs h-9 shadow-lg shadow-red-900/20">
-                         <span v-if="isGeneratingReport" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Generating...</span>
-                         <span v-else>Generate Legal Report</span>
-                      </Button>
-                      <a v-if="selectedJob.originalData.payment_term.legal_report_path" :href="selectedJob.originalData.payment_term.legal_report_path" target="_blank" class="inline-flex items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ring-offset-slate-900 bg-red-900/50 text-red-400 hover:bg-red-900/80 border border-red-800/50 h-9 px-4">
-                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                         Download Legal Report (PDF)
-                      </a>
-                   </div>
+                <div v-for="m in revenueSummary.members" :key="m.member_id" class="flex items-center justify-between text-xs py-1.5 border-b border-slate-800 last:border-0" :class="{ 'bg-emerald-500/10 rounded px-1': m.member_id === revenueSummary.you }">
+                  <span class="text-gray-300 flex items-center gap-1.5">
+                    {{ m.member_name }}
+                    <span v-if="m.member_id === revenueSummary.you" class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">You</span>
+                  </span>
+                  <span class="text-white font-bold">{{ m.percentage }}% · ₱{{ Number(m.share_amount || 0).toLocaleString() }}</span>
                 </div>
-             </div>
+                <div class="flex items-center justify-between pt-2 mt-1 border-t border-emerald-700/30">
+                  <span class="text-xs font-bold text-emerald-300">Your estimated share</span>
+                  <span class="text-sm font-black text-emerald-400">₱{{ Number(revenueSummary.your_share_amount || 0).toLocaleString() }}</span>
+                </div>
+              </div>
+            </div>
 
-             <!-- System Native Invoices & Receipts -->
-             <div class="flex gap-2 flex-wrap mt-4 border-t border-blue-800/30 pt-4">
+            <!-- ═══════════ MATERIALS REIMBURSEMENT ═══════════ -->
+            <div v-if="activeDetailCard === 'materials'" class="bg-slate-950/60 border border-amber-700/40 rounded-xl p-4">
+               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                  <h4 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                     <Package class="w-4 h-4" />
+                     Materials Reimbursement
+                  </h4>
+                  <Button size="sm" @click="showMaterialsForm = !showMaterialsForm" :class="showMaterialsForm ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-amber-600 hover:bg-amber-700 text-white'" :disabled="isActionLocked(selectedJob, 'add_materials')" class="h-8 text-xs">
+                     {{ showMaterialsForm ? 'Cancel' : '+ Add Materials' }}
+                  </Button>
+               </div>
+
+               <!-- Add-materials form -->
+               <div v-if="showMaterialsForm" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-2">
+                  <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">New Materials Request</p>
+                  <div v-for="(item, idx) in materialsItems" :key="idx" class="flex gap-2 items-center">
+                     <input v-model="item.item_name" placeholder="Material name" class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                     <input v-model.number="item.quantity" type="number" min="1" placeholder="Qty" class="w-16 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                     <input v-model.number="item.unit_price" type="number" min="0" step="0.01" placeholder="Price each" class="w-28 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
+                     <button type="button" @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-300 text-xs font-bold" :disabled="materialsItems.length === 1">✕</button>
+                  </div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                     <button type="button" @click="addMaterialRow" class="text-[10px] font-bold h-6 px-2 rounded-md bg-slate-800 text-blue-400 border border-slate-700 hover:bg-slate-700">+ Add Item</button>
+                     <input type="file" ref="materialsProofInput" accept="image/*" class="text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 cursor-pointer" />
+                  </div>
+                  <Button @click="submitMaterials" :disabled="isAddingMaterials || isActionLocked(selectedJob, 'add_materials')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 rounded-xl text-xs">
+                     <span v-if="isAddingMaterials" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Submitting...</span>
+                     <span v-else>Submit for Client Approval</span>
+                  </Button>
+               </div>
+
+               <!-- Materials batches -->
+               <div v-if="selectedJob.originalData.materials?.length" class="space-y-2">
+                  <div v-for="batch in selectedJob.originalData.materials" :key="batch.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                     <div class="flex items-center justify-between gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
+                        <div class="flex items-center gap-2">
+                           <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
+                           <button v-if="batch.status === 'pending'" type="button" @click="deleteMaterials(batch.id)" :disabled="isDeletingMaterials || isActionLocked(selectedJob, 'delete_materials')" class="text-red-400 hover:text-red-300 text-xs font-bold">Delete</button>
+                        </div>
+                     </div>
+                     <div class="space-y-1">
+                        <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
+                           <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
+                           <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
+                           <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
+                        </div>
+                     </div>
+                     <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
+                        <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
+                        <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
+                     </div>
+                     <img v-if="batch.proof_photo_url" :src="batch.proof_photo_url" class="h-20 rounded-lg border border-slate-700 object-cover" />
+                     <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                        <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                        <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- Client inventory requests + markup negotiation -->
+               <div v-if="productUseRequests.length" class="mt-3 space-y-2">
+                  <p class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Client Inventory Requests</p>
+                  <div v-for="useRequest in productUseRequests" :key="useRequest.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                     <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                           <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                           <div class="min-w-0">
+                              <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
+                              <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
+                           </div>
+                        </div>
+                        <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
+                           {{ useRequest.status.replace('_', ' ') }}
+                        </Badge>
+                     </div>
+
+                     <div v-if="useRequest.status === 'pending_provider'" class="space-y-2">
+                        <p class="text-[11px] text-amber-400">The client wants to use this product on the job.</p>
+                        <div class="flex gap-2">
+                           <Button @click="promptProductUseOffer(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                              Approve &amp; Add Markup
+                           </Button>
+                           <Button @click="promptProductUseReject(useRequest)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30 flex-1">
+                              Reject
+                           </Button>
+                        </div>
+                     </div>
+
+                     <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
+                        <div class="flex items-center justify-between text-xs">
+                           <span class="text-gray-400">Current markup offer</span>
+                           <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                           <span class="text-gray-400">Price with markup</span>
+                           <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                           <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
+                           <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
+                        </div>
+
+                        <p v-if="useRequest.offer_by === 'provider'" class="text-[11px] text-cyan-400">
+                           Waiting for the client to approve or counter your offer.
+                        </p>
+                        <div v-else class="flex gap-2 pt-1">
+                           <Button @click="promptProductUseApprove(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                              Approve Offer
+                           </Button>
+                           <Button @click="promptProductUseOffer(useRequest)" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
+                              Counter Offer
+                           </Button>
+                        </div>
+                     </div>
+
+                     <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                        <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                        <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
+                     </div>
+
+                     <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
+                        <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
+                        <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- Materials payment term -->
+               <div v-if="selectedJob.originalData.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedJob.originalData.materials_term.status)" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-3 mt-3">
+                  <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
+                  <div class="grid grid-cols-3 gap-2">
+                     <div>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                        <p class="text-sm text-white font-bold">₱{{ Number(selectedJob.originalData.materials_term.amount).toLocaleString() }}</p>
+                     </div>
+                     <div>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
+                        <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.total_paid).toLocaleString() }}</p>
+                     </div>
+                     <div>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
+                        <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.balance).toLocaleString() }}</p>
+                     </div>
+                  </div>
+
+                  <div v-if="selectedJob.originalData.materials_term.status === 'awaiting_proof_approval'" class="border-t border-amber-800/30 pt-3">
+                     <p class="text-yellow-400 text-xs font-bold mb-2">Client Uploaded Materials Proof</p>
+                     <div class="w-full max-w-[180px] rounded-lg overflow-hidden border border-slate-700 mb-3">
+                        <img :src="selectedJob.originalData.materials_term.proof_of_payment_url" class="w-full h-auto object-cover" />
+                     </div>
+                     <div class="flex gap-2 flex-wrap">
+                        <Button @click="approveProof(selectedJob.originalData.materials_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs">
+                           <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
+                           <span v-else>Approve &amp; Verify</span>
+                        </Button>
+                        <Button @click="rejectProof(selectedJob.originalData.materials_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30">
+                           <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
+                           <span v-else>Reject Proof</span>
+                        </Button>
+                     </div>
+                  </div>
+
+                  <div v-if="selectedJob.originalData.materials_term.status === 'paid' && selectedJob.originalData.materials_term.balance <= 0" class="text-center">
+                     <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid by the client.</p>
+                  </div>
+               </div>
+            </div>
+
+            <!-- ═══════════ INVOICES & RECEIPTS ═══════════ -->
+            <div v-if="activeDetailCard === 'documents'" class="bg-slate-950/60 border border-indigo-800/40 rounded-xl p-4">
+               <h4 class="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                 <Receipt class="w-4 h-4" /> Invoices &amp; Receipts
+               </h4>
+               <div class="flex gap-2 flex-wrap">
                  <Button v-if="selectedJob.originalData.invoice_details" variant="secondary" size="sm" @click="openInvoiceModal(selectedJob)" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> View Invoice
+                    <FileText class="w-4 h-4 mr-2" /> View Invoice
                  </Button>
                  <Button v-if="selectedJob.originalData.receipt_details" variant="secondary" size="sm" @click="openReceiptModal(selectedJob)" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-4 8l6-6M5 8h.01M5 12h.01M5 16h.01M3 21l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2v-16a2 2 0 00-2-2h-14a2 2 0 00-2 2v16z"/></svg> View Receipt
+                    <Receipt class="w-4 h-4 mr-2" /> View Receipt
                  </Button>
-             </div>
+               </div>
+            </div>
+
           </div>
-
-          <!-- ═══════════ MATERIALS REIMBURSEMENT ═══════════ -->
-          <div v-if="selectedJob.originalData.official_deal" class="bg-slate-950/60 border border-amber-700/40 rounded-xl p-4">
-             <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                   Materials Reimbursement
-                </h4>
-                <Button size="sm" @click="showMaterialsForm = !showMaterialsForm" :class="showMaterialsForm ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-amber-600 hover:bg-amber-700 text-white'" :disabled="isActionLocked(selectedJob, 'add_materials')" class="h-8 text-xs">
-                   {{ showMaterialsForm ? 'Cancel' : '+ Add Materials' }}
-                </Button>
-             </div>
-
-             <!-- Add-materials form -->
-             <div v-if="showMaterialsForm" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-2">
-                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">New Materials Request</p>
-                <div v-for="(item, idx) in materialsItems" :key="idx" class="flex gap-2 items-center">
-                   <input v-model="item.item_name" placeholder="Material name" class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
-                   <input v-model.number="item.quantity" type="number" min="1" placeholder="Qty" class="w-16 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
-                   <input v-model.number="item.unit_price" type="number" min="0" step="0.01" placeholder="Price each" class="w-28 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-gray-200" />
-                   <button type="button" @click="removeMaterialRow(idx)" class="text-red-400 hover:text-red-300 text-xs font-bold" :disabled="materialsItems.length === 1">✕</button>
-                </div>
-                <div class="flex items-center gap-2 flex-wrap">
-                   <button type="button" @click="addMaterialRow" class="text-[10px] font-bold h-6 px-2 rounded-md bg-slate-800 text-blue-400 border border-slate-700 hover:bg-slate-700">+ Add Item</button>
-                   <input type="file" ref="materialsProofInput" accept="image/*" class="text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 cursor-pointer" />
-                </div>
-                <Button @click="submitMaterials" :disabled="isAddingMaterials || isActionLocked(selectedJob, 'add_materials')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 rounded-xl text-xs">
-                   <span v-if="isAddingMaterials" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Submitting...</span>
-                   <span v-else>Submit for Client Approval</span>
-                </Button>
-             </div>
-
-             <!-- Materials batches -->
-             <div v-if="selectedJob.originalData.materials?.length" class="space-y-2">
-                <div v-for="batch in selectedJob.originalData.materials" :key="batch.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
-                   <div class="flex items-center justify-between gap-2">
-                      <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Batch #{{ batch.id }} <span class="text-gray-600">·</span> {{ new Date(batch.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
-                      <div class="flex items-center gap-2">
-                         <Badge :class="batch.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : batch.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5">{{ batch.status }}</Badge>
-                         <button v-if="batch.status === 'pending'" type="button" @click="deleteMaterials(batch.id)" :disabled="isDeletingMaterials || isActionLocked(selectedJob, 'delete_materials')" class="text-red-400 hover:text-red-300 text-xs font-bold">Delete</button>
-                      </div>
-                   </div>
-                   <div class="space-y-1">
-                      <div v-for="item in batch.items" :key="item.id" class="flex items-center justify-between text-xs gap-2">
-                         <span class="text-gray-300 flex-1">{{ item.item_name }} <span class="text-gray-500">× {{ item.quantity }}</span></span>
-                         <span class="text-gray-500">₱{{ Number(item.unit_price).toLocaleString() }}/pc</span>
-                         <span class="text-white font-bold w-20 text-right">₱{{ Number(item.total_price).toLocaleString() }}</span>
-                      </div>
-                   </div>
-                   <div class="flex items-center justify-between border-t border-slate-800 pt-2 text-xs">
-                      <span class="text-gray-400 font-bold uppercase tracking-wider">Batch Total</span>
-                      <span class="text-amber-400 font-bold">₱{{ Number(batch.items_total).toLocaleString() }}</span>
-                   </div>
-                   <img v-if="batch.proof_photo_url" :src="batch.proof_photo_url" class="h-20 rounded-lg border border-slate-700 object-cover" />
-                   <div v-if="batch.status === 'rejected' && batch.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
-                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
-                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ batch.rejection_reason }}</p>
-                   </div>
-                </div>
-             </div>
-
-             <!-- Client inventory requests + markup negotiation -->
-             <div v-if="productUseRequests.length" class="mt-3 space-y-2">
-                <p class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Client Inventory Requests</p>
-                <div v-for="useRequest in productUseRequests" :key="useRequest.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
-                   <div class="flex items-start justify-between gap-2">
-                      <div class="flex items-center gap-2 min-w-0">
-                         <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
-                         <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
-                            <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
-                         </div>
-                      </div>
-                      <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
-                         {{ useRequest.status.replace('_', ' ') }}
-                      </Badge>
-                   </div>
-
-                   <div v-if="useRequest.status === 'pending_provider'" class="space-y-2">
-                      <p class="text-[11px] text-amber-400">The client wants to use this product on the job.</p>
-                      <div class="flex gap-2">
-                         <Button @click="promptProductUseOffer(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
-                            Approve &amp; Add Markup
-                         </Button>
-                         <Button @click="promptProductUseReject(useRequest)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30 flex-1">
-                            Reject
-                         </Button>
-                      </div>
-                   </div>
-
-                   <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
-                      <div class="flex items-center justify-between text-xs">
-                         <span class="text-gray-400">Current markup offer</span>
-                         <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
-                      </div>
-                      <div class="flex items-center justify-between text-xs">
-                         <span class="text-gray-400">Price with markup</span>
-                         <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
-                      </div>
-                      <div class="flex items-center justify-between text-xs">
-                         <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
-                         <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
-                      </div>
-
-                      <p v-if="useRequest.offer_by === 'provider'" class="text-[11px] text-cyan-400">
-                         Waiting for the client to approve or counter your offer.
-                      </p>
-                      <div v-else class="flex gap-2 pt-1">
-                         <Button @click="promptProductUseApprove(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
-                            Approve Offer
-                         </Button>
-                         <Button @click="promptProductUseOffer(useRequest)" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
-                            Counter Offer
-                         </Button>
-                      </div>
-                   </div>
-
-                   <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
-                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
-                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
-                   </div>
-
-                   <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
-                      <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
-                      <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
-                   </div>
-                </div>
-             </div>
-
-             <!-- Materials payment term -->
-             <div v-if="selectedJob.originalData.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedJob.originalData.materials_term.status)" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-3">
-                <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
-                <div class="grid grid-cols-3 gap-2">
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Total</p>
-                      <p class="text-sm text-white font-bold">₱{{ Number(selectedJob.originalData.materials_term.amount).toLocaleString() }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Paid</p>
-                      <p class="text-sm text-emerald-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.total_paid).toLocaleString() }}</p>
-                   </div>
-                   <div>
-                      <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
-                      <p class="text-sm text-red-400 font-bold">₱{{ Number(selectedJob.originalData.materials_term.balance).toLocaleString() }}</p>
-                   </div>
-                </div>
-
-                <div v-if="selectedJob.originalData.materials_term.status === 'awaiting_proof_approval'" class="border-t border-amber-800/30 pt-3">
-                   <p class="text-yellow-400 text-xs font-bold mb-2">Client Uploaded Materials Proof</p>
-                   <div class="w-full max-w-[180px] rounded-lg overflow-hidden border border-slate-700 mb-3">
-                      <img :src="selectedJob.originalData.materials_term.proof_of_payment_url" class="w-full h-auto object-cover" />
-                   </div>
-                   <div class="flex gap-2 flex-wrap">
-                      <Button @click="approveProof(selectedJob.originalData.materials_term.id)" :disabled="isApprovingProof || isActionLocked(selectedJob, 'approve_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs">
-                         <span v-if="isApprovingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Approving...</span>
-                         <span v-else>Approve &amp; Verify</span>
-                      </Button>
-                      <Button @click="rejectProof(selectedJob.originalData.materials_term.id)" :disabled="isRejectingProof || isActionLocked(selectedJob, 'reject_proof', 'official_payment_term', selectedJob.originalData.materials_term.id)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30">
-                         <span v-if="isRejectingProof" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div> Rejecting...</span>
-                         <span v-else>Reject Proof</span>
-                      </Button>
-                   </div>
-                </div>
-
-                <div v-if="selectedJob.originalData.materials_term.status === 'paid' && selectedJob.originalData.materials_term.balance <= 0" class="text-center">
-                   <p class="text-xs font-bold text-emerald-400">✓ Materials fully paid by the client.</p>
-                </div>
-             </div>
-          </div>
+          <!-- ────────────────────── END DETAIL VIEW ────────────────────── -->
         </div>
 
+        <!-- Bottom action buttons (always visible) -->
         <div class="flex justify-end gap-3 pt-4 border-t border-slate-800 mt-4 px-6 pb-6">
            <template v-if="selectedJob && selectedJob.status === 'pending'">
              <Button variant="outline" class="bg-red-600/20 text-red-500 hover:bg-red-600/40 hover:text-red-400 border border-red-800/30" :disabled="isActionLocked(selectedJob, 'reject_request')" @click="promptRejectJob">Reject Request</Button>
@@ -1015,6 +1066,7 @@
         </div>
       </DialogContent>
     </Dialog>
+    <!-- ══════════════════════════════════════════════════════════════════ -->
 
     <Dialog v-model:open="showGenerateAgreementModal">
        <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[90vw] md:max-w-[500px]" @opened="initCanvas">
@@ -1459,7 +1511,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { UsersRound, Lock, Loader2 } from 'lucide-vue-next'
+import { UsersRound, Lock, Loader2, ChevronLeft, ChevronRight, ClipboardList, FileText, Receipt, CreditCard, Calendar, AlertTriangle, AlertCircle, Briefcase, User, TrendingUp, CheckCircle2, Package } from 'lucide-vue-next'
 import WorkProgressChart from '@/components/WorkProgressChart.vue'
 
 import L from 'leaflet'
@@ -1487,6 +1539,8 @@ import {
 const router = useRouter()
 const showDetailsModal = ref(false)
 const selectedJob = ref(null)
+// Which detail card is currently open (null = card overview)
+const activeDetailCard = ref(null)
 
 const activeProviderId = ref(null)
 
@@ -1968,8 +2022,234 @@ onUnmounted(() => {
 
 const viewJobDetails = (job) => {
   selectedJob.value = job
+  activeDetailCard.value = null // reset to card overview on open
   showDetailsModal.value = true
 }
+
+// ─────────────────────────────────────────────────────────────
+// DETAIL CARD CATEGORIZATION
+// ─────────────────────────────────────────────────────────────
+const availableDetailCards = computed(() => {
+  if (!selectedJob.value) return []
+  const job = selectedJob.value
+  const data = job.originalData
+  const cards = []
+
+  if (data.is_group) {
+    cards.push({
+      id: 'team_job',
+      title: 'Team Job Info',
+      description: `${data.group?.member_count || 0} providers · ${data.group?.group_name || 'Group'}`,
+      icon: UsersRound,
+      iconBg: 'bg-fuchsia-500/15',
+      iconColor: 'text-fuchsia-400',
+      badge: 'Team',
+      badgeColor: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40'
+    })
+  }
+
+  if (data.latest_completion && data.latest_completion.status === 'rejected') {
+    cards.push({
+      id: 'rejection_notice',
+      title: 'Rejection Notice',
+      description: 'Client rejected the previous completion proof',
+      icon: AlertTriangle,
+      iconBg: 'bg-red-500/15',
+      iconColor: 'text-red-400',
+      badge: 'Action Needed',
+      badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40'
+    })
+  }
+
+  if (job.status === 'completion_review') {
+    cards.push({
+      id: 'completion_status',
+      title: 'Completion Status',
+      description: 'Proofs under client review',
+      icon: CheckCircle2,
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400',
+      badge: 'In Review',
+      badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+    })
+  }
+
+  if (job.status === 'pending' && data.survey_agreement) {
+    const s = data.survey_agreement.status
+    const labels = {
+      pending_client: 'Awaiting client signature',
+      signed: 'Client signed — ready for survey',
+      in_progress: 'Survey in progress',
+      completed: 'Survey completed'
+    }
+    cards.push({
+      id: 'survey_agreement',
+      title: 'Survey Agreement',
+      description: labels[s] || 'Survey agreement details',
+      icon: FileText,
+      iconBg: 'bg-indigo-500/15',
+      iconColor: 'text-indigo-400',
+      badge: s === 'pending_client' ? 'Wait Client' : s === 'signed' ? 'Start Survey' : s === 'completed' ? 'Approve Job' : null,
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+    })
+  }
+
+  if (job.status === 'ongoing' || (data.work_progress && data.work_progress.length)) {
+    const total = data.work_progress?.length || 0
+    const incomplete = (data.work_progress || []).filter(p => Number(p.percentage) < 100).length
+    cards.push({
+      id: 'work_progress',
+      title: 'Work Progress',
+      description: total > 0
+        ? `${total - incomplete}/${total} items complete`
+        : 'Track and update work progress',
+      icon: ClipboardList,
+      iconBg: 'bg-cyan-500/15',
+      iconColor: 'text-cyan-400',
+      badge: incomplete > 0 ? `${incomplete} Pending` : null,
+      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+    })
+  }
+
+  cards.push({
+    id: 'request_overview',
+    title: 'Request Overview',
+    description: 'Client, dates, and location',
+    icon: User,
+    iconBg: 'bg-slate-500/15',
+    iconColor: 'text-slate-300'
+  })
+
+  cards.push({
+    id: 'service_offering',
+    title: 'Service Offering',
+    description: job.serviceDetails?.title || 'Service details',
+    icon: Briefcase,
+    iconBg: 'bg-indigo-500/15',
+    iconColor: 'text-indigo-400'
+  })
+
+  if (data.official_deal && !data.daily_billing) {
+    const term = data.payment_term
+    let badge = null
+    let badgeColor = ''
+    if (term) {
+      if (term.status === 'awaiting_proof_approval') {
+        badge = 'Verify'
+        badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+      } else if (term.status === 'paid' && term.balance <= 0) {
+        badge = 'Paid'
+        badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+      } else if (term.status === 'paid' && term.balance > 0) {
+        badge = 'Partial'
+        badgeColor = 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+      } else if (term.balance > 0 && job.status === 'completed') {
+        badge = 'Unpaid'
+        badgeColor = 'bg-red-500/20 text-red-300 border-red-500/40'
+      }
+    }
+    cards.push({
+      id: 'payment_details',
+      title: 'Payment Details',
+      description: data.official_deal?.price
+        ? `₱${parseFloat(data.official_deal.price).toLocaleString()} · ${term?.payment_method?.replace('_', ' ') || 'Payment'}`
+        : 'Payment terms and status',
+      icon: CreditCard,
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400',
+      badge,
+      badgeColor
+    })
+  }
+
+  if (data.official_deal && data.daily_billing) {
+    cards.push({
+      id: 'daily_billing',
+      title: 'Daily Billing',
+      description: `${data.daily_billing.days_outstanding || 0} unpaid day(s) · ₱${Number(data.daily_billing.outstanding || 0).toLocaleString()} outstanding`,
+      icon: Calendar,
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400',
+      badge: (data.daily_billing.days_outstanding > 0 && job.status === 'completed') ? 'Unpaid' : null,
+      badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40'
+    })
+  }
+
+  if (data.official_deal && split.value) {
+    cards.push({
+      id: 'team_revenue_split',
+      title: 'Team Revenue Split',
+      description: split.value.status === 'locked' ? 'Split locked at 100%' : 'Split in negotiation',
+      icon: TrendingUp,
+      iconBg: 'bg-fuchsia-500/15',
+      iconColor: 'text-fuchsia-400',
+      badge: split.value.status === 'locked' ? 'Locked' : 'Negotiating',
+      badgeColor: split.value.status === 'locked'
+        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+    })
+  }
+
+  if (data.official_deal && revenueSummary.value?.is_group) {
+    cards.push({
+      id: 'team_revenue_breakdown',
+      title: 'Team Revenue Breakdown',
+      description: `₱${Number(revenueSummary.value.team_earned || 0).toLocaleString()} team earned`,
+      icon: UsersRound,
+      iconBg: 'bg-emerald-500/15',
+      iconColor: 'text-emerald-400'
+    })
+  }
+
+  if (data.official_deal) {
+    const batches = data.materials?.length || 0
+    const clientReqs = data.product_use_requests?.length || 0
+    const pendingClientReqs = (data.product_use_requests || []).filter(r => r.status === 'pending_provider').length
+    const materialsTerm = data.materials_term
+    let badge = null
+    let badgeColor = ''
+    if (materialsTerm?.status === 'awaiting_proof_approval') {
+      badge = 'Verify'
+      badgeColor = 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+    } else if (pendingClientReqs > 0) {
+      badge = `${pendingClientReqs} Request${pendingClientReqs === 1 ? '' : 's'}`
+      badgeColor = 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+    }
+    cards.push({
+      id: 'materials',
+      title: 'Materials Reimbursement',
+      description: `${batches} batch(es) · ${clientReqs} client request(s)`,
+      icon: Package,
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400',
+      badge,
+      badgeColor
+    })
+  }
+
+  if (data.official_deal && (data.invoice_details || data.receipt_details)) {
+    cards.push({
+      id: 'documents',
+      title: 'Invoices & Receipts',
+      description: [
+        data.invoice_details ? 'Invoice' : null,
+        data.receipt_details ? 'Receipt' : null
+      ].filter(Boolean).join(' · '),
+      icon: Receipt,
+      iconBg: 'bg-indigo-500/15',
+      iconColor: 'text-indigo-400'
+    })
+  }
+
+  return cards
+})
+
+const currentCard = computed(() => {
+  if (!activeDetailCard.value) return null
+  return availableDetailCards.value.find(c => c.id === activeDetailCard.value) || null
+})
+// ─────────────────────────────────────────────────────────────
+
 
 const generateSurveyAgreement = async () => {
     if(!selectedJob.value) return;
