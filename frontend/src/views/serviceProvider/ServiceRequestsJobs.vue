@@ -1509,8 +1509,8 @@ const initMap = async () => {
    
    mapInstance.value = L.map('completion-map').setView([targetLat, targetLng], 15)
    
-   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-       attribution: '© OpenStreetMap & CARTO'
+   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+       attribution: '&copy; OpenStreetMap contributors'
    }).addTo(mapInstance.value)
 
    L.circle([targetLat, targetLng], {
