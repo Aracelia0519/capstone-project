@@ -287,6 +287,17 @@
              </div>
            </div>
 
+           <div v-if="selectedRequest.raw.work_progress && selectedRequest.raw.work_progress.length" class="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 rounded-2xl p-5 border border-cyan-700/50 shadow-inner">
+              <h4 class="text-sm font-bold text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                <ClipboardList class="w-4 h-4" />
+                Work Progress
+              </h4>
+              <WorkProgressChart :items="selectedRequest.raw.work_progress" />
+              <p class="text-[11px] text-gray-400 mt-3">
+                Progress updates are provided by your service provider.
+              </p>
+           </div>
+
            <div v-if="selectedRequest.status === 'completion_review'" class="bg-gradient-to-br from-pink-900/20 to-pink-800/20 rounded-2xl p-5 border border-pink-700/50 shadow-inner">
              <h4 class="text-sm font-bold text-pink-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
                <CheckCircle2 class="w-4 h-4" />
@@ -1030,6 +1041,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import WorkProgressChart from '@/components/WorkProgressChart.vue'
 import { 
   Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt, UsersRound
 } from 'lucide-vue-next'

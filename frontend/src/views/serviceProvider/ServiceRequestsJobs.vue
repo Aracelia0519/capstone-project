@@ -355,6 +355,48 @@
              </div>
           </div>
 
+          <!-- ═══════════ WORK PROGRESS ═══════════ -->
+          <div v-if="selectedJob.status === 'ongoing' || workProgressItems.length" class="bg-slate-950/60 border border-cyan-800/50 rounded-xl p-4">
+             <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h4 class="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                   Work Progress
+                </h4>
+                <Badge v-if="incompleteWorkProgress.length" variant="outline" class="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] uppercase">
+                   {{ incompleteWorkProgress.length }} not at 100%
+                </Badge>
+                <Badge v-else-if="workProgressItems.length" variant="outline" class="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-[10px] uppercase">
+                   All tasks complete
+                </Badge>
+             </div>
+
+             <WorkProgressChart
+                :items="workProgressItems"
+                :editable="selectedJob.status === 'ongoing'"
+                :busy="isUpdatingProgress"
+                @update="updateWorkProgress"
+             />
+
+             <div v-if="selectedJob.status === 'ongoing'" class="mt-4 border-t border-cyan-800/30 pt-4 space-y-2">
+                <p class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">Add Work Progress</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                   <input v-model="progressTitle" type="text" placeholder="Title (e.g. Wall painting)" class="flex-1 bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+                   <div class="relative w-full sm:w-32">
+                      <input v-model.number="progressPercentage" type="number" min="0" max="100" step="1" placeholder="0" class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 pr-8 py-2 text-xs text-white placeholder:text-slate-600 focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                   </div>
+                   <Button @click="addWorkProgress" :disabled="isAddingProgress" class="bg-cyan-600 hover:bg-cyan-700 text-white text-xs h-9 px-4">
+                      <span v-if="isAddingProgress" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Adding...</span>
+                      <span v-else>Add Progress</span>
+                   </Button>
+                </div>
+             </div>
+
+             <p v-if="incompleteWorkProgress.length" class="text-[11px] text-amber-400 mt-3">
+                All work progress items must be at 100% before you can mark this job as complete.
+             </p>
+          </div>
+
           <!-- ═══════════ REQUEST OVERVIEW ═══════════ -->
           <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4">
              <h4 class="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -1244,6 +1286,34 @@
       </AlertDialogContent>
     </AlertDialog>
 
+    <AlertDialog v-model:open="showProgressConfirmDialog">
+      <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ progressConfirmAction === 'add' ? 'Add Work Progress?' : 'Update Work Progress?' }}</AlertDialogTitle>
+          <AlertDialogDescription class="text-slate-400">
+            <template v-if="progressConfirmAction === 'add'">
+              This will add "{{ pendingProgress?.title }}" at {{ pendingProgress?.percentage }}% to the job's work progress.
+            </template>
+            <template v-else>
+              This will update "{{ pendingProgress?.title }}" from {{ pendingProgress?.current }}% to {{ pendingProgress?.percentage }}%. Progress can only increase.
+            </template>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+             @click="confirmProgressAction"
+             :disabled="isAddingProgress || isUpdatingProgress"
+             class="bg-cyan-600 hover:bg-cyan-700 text-white">
+            <span v-if="isAddingProgress || isUpdatingProgress" class="flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+            </span>
+            <span v-else>Confirm</span>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
   </div>
 </template>
 
@@ -1261,6 +1331,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { UsersRound, Lock, Loader2 } from 'lucide-vue-next'
+import WorkProgressChart from '@/components/WorkProgressChart.vue'
 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -1982,11 +2053,22 @@ const confirmEndSurvey = () => {
 }
 
 const promptCompleteJob = (job) => {
+   const incomplete = (job?.originalData?.work_progress || []).filter(p => Number(p.percentage) < 100)
+   if (incomplete.length) {
+      toast.error(`Cannot mark as complete. ${incomplete.length} work progress item(s) are not yet at 100%.`)
+      return
+   }
    jobToComplete.value = job
    showCompleteModal.value = true
 }
 
 const submitCompletion = async () => {
+   const incomplete = (jobToComplete.value?.originalData?.work_progress || []).filter(p => Number(p.percentage) < 100)
+   if (incomplete.length) {
+      toast.error(`Cannot mark as complete. ${incomplete.length} work progress item(s) are not yet at 100%.`)
+      showCompleteModal.value = false
+      return
+   }
    if (!completionProofInput.value || completionProofInput.value.files.length === 0) {
       toast.error('Please select at least one image.')
       return
@@ -2187,6 +2269,109 @@ const materialsItems = ref([{ item_name: '', quantity: 1, unit_price: null }])
 const materialsProofInput = ref(null)
 const isAddingMaterials = ref(false)
 const isDeletingMaterials = ref(false)
+
+// ---- Work Progress ----
+const progressTitle = ref('')
+const progressPercentage = ref('')
+const isAddingProgress = ref(false)
+const isUpdatingProgress = ref(false)
+const showProgressConfirmDialog = ref(false)
+const progressConfirmAction = ref('add')
+const pendingProgress = ref(null)
+
+const workProgressItems = computed(() => selectedJob.value?.originalData?.work_progress || [])
+const incompleteWorkProgress = computed(() => workProgressItems.value.filter(p => Number(p.percentage) < 100))
+
+const addWorkProgress = () => {
+   if (!selectedJob.value) return
+   const title = progressTitle.value.trim()
+   const percentage = Number(progressPercentage.value)
+
+   if (!title) {
+      toast.error('Please enter a progress title.')
+      return
+   }
+   if (!Number.isInteger(percentage) || percentage < 0 || percentage > 100) {
+      toast.error('Enter a percentage between 0 and 100.')
+      return
+   }
+
+   pendingProgress.value = { title, percentage }
+   progressConfirmAction.value = 'add'
+   showProgressConfirmDialog.value = true
+}
+
+const updateWorkProgress = ({ id, percentage }) => {
+   if (!selectedJob.value) return
+   const pct = Number(percentage)
+   if (!Number.isInteger(pct) || pct < 0 || pct > 100) {
+      toast.error('Enter a percentage between 0 and 100.')
+      return
+   }
+
+   const current = workProgressItems.value.find(p => Number(p.id) === Number(id))
+   if (!current) {
+      toast.error('Work progress item not found.')
+      return
+   }
+   if (pct < Number(current.percentage)) {
+      toast.error(`Progress cannot go down. "${current.title}" is already at ${current.percentage}%.`)
+      return
+   }
+
+   pendingProgress.value = {
+      id,
+      title: current.title,
+      current: Number(current.percentage),
+      percentage: pct
+   }
+   progressConfirmAction.value = 'update'
+   showProgressConfirmDialog.value = true
+}
+
+const confirmProgressAction = async () => {
+   if (!pendingProgress.value || !selectedJob.value) return
+
+   if (progressConfirmAction.value === 'add') {
+      isAddingProgress.value = true
+      try {
+         const res = await api.post(`/service-provider/job-requests/${selectedJob.value.originalData.id}/work-progress`, {
+            title: pendingProgress.value.title,
+            percentage: pendingProgress.value.percentage
+         })
+         if (res.data.success) {
+            toast.success(res.data.message)
+            progressTitle.value = ''
+            progressPercentage.value = ''
+            await fetchJobRequests(true)
+         }
+      } catch (error) {
+         toast.error(error.response?.data?.message || 'Failed to add work progress.')
+      } finally {
+         isAddingProgress.value = false
+         showProgressConfirmDialog.value = false
+         pendingProgress.value = null
+      }
+      return
+   }
+
+   isUpdatingProgress.value = true
+   try {
+      const res = await api.patch(`/service-provider/job-requests/${selectedJob.value.originalData.id}/work-progress/${pendingProgress.value.id}`, {
+         percentage: pendingProgress.value.percentage
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update work progress.')
+   } finally {
+      isUpdatingProgress.value = false
+      showProgressConfirmDialog.value = false
+      pendingProgress.value = null
+   }
+}
 
 const addMaterialRow = () => materialsItems.value.push({ item_name: '', quantity: 1, unit_price: null })
 const removeMaterialRow = (idx) => {

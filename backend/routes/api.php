@@ -431,6 +431,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/job-requests/{id}/reject', [ServiceJobController::class, 'reject']);
         Route::post('/job-requests/{id}/complete', [ServiceJobController::class, 'submitCompletion']); // NEW
         Route::post('/job-requests/{id}/daily-work-day', [ServiceJobController::class, 'markWorkDay']); // NEW: Daily billing work-day toggle
+        Route::post('/job-requests/{id}/work-progress', [ServiceJobController::class, 'addWorkProgress']); // NEW: Work progress
+        Route::patch('/job-requests/{id}/work-progress/{progressId}', [ServiceJobController::class, 'updateWorkProgress']); // NEW: Work progress update
         Route::post('/job-requests/{id}/materials', [ServiceJobController::class, 'addMaterials']); // NEW: Materials reimbursement
         Route::delete('/job-requests/materials/{batchId}', [ServiceJobController::class, 'deleteMaterials']); // NEW: Materials reimbursement
 

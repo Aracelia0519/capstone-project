@@ -103,6 +103,10 @@ class ClientServiceRequestController extends Controller
             $req->latest_completion = $latestCompletion;
             $req->service_review = $review;
             $req->survey_agreement = $surveyAgreement;
+            $req->work_progress = DB::table('service_job_progress')
+                ->where('client_service_request_id', $req->id)
+                ->orderBy('created_at')
+                ->get();
 
             // --- DAILY BILLING SNAPSHOT (Daily-priced services only) ---
             $dailyBilling = DailyBilling::snapshot($req, $deal, $paymentTerm, $baseUrl);

@@ -92,6 +92,10 @@ class ServiceJobController extends Controller
                 $req->payment_term = $paymentTerm;
                 $req->latest_completion = $latestCompletion;
                 $req->survey_agreement = $surveyAgreement;
+                $req->work_progress = DB::table('service_job_progress')
+                    ->where('client_service_request_id', $req->id)
+                    ->orderBy('created_at')
+                    ->get();
 
                 // --- DAILY BILLING SNAPSHOT (Daily-priced services only) ---
                 $dailyBilling = DailyBilling::snapshot($req, $deal, $paymentTerm, $baseUrl);
@@ -324,6 +328,102 @@ class ServiceJobController extends Controller
         }
     }
 
+    public function addWorkProgress(Request $request, $id)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'percentage' => 'required|integer|min:0|max:100'
+        ]);
+
+        try {
+            $job = $this->findGroupJob($id);
+
+            if ($job->status !== 'ongoing') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Work progress can only be updated while the job is ongoing.'
+                ], 400);
+            }
+
+            DB::table('service_job_progress')->insert([
+                'client_service_request_id' => $job->id,
+                'provider_id' => Auth::id(),
+                'title' => $request->title,
+                'percentage' => $request->percentage,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Work progress added successfully.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to add work progress.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateWorkProgress(Request $request, $id, $progressId)
+    {
+        $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'percentage' => 'required|integer|min:0|max:100'
+        ]);
+
+        try {
+            $job = $this->findGroupJob($id);
+
+            if ($job->status !== 'ongoing') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Work progress can only be updated while the job is ongoing.'
+                ], 400);
+            }
+
+            $progress = DB::table('service_job_progress')
+                ->where('id', $progressId)
+                ->where('client_service_request_id', $job->id)
+                ->first();
+
+            if (!$progress) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Work progress not found for this job.'
+                ], 404);
+            }
+
+            if ((int) $request->percentage < (int) $progress->percentage) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Work progress percentage cannot go down. It can only stay the same or increase.'
+                ], 422);
+            }
+
+            $data = [
+                'percentage' => $request->percentage,
+                'updated_at' => now()
+            ];
+            if ($request->filled('title')) {
+                $data['title'] = $request->title;
+            }
+
+            DB::table('service_job_progress')->where('id', $progress->id)->update($data);
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Work progress updated successfully.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update work progress.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function approve($id)
     {
         try {
@@ -484,6 +584,20 @@ class ServiceJobController extends Controller
         try {
             $providerId = Auth::id();
             $job = $this->findGroupJob($id);
+
+            $incompleteProgress = DB::table('service_job_progress')
+                ->where('client_service_request_id', $job->id)
+                ->where('percentage', '<', 100)
+                ->count();
+
+            if ($incompleteProgress > 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "All work progress items must reach 100% before marking the job as complete. {$incompleteProgress} item(s) still incomplete."
+                ], 422);
+            }
+
             $denied = $this->groupJobGuard($job, 'submit_completion');
             if ($denied) return $denied;
 
