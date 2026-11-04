@@ -68,9 +68,7 @@
                 >
                   <img v-if="request.imageUrl" :src="request.imageUrl" alt="Service Image" class="w-full h-full object-cover" />
                 </div>
-                <Badge variant="secondary" class="absolute -bottom-1 -right-1 px-2 py-0.5 bg-gray-900/90 text-[10px] font-mono border-gray-700">
-                  {{ request.colorCode }}
-                </Badge>
+                
               </div>
               
               <div class="flex-1 min-w-0">
