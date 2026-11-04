@@ -501,22 +501,29 @@
                <p v-if="!paymentSettings.is_gcash_enabled && !paymentSettings.is_on_hand_enabled" class="text-xs text-red-400">Please enable at least one payment method in your settings first.</p>
            </div>
 
-           <div class="space-y-2">
+           <div class="space-y-3">
               <Label class="text-slate-300 text-xs font-bold uppercase tracking-wider">Payment Terms <span class="text-red-500">*</span></Label>
-              <Select v-model="paymentTermForm.payment_term">
-                 <SelectTrigger class="bg-slate-950 border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl">
-                   <SelectValue placeholder="Select terms condition" />
-                 </SelectTrigger>
-                 <SelectContent class="bg-slate-800 border-slate-700 text-white rounded-xl">
-                   <SelectItem value="100% payment first">100% payment first</SelectItem>
-                   <SelectItem value="50% payment first">50% payment first</SelectItem>
-                   <SelectItem value="40% payment first">40% payment first</SelectItem>
-                   <SelectItem value="30% payment first">30% payment first</SelectItem>
-                   <SelectItem value="20% payment first">20% payment first</SelectItem>
-                   <SelectItem value="10% payment first">10% payment first</SelectItem>
-                   <SelectItem value="Service first before payment">Service first before payment</SelectItem>
-                 </SelectContent>
-               </Select>
+
+              <label class="flex items-center gap-3 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 cursor-pointer select-none">
+                 <input type="checkbox" v-model="paymentTermForm.service_first" class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-yellow-500 focus:ring-yellow-500" />
+                 <span class="text-sm text-slate-300">Service first before payment</span>
+              </label>
+
+              <div v-if="!paymentTermForm.service_first" class="space-y-2">
+                 <div class="relative">
+                    <input
+                       v-model.number="paymentTermForm.payment_percentage"
+                       type="number"
+                       min="1"
+                       max="100"
+                       step="1"
+                       placeholder="e.g. 35"
+                       class="w-full bg-slate-950 border border-slate-700 focus:border-yellow-500 focus:ring-yellow-500 h-12 rounded-xl px-4 pr-10 text-white placeholder:text-slate-600 outline-none"
+                    />
+                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                 </div>
+                 <p class="text-xs text-slate-500">Enter the exact percentage to be paid first (1–100). Example: 35% payment first.</p>
+              </div>
            </div>
         </div>
 
@@ -643,7 +650,8 @@ const dealForm = ref({
 const showPaymentTermModal = ref(false)
 const paymentTermForm = ref({
   payment_method: '',
-  payment_term: ''
+  payment_percentage: '',
+  service_first: false
 })
 const paymentSettings = ref({
   is_on_hand_enabled: false,
@@ -1270,7 +1278,7 @@ const openPaymentTermModal = () => {
   }
   currentDealId.value = acceptedDeal.payload.deal_id
   
-  paymentTermForm.value = { payment_method: '', payment_term: '' }
+  paymentTermForm.value = { payment_method: '', payment_percentage: '', service_first: false }
   showPaymentTermModal.value = true
 }
 
@@ -1279,15 +1287,25 @@ const sendPaymentTerm = async () => {
     toast.error("Only the group leader can send payment terms. Other members can only chat.")
     return
   }
-  if(!paymentTermForm.value.payment_method || !paymentTermForm.value.payment_term) {
-    toast.error("Please select a method and a term.")
+
+  const percentage = Number(paymentTermForm.value.payment_percentage)
+  const hasValidPercentage = Number.isInteger(percentage) && percentage >= 1 && percentage <= 100
+
+  if(!paymentTermForm.value.payment_method || (!paymentTermForm.value.service_first && !hasValidPercentage)) {
+    toast.error(paymentTermForm.value.service_first
+      ? "Please select a payment method."
+      : "Please select a payment method and enter a percentage between 1 and 100.")
     return
   }
+
+  const paymentTermText = paymentTermForm.value.service_first
+     ? 'Service first before payment'
+     : `${percentage}% payment first`
   
   const payloadData = {
      deal_id: currentDealId.value,
      payment_method: paymentTermForm.value.payment_method,
-     payment_term: paymentTermForm.value.payment_term
+     payment_term: paymentTermText
   }
 
   const success = await submitMessageToDb('payment_term', null, payloadData)
