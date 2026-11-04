@@ -11,6 +11,8 @@ use App\Models\ServiceProvider\ServicePaymentTransaction;
 use App\Models\ServiceProvider\MaterialExpenseRequest;
 use App\Models\ServiceProvider\ServiceJobCompletion;
 use App\Models\ServiceProvider\ServiceReview;
+use App\Models\ServiceProvider\SpInventory;
+use App\Models\ServiceProvider\ServiceProductUseRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
 use App\Support\MaterialExpenses;
+use App\Support\ProductUseRequests;
 use App\Support\ProviderGroups;
 
 class ClientServiceRequestController extends Controller
@@ -118,6 +121,10 @@ class ClientServiceRequestController extends Controller
 
             // --- MATERIALS REIMBURSEMENT (provider-bought materials) ---
             MaterialExpenses::attach($req, $deal, $baseUrl);
+            // -----------------------------------------------------------
+
+            // --- SERVICE PROVIDER INVENTORY REQUESTS ---
+            ProductUseRequests::attach($req, $baseUrl);
             // -----------------------------------------------------------
 
             // --- INVOICE, PWD DISCOUNT & RECEIPT LOGIC ---
@@ -769,6 +776,156 @@ class ClientServiceRequestController extends Controller
             return response()->json(['success' => true, 'message' => 'Materials request rejected. The Service Provider has been notified.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to reject materials.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Client opens the Service Provider's inventory for one of their service
+     * requests. Only the provider assigned to that request is exposed.
+     */
+    public function providerInventory(Request $request, int $id)
+    {
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+        $job = ClientServiceRequest::where('id', $id)
+            ->where('client_id', Auth::id())
+            ->firstOrFail();
+
+        $inventory = SpInventory::with('product')
+            ->where('service_provider_id', $job->provider_id)
+            ->whereHas('product')
+            ->orderBy('id')
+            ->get();
+
+        $inventory->each(function ($item) use ($baseUrl) {
+            if ($item->product && $item->product->image_url) {
+                $image = $item->product->image_url;
+                if (!filter_var($image, FILTER_VALIDATE_URL) && !str_starts_with($image, 'data:')) {
+                    $image = $baseUrl . '/storage/' . ltrim(preg_replace('/^\/?storage\//', '', $image), '/');
+                }
+                $item->product->image_url = $image;
+            }
+        });
+
+        return response()->json(['success' => true, 'data' => $inventory]);
+    }
+
+    /**
+     * Client asks to use one of the provider's inventory products on the job.
+     */
+    public function createInventoryUseRequest(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'sp_inventory_id' => 'required|integer|exists:sp_inventories,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        try {
+            $job = ClientServiceRequest::where('id', $id)
+                ->where('client_id', Auth::id())
+                ->firstOrFail();
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'], true)) {
+                return response()->json(['success' => false, 'message' => 'Inventory can only be requested while the job is active.'], 400);
+            }
+
+            $inventory = SpInventory::with('product')
+                ->where('id', $validated['sp_inventory_id'])
+                ->where('service_provider_id', $job->provider_id)
+                ->first();
+
+            if (!$inventory || !$inventory->product) {
+                return response()->json(['success' => false, 'message' => 'This product is not available from your service provider.'], 404);
+            }
+
+            if ((int) $validated['quantity'] > (int) $inventory->quantity) {
+                return response()->json(['success' => false, 'message' => 'The requested quantity is more than the available stock.'], 422);
+            }
+
+            ServiceProductUseRequest::create([
+                'client_service_request_id' => $job->id,
+                'client_id' => $job->client_id,
+                'provider_id' => $job->provider_id,
+                'sp_inventory_id' => $inventory->id,
+                'product_id' => $inventory->product_id,
+                'product_name' => $inventory->product->name,
+                'quantity' => $validated['quantity'],
+                'base_unit_price' => $inventory->product->price,
+                'status' => 'pending_provider',
+            ]);
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Request sent. The service provider will approve or reject it.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send inventory request.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function approveInventoryUseRequest(int $requestId)
+    {
+        try {
+            $useRequest = ServiceProductUseRequest::findOrFail($requestId);
+            $job = ClientServiceRequest::where('id', $useRequest->client_service_request_id)
+                ->where('client_id', Auth::id())
+                ->firstOrFail();
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'], true)) {
+                return response()->json(['success' => false, 'message' => 'This job is no longer active.'], 400);
+            }
+            if ($useRequest->status !== 'negotiating' || $useRequest->offer_by !== 'provider' || $useRequest->offer_percentage === null) {
+                return response()->json(['success' => false, 'message' => 'There is no provider markup offer to approve.'], 400);
+            }
+
+            $finalized = ProductUseRequests::finalize($useRequest->id, (float) $useRequest->offer_percentage);
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $unit = (float) $finalized->base_unit_price * (1 + ((float) $finalized->approved_percentage / 100));
+            $total = round($unit * (int) $finalized->quantity, 2);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Markup approved. ₱' . number_format($total, 2) . ' has been added to your materials payment.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to approve markup.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function counterInventoryUseRequest(Request $request, int $requestId)
+    {
+        $validated = $request->validate([
+            'markup_percentage' => 'required|numeric|min:1|max:50',
+        ]);
+
+        try {
+            $useRequest = ServiceProductUseRequest::findOrFail($requestId);
+            $job = ClientServiceRequest::where('id', $useRequest->client_service_request_id)
+                ->where('client_id', Auth::id())
+                ->firstOrFail();
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'], true)) {
+                return response()->json(['success' => false, 'message' => 'This job is no longer active.'], 400);
+            }
+            if ($useRequest->status !== 'negotiating' || $useRequest->offer_by !== 'provider') {
+                return response()->json(['success' => false, 'message' => 'There is no provider markup offer to counter.'], 400);
+            }
+
+            $useRequest->offer_percentage = $validated['markup_percentage'];
+            $useRequest->offer_by = 'client';
+            $useRequest->status = 'negotiating';
+            $useRequest->save();
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Counter offer sent to the service provider.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send counter offer.', 'error' => $e->getMessage()], 500);
         }
     }
 

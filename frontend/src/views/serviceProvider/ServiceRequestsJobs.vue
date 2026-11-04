@@ -886,6 +886,74 @@
                 </div>
              </div>
 
+             <!-- Client inventory requests + markup negotiation -->
+             <div v-if="productUseRequests.length" class="mt-3 space-y-2">
+                <p class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Client Inventory Requests</p>
+                <div v-for="useRequest in productUseRequests" :key="useRequest.id" class="bg-slate-900/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                   <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-center gap-2 min-w-0">
+                         <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                         <div class="min-w-0">
+                            <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
+                            <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
+                         </div>
+                      </div>
+                      <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
+                         {{ useRequest.status.replace('_', ' ') }}
+                      </Badge>
+                   </div>
+
+                   <div v-if="useRequest.status === 'pending_provider'" class="space-y-2">
+                      <p class="text-[11px] text-amber-400">The client wants to use this product on the job.</p>
+                      <div class="flex gap-2">
+                         <Button @click="promptProductUseOffer(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                            Approve &amp; Add Markup
+                         </Button>
+                         <Button @click="promptProductUseReject(useRequest)" class="bg-red-600/20 hover:bg-red-700/60 text-red-300 font-bold h-8 text-xs border border-red-500/30 flex-1">
+                            Reject
+                         </Button>
+                      </div>
+                   </div>
+
+                   <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
+                      <div class="flex items-center justify-between text-xs">
+                         <span class="text-gray-400">Current markup offer</span>
+                         <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
+                      </div>
+                      <div class="flex items-center justify-between text-xs">
+                         <span class="text-gray-400">Price with markup</span>
+                         <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
+                      </div>
+                      <div class="flex items-center justify-between text-xs">
+                         <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
+                         <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
+                      </div>
+
+                      <p v-if="useRequest.offer_by === 'provider'" class="text-[11px] text-cyan-400">
+                         Waiting for the client to approve or counter your offer.
+                      </p>
+                      <div v-else class="flex gap-2 pt-1">
+                         <Button @click="promptProductUseApprove(useRequest)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                            Approve Offer
+                         </Button>
+                         <Button @click="promptProductUseOffer(useRequest)" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
+                            Counter Offer
+                         </Button>
+                      </div>
+                   </div>
+
+                   <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                      <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                      <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
+                   </div>
+
+                   <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
+                      <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
+                      <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
+                   </div>
+                </div>
+             </div>
+
              <!-- Materials payment term -->
              <div v-if="selectedJob.originalData.materials_term && ['agreed', 'awaiting_proof_approval', 'paid'].includes(selectedJob.originalData.materials_term.status)" class="bg-slate-900 border border-amber-700/40 rounded-lg p-3 space-y-3">
                 <p class="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Materials Payment</p>
@@ -1309,6 +1377,67 @@
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
             </span>
             <span v-else>Confirm</span>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog v-model:open="showProductUseDialog">
+      <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            <template v-if="productUseAction === 'reject'">Reject Inventory Request?</template>
+            <template v-else-if="productUseAction === 'approve'">Approve Client Offer?</template>
+            <template v-else-if="productUseTarget?.status === 'negotiating'">Counter Client Offer?</template>
+            <template v-else>Approve Request &amp; Add Markup?</template>
+          </AlertDialogTitle>
+          <AlertDialogDescription class="text-slate-400">
+            <template v-if="productUseAction === 'reject'">
+              Reject the client's request to use {{ productUseTarget?.product_name }}. The reason will be saved and sent to the client's notifications.
+            </template>
+            <template v-else-if="productUseAction === 'approve'">
+              Approve the client's {{ productUseTarget?.offer_percentage }}% counter offer on {{ productUseTarget?.product_name }}? This will be added to the client's materials payment.
+            </template>
+            <template v-else-if="productUseTarget?.status === 'negotiating'">
+              Send a new markup percentage for {{ productUseTarget?.product_name }}. The client can approve or counter it.
+            </template>
+            <template v-else>
+              Approve the client's request to use {{ productUseTarget?.product_name }} and add your markup percentage.
+            </template>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div v-if="productUseAction === 'offer'" class="mt-3 space-y-1">
+          <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+            {{ productUseTarget?.status === 'negotiating' ? 'Your counter markup percentage' : 'Markup percentage' }}
+          </label>
+          <div class="relative">
+            <input v-model.number="productMarkupPercentage" type="number" min="1" max="50" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 pr-8 py-2 text-sm text-white focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+          </div>
+          <p class="text-[10px] text-gray-500">
+            Base price: ₱{{ Number(productUseTarget?.base_unit_price || 0).toLocaleString() }}/pc · Quantity: {{ productUseTarget?.quantity }}
+          </p>
+        </div>
+
+        <div v-if="productUseAction === 'reject'" class="mt-3 space-y-1">
+          <label class="text-[10px] font-bold text-red-300 uppercase tracking-wider">Reason for rejection</label>
+          <textarea v-model="productRejectionReason" rows="3" maxlength="1000" placeholder="Explain why this inventory request is rejected..." class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-red-500 focus:ring-red-500 outline-none"></textarea>
+        </div>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+             @click.prevent="confirmProductUseAction"
+             :disabled="isProcessingProductUse"
+             :class="productUseAction === 'reject' ? 'bg-red-600 hover:bg-red-700' : productUseAction === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-cyan-600 hover:bg-cyan-700'"
+             class="text-white">
+            <span v-if="isProcessingProductUse" class="flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...
+            </span>
+            <span v-else>
+              {{ productUseAction === 'reject' ? 'Reject Request' : productUseAction === 'approve' ? 'Approve Offer' : 'Send Offer' }}
+            </span>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -2269,6 +2398,75 @@ const materialsItems = ref([{ item_name: '', quantity: 1, unit_price: null }])
 const materialsProofInput = ref(null)
 const isAddingMaterials = ref(false)
 const isDeletingMaterials = ref(false)
+
+// ---- Client inventory requests + markup negotiation ----
+const productUseRequests = computed(() => selectedJob.value?.originalData?.product_use_requests || [])
+const showProductUseDialog = ref(false)
+const productUseAction = ref('offer')
+const productUseTarget = ref(null)
+const productMarkupPercentage = ref('')
+const productRejectionReason = ref('')
+const isProcessingProductUse = ref(false)
+
+const promptProductUseOffer = (useRequest) => {
+   productUseTarget.value = useRequest
+   productUseAction.value = 'offer'
+   productMarkupPercentage.value = useRequest.offer_percentage !== null ? String(useRequest.offer_percentage) : ''
+   showProductUseDialog.value = true
+}
+
+const promptProductUseApprove = (useRequest) => {
+   productUseTarget.value = useRequest
+   productUseAction.value = 'approve'
+   showProductUseDialog.value = true
+}
+
+const promptProductUseReject = (useRequest) => {
+   productUseTarget.value = useRequest
+   productUseAction.value = 'reject'
+   productRejectionReason.value = ''
+   showProductUseDialog.value = true
+}
+
+const confirmProductUseAction = async () => {
+   if (!productUseTarget.value || !selectedJob.value) return
+
+   if (productUseAction.value === 'offer') {
+      const pct = Number(productMarkupPercentage.value)
+      if (!Number.isFinite(pct) || pct < 1 || pct > 50) {
+         toast.error('Enter a markup percentage between 1 and 50.')
+         return
+      }
+   }
+   if (productUseAction.value === 'reject' && !productRejectionReason.value.trim()) {
+      toast.error('Please provide a reason for rejecting this inventory request.')
+      return
+   }
+
+   isProcessingProductUse.value = true
+   try {
+      const base = `/service-provider/job-requests/${selectedJob.value.originalData.id}/product-use-requests/${productUseTarget.value.id}`
+      let res
+      if (productUseAction.value === 'offer') {
+         res = await api.post(`${base}/offer`, { markup_percentage: Number(productMarkupPercentage.value) })
+      } else if (productUseAction.value === 'approve') {
+         res = await api.post(`${base}/approve`)
+      } else {
+         res = await api.post(`${base}/reject`, { rejection_reason: productRejectionReason.value.trim() })
+      }
+
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showProductUseDialog.value = false
+         productUseTarget.value = null
+         await fetchJobRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to process the inventory request.')
+   } finally {
+      isProcessingProductUse.value = false
+   }
+}
 
 // ---- Work Progress ----
 const progressTitle = ref('')

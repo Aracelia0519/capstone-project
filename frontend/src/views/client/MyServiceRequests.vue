@@ -378,6 +378,84 @@
                 <p class="text-xs text-gray-300 mt-1">The Service Provider rejected your proof of payment: <span class="italic text-red-300">"{{ selectedRequest.raw.payment_term.proof_rejection_reason }}"</span>. This payment was NOT counted. Please settle the payment again.</p>
              </div>
 
+             <!-- ============ SERVICE PROVIDER INVENTORY (client-initiated) ============ -->
+             <div v-if="(['ongoing', 'completion_review'].includes(selectedRequest.status) || selectedRequest.raw.product_use_requests?.length) && selectedRequest.raw.official_deal" class="mb-4 bg-amber-900/10 border border-amber-700/40 rounded-xl p-3 space-y-3">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                   <p class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                      Service Provider Inventory
+                   </p>
+                   <Button v-if="['ongoing', 'completion_review'].includes(selectedRequest.status)" @click="openProviderInventory" :disabled="isFetchingInventory" class="bg-amber-600 hover:bg-amber-700 text-white font-bold h-8 text-xs">
+                      <span v-if="isFetchingInventory" class="flex items-center"><div class="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div> Loading...</span>
+                      <span v-else>Browse Inventory</span>
+                   </Button>
+                </div>
+
+                <p class="text-[11px] text-gray-400">
+                   Request products from your service provider's inventory. The provider will approve or reject each request.
+                </p>
+
+                <div v-if="selectedRequest.raw.product_use_requests?.length" class="space-y-2">
+                   <div v-for="useRequest in selectedRequest.raw.product_use_requests" :key="useRequest.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 space-y-2">
+                      <div class="flex items-start justify-between gap-2">
+                         <div class="flex items-center gap-2 min-w-0">
+                            <img v-if="useRequest.product?.image_url" :src="useRequest.product.image_url" class="w-10 h-10 rounded-lg object-cover border border-slate-700" />
+                            <div class="min-w-0">
+                               <p class="text-xs font-bold text-white truncate">{{ useRequest.product_name }} <span class="text-gray-500">× {{ useRequest.quantity }}</span></p>
+                               <p class="text-[10px] text-gray-500">Base price: ₱{{ Number(useRequest.base_unit_price).toLocaleString() }}/pc</p>
+                            </div>
+                         </div>
+                         <Badge :class="useRequest.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : useRequest.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' : useRequest.status === 'negotiating' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'" class="uppercase text-[10px] px-2 py-0.5 shrink-0">
+                            {{ useRequest.status.replace('_', ' ') }}
+                         </Badge>
+                      </div>
+
+                      <p v-if="useRequest.status === 'pending_provider'" class="text-[11px] text-amber-400">
+                         Waiting for the service provider to approve or reject this request.
+                      </p>
+
+                      <div v-if="useRequest.status === 'negotiating'" class="space-y-2 border-t border-slate-800 pt-2">
+                         <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-400">Markup offered</span>
+                            <span class="font-bold text-cyan-300">{{ useRequest.offer_percentage }}%</span>
+                         </div>
+                         <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-400">Price with markup</span>
+                            <span class="text-white font-bold">₱{{ Number(useRequest.effective_unit_price).toLocaleString() }}/pc</span>
+                         </div>
+                         <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-400">Total for {{ useRequest.quantity }} pc(s)</span>
+                            <span class="text-amber-400 font-bold">₱{{ Number(useRequest.effective_total).toLocaleString() }}</span>
+                         </div>
+
+                         <p v-if="useRequest.offer_by === 'client'" class="text-[11px] text-cyan-400">
+                            Your counter offer is {{ useRequest.offer_percentage }}%. Waiting for the service provider to approve or counter it.
+                         </p>
+                         <div v-else class="flex gap-2 pt-1">
+                            <Button @click="promptMarkupResponse(useRequest, 'approve')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs flex-1">
+                               Approve Markup
+                            </Button>
+                            <Button @click="promptMarkupResponse(useRequest, 'counter')" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-8 text-xs flex-1">
+                               Counter Offer
+                            </Button>
+                         </div>
+                      </div>
+
+                      <div v-if="useRequest.status === 'rejected' && useRequest.rejection_reason" class="bg-red-900/20 border border-red-800/50 rounded-lg p-2">
+                         <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Rejected — reason</p>
+                         <p class="text-xs text-gray-300 mt-0.5 italic">{{ useRequest.rejection_reason }}</p>
+                      </div>
+
+                      <div v-if="useRequest.status === 'approved'" class="bg-emerald-900/20 border border-emerald-800/50 rounded-lg p-2 space-y-1">
+                         <p class="text-[11px] font-bold text-emerald-400">Approved markup: {{ useRequest.approved_percentage }}%</p>
+                         <p class="text-[11px] text-gray-300">Final price: ₱{{ Number(useRequest.approved_unit_price).toLocaleString() }}/pc · Total: ₱{{ Number(useRequest.approved_total).toLocaleString() }}</p>
+                         <p class="text-[10px] text-gray-500">This has been added to your materials payment.</p>
+                      </div>
+                   </div>
+                </div>
+             </div>
+             <!-- ====================================================================== -->
+
              <!-- ============ MATERIALS REIMBURSEMENT (provider-bought) ============ -->
              <div v-if="selectedRequest.raw.materials?.length" class="mb-4 bg-amber-900/10 border border-amber-700/40 rounded-xl p-3 space-y-3">
                 <div class="flex items-center justify-between flex-wrap gap-2">
@@ -1024,6 +1102,165 @@
        </DialogContent>
     </Dialog>
 
+    <!-- Service Provider inventory picker -->
+    <Dialog v-model:open="showInventoryModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[92vw] md:max-w-[680px] max-h-[85vh] overflow-y-auto custom-scrollbar">
+          <DialogTitle class="text-amber-400 font-bold mb-2 flex items-center gap-2">
+             <Briefcase class="w-5 h-5" /> Service Provider Inventory
+          </DialogTitle>
+          <div class="py-2 space-y-3">
+             <p class="text-xs text-gray-400">
+                Products available from {{ selectedRequest?.serviceProvider || 'your service provider' }}. Choose a product and the quantity you want to use on this job.
+             </p>
+
+             <div v-if="isFetchingInventory" class="text-center py-8 text-gray-400 text-sm">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-400 mx-auto mb-2"></div>
+                Loading inventory...
+             </div>
+
+             <div v-else-if="inventoryItems.length === 0" class="text-center py-8 text-gray-400 text-sm">
+                This service provider has no products in their inventory yet.
+             </div>
+
+             <div v-else class="space-y-2">
+                <div v-for="item in inventoryItems" :key="item.id" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 flex items-center gap-3">
+                   <img v-if="item.product?.image_url" :src="item.product.image_url" class="w-14 h-14 rounded-lg object-cover border border-slate-700 shrink-0" />
+                   <div class="flex-1 min-w-0">
+                      <p class="text-sm font-bold text-white truncate">{{ item.product?.name || 'Product' }}</p>
+                      <p class="text-[10px] text-gray-500">Available stock: {{ item.quantity }}</p>
+                      <p class="text-xs text-amber-400 font-bold">₱{{ Number(item.product?.price || 0).toLocaleString() }}/pc</p>
+                   </div>
+                   <div class="shrink-0 flex flex-col items-end gap-2">
+                      <div class="flex items-center gap-2">
+                         <input v-model.number="inventoryQuantities[item.id]" type="number" min="1" :max="item.quantity" class="w-16 bg-slate-900 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white" />
+                         <Button @click="promptInventoryRequest(item)" :disabled="Number(item.quantity) < 1" class="bg-amber-600 hover:bg-amber-700 text-white font-bold h-8 text-xs">
+                            Request to Use
+                         </Button>
+                      </div>
+                      <Button variant="outline" @click="openInventoryProductDetails(item)" class="border-slate-700 text-slate-300 hover:bg-slate-800 h-7 px-3 text-[10px] font-bold">
+                         Details
+                      </Button>
+                   </div>
+                </div>
+             </div>
+          </div>
+          <div class="flex justify-end mt-3">
+             <Button variant="ghost" @click="showInventoryModal = false" class="text-gray-400 hover:text-white">Close</Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <!-- Product details for an inventory item -->
+    <Dialog v-model:open="showProductDetailsModal">
+       <DialogContent class="bg-slate-900 border-slate-800 text-slate-200 w-[92vw] md:max-w-[560px] max-h-[85vh] overflow-y-auto custom-scrollbar">
+          <DialogTitle class="text-amber-400 font-bold flex items-center gap-2">
+             <Briefcase class="w-5 h-5" /> Product Details
+          </DialogTitle>
+
+          <div v-if="selectedInventoryProduct?.product" class="py-3 space-y-4">
+             <div class="flex gap-4">
+                <div class="w-28 h-28 rounded-xl overflow-hidden bg-slate-950 border border-slate-700 shrink-0 flex items-center justify-center">
+                   <img v-if="selectedInventoryProduct.product.image_url" :src="selectedInventoryProduct.product.image_url" class="w-full h-full object-cover" />
+                   <span v-else class="text-[10px] text-slate-600">No image</span>
+                </div>
+                <div class="min-w-0">
+                   <p class="text-lg font-bold text-white leading-tight">{{ selectedInventoryProduct.product.name }}</p>
+                   <p class="text-xs text-gray-400 mt-1">
+                      {{ selectedInventoryProduct.product.category || 'Uncategorized' }}
+                      <span class="text-gray-600">·</span>
+                      {{ selectedInventoryProduct.product.type || 'N/A' }}
+                   </p>
+                   <p class="text-xl font-black text-amber-400 mt-2">₱{{ Number(selectedInventoryProduct.product.price || 0).toLocaleString() }}/pc</p>
+                   <p class="text-[11px] text-gray-500 mt-1">Available stock: {{ selectedInventoryProduct.quantity }}</p>
+                </div>
+             </div>
+
+             <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">SKU Code</p>
+                   <p class="text-xs text-white font-medium break-all">{{ selectedInventoryProduct.product.sku_code || 'N/A' }}</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size</p>
+                   <p class="text-xs text-white font-medium">{{ selectedInventoryProduct.product.size || 'N/A' }}</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Color Code</p>
+                   <div class="flex items-center gap-2">
+                      <div v-if="selectedInventoryProduct.product.color_code" class="w-3.5 h-3.5 rounded-full border border-slate-600" :style="{ backgroundColor: selectedInventoryProduct.product.color_code }"></div>
+                      <p class="text-xs text-white font-medium">{{ selectedInventoryProduct.product.color_code || 'N/A' }}</p>
+                   </div>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                   <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Weight</p>
+                   <p class="text-xs text-white font-medium">{{ selectedInventoryProduct.product.weight ? selectedInventoryProduct.product.weight + ' kg' : 'N/A' }}</p>
+                </div>
+             </div>
+
+             <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-3">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Description</p>
+                <p class="text-xs text-gray-300 whitespace-pre-wrap">{{ selectedInventoryProduct.product.description || 'No description provided.' }}</p>
+             </div>
+          </div>
+
+          <div class="flex justify-end mt-2">
+             <Button variant="ghost" @click="showProductDetailsModal = false" class="text-gray-400 hover:text-white">Close</Button>
+          </div>
+       </DialogContent>
+    </Dialog>
+
+    <!-- Confirm inventory request -->
+    <AlertDialog v-model:open="showInventoryRequestDialog">
+       <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+          <AlertDialogHeader>
+             <AlertDialogTitle>Request to Use Product?</AlertDialogTitle>
+             <AlertDialogDescription class="text-slate-400">
+                You are requesting {{ pendingInventoryRequest?.quantity }} × {{ pendingInventoryRequest?.item?.product?.name }} from your service provider's inventory. The provider will approve or reject this request.
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+             <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+             <AlertDialogAction @click="confirmInventoryRequest" :disabled="isRequestingInventory" class="bg-amber-600 hover:bg-amber-700 text-white">
+                <span v-if="isRequestingInventory" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Sending...</span>
+                <span v-else>Send Request</span>
+             </AlertDialogAction>
+          </AlertDialogFooter>
+       </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Approve or counter the provider's markup -->
+    <AlertDialog v-model:open="showMarkupResponseDialog">
+       <AlertDialogContent class="bg-slate-900 border-slate-800 text-slate-200">
+          <AlertDialogHeader>
+             <AlertDialogTitle>{{ markupAction === 'approve' ? 'Approve Markup?' : 'Send Counter Offer?' }}</AlertDialogTitle>
+             <AlertDialogDescription class="text-slate-400">
+                <template v-if="markupAction === 'approve'">
+                   Approve the {{ markupTarget?.offer_percentage }}% markup on {{ markupTarget?.product_name }}? This will be added to your materials payment.
+                </template>
+                <template v-else>
+                   Counter the provider's {{ markupTarget?.offer_percentage }}% markup on {{ markupTarget?.product_name }}. The provider can approve or counter your offer.
+                </template>
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div v-if="markupAction === 'counter'" class="mt-3 space-y-1">
+             <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">Your markup percentage</label>
+             <div class="relative">
+                <input v-model.number="counterPercentage" type="number" min="1" max="50" step="0.01" class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 pr-8 py-2 text-sm text-white focus:border-cyan-500 focus:ring-cyan-500 outline-none" />
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+             </div>
+          </div>
+
+          <AlertDialogFooter>
+             <AlertDialogCancel class="bg-transparent border-slate-700 text-white hover:bg-slate-800 hover:text-white">Cancel</AlertDialogCancel>
+             <AlertDialogAction @click.prevent="confirmMarkupResponse" :disabled="isRespondingMarkup" :class="markupAction === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-cyan-600 hover:bg-cyan-700'" class="text-white">
+                <span v-if="isRespondingMarkup" class="flex items-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> Processing...</span>
+                <span v-else>{{ markupAction === 'approve' ? 'Approve Markup' : 'Send Counter' }}</span>
+             </AlertDialogAction>
+          </AlertDialogFooter>
+       </AlertDialogContent>
+    </AlertDialog>
+
   </div>
 </template>
 
@@ -1041,6 +1278,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import WorkProgressChart from '@/components/WorkProgressChart.vue'
 import { 
   Filter, ClipboardList, Zap, Clock, CheckCircle2, User, Eye, MessageSquare, Briefcase, MapPin, Calendar, Phone, CreditCard, Star, CornerDownRight, Download, AlertCircle, AlertTriangle, FileText, Receipt, UsersRound
@@ -1065,6 +1303,125 @@ const isPaying = ref(false)
 
 const isProcessingMaterials = ref(false)
 const materialsProofInput = ref(null)
+
+// ---- Service Provider inventory + markup negotiation ----
+const showInventoryModal = ref(false)
+const inventoryItems = ref([])
+const inventoryQuantities = ref({})
+const isFetchingInventory = ref(false)
+const isRequestingInventory = ref(false)
+const pendingInventoryRequest = ref(null)
+const showInventoryRequestDialog = ref(false)
+const showProductDetailsModal = ref(false)
+const selectedInventoryProduct = ref(null)
+
+const showMarkupResponseDialog = ref(false)
+const markupAction = ref('approve')
+const markupTarget = ref(null)
+const counterPercentage = ref('')
+const isRespondingMarkup = ref(false)
+
+const openProviderInventory = async () => {
+   if (!selectedRequest.value) return
+   isFetchingInventory.value = true
+   try {
+      const res = await api.get(`/client/services/${selectedRequest.value.raw.id}/provider-inventory`)
+      if (res.data.success) {
+         inventoryItems.value = res.data.data || []
+         const quantities = {}
+         for (const item of inventoryItems.value) quantities[item.id] = 1
+         inventoryQuantities.value = quantities
+         showInventoryModal.value = true
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load the service provider inventory.')
+   } finally {
+      isFetchingInventory.value = false
+   }
+}
+
+const openInventoryProductDetails = (item) => {
+   if (!item || !item.product) return
+   selectedInventoryProduct.value = item
+   showProductDetailsModal.value = true
+}
+
+const promptInventoryRequest = (item) => {
+   if (!item || !item.product) return
+   const qty = Number(inventoryQuantities.value[item.id] || 1)
+   if (!Number.isInteger(qty) || qty < 1) {
+      toast.error('Enter a valid quantity.')
+      return
+   }
+   if (qty > Number(item.quantity)) {
+      toast.error('The requested quantity is more than the available stock.')
+      return
+   }
+   pendingInventoryRequest.value = { item, quantity: qty }
+   showInventoryRequestDialog.value = true
+}
+
+const confirmInventoryRequest = async () => {
+   if (!pendingInventoryRequest.value || !selectedRequest.value) return
+   isRequestingInventory.value = true
+   try {
+      const res = await api.post(`/client/services/${selectedRequest.value.raw.id}/inventory-use-requests`, {
+         sp_inventory_id: pendingInventoryRequest.value.item.id,
+         quantity: pendingInventoryRequest.value.quantity
+      })
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showInventoryRequestDialog.value = false
+         pendingInventoryRequest.value = null
+         await fetchRequests(true)
+         await openProviderInventory()
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send inventory request.')
+   } finally {
+      isRequestingInventory.value = false
+   }
+}
+
+const promptMarkupResponse = (useRequest, action) => {
+   markupTarget.value = useRequest
+   markupAction.value = action
+   counterPercentage.value = useRequest.offer_percentage !== null ? String(useRequest.offer_percentage) : ''
+   showMarkupResponseDialog.value = true
+}
+
+const confirmMarkupResponse = async () => {
+   if (!markupTarget.value) return
+   if (markupAction.value === 'counter') {
+      const pct = Number(counterPercentage.value)
+      if (!Number.isFinite(pct) || pct < 1 || pct > 50) {
+         toast.error('Enter a markup percentage between 1 and 50.')
+         return
+      }
+   }
+
+   isRespondingMarkup.value = true
+   try {
+      let res
+      if (markupAction.value === 'approve') {
+         res = await api.post(`/client/services/inventory-use-requests/${markupTarget.value.id}/approve`)
+      } else {
+         res = await api.post(`/client/services/inventory-use-requests/${markupTarget.value.id}/counter`, {
+            markup_percentage: Number(counterPercentage.value)
+         })
+      }
+      if (res.data.success) {
+         toast.success(res.data.message)
+         showMarkupResponseDialog.value = false
+         markupTarget.value = null
+         await fetchRequests(true)
+      }
+   } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to respond to the markup offer.')
+   } finally {
+      isRespondingMarkup.value = false
+   }
+}
 
 const approveMaterials = async (batchId) => {
    if (!selectedRequest.value) return

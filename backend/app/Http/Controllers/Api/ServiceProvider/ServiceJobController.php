@@ -12,6 +12,7 @@ use App\Models\ServiceProvider\MaterialExpenseRequest;
 use App\Models\ServiceProvider\MaterialExpenseItem;
 use App\Models\ServiceProvider\ServiceJobCompletion;
 use App\Models\ServiceProvider\DailyWorkLog;
+use App\Models\ServiceProvider\ServiceProductUseRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,9 +20,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Events\ServiceProvider\InventoryUpdated;
 use App\Events\ServiceProvider\ServiceRequestUpdated;
 use App\Support\DailyBilling;
 use App\Support\MaterialExpenses;
+use App\Support\ProductUseRequests;
 use App\Support\ProviderGroups;
 
 class ServiceJobController extends Controller
@@ -108,6 +111,10 @@ class ServiceJobController extends Controller
 
                 // --- MATERIALS REIMBURSEMENT (provider-bought materials) ---
                 MaterialExpenses::attach($req, $deal, $baseUrl);
+                // -----------------------------------------------------------
+
+                // --- CLIENT INVENTORY USE REQUESTS ---
+                ProductUseRequests::attach($req, $baseUrl);
                 // -----------------------------------------------------------
 
                 // --- GROUP (team) metadata, action locks & revenue split ---
@@ -965,6 +972,152 @@ class ServiceJobController extends Controller
             return response()->json(['success' => true, 'message' => 'Materials request deleted.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to delete materials.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider approves a client's inventory request by adding a markup
+     * percentage, or counters the client's latest counter offer.
+     */
+    public function offerProductUseRequest(Request $request, $id, $requestId)
+    {
+        $request->validate([
+            'markup_percentage' => 'required|numeric|min:1|max:50',
+        ]);
+
+        try {
+            $job = $this->findGroupJob($id);
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'], true)) {
+                return response()->json(['success' => false, 'message' => 'This job is no longer active.'], 400);
+            }
+
+            $useRequest = ServiceProductUseRequest::where('id', $requestId)
+                ->where('client_service_request_id', $job->id)
+                ->firstOrFail();
+
+            if (in_array($useRequest->status, ['approved', 'rejected'], true)) {
+                return response()->json(['success' => false, 'message' => 'This inventory request is already closed.'], 400);
+            }
+
+            if ($useRequest->status === 'negotiating' && $useRequest->offer_by === 'provider') {
+                return response()->json(['success' => false, 'message' => 'Waiting for the client to approve or counter your offer.'], 400);
+            }
+
+            $isInitialApproval = $useRequest->status === 'pending_provider';
+
+            $applied = DB::transaction(function () use ($useRequest, $request, $isInitialApproval) {
+                $locked = ServiceProductUseRequest::whereKey($useRequest->id)->lockForUpdate()->first();
+                if (!$locked) return false;
+                if (in_array($locked->status, ['approved', 'rejected'], true)) return false;
+                if ($locked->status === 'negotiating' && $locked->offer_by === 'provider') return false;
+                if ($isInitialApproval && $locked->status !== 'pending_provider') return false;
+                if ($isInitialApproval && !ProductUseRequests::deductStock($locked)) return false;
+
+                $locked->status = 'negotiating';
+                $locked->offer_percentage = $request->markup_percentage;
+                $locked->offer_by = 'provider';
+                $locked->save();
+
+                return true;
+            });
+
+            if (!$applied) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This request can no longer be approved or the product no longer has enough stock.'
+                ], 422);
+            }
+
+            if ($isInitialApproval) {
+                try {
+                    event(new InventoryUpdated($job->provider_id));
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Markup offer sent to the client.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to send markup offer.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider rejects an inventory request. The reason is saved on the request
+     * and also sent to the client through system_notifications.
+     */
+    public function rejectProductUseRequest(Request $request, $id, $requestId)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $job = $this->findGroupJob($id);
+
+            $useRequest = ServiceProductUseRequest::where('id', $requestId)
+                ->where('client_service_request_id', $job->id)
+                ->firstOrFail();
+
+            if ($useRequest->status !== 'pending_provider') {
+                return response()->json(['success' => false, 'message' => 'Only pending inventory requests can be rejected.'], 400);
+            }
+
+            $useRequest->status = 'rejected';
+            $useRequest->rejection_reason = $request->rejection_reason;
+            $useRequest->save();
+
+            ProductUseRequests::notifyRejected($useRequest, $job, $request->rejection_reason);
+
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Inventory request rejected. The client has been notified.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to reject inventory request.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Provider accepts the client's counter offer and finalizes the billing.
+     */
+    public function approveProductUseRequest($id, $requestId)
+    {
+        try {
+            $job = $this->findGroupJob($id);
+
+            if (!in_array($job->status, ['ongoing', 'completion_review'], true)) {
+                return response()->json(['success' => false, 'message' => 'This job is no longer active.'], 400);
+            }
+
+            $useRequest = ServiceProductUseRequest::where('id', $requestId)
+                ->where('client_service_request_id', $job->id)
+                ->firstOrFail();
+
+            if ($useRequest->status !== 'negotiating' || $useRequest->offer_by !== 'client' || $useRequest->offer_percentage === null) {
+                return response()->json(['success' => false, 'message' => 'There is no client counter offer to approve.'], 400);
+            }
+
+            $finalized = ProductUseRequests::finalize($useRequest->id, (float) $useRequest->offer_percentage);
+            event(new ServiceRequestUpdated($job->client_id, $job->provider_id));
+
+            $unit = (float) $finalized->base_unit_price * (1 + ((float) $finalized->approved_percentage / 100));
+            $total = round($unit * (int) $finalized->quantity, 2);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Markup approved. ₱' . number_format($total, 2) . ' has been added to the client\'s materials payment.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to approve counter offer.', 'error' => $e->getMessage()], 500);
         }
     }
 

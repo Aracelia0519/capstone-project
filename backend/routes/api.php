@@ -238,6 +238,12 @@ Route::middleware('auth:sanctum')->group(function () {
             // NEW MATERIALS REIMBURSEMENT ROUTES (client approves/rejects provider-bought materials)
             Route::post('/materials/{batchId}/approve', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'approveMaterials']);
             Route::post('/materials/{batchId}/reject', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'rejectMaterials']);
+
+            // NEW: SERVICE PROVIDER INVENTORY USE REQUESTS + MARKUP NEGOTIATION
+            Route::get('/{id}/provider-inventory', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'providerInventory']);
+            Route::post('/{id}/inventory-use-requests', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'createInventoryUseRequest']);
+            Route::post('/inventory-use-requests/{requestId}/approve', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'approveInventoryUseRequest']);
+            Route::post('/inventory-use-requests/{requestId}/counter', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'counterInventoryUseRequest']);
             
             // NEW: Reviews Route
             Route::post('/requests/{id}/review', [\App\Http\Controllers\Api\Client\ClientServiceRequestController::class, 'submitReview']);
@@ -435,6 +441,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/job-requests/{id}/work-progress/{progressId}', [ServiceJobController::class, 'updateWorkProgress']); // NEW: Work progress update
         Route::post('/job-requests/{id}/materials', [ServiceJobController::class, 'addMaterials']); // NEW: Materials reimbursement
         Route::delete('/job-requests/materials/{batchId}', [ServiceJobController::class, 'deleteMaterials']); // NEW: Materials reimbursement
+
+        // NEW: CLIENT INVENTORY USE REQUESTS + MARKUP NEGOTIATION
+        Route::post('/job-requests/{id}/product-use-requests/{requestId}/offer', [ServiceJobController::class, 'offerProductUseRequest']);
+        Route::post('/job-requests/{id}/product-use-requests/{requestId}/reject', [ServiceJobController::class, 'rejectProductUseRequest']);
+        Route::post('/job-requests/{id}/product-use-requests/{requestId}/approve', [ServiceJobController::class, 'approveProductUseRequest']);
 
         Route::prefix('requirements')->group(function () {
             Route::get('/', [ServiceProviderRequirementController::class, 'index']);
