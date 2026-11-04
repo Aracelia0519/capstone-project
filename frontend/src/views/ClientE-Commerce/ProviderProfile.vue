@@ -98,14 +98,14 @@
           <p class="text-slate-500 font-medium">Click any canvas to view full size.</p>
         </div>
         
-        <div v-if="provider.gallery_urls && provider.gallery_urls.length > 0" class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+        <div v-if="galleryItems.length > 0" class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
           <div 
-             v-for="(url, index) in provider.gallery_urls" 
+             v-for="(item, index) in galleryItems" 
              :key="index" 
              @click="openImageModal(index)"
              class="group relative rounded-2xl overflow-hidden shadow-lg border-4 border-white cursor-pointer break-inside-avoid bg-slate-100"
           >
-            <img :src="url" class="w-full h-auto object-cover transition-transform duration-1000 group-hover:scale-105" loading="lazy" />
+            <BeforeAfterImage :before="item.before_url" :after="item.url" />
             
             <!-- Vibrant Hover Overlay -->
             <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
@@ -159,23 +159,31 @@
           
           <!-- Left Arrow Navigation -->
           <button 
-             v-if="provider?.gallery_urls?.length > 1"
+             v-if="galleryItems.length > 1"
              @click.stop="prevImage" 
              class="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-white/5 hover:bg-white/20 p-4 rounded-full transition-all z-50 border border-white/10 hover:border-white/30 hover:-translate-x-1"
           >
             <ChevronLeft class="w-8 h-8" />
           </button>
 
-          <!-- Current Image -->
-          <img 
-             :src="provider.gallery_urls[currentImageIndex]" 
-             class="max-w-[90vw] max-h-[85vh] object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-500 rounded-xl border-2 border-white/10" 
-             @click.stop 
-          />
+          <!-- Current Before / After Image -->
+          <div
+             class="w-[90vw] max-w-6xl rounded-xl border-2 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-500"
+             @click.stop
+          >
+            <BeforeAfterImage
+               :key="galleryItems[currentImageIndex]?.url"
+               :before="galleryItems[currentImageIndex]?.before_url"
+               :after="galleryItems[currentImageIndex]?.url"
+               aspect-class=""
+               image-class="object-contain"
+               class="h-[65vh] w-full"
+            />
+          </div>
 
           <!-- Right Arrow Navigation -->
           <button 
-             v-if="provider?.gallery_urls?.length > 1"
+             v-if="galleryItems.length > 1"
              @click.stop="nextImage" 
              class="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-white/50 hover:text-white bg-white/5 hover:bg-white/20 p-4 rounded-full transition-all z-50 border border-white/10 hover:border-white/30 hover:translate-x-1"
           >
@@ -185,13 +193,13 @@
           <!-- Image Counter -->
           <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
             <div class="text-white font-black tracking-widest text-sm bg-black/40 px-5 py-2 rounded-full backdrop-blur-md border border-white/10">
-              CANVAS {{ currentImageIndex + 1 }} OF {{ provider.gallery_urls.length }}
+              CANVAS {{ currentImageIndex + 1 }} OF {{ galleryItems.length }}
             </div>
             
             <!-- Thumbnail Navigation Dots -->
             <div class="flex gap-2 mt-2">
               <button 
-                v-for="(_, idx) in provider.gallery_urls" 
+                v-for="(_, idx) in galleryItems" 
                 :key="'dot-'+idx"
                 @click.stop="currentImageIndex = idx"
                 class="w-2 h-2 rounded-full transition-all duration-300"
@@ -228,6 +236,7 @@ import {
   Droplet
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import BeforeAfterImage from '@/components/BeforeAfterImage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -255,6 +264,13 @@ const getSwatchGradient = (index) => {
 const specialtiesList = computed(() => {
   if (!provider.value?.specialties) return []
   return provider.value.specialties.split(',').map(s => s.trim()).filter(s => s.length > 0)
+})
+
+const galleryItems = computed(() => {
+  if (provider.value?.gallery_data?.length) {
+    return provider.value.gallery_data
+  }
+  return (provider.value?.gallery_urls || []).map(url => ({ url, before_url: null }))
 })
 
 const fetchProfile = async () => {
@@ -292,15 +308,15 @@ const closeImageModal = () => {
 }
 
 const nextImage = () => {
-  if (provider.value?.gallery_urls?.length) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % provider.value.gallery_urls.length
+  if (galleryItems.value.length) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % galleryItems.value.length
   }
 }
 
 const prevImage = () => {
-  if (provider.value?.gallery_urls?.length) {
+  if (galleryItems.value.length) {
     currentImageIndex.value = currentImageIndex.value === 0 
-      ? provider.value.gallery_urls.length - 1 
+      ? galleryItems.value.length - 1 
       : currentImageIndex.value - 1
   }
 }

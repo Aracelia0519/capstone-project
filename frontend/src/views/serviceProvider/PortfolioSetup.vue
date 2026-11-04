@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import BeforeAfterImage from '@/components/BeforeAfterImage.vue'
 
 const router = useRouter()
 
@@ -50,6 +51,7 @@ const availableImages = ref([]) // Images fetched from completed jobs
 const selectedGalleryImages = ref([]) // Array of { path, url }
 const isSelectionModalOpen = ref(false)
 const tempSelectedPaths = ref(new Set()) // Temporarily holds paths during selection
+const focusedAvailableImage = ref(null)
 
 // Lightbox State Variables
 const isImageModalOpen = ref(false)
@@ -112,14 +114,17 @@ const fetchPortfolioData = async () => {
 const openSelectionModal = () => {
   // Pre-fill Set with currently selected image paths
   tempSelectedPaths.value = new Set(selectedGalleryImages.value.map(img => img.path))
+  focusedAvailableImage.value = availableImages.value[0] || null
   isSelectionModalOpen.value = true
 }
 
-const toggleImageSelection = (imagePath) => {
-  if (tempSelectedPaths.value.has(imagePath)) {
-    tempSelectedPaths.value.delete(imagePath)
+const toggleImageSelection = (image) => {
+  if (!image?.path) return
+  focusedAvailableImage.value = image
+  if (tempSelectedPaths.value.has(image.path)) {
+    tempSelectedPaths.value.delete(image.path)
   } else {
-    tempSelectedPaths.value.add(imagePath)
+    tempSelectedPaths.value.add(image.path)
   }
 }
 
@@ -459,7 +464,7 @@ onUnmounted(() => {
              @click="openImageModal(index)"
              class="group relative rounded-2xl overflow-hidden shadow-lg border-4 border-white cursor-pointer break-inside-avoid bg-slate-100"
           >
-            <img :src="preview.url" class="w-full h-auto object-cover transition-transform duration-1000 group-hover:scale-105" loading="lazy" />
+            <BeforeAfterImage :before="preview.before_url" :after="preview.url" />
             
             <!-- Vibrant Hover Overlay -->
             <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
@@ -498,6 +503,17 @@ onUnmounted(() => {
           </DialogDescription>
         </DialogHeader>
 
+        <div v-if="focusedAvailableImage" class="shrink-0 mb-4">
+          <BeforeAfterImage
+            :key="focusedAvailableImage.path"
+            :before="focusedAvailableImage.before_url"
+            :after="focusedAvailableImage.url"
+            aspect-class=""
+            image-class="object-contain"
+            class="h-44 md:h-56 w-full rounded-xl border border-slate-700"
+          />
+        </div>
+
         <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-[300px]">
           <div v-if="availableImages.length === 0" class="flex flex-col items-center justify-center h-full text-slate-500">
             <Droplet class="w-12 h-12 mb-4 opacity-20" />
@@ -509,7 +525,7 @@ onUnmounted(() => {
             <div 
               v-for="(img, idx) in availableImages" 
               :key="idx"
-              @click="toggleImageSelection(img.path)"
+              @click="toggleImageSelection(img)"
               class="relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200"
               :class="tempSelectedPaths.has(img.path) ? 'border-emerald-500 scale-95 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-700 hover:border-slate-500'"
             >
@@ -561,12 +577,20 @@ onUnmounted(() => {
             <ChevronLeft class="w-8 h-8" />
           </button>
 
-          <!-- Current Image -->
-          <img 
-             :src="selectedGalleryImages[currentImageIndex]?.url" 
-             class="max-w-[90vw] max-h-[85vh] object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-500 rounded-xl border-2 border-white/10" 
-             @click.stop 
-          />
+          <!-- Current Before / After Image -->
+          <div
+             class="w-[90vw] max-w-6xl rounded-xl border-2 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-500"
+             @click.stop
+          >
+            <BeforeAfterImage
+               :key="selectedGalleryImages[currentImageIndex]?.url"
+               :before="selectedGalleryImages[currentImageIndex]?.before_url"
+               :after="selectedGalleryImages[currentImageIndex]?.url"
+               aspect-class=""
+               image-class="object-contain"
+               class="h-[65vh] w-full"
+            />
+          </div>
 
           <!-- Right Arrow Navigation -->
           <button 

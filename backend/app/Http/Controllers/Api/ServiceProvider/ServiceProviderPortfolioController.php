@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\ServiceProvider;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\ServiceProvider\ServiceProviderPortfolio;
+use App\Support\PortfolioGallery;
 
 class ServiceProviderPortfolioController extends Controller
 {
@@ -18,42 +18,33 @@ class ServiceProviderPortfolioController extends Controller
         $providerId = Auth::id();
         $portfolio = ServiceProviderPortfolio::where('provider_id', $providerId)->first();
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
-        
-        // Map currently saved portfolio gallery paths to full URLs
+
+        // Before images come from the survey agreement, after images come from
+        // approved completion submissions of completed jobs.
+        $completedImages = PortfolioGallery::completedJobImages((int) $providerId, $baseUrl);
+        $imageLookup = collect($completedImages)->keyBy('path');
+
+        // Map currently saved portfolio gallery paths to full URLs.
         $galleryData = [];
         if ($portfolio && !empty($portfolio->gallery_images)) {
             foreach ($portfolio->gallery_images as $path) {
                 $cleanPath = preg_replace('/^\/?storage\//', '', $path);
+                $match = $imageLookup->get($path);
+
                 $galleryData[] = [
                     'path' => $path,
-                    'url' => $baseUrl . '/storage/' . ltrim($cleanPath, '/')
+                    'url' => $baseUrl . '/storage/' . ltrim($cleanPath, '/'),
+                    'before_path' => $match['before_path'] ?? null,
+                    'before_url' => $match['before_url'] ?? null,
                 ];
             }
         }
 
-        // Fetch all approved/completed service job images associated with this provider
-        $completedJobs = DB::table('service_job_completions')
-            ->join('client_service_requests', 'service_job_completions.client_service_request_id', '=', 'client_service_requests.id')
-            ->where('client_service_requests.provider_id', $providerId)
-            ->where('service_job_completions.status', 'approved')
-            ->pluck('service_job_completions.proof_images');
-
-        $availableImages = [];
-        foreach ($completedJobs as $jsonImages) {
-            $images = json_decode($jsonImages, true);
-            if (is_array($images)) {
-                foreach ($images as $img) {
-                    $cleanImgPath = preg_replace('/^\/?storage\//', '', $img);
-                    $availableImages[] = [
-                        'path' => $img,
-                        'url' => $baseUrl . '/storage/' . ltrim($cleanImgPath, '/')
-                    ];
-                }
-            }
-        }
-
-        // Ensure we only return unique images just in case
-        $uniqueAvailableImages = collect($availableImages)->unique('path')->values()->toArray();
+        // Only one after image per completion submission is offered.
+        $uniqueAvailableImages = collect($completedImages)
+            ->unique('completion_id')
+            ->values()
+            ->toArray();
 
         $portfolioData = $portfolio ? $portfolio->toArray() : [];
         $portfolioData['gallery_data'] = $galleryData;
