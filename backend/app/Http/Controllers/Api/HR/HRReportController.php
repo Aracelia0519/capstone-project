@@ -32,7 +32,7 @@ class HRReportController extends Controller
             if ($employee) {
                 $position = DB::table('positions')->where('distributor_id', $employee->parent_distributor_id)->where('title', $employee->position)->first();
                 if ($position) {
-                    $access = DB::table('position_accessibilities')->where('position_id', $position->id)->where('permission_key', 'hr_reports')->first();
+                    $access = DB::table('position_accessibilities')->where('position_id', $position->id)->where('permission_key', 'reports')->first();
                     if ($access) {
                         $hasAccess = false;
                         if ($action === 'can_view' && $access->can_view) $hasAccess = true;

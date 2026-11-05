@@ -33,7 +33,7 @@ class HRDashboardController extends Controller
             if ($employee) {
                 $position = DB::table('positions')->where('distributor_id', $employee->parent_distributor_id)->where('title', $employee->position)->first();
                 if ($position) {
-                    $access = DB::table('position_accessibilities')->where('position_id', $position->id)->where('permission_key', 'hr_dashboard')->first();
+                    $access = DB::table('position_accessibilities')->where('position_id', $position->id)->where('permission_key', 'dashboard')->first();
                     if ($access && $access->$action) {
                         return [
                             'has_access' => true,
