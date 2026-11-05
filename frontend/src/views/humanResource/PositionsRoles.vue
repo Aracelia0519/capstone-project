@@ -663,7 +663,6 @@ const hrNavItems = [
   {
     category: 'Organization Management',
     items: [
-      { label: 'Departments', permissionKey: 'departments' },
       { label: 'Positions & Roles', permissionKey: 'positions_roles' }
     ]
   },
@@ -671,8 +670,6 @@ const hrNavItems = [
     category: 'Employee Management',
     items: [
       { label: 'Employee List', permissionKey: 'employee_list' },
-      { label: 'Employment Status', permissionKey: 'employment_status' },
-      { label: 'Recruitment Application', permissionKey: 'recruitment' }
     ]
   },
   {
@@ -690,14 +687,12 @@ const financeNavItems = [
     category: 'Financial Records',
     items: [
       { name: 'Dashboard', permissionKey: 'finance_dashboard' },
-      { name: 'Transactions', permissionKey: 'finance_transactions' },
-      { name: 'Payment Methods', permissionKey: 'finance_payment_methods' }
+      { name: 'Transactions', permissionKey: 'finance_transactions' }
     ]
   },
   {
     category: 'Operations',
     items: [
-      { name: 'Invoices / Billing', permissionKey: 'finance_invoices' },
       { name: 'Reports', permissionKey: 'finance_reports' }
     ]
   },
@@ -755,7 +750,6 @@ const odNavItems = [
   {
     category: 'Customer Engagement',
     items: [
-      { label: 'Messages', permissionKey: 'ec_messages' },
       { label: 'Reviews', permissionKey: 'ec_reviews' },
       { label: 'Promotions', permissionKey: 'ec_promotions' },
       { label: 'Promo Approval', permissionKey: 'ec_promo_approval' }

@@ -10,9 +10,7 @@
             <p class="text-gray-600">Process employee payroll by department</p>
           </div>
           <div class="flex items-center space-x-4">
-            <Button variant="outline" @click="requirePermission('view', downloadPayroll)">
-              Export
-            </Button>
+            
             <Button @click="requirePermission('manage', processPayroll)" class="bg-blue-600 hover:bg-blue-700">
               Process Payroll
             </Button>

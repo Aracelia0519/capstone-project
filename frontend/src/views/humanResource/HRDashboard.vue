@@ -83,7 +83,6 @@
         <CardContent class="p-6">
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-            <Button variant="ghost" size="sm" class="text-gray-500 hover:text-gray-900">View All</Button>
           </div>
           
           <div v-if="recentActivities.length === 0" class="text-center text-gray-500 py-10">No recent activity</div>

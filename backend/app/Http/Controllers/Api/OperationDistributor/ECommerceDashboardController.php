@@ -8,14 +8,118 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\EcommerceClient\ClientOrder;
 use App\Models\Distributor\Product;
+use App\Models\HR\Employee;
 
 class ECommerceDashboardController extends Controller
 {
+    /**
+     * Check RBAC Permissions for E-Commerce Dashboard Module (Level-Based)
+     */
+    private function checkAccess($user, $action = 'can_view')
+    {
+        // Admin
+        if ($user->role === 'admin') {
+            return [
+                'has_access' => true,
+                'distributor_id' => null,
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
+            ];
+        }
+
+        // Distributor
+        if ($user->role === 'distributor') {
+            return [
+                'has_access' => true,
+                'distributor_id' => $user->id,
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
+            ];
+        }
+
+        // Managers and Operational Distributors
+        $distributorId = $this->getDistributorId($user);
+        if (in_array($user->role, ['hr_manager', 'finance_manager', 'operational_distributor'])) {
+            return [
+                'has_access' => true,
+                'distributor_id' => $distributorId,
+                'permissions' => ['can_view' => true, 'can_manage' => true, 'can_approve' => true]
+            ];
+        } 
+        
+        // Employee with specific RBAC
+        elseif ($user->role === 'employee') {
+            $employee = Employee::where('user_id', $user->id)->first();
+            if ($employee) {
+                $position = DB::table('positions')
+                    ->where('distributor_id', $employee->parent_distributor_id)
+                    ->where('title', $employee->position)
+                    ->first();
+                
+                if ($position) {
+                    $access = DB::table('position_accessibilities')
+                        ->where('position_id', $position->id)
+                        ->where('permission_key', 'ec_dashboard')
+                        ->first();
+                        
+                    if ($access) {
+                        $hasAccess = false;
+                        if ($action === 'can_view' && $access->can_view) $hasAccess = true;
+                        if ($action === 'can_manage' && $access->can_manage) $hasAccess = true;
+                        if ($action === 'can_approve' && $access->can_approve) $hasAccess = true;
+                        
+                        if ($hasAccess) {
+                            return [
+                                'has_access' => true,
+                                'distributor_id' => $employee->parent_distributor_id,
+                                'permissions' => [
+                                    'can_view' => (bool)$access->can_view,
+                                    'can_manage' => (bool)$access->can_manage,
+                                    'can_approve' => (bool)$access->can_approve,
+                                ]
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return [
+            'has_access' => false,
+            'distributor_id' => null,
+            'permissions' => ['can_view' => false, 'can_manage' => false, 'can_approve' => false]
+        ];
+    }
+
+    private function getDistributorId($user) {
+        if ($user->role === 'distributor') return $user->id;
+        if ($user->role === 'operational_distributor') {
+            $model = DB::table('operational_distributors')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'hr_manager') {
+            $model = DB::table('hr_managers')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'finance_manager') {
+            $model = DB::table('finance_managers')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        if ($user->role === 'employee') {
+            $model = DB::table('hr_employees')->where('user_id', $user->id)->first();
+            return $model ? $model->parent_distributor_id : $user->id;
+        }
+        return $user->id;
+    }
+
     public function index(Request $request)
     {
-        $user = $request->user();
-        
-        $distributorId = $user->id;
+        $user = $request->user() ?? Auth::user();
+        $accessData = $this->checkAccess($user, 'can_view');
+
+        if (!$accessData['has_access']) {
+            return response()->json(['message' => 'Unauthorized access to e-commerce dashboard'], 403);
+        }
+
+        $distributorId = $accessData['distributor_id'] ?? $user->id;
 
         // Safely query the operational_distributors table
         if ($user->role === 'operational_distributor') {
@@ -258,6 +362,9 @@ class ECommerceDashboardController extends Controller
             'orderStatus' => $orderStatus,
             'recentTransactions' => $recentTransactions,
             'bestSellingProducts' => $bestSellingProducts,
+            'permissions' => $accessData['permissions'],
+            'distributor_id' => $distributorId,
+            'is_admin' => $user->role === 'admin'
         ]);
     }
 }
