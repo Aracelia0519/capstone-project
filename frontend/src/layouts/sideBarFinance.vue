@@ -144,7 +144,6 @@ const navigation = [
   {
     title: 'Operations',
     items: [
-      { name: 'Invoices / Billing', path: '/finance/invoices', icon: FileText, color: 'text-emerald-400', badge: '8' },
       { name: 'Procurement', path: '/finance/procurementRequestFinance', icon: ShoppingCart, color: 'text-emerald-400', badge: 'Req' },
       { name: 'Budget Release', path: '/finance/procurementBudgetRelease', icon: Wallet, color: 'text-green-400', badge: 'Head' },
       { name: 'Payroll Request', path: '/finance/PayrollRequestFinance', icon: Users, color: 'text-emerald-400', badge: 'Pending' },

@@ -1564,7 +1564,6 @@ export default {
 
 <style scoped>
 .operational-distributors {
-  background: #ffffff;
   min-height: 100vh;
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="technical-reports-container min-h-screen p-4 md:p-8 bg-slate-900">
+  <div class="technical-reports-container min-h-screen p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
       
       <!-- Header -->

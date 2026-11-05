@@ -1,11 +1,32 @@
 <template>
   <SidebarProvider>
-    <div class="flex min-h-screen w-full bg-slate-900 font-sans text-slate-100 selection:bg-emerald-500/30 overflow-hidden">
+    <div
+      class="finance-layout-root flex min-h-screen w-full font-sans selection:bg-emerald-500/30 overflow-hidden transition-colors duration-300"
+      :class="theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-100 text-slate-900'"
+    >
       <Toaster position="top-right" />
+
+      <!-- Dark / Light mode toggle (default: light) -->
+      <button
+        type="button"
+        class="theme-toggle fixed top-20 right-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition-all duration-300 md:top-6 md:right-6"
+        :class="theme === 'dark'
+          ? 'border-slate-700 bg-slate-800/90 text-amber-300 hover:bg-slate-700'
+          : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'"
+        :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="toggleTheme"
+      >
+        <Sun v-if="theme === 'dark'" class="h-5 w-5" />
+        <Moon v-else class="h-5 w-5" />
+      </button>
 
       <sideBarFinance @logout-started="handleLogoutStart" @logout-finished="handleLogoutFinish" />
 
-      <SidebarInset class="main-content-area bg-white border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto">
+      <SidebarInset
+        class="main-content-area border-none transition-all duration-500 ease-in-out relative min-h-screen flex flex-col overflow-y-auto"
+        :class="theme === 'dark' ? 'bg-slate-900' : 'bg-white'"
+      >
         
         <transition name="fade">
           <div 
@@ -39,7 +60,10 @@
           <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Finance Portal</span>
         </header>
 
-        <main class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1 text-slate-900">
+        <main
+          class="relative z-10 w-full p-4 md:p-8 pt-20 md:pt-8 flex-1 transition-colors duration-300"
+          :class="theme === 'dark' ? 'text-slate-100' : 'text-slate-900'"
+        >
           <router-view v-slot="{ Component }">
             <transition name="page-slide" mode="out-in">
               <component 
@@ -57,18 +81,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Progress } from '@/components/ui/progress'
 import sideBarFinance from './sideBarFinance.vue'
 import axios from '@/utils/axios'
-import { LogOut } from 'lucide-vue-next'
+import { LogOut, Sun, Moon } from 'lucide-vue-next'
 
 const router = useRouter()
 const userData = ref(null)
 const dashboardData = ref(null)
+
+// Theme: light is the default for the finance portal
+const theme = ref('light')
+const toggleTheme = () => {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+}
+
+// Keep the theme override class on <body> so teleported content
+// (mobile sidebar, dialogs, toasts) is themed too.
+watch(theme, (value) => {
+  document.body.classList.toggle('finance-light-mode', value === 'light')
+  document.body.classList.toggle('finance-dark-mode', value === 'dark')
+}, { immediate: true })
 
 // Logout States
 const isLoggingOut = ref(false)
@@ -109,6 +146,10 @@ const fetchData = async () => {
 onMounted(() => {
   fetchData()
 })
+
+onUnmounted(() => {
+  document.body.classList.remove('finance-light-mode', 'finance-dark-mode')
+})
 </script>
 
 <style scoped>
@@ -117,4 +158,328 @@ onMounted(() => {
 .page-slide-enter-active, .page-slide-leave-active { transition: all 0.4s ease; }
 .page-slide-enter-from { opacity: 0; transform: translateX(20px); }
 .page-slide-leave-to { opacity: 0; transform: translateX(-20px); }
+</style>
+
+<!--
+  Light mode overrides. Scoped to body.finance-light-mode so dark mode keeps
+  the original styles. Light is the default for the finance portal, so this
+  converts the dark sidebar and any dark surfaces to light. This also reaches
+  teleported content (mobile sidebar, dialogs, toasts).
+-->
+<style>
+body.finance-light-mode {
+  background-color: #f8fafc;
+  color-scheme: light;
+}
+
+body.finance-dark-mode {
+  color-scheme: dark;
+}
+
+body.finance-light-mode .finance-layout-root {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* ----- Dark surfaces become light surfaces ----- */
+body.finance-light-mode [class~="bg-slate-950"],
+body.finance-light-mode [class^="bg-slate-950/"],
+body.finance-light-mode [class*=" bg-slate-950/"],
+body.finance-light-mode [class~="bg-slate-900"],
+body.finance-light-mode [class^="bg-slate-900/"],
+body.finance-light-mode [class*=" bg-slate-900/"],
+body.finance-light-mode [class~="bg-gray-950"],
+body.finance-light-mode [class^="bg-gray-950/"],
+body.finance-light-mode [class*=" bg-gray-950/"],
+body.finance-light-mode [class~="bg-gray-900"],
+body.finance-light-mode [class^="bg-gray-900/"],
+body.finance-light-mode [class*=" bg-gray-900/"] {
+  background-color: #ffffff !important;
+}
+
+body.finance-light-mode [class~="bg-slate-800"],
+body.finance-light-mode [class^="bg-slate-800/"],
+body.finance-light-mode [class*=" bg-slate-800/"],
+body.finance-light-mode [class~="bg-gray-800"],
+body.finance-light-mode [class^="bg-gray-800/"],
+body.finance-light-mode [class*=" bg-gray-800/"] {
+  background-color: #f1f5f9 !important;
+}
+
+body.finance-light-mode [class~="bg-slate-700"],
+body.finance-light-mode [class^="bg-slate-700/"],
+body.finance-light-mode [class*=" bg-slate-700/"],
+body.finance-light-mode [class~="bg-gray-700"],
+body.finance-light-mode [class^="bg-gray-700/"],
+body.finance-light-mode [class*=" bg-gray-700/"],
+body.finance-light-mode [class~="bg-slate-500"],
+body.finance-light-mode [class^="bg-slate-500/"],
+body.finance-light-mode [class*=" bg-slate-500/"] {
+  background-color: #e2e8f0 !important;
+}
+
+body.finance-light-mode [class~="bg-slate-600"],
+body.finance-light-mode [class^="bg-slate-600/"],
+body.finance-light-mode [class*=" bg-slate-600/"],
+body.finance-light-mode [class~="bg-gray-600"],
+body.finance-light-mode [class^="bg-gray-600/"],
+body.finance-light-mode [class*=" bg-gray-600/"] {
+  background-color: #cbd5e1 !important;
+}
+
+/* ----- Light text becomes dark text ----- */
+body.finance-light-mode [class~="text-white"],
+body.finance-light-mode [class^="text-white/"],
+body.finance-light-mode [class*=" text-white/"],
+body.finance-light-mode [class~="text-slate-50"],
+body.finance-light-mode [class~="text-slate-100"],
+body.finance-light-mode [class~="text-slate-200"],
+body.finance-light-mode [class~="text-gray-50"],
+body.finance-light-mode [class~="text-gray-100"],
+body.finance-light-mode [class~="text-gray-200"] {
+  color: #0f172a !important;
+}
+
+body.finance-light-mode [class~="text-slate-300"],
+body.finance-light-mode [class~="text-gray-300"] {
+  color: #1e293b !important;
+}
+
+body.finance-light-mode [class~="text-slate-400"],
+body.finance-light-mode [class~="text-slate-500"],
+body.finance-light-mode [class~="text-gray-400"],
+body.finance-light-mode [class~="text-gray-500"] {
+  color: #64748b !important;
+}
+
+/* Keep white text readable on solid/gradient accent surfaces */
+body.finance-light-mode [class*="text-white"][class~="bg-sky-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-sky-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-blue-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-blue-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-indigo-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-indigo-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-purple-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-purple-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-pink-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-pink-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-emerald-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-emerald-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-emerald-700"],
+body.finance-light-mode [class*="text-white"][class~="bg-green-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-green-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-teal-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-teal-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-cyan-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-cyan-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-red-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-red-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-rose-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-rose-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-orange-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-orange-600"],
+body.finance-light-mode [class*="text-white"][class~="bg-amber-500"],
+body.finance-light-mode [class*="text-white"][class~="bg-amber-600"],
+body.finance-light-mode [class*="text-white"][class*="bg-gradient-to-r"],
+body.finance-light-mode [class*="text-white"][class*="bg-gradient-to-br"],
+body.finance-light-mode [class*="text-white"][class*="bg-gradient-to-b"],
+body.finance-light-mode [class*="text-white"][class*="bg-gradient-to-t"],
+body.finance-light-mode [class*="text-white"][class*="bg-black"] {
+  color: #ffffff !important;
+}
+
+/* Active sidebar item: white text does not work on the light gradient */
+body.finance-light-mode [data-slot="sidebar"] [class*="from-emerald-500/"] {
+  color: #065f46 !important;
+}
+
+/* ----- Borders and dividers ----- */
+body.finance-light-mode [class~="border-slate-950"],
+body.finance-light-mode [class^="border-slate-950/"],
+body.finance-light-mode [class*=" border-slate-950/"],
+body.finance-light-mode [class~="border-slate-900"],
+body.finance-light-mode [class^="border-slate-900/"],
+body.finance-light-mode [class*=" border-slate-900/"],
+body.finance-light-mode [class~="border-slate-800"],
+body.finance-light-mode [class^="border-slate-800/"],
+body.finance-light-mode [class*=" border-slate-800/"],
+body.finance-light-mode [class~="border-slate-700"],
+body.finance-light-mode [class^="border-slate-700/"],
+body.finance-light-mode [class*=" border-slate-700/"],
+body.finance-light-mode [class~="border-gray-800"],
+body.finance-light-mode [class^="border-gray-800/"],
+body.finance-light-mode [class*=" border-gray-800/"],
+body.finance-light-mode [class~="border-gray-700"],
+body.finance-light-mode [class^="border-gray-700/"],
+body.finance-light-mode [class*=" border-gray-700/"] {
+  border-color: #e2e8f0 !important;
+}
+
+body.finance-light-mode [class~="border-slate-600"],
+body.finance-light-mode [class^="border-slate-600/"],
+body.finance-light-mode [class*=" border-slate-600/"],
+body.finance-light-mode [class~="border-gray-600"],
+body.finance-light-mode [class^="border-gray-600/"],
+body.finance-light-mode [class*=" border-gray-600/"] {
+  border-color: #cbd5e1 !important;
+}
+
+body.finance-light-mode [class~="divide-slate-800"],
+body.finance-light-mode [class^="divide-slate-800/"],
+body.finance-light-mode [class*=" divide-slate-800/"],
+body.finance-light-mode [class~="divide-slate-700"],
+body.finance-light-mode [class^="divide-slate-700/"],
+body.finance-light-mode [class*=" divide-slate-700/"] {
+  border-color: #e2e8f0 !important;
+}
+
+body.finance-light-mode [class~="ring-offset-slate-900"] {
+  --tw-ring-offset-color: #ffffff !important;
+}
+
+/* ----- Hover states ----- */
+body.finance-light-mode [class*="hover:bg-slate-900"]:hover,
+body.finance-light-mode [class*="hover:bg-gray-900"]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+body.finance-light-mode [class*="hover:bg-slate-800"]:hover,
+body.finance-light-mode [class*="hover:bg-slate-700"]:hover,
+body.finance-light-mode [class*="hover:bg-gray-800"]:hover,
+body.finance-light-mode [class*="hover:bg-gray-700"]:hover {
+  background-color: #e2e8f0 !important;
+}
+
+body.finance-light-mode [class*="hover:text-white"]:hover {
+  color: #0f172a !important;
+}
+
+/* ----- Dark gradients become light gradients ----- */
+body.finance-light-mode [class*="bg-gradient-to"][class*="from-slate-9"],
+body.finance-light-mode [class*="bg-gradient-to"][class*="from-slate-8"],
+body.finance-light-mode [class*="bg-gradient-to"][class*="from-gray-9"],
+body.finance-light-mode [class*="bg-gradient-to"][class*="from-gray-8"] {
+  background-image: linear-gradient(135deg, #ffffff 0%, #f1f5f9 55%, #e2e8f0 100%) !important;
+}
+</style>
+
+<!--
+  Dark mode overrides. Scoped to body.finance-dark-mode so light mode (the
+  default) keeps every existing style exactly as it was. The finance pages are
+  light-themed, so this converts their light surfaces, text and borders to dark
+  equivalents while keeping accent colours intact.
+-->
+<style>
+body.finance-dark-mode {
+  background-color: #0f172a;
+}
+
+body.finance-dark-mode .finance-layout-root {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+body.finance-dark-mode [data-slot="dialog-content"],
+body.finance-dark-mode [data-slot="alert-dialog-content"],
+body.finance-dark-mode [data-slot="sheet-content"],
+body.finance-dark-mode [data-slot="select-content"],
+body.finance-dark-mode [data-slot="dropdown-menu-content"],
+body.finance-dark-mode [data-slot="popover-content"] {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+/* ----- Light surfaces become dark surfaces ----- */
+body.finance-dark-mode [class~="bg-white"],
+body.finance-dark-mode [class^="bg-white/"],
+body.finance-dark-mode [class*=" bg-white/"] {
+  background-color: #0f172a !important;
+}
+
+body.finance-dark-mode [class~="bg-slate-50"],
+body.finance-dark-mode [class^="bg-slate-50/"],
+body.finance-dark-mode [class*=" bg-slate-50/"],
+body.finance-dark-mode [class~="bg-gray-50"],
+body.finance-dark-mode [class^="bg-gray-50/"],
+body.finance-dark-mode [class*=" bg-gray-50/"] {
+  background-color: #1e293b !important;
+}
+
+body.finance-dark-mode [class~="bg-slate-100"],
+body.finance-dark-mode [class^="bg-slate-100/"],
+body.finance-dark-mode [class*=" bg-slate-100/"],
+body.finance-dark-mode [class~="bg-gray-100"],
+body.finance-dark-mode [class^="bg-gray-100/"],
+body.finance-dark-mode [class*=" bg-gray-100/"] {
+  background-color: #1e293b !important;
+}
+
+body.finance-dark-mode [class~="bg-slate-200"],
+body.finance-dark-mode [class^="bg-slate-200/"],
+body.finance-dark-mode [class*=" bg-slate-200/"] {
+  background-color: #334155 !important;
+}
+
+/* ----- Dark text becomes light text ----- */
+body.finance-dark-mode [class~="text-gray-900"],
+body.finance-dark-mode [class~="text-slate-900"],
+body.finance-dark-mode [class~="text-gray-800"],
+body.finance-dark-mode [class~="text-slate-800"] {
+  color: #f1f5f9 !important;
+}
+
+body.finance-dark-mode [class~="text-gray-700"],
+body.finance-dark-mode [class~="text-slate-700"] {
+  color: #e2e8f0 !important;
+}
+
+body.finance-dark-mode [class~="text-gray-600"],
+body.finance-dark-mode [class~="text-slate-600"] {
+  color: #cbd5e1 !important;
+}
+
+body.finance-dark-mode [class~="text-gray-500"],
+body.finance-dark-mode [class~="text-slate-500"],
+body.finance-dark-mode [class~="text-gray-400"],
+body.finance-dark-mode [class~="text-slate-400"] {
+  color: #94a3b8 !important;
+}
+
+/* ----- Light borders become dark borders ----- */
+body.finance-dark-mode [class~="border-slate-100"],
+body.finance-dark-mode [class~="border-gray-100"] {
+  border-color: #1e293b !important;
+}
+
+body.finance-dark-mode [class~="border-slate-200"],
+body.finance-dark-mode [class~="border-gray-200"] {
+  border-color: #334155 !important;
+}
+
+body.finance-dark-mode [class~="border-slate-300"],
+body.finance-dark-mode [class~="border-gray-300"] {
+  border-color: #475569 !important;
+}
+
+/* ----- Hover states ----- */
+body.finance-dark-mode [class*="hover:bg-slate-50"]:hover,
+body.finance-dark-mode [class*="hover:bg-gray-50"]:hover {
+  background-color: #1e293b !important;
+}
+
+body.finance-dark-mode [class*="hover:bg-slate-100"]:hover,
+body.finance-dark-mode [class*="hover:bg-gray-100"]:hover {
+  background-color: #334155 !important;
+}
+
+body.finance-dark-mode [class*="hover:text-slate-900"]:hover,
+body.finance-dark-mode [class*="hover:text-gray-900"]:hover {
+  color: #f1f5f9 !important;
+}
+
+body.finance-dark-mode input::placeholder,
+body.finance-dark-mode textarea::placeholder {
+  color: #64748b;
+}
 </style>
