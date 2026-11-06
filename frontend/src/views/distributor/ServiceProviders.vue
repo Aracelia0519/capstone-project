@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 md:p-6 min-h-screen bg-background">
+  <div class="p-4 md:p-6 min-h-screen ">
     <div class="mb-6 md:mb-8">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -17,7 +17,7 @@
             />
           </div>
           <div class="hidden md:flex items-center space-x-2">
-            <Button variant="outline" @click="exportProviders" class="text-gray-700 hover:bg-gray-50 border-gray-300">
+            <Button variant="outline" @click="exportProviders" class="text-gray-500 hover:bg-gray-50 border-gray-300">
               <Download class="w-4 h-4 mr-2" />
               Export
             </Button>
@@ -34,7 +34,7 @@
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">Total Providers</p>
-            <p class="text-2xl font-bold text-gray-900">{{ statistics.totalProviders }}</p>
+            <p class="text-2xl font-bold text-gray-500">{{ statistics.totalProviders }}</p>
           </div>
         </CardContent>
       </Card>
@@ -46,7 +46,7 @@
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">Active Orders</p>
-            <p class="text-2xl font-bold text-gray-900">{{ statistics.activeOrders }}</p>
+            <p class="text-2xl font-bold text-gray-500">{{ statistics.activeOrders }}</p>
           </div>
         </CardContent>
       </Card>
@@ -58,7 +58,7 @@
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">Avg. Response Time</p>
-            <p class="text-2xl font-bold text-gray-900">{{ statistics.avgResponseTime }}h</p>
+            <p class="text-2xl font-bold text-gray-500">{{ statistics.avgResponseTime }}h</p>
           </div>
         </CardContent>
       </Card>
@@ -70,7 +70,7 @@
           </div>
           <div>
             <p class="text-sm text-gray-500 font-medium">Satisfaction Score</p>
-            <p class="text-2xl font-bold text-gray-900">{{ statistics.satisfactionScore }}%</p>
+            <p class="text-2xl font-bold text-gray-500">{{ statistics.satisfactionScore }}%</p>
           </div>
         </CardContent>
       </Card>
@@ -88,7 +88,7 @@
               :class="[
                 activeStatusFilter === filter.id 
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200' 
-                  : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                  : 'text-gray-500 border-gray-300 hover:bg-gray-50'
               ]"
               class="h-9 px-4 text-sm font-medium transition-colors"
             >
@@ -142,7 +142,7 @@
                   </div>
                   <div class="ml-4">
                     <h3 class="font-semibold text-gray-900">{{ provider.name }}</h3>
-                    <p class="text-sm text-gray-600">{{ provider.specialization }}</p>
+                    <p class="text-sm text-gray-500">{{ provider.specialization }}</p>
                     <div class="flex items-center mt-1">
                       <MapPin class="w-3 h-3 text-gray-400 mr-1" />
                       <span class="text-xs text-gray-500">{{ provider.location }}</span>
@@ -160,13 +160,13 @@
                   </div>
                   <div class="flex items-center">
                     <Phone class="w-3.5 h-3.5 text-gray-400 mr-2" />
-                    <span class="text-sm text-gray-700">{{ provider.phone }}</span>
+                    <span class="text-sm text-gray-500">{{ provider.phone }}</span>
                   </div>
                 </div>
               </TableCell>
               <TableCell class="py-4 px-6">
                 <div class="flex items-baseline">
-                  <span class="text-2xl font-bold text-gray-900">{{ provider.totalOrders }}</span>
+                  <span class="text-2xl font-bold text-gray-500">{{ provider.totalOrders }}</span>
                   <span class="text-sm text-gray-500 ml-1">orders</span>
                 </div>
                 <div class="mt-2">
@@ -198,14 +198,14 @@
                       :class="n <= Math.floor(provider.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'" 
                     />
                   </div>
-                  <span class="ml-2 text-sm font-medium text-gray-900">{{ provider.rating.toFixed(1) }}</span>
+                  <span class="ml-2 text-sm font-medium text-gray-500">{{ provider.rating.toFixed(1) }}</span>
                 </div>
                 <div class="mt-2 w-full">
                    <Progress :model-value="(provider.rating / 5) * 100" class="h-1.5 w-24 [&>div]:bg-green-500 bg-gray-200" />
                 </div>
               </TableCell>
               <TableCell class="py-4 px-6 text-right">
-                <Button variant="outline" size="sm" @click="viewDetails(provider)" class="text-gray-700 hover:text-blue-700 hover:bg-blue-50 border-gray-300">
+                <Button variant="outline" size="sm" @click="viewDetails(provider)" class="text-gray-500 hover:text-blue-700 hover:bg-blue-50 border-gray-300">
                   <Eye class="w-4 h-4 mr-2" />
                   View
                 </Button>
@@ -310,12 +310,12 @@
             size="sm"
             @click="previousPage" 
             :disabled="currentPage === 1"
-            class="border-gray-300 text-gray-700"
+            class="border-gray-300 text-gray-500"
         >
           <ChevronLeft class="w-4 h-4 mr-1" />
           Previous
         </Button>
-        <span class="text-sm text-gray-700 px-3">
+        <span class="text-sm text-gray-500 px-3">
           Page {{ currentPage }} of {{ totalPages }}
         </span>
         <Button 
@@ -323,7 +323,7 @@
             size="sm"
             @click="nextPage" 
             :disabled="currentPage === totalPages"
-            class="border-gray-300 text-gray-700"
+            class="border-gray-300 text-gray-500"
         >
           Next
           <ChevronRight class="w-4 h-4 ml-1" />

@@ -62,7 +62,7 @@
                 <div class="p-2 bg-linear-to-br from-blue-500 to-indigo-500 rounded-lg shadow-md icon-hover">
                   <User class="w-5 h-5 text-white" />
                 </div>
-                <h2 class="text-lg md:text-xl font-bold text-gray-800">Personal Information</h2>
+                <h2 class="text-lg md:text-xl font-bold text-gray-500">Personal Information</h2>
               </div>
               <Badge variant="secondary" class="bg-blue-100 text-blue-600 hover:bg-blue-100 rounded-full px-3">Basic Info</Badge>
             </div>
@@ -84,7 +84,7 @@
                 
                 <div class="flex-1 space-y-2">
                   <div>
-                    <h3 class="text-xl font-bold text-gray-900">{{ userInfo.full_name }}</h3>
+                    <h3 class="text-xl font-bold text-gray-500">{{ userInfo.full_name }}</h3>
                     <p class="text-gray-600">{{ capitalize(userInfo.role) }}</p>
                   </div>
                   
@@ -124,7 +124,7 @@
                 
                 <div class="text-right">
                   <p class="text-sm text-gray-500 mb-1 smooth-color">Member since</p>
-                  <p class="font-semibold text-gray-900">{{ formatDate(userInfo.created_at) }}</p>
+                  <p class="font-semibold text-gray-500">{{ formatDate(userInfo.created_at) }}</p>
                 </div>
               </div>
             </div>
@@ -132,41 +132,41 @@
             <div class="space-y-6">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="form-group space-y-2">
-                  <Label class="smooth-color font-semibold text-gray-700">First Name</Label>
+                  <Label class="smooth-color font-semibold text-gray-500">First Name</Label>
                   <div class="relative">
                     <User class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                    <Input v-model="userInfo.first_name" type="text" class="pl-10 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                    <Input v-model="userInfo.first_name" type="text" class="pl-10 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                   </div>
                 </div>
                 
                 <div class="form-group space-y-2">
-                  <Label class="smooth-color font-semibold text-gray-700">Last Name</Label>
+                  <Label class="smooth-color font-semibold text-gray-500">Last Name</Label>
                   <div class="relative">
                     <User class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                    <Input v-model="userInfo.last_name" type="text" class="pl-10 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                    <Input v-model="userInfo.last_name" type="text" class="pl-10 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                   </div>
                 </div>
               </div>
 
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Email Address</Label>
+                <Label class="smooth-color font-semibold text-gray-500">Email Address</Label>
                 <div class="relative">
                   <Mail class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                  <Input v-model="userInfo.email" type="email" class="pl-10 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                  <Input v-model="userInfo.email" type="email" class="pl-10 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                 </div>
               </div>
 
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Phone Number</Label>
+                <Label class="smooth-color font-semibold text-gray-500">Phone Number</Label>
                 <div class="relative">
-                  <Phone class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                  <Input v-model="userInfo.phone" type="tel" class="pl-10 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                  <Phone class="absolute left-3 top-3.5 w-5 h-5 text-gray-500 icon-hover pointer-events-none" />
+                  <Input v-model="userInfo.phone" type="tel" class="pl-10 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                 </div>
               </div>
 
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Address</Label>
-                <Textarea v-model="userInfo.address" rows="3" class="px-4 py-3 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 resize-none form-textarea" />
+                <Label class="smooth-color font-semibold text-gray-500">Address</Label>
+                <Textarea v-model="userInfo.address" rows="3" class="px-4 py-3  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 resize-none form-textarea" />
               </div>
 
               <div class="pt-6 border-t border-gray-200">
@@ -220,10 +220,10 @@
 
             <div class="space-y-6">
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Current Password</Label>
+                <Label class="smooth-color font-semibold text-gray-500">Current Password</Label>
                 <div class="relative">
                   <Lock class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                  <Input v-model="password.current" :type="currentPasswordFieldType" class="pl-10 pr-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                  <Input v-model="password.current" :type="currentPasswordFieldType" class="pl-10 pr-12 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                   <button @click="toggleCurrentPasswordVisibility" type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                     <EyeOff v-if="showCurrentPassword" class="w-5 h-5" />
                     <Eye v-else class="w-5 h-5" />
@@ -234,10 +234,10 @@
               <div class="grid grid-cols-1 gap-6"> 
                 <div class="space-y-4">
                   <div class="form-group space-y-2">
-                    <Label class="smooth-color font-semibold text-gray-700">New Password</Label>
+                    <Label class="smooth-color font-semibold text-gray-500">New Password</Label>
                     <div class="relative">
                       <Lock class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                      <Input v-model="password.new" :type="newPasswordFieldType" class="pl-10 pr-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                      <Input v-model="password.new" :type="newPasswordFieldType" class="pl-10 pr-12 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                       <button @click="toggleNewPasswordVisibility" type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                         <EyeOff v-if="showNewPassword" class="w-5 h-5" />
                         <Eye v-else class="w-5 h-5" />
@@ -246,7 +246,7 @@
                   </div>
                   
                   <div class="space-y-2">
-                    <p class="smooth-color text-xs font-semibold text-gray-700">Password Requirements</p>
+                    <p class="smooth-color text-xs font-semibold text-gray-500">Password Requirements</p>
                     <div class="space-y-1.5">
                       <div v-for="requirement in passwordRequirements" :key="requirement.text" class="flex items-center">
                         <div class="shrink-0 w-4 h-4 mr-2 flex items-center justify-center icon-hover">
@@ -263,10 +263,10 @@
 
                 <div class="space-y-4">
                   <div class="form-group space-y-2">
-                    <Label class="smooth-color font-semibold text-gray-700">Confirm Password</Label>
+                    <Label class="smooth-color font-semibold text-gray-500">Confirm Password</Label>
                     <div class="relative">
                       <Lock class="absolute left-3 top-3.5 w-5 h-5 text-gray-400 icon-hover pointer-events-none" />
-                      <Input v-model="password.confirm" :type="confirmPasswordFieldType" class="pl-10 pr-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
+                      <Input v-model="password.confirm" :type="confirmPasswordFieldType" class="pl-10 pr-12 h-12  border-gray-200 rounded-xl focus-visible:ring-blue-500 focus-visible:ring-2 focus-visible:border-blue-500 transition-all duration-300 form-input" />
                       <button @click="toggleConfirmPasswordVisibility" type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
                         <EyeOff v-if="showConfirmPassword" class="w-5 h-5" />
                         <Eye v-else class="w-5 h-5" />
@@ -302,7 +302,7 @@
                 <div class="p-2 bg-linear-to-br from-green-500 to-emerald-500 rounded-lg shadow-md icon-hover">
                   <Briefcase class="w-5 h-5 text-white" />
                 </div>
-                <h2 class="text-lg font-bold text-gray-800">Distributor Info</h2>
+                <h2 class="text-lg font-bold text-gray-500">Distributor Info</h2>
               </div>
               <Badge variant="secondary" class="bg-green-100 text-green-600 hover:bg-green-100 rounded-full px-3">Business</Badge>
             </div>
@@ -311,31 +311,31 @@
           <CardContent class="p-6 space-y-6">
             <div class="grid grid-cols-1 gap-6">
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">Company Name</Label>
+                <Label class="smooth-color font-semibold text-gray-500">Company Name</Label>
                 <Input v-model="distributorInfo.company_name" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  class="h-12  border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
                   :readonly="verificationData && verificationData.has_submitted" />
               </div>
               
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">License Number</Label>
+                <Label class="smooth-color font-semibold text-gray-500">License Number</Label>
                 <Input v-model="distributorInfo.business_registration_number" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  class="h-12  border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
                   :readonly="verificationData && verificationData.has_submitted" />
               </div>
             </div>
 
             <div class="grid grid-cols-1 gap-6">
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">ID Type</Label>
+                <Label class="smooth-color font-semibold text-gray-500">ID Type</Label>
                 <Input v-model="distributorInfo.valid_id_type_display" type="text" 
-                  class="h-12 bg-gray-100 border-gray-200 rounded-xl text-gray-600 cursor-not-allowed" readonly />
+                  class="h-12  border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" readonly />
               </div>
               
               <div class="form-group space-y-2">
-                <Label class="smooth-color font-semibold text-gray-700">ID Number</Label>
+                <Label class="smooth-color font-semibold text-gray-500">ID Number</Label>
                 <Input v-model="distributorInfo.id_number" type="text" 
-                  class="h-12 bg-gray-50 border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
+                  class="h-12  border-gray-200 rounded-xl focus-visible:ring-green-500 focus-visible:border-green-500 transition-all duration-300 form-input"
                   :readonly="verificationData && verificationData.has_submitted" />
               </div>
             </div>
@@ -347,8 +347,8 @@
                   <Lock class="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h4 class="font-semibold text-gray-800 mb-1">Locked</h4>
-                  <p class="text-xs text-gray-600">
+                  <h4 class="font-semibold text-gray-500 mb-1">Locked</h4>
+                  <p class="text-xs text-gray-500">
                     Your distributor information is currently locked because you have submitted business verification.
                   </p>
                 </div>
@@ -1013,20 +1013,20 @@
           <CardContent v-if="verificationData && verificationData.has_submitted && (verificationData.status === 'pending' || verificationData.status === 'approved')" 
             class="p-6">
             <div class="document-card bg-linear-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-5">
-              <h3 class="font-bold text-gray-800 mb-4">Submitted Documents</h3>
+              <h3 class="font-bold text-gray-500 mb-4">Submitted Documents</h3>
               <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p class="text-xs text-gray-600 mb-1">Company Name:</p>
-                    <p class="font-semibold text-gray-900">{{ verificationData.company_name }}</p>
+                    <p class="text-xs text-gray-500 mb-1">Company Name:</p>
+                    <p class="font-semibold text-gray-500">{{ verificationData.company_name }}</p>
                   </div>
                   <div>
-                    <p class="text-xs text-gray-600 mb-1">ID Type:</p>
-                    <p class="font-semibold text-gray-900">{{ verificationData.id_type_name }}</p>
+                    <p class="text-xs text-gray-500 mb-1">ID Type:</p>
+                    <p class="font-semibold text-gray-500">{{ verificationData.id_type_name }}</p>
                   </div>
                   <div v-if="verificationData.address" class="col-span-1 md:col-span-2">
-                    <p class="text-xs text-gray-600 mb-1">Registered Address:</p>
-                    <p class="font-semibold text-gray-900">
+                    <p class="text-xs text-gray-500 mb-1">Registered Address:</p>
+                    <p class="font-semibold text-gray-500">
                         {{ verificationData.address.block_address }}, 
                         {{ verificationData.address.barangay }}, 
                         {{ verificationData.address.city }}, 
@@ -1034,17 +1034,17 @@
                     </p>
                   </div>
                   <div>
-                    <p class="text-xs text-gray-600 mb-1">ID Number:</p>
-                    <p class="font-semibold text-gray-900">{{ verificationData.id_number }}</p>
+                    <p class="text-xs text-gray-500 mb-1">ID Number:</p>
+                    <p class="font-semibold text-gray-500">{{ verificationData.id_number }}</p>
                   </div>
                   <div>
-                    <p class="text-xs text-gray-600 mb-1">Business Registration Number:</p>
-                    <p class="font-semibold text-gray-900">{{ verificationData.business_registration_number }}</p>
+                    <p class="text-xs text-gray-500 mb-1">Business Registration Number:</p>
+                    <p class="font-semibold text-gray-500">{{ verificationData.business_registration_number }}</p>
                   </div>
                 </div>
                 
                 <div class="pt-4 border-t border-gray-200">
-                  <p class="text-xs text-gray-600 mb-3">Uploaded Documents:</p>
+                  <p class="text-xs text-gray-500 mb-3">Uploaded Documents:</p>
                   <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <a v-for="(url, field) in verificationData.photos" :key="field" 
                       :href="url" target="_blank" 
@@ -1059,12 +1059,12 @@
                 
                 <div class="pt-4 border-t border-gray-200 flex justify-between">
                   <div>
-                    <p class="text-xs text-gray-600 mb-1">Submitted:</p>
-                    <p class="font-semibold text-gray-900">{{ formatDateTime(verificationData.submitted_at) }}</p>
+                    <p class="text-xs text-gray-500 mb-1">Submitted:</p>
+                    <p class="font-semibold text-gray-500">{{ formatDateTime(verificationData.submitted_at) }}</p>
                   </div>
                   <div class="text-right">
-                    <p class="text-xs text-gray-600 mb-1">Attempts Used:</p>
-                    <p class="font-semibold text-gray-900">{{ verificationData.resubmission_count || 0 }} / 3</p>
+                    <p class="text-xs text-gray-500 mb-1">Attempts Used:</p>
+                    <p class="font-semibold text-gray-500">{{ verificationData.resubmission_count || 0 }} / 3</p>
                   </div>
                 </div>
                 

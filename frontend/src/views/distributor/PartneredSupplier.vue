@@ -60,7 +60,7 @@
                 {{ getInitials(supplier.company_name) }}
               </div>
               <div>
-                <h3 class="text-base font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                <h3 class="text-base font-bold text-slate-500 leading-tight group-hover:text-indigo-600 transition-colors">
                   {{ supplier.company_name }}
                 </h3>
                 <span class="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full mt-1 inline-block">
@@ -84,7 +84,7 @@
               <div class="flex items-center gap-2">
                 <div class="flex items-center text-amber-500">
                   <Star class="h-3.5 w-3.5 fill-current" />
-                  <span class="text-sm font-bold ml-1 text-slate-700">{{ supplier.rating }}</span>
+                  <span class="text-sm font-bold ml-1 text-slate-500">{{ supplier.rating }}</span>
                 </div>
                 <span class="text-xs text-slate-400">/ 5.0</span>
               </div>
@@ -93,7 +93,7 @@
               <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Fulfillment</span>
               <div class="flex items-center gap-2">
                 <Progress :model-value="supplier.fulfillment_rate" class="h-1.5 w-16" />
-                <span class="text-xs font-bold text-slate-700">{{ supplier.fulfillment_rate }}%</span>
+                <span class="text-xs font-bold text-slate-500">{{ supplier.fulfillment_rate }}%</span>
               </div>
             </div>
           </div>
@@ -101,17 +101,17 @@
           <div class="space-y-2.5">
             <div class="flex items-start gap-3">
               <MapPin class="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
-              <span class="text-sm text-slate-600 leading-tight line-clamp-1" :title="supplier.location">
+              <span class="text-sm text-slate-500 leading-tight line-clamp-1" :title="supplier.location">
                 {{ supplier.location }}
               </span>
             </div>
             <div class="flex items-center gap-3">
               <User class="h-4 w-4 text-slate-400 shrink-0" />
-              <span class="text-sm text-slate-600">{{ supplier.contact_person }}</span>
+              <span class="text-sm text-slate-500">{{ supplier.contact_person }}</span>
             </div>
             <div class="flex items-center gap-3">
               <Phone class="h-4 w-4 text-slate-400 shrink-0" />
-              <span class="text-sm text-slate-600">{{ supplier.phone }}</span>
+              <span class="text-sm text-slate-500">{{ supplier.phone }}</span>
             </div>
           </div>
         </CardContent>
@@ -119,7 +119,7 @@
         <CardFooter class="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-3">
           <Button 
             variant="outline" 
-            class="flex-1 border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50" 
+            class="flex-1 border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50" 
             @click="openDetails(supplier)"
           >
             <span v-if="supplier.status === 'pending_supplier' && supplier.last_proposed_by === 'supplier'" class="text-amber-600 font-bold">Review Proposal</span>

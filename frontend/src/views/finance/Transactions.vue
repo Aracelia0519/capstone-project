@@ -72,15 +72,15 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
       <div class="text-center">
-        <span class="block text-sm text-gray-600 mb-1">Total Records</span>
-        <span class="text-xl font-bold text-gray-900">{{ filteredTransactions.length }}</span>
+        <span class="block text-sm text-gray-500 mb-1">Total Records</span>
+        <span class="text-xl font-bold text-gray-500">{{ filteredTransactions.length }}</span>
       </div>
       <div class="text-center">
-        <span class="block text-sm text-gray-600 mb-1">Total Amount Selected</span>
-        <span class="text-xl font-bold text-gray-900">₱{{ totalAmount.toLocaleString() }}</span>
+        <span class="block text-sm text-gray-500 mb-1">Total Amount Selected</span>
+        <span class="text-xl font-bold text-gray-500 ">₱{{ totalAmount.toLocaleString() }}</span>
       </div>
       <div class="text-center">
-        <span class="block text-sm text-gray-600 mb-1">Pending Amount</span>
+        <span class="block text-sm text-gray-500 mb-1">Pending Amount</span>
         <span class="text-xl font-bold text-amber-600">₱{{ pendingAmount.toLocaleString() }}</span>
       </div>
     </div>
@@ -107,16 +107,16 @@
           </TableHeader>
           <TableBody>
             <TableRow v-for="transaction in paginatedTransactions" :key="transaction.id" class="hover:bg-slate-50">
-              <TableCell class="font-mono text-sm text-gray-900">{{ transaction.id }}</TableCell>
-              <TableCell class="text-sm text-gray-700">{{ transaction.date }}</TableCell>
+              <TableCell class="font-mono text-sm ">{{ transaction.id }}</TableCell>
+              <TableCell class="text-sm ">{{ transaction.date }}</TableCell>
               <TableCell>
                 <div class="flex flex-col">
-                  <span class="font-medium text-gray-900">{{ transaction.party }}</span>
+                  <span class="font-medium ">{{ transaction.party }}</span>
                   <span class="text-xs text-gray-500">{{ transaction.role }}</span>
                 </div>
               </TableCell>
               <TableCell class="text-right">
-                <span class="font-bold text-gray-900">
+                <span class="font-bold ">
                   ₱{{ transaction.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) }}
                 </span>
               </TableCell>

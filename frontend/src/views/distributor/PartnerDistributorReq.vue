@@ -22,7 +22,7 @@
           <Clock class="h-4 w-4 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold text-slate-900">{{ requests.length }}</div>
+          <div class="text-2xl font-bold text-slate-500">{{ requests.length }}</div>
           <p class="text-xs text-muted-foreground">Requires immediate attention</p>
         </CardContent>
       </Card>
@@ -33,7 +33,7 @@
           <CheckCircle2 class="h-4 w-4 text-emerald-500" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold text-slate-900">0</div>
+          <div class="text-2xl font-bold text-slate-500">0</div>
           <p class="text-xs text-muted-foreground">In the last 7 days</p>
         </CardContent>
       </Card>
@@ -55,7 +55,7 @@
       <div class="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow class="bg-slate-50/50">
+            <TableRow class="">
               <TableHead>Supplier</TableHead>
               <TableHead>Requested By</TableHead>
               <TableHead>Date</TableHead>

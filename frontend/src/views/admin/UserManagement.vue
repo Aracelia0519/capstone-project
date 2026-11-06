@@ -54,7 +54,7 @@
             <i :class="`fas ${stat.icon} text-white text-sm`"></i>
           </div>
           <div>
-            <p class="text-2xl font-bold text-slate-900 leading-none">{{ statistics[key] || 0 }}</p>
+            <p class="text-2xl font-bold  leading-none">{{ statistics[key] || 0 }}</p>
             <p class="text-xs text-slate-500 font-medium mt-1">{{ stat.label }}</p>
           </div>
         </CardContent>
@@ -170,7 +170,7 @@
                       {{ user.initials }}
                     </div>
                     <div class="flex flex-col">
-                      <span class="font-medium text-slate-900">{{ user.full_name }}</span>
+                      <span class="font-medium ">{{ user.full_name }}</span>
                       <span class="text-xs text-slate-500">Added {{ user.created_at }}</span>
                     </div>
                   </div>

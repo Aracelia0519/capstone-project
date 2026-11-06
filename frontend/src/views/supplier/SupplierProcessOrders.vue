@@ -441,7 +441,7 @@ onMounted(() => {
       <div class="w-80 lg:w-96 border-r bg-background flex flex-col h-full">
         <div class="p-4 border-b space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-lg flex items-center gap-2">
+            <h2 class="font-semibold text-lg flex items-center gap-2 text-gray-500">
               <Package class="h-5 w-5 text-primary" /> 
               Processing Orders
             </h2>
@@ -492,7 +492,7 @@ onMounted(() => {
 
       <div class="flex-1 flex flex-col h-full overflow-hidden bg-muted/10">
         <header class="h-16 border-b bg-background flex items-center px-6 justify-between shrink-0">
-          <h1 class="text-xl font-bold flex items-center gap-2">
+          <h1 class="text-xl font-bold flex items-center gap-2 text-gray-500">
             <FileText class="h-5 w-5 text-muted-foreground" />
             Process Order
           </h1>
@@ -752,8 +752,8 @@ onMounted(() => {
            <div class="bg-muted/50 p-6 rounded-full mb-4">
               <Package class="h-12 w-12 opacity-50" />
            </div>
-           <h3 class="text-lg font-semibold text-center">No Order Selected</h3>
-           <p class="text-center">Select a processing order from the left to view details.</p>
+           <h3 class="text-lg font-semibold text-center text-gray-500">No Order Selected</h3>
+           <p class="text-center text-gray-500">Select a processing order from the left to view details.</p>
         </div>
       </div>
     </div>

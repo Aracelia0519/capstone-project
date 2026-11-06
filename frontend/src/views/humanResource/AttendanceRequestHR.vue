@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50/50 p-4 md:p-6">
+  <div class="min-h-screen  p-4 md:p-6">
     <Toaster richColors position="top-right" expand />
 
     <div class="mb-8">
@@ -21,8 +21,8 @@
               </div>
               <span class="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Total</span>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ requests.length }}</h3>
-            <p class="text-gray-600 text-sm">All Records</p>
+            <h3 class="text-2xl font-bold text-gray-500 mb-1">{{ requests.length }}</h3>
+            <p class="text-gray-500 text-sm">All Records</p>
           </CardContent>
         </Card>
 
@@ -34,8 +34,8 @@
               </div>
               <span class="text-sm font-medium text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">Action Needed</span>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ counts.pending }}</h3>
-            <p class="text-gray-600 text-sm">Pending Review</p>
+            <h3 class="text-2xl font-bold text-gray-500 mb-1">{{ counts.pending }}</h3>
+            <p class="text-gray-500 text-sm">Pending Review</p>
           </CardContent>
         </Card>
 
@@ -46,8 +46,8 @@
                 <CheckCircle2 class="w-6 h-6 text-green-600" />
               </div>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ counts.approved }}</h3>
-            <p class="text-gray-600 text-sm">Approved</p>
+            <h3 class="text-2xl font-bold text-gray-500 mb-1">{{ counts.approved }}</h3>
+            <p class="text-gray-500 text-sm">Approved</p>
           </CardContent>
         </Card>
 
@@ -58,8 +58,8 @@
                 <XCircle class="w-6 h-6 text-red-600" />
               </div>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ counts.rejected }}</h3>
-            <p class="text-gray-600 text-sm">Rejected Requests</p>
+            <h3 class="text-2xl font-bold text-gray-500 mb-1">{{ counts.rejected }}</h3>
+            <p class="text-gray-500 text-sm">Rejected Requests</p>
           </CardContent>
         </Card>
       </div>
@@ -129,20 +129,20 @@
               >
                 <TableCell class="font-medium pl-6">
                   <div class="flex items-center gap-3">
-                    <div class="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                    <div class="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 font-bold text-xs">
                       {{ getInitials(request.employeeName) }}
                     </div>
                     <div>
-                      <span class="block text-gray-700">{{ request.employeeName }}</span>
-                      <span class="text-xs text-gray-400">ID: {{ request.employeeCode }}</span>
+                      <span class="block text-gray-500">{{ request.employeeName }}</span>
+                      <span class="text-xs text-gray-500">ID: {{ request.employeeCode }}</span>
                     </div>
                   </div>
                 </TableCell>
 
                 <TableCell>
                   <div class="flex flex-col">
-                    <span class="text-sm font-medium text-gray-700">{{ formatDate(request.requested_time) }}</span>
-                    <span class="text-xs text-indigo-600 font-medium bg-indigo-50 w-fit px-1.5 py-0.5 rounded mt-0.5">
+                    <span class="text-sm font-medium text-gray-500">{{ formatDate(request.requested_time) }}</span>
+                    <span class="text-xs text-indigo-500 font-medium bg-indigo-50 w-fit px-1.5 py-0.5 rounded mt-0.5">
                       {{ request.type }}
                     </span>
                   </div>

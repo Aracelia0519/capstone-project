@@ -49,7 +49,7 @@
         <!-- Quick Actions Card -->
         <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-100 p-5">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-800">Quick Actions</h2>
+            <h2 class="text-lg font-semibold text-gray-500">Quick Actions</h2>
             <div class="p-2 bg-green-100 rounded-lg">
               <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -159,8 +159,8 @@
           <div class="p-5 md:p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-bold text-gray-800">HR Managers</h2>
-                <p class="text-gray-600 mt-1">Manage your HR department managers and personnel</p>
+                <h2 class="text-xl font-bold text-gray-500">HR Managers</h2>
+                <p class="text-gray-500 mt-1">Manage your HR department managers and personnel</p>
               </div>
               <div class="flex items-center space-x-3">
                 <!-- Search -->
@@ -176,8 +176,8 @@
                 <!-- Filter Dropdown -->
                 <div class="relative">
                   <button @click="showHRFilterDropdown = !showHRFilterDropdown"
-                    class="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    class="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center text-gray-500">
+                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     Filter
@@ -1777,7 +1777,6 @@ export default {
 
 <style scoped>
 .hr-managers {
-  background: #ffffff;
   min-height: 100vh;
 }
 

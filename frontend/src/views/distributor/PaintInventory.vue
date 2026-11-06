@@ -157,7 +157,7 @@
                   <div class="flex items-center">
                     <div class="flex-shrink-0 w-10 h-10 rounded-md mr-3 border border-gray-200" :style="{ backgroundColor: product.colorHex }"></div>
                     <div>
-                      <p class="font-medium text-gray-900">{{ product.name }}</p>
+                      <p class="font-medium text-gray-500">{{ product.name }}</p>
                       <p class="text-sm text-gray-500 md:hidden">{{ product.brand }}</p>
                     </div>
                   </div>
@@ -170,7 +170,7 @@
                 <TableCell class="py-3 px-4 md:px-6">
                   <div class="flex items-center">
                     <div class="w-6 h-6 rounded-full border border-gray-300 mr-2" :style="{ backgroundColor: product.colorHex }"></div>
-                    <span class="text-gray-700">{{ product.colorBase }}</span>
+                    <span class="text-gray-500">{{ product.colorBase }}</span>
                   </div>
                 </TableCell>
                 <TableCell class="py-3 px-4 md:px-6">
@@ -186,7 +186,7 @@
                     </span>
                   </div>
                 </TableCell>
-                <TableCell class="py-3 px-4 md:px-6 text-gray-700 hidden lg:table-cell">
+                <TableCell class="py-3 px-4 md:px-6 text-gray-500 hidden lg:table-cell">
                   ₱{{ formatPrice(product.price) }}
                 </TableCell>
               </TableRow>

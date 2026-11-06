@@ -321,7 +321,7 @@ onMounted(() => {
     
 
     <div class="flex flex-col gap-4">
-        <Alert class="bg-muted/50 border-primary/20">
+        <Alert class=" border-primary/20">
             <AlertCircle class="h-4 w-4 text-primary" />
             <AlertTitle>Summary of Changes</AlertTitle>
             <AlertDescription class="mt-2 flex flex-col gap-2">
@@ -337,7 +337,7 @@ onMounted(() => {
             </AlertDescription>
         </Alert>
 
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3 text-gray-400">
             <Button variant="outline" :disabled="isLoading || isSaving">Cancel</Button>
             <Button @click="handleSaveClick" :disabled="isLoading || isSaving" class="min-w-[140px]">
                 <Loader2 v-if="isSaving" class="w-4 h-4 mr-2 animate-spin" />

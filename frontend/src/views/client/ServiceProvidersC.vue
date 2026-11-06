@@ -192,7 +192,7 @@
               <Badge 
                 variant="outline"
                 class="border-0 px-2 py-1 rounded-full text-xs font-normal" 
-                :class="provider.status === 'Available' ? 'bg-green-900/30 text-green-400' : 'bg-blue-900/30 text-blue-400'"
+                :class="provider.status === 'Available' ? 'bg-green-900/30 text-green-600' : 'bg-blue-900/30 text-blue-300'"
               >
                 {{ provider.status }}
               </Badge>
@@ -265,7 +265,7 @@
                 class="relative p-2 rounded-lg bg-gradient-to-br from-teal-400/10 to-emerald-400/10 cursor-pointer group/project border border-teal-500/20 hover:border-teal-400 transition-colors"
                 @click="viewProject(project)"
               >
-                <span class="text-xs font-medium text-teal-300 truncate block text-center">{{ project.name }}</span>
+                <span class="text-xs font-medium text-teal-600 truncate block text-center">{{ project.name }}</span>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@
           <div class="flex gap-2 pt-4 border-t border-slate-700/30">
             <Button 
               @click="contactProvider(provider)"
-              class="flex-1 py-5 px-4 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-teal-300 rounded-lg border border-teal-500/30 hover:border-teal-400/50 hover:bg-teal-500/30 hover:text-teal-200 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
+              class="flex-1 py-5 px-4 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-teal-600 rounded-lg border border-teal-500/30 hover:border-teal-400/50 hover:bg-teal-500/30 hover:text-teal-200 transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

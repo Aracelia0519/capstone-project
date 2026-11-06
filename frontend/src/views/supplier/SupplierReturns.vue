@@ -460,7 +460,7 @@ onMounted(() => {
             </p>
           </div>
           <div v-else>
-             <h1 class="text-xl font-bold">Select a Return</h1>
+             <h1 class="text-xl font-bold text-gray-500">Select a Return</h1>
              <p class="text-sm text-muted-foreground">Choose an item from the sidebar to review</p>
           </div>
         </header>

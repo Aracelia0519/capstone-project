@@ -10,7 +10,7 @@
             <span class="flex h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
             System Live
           </div>
-          <h2 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900">
+          <h2 class="text-4xl font-extrabold tracking-tight  bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900">
             Platform Analytics
           </h2>
           <p class="text-sm font-medium text-slate-500">Real-time overview of network health, user metrics, and global reports.</p>

@@ -192,7 +192,7 @@ const idTypes = [
     
     <div class="flex items-center space-x-4 mb-6">
       <div class="p-3 bg-primary/10 rounded-full">
-        <ShieldCheck class="w-6 h-6 text-primary" />
+        <ShieldCheck class="w-6 h-6 text-gray-500" />
       </div>
       <div>
         <h2 class="text-2xl font-bold tracking-tight">Create Personnel Officer</h2>

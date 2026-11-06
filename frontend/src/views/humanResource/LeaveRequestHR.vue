@@ -241,7 +241,7 @@ onMounted(() => {
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-3xl font-bold tracking-tight">Leave Management</h2>
-        <p class="text-muted-foreground">Manage pending approvals and view leave statistics.</p>
+        <p class="text-muted-foreground text-gray-500">Manage pending approvals and view leave statistics.</p>
       </div>
       <Button variant="outline" @click="fetchRequests" :disabled="isLoading">
         Refresh

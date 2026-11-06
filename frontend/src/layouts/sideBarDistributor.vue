@@ -25,11 +25,7 @@
         </div>
       </div>
 
-      <div v-if="(state === 'expanded' || isMobile) && isVerified && !isTerminated" class="mt-4 grid grid-cols-3 gap-1 p-2 bg-slate-800/40 rounded-xl border border-slate-700/50 nav-text-clip">
-        <div class="text-center"><p class="text-[9px] text-slate-500 uppercase">Orders</p><p class="text-xs font-bold text-blue-300">12</p></div>
-        <div class="text-center border-x border-slate-700"><p class="text-[9px] text-slate-500 uppercase">Stock</p><p class="text-xs font-bold text-purple-300">85%</p></div>
-        <div class="text-center"><p class="text-[9px] text-slate-500 uppercase">Low</p><p class="text-xs font-bold text-pink-300">3</p></div>
-      </div>
+      
     </SidebarHeader>
 
     <SidebarContent class="px-3 py-4 space-y-4 bg-slate-900 overflow-x-hidden">

@@ -256,7 +256,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen w-full font-sans p-6 md:p-8 overflow-x-hidden bg-slate-50/50">
+  <div class="min-h-screen w-full font-sans p-6 md:p-8 overflow-x-hidden  ">
     <div class="max-w-[1600px] mx-auto space-y-8">
       
       <!-- Header -->
@@ -266,7 +266,7 @@ onBeforeUnmount(() => {
             <span class="flex h-2 w-2 rounded-full bg-indigo-500 mr-2"></span>
             Supplier Live
           </div>
-          <h2 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900">
+          <h2 class="text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-500 via-indigo-500 to-slate-500">
             Supplier Dashboard
           </h2>
           <p class="text-sm font-medium text-slate-500">Real-time overview of sales, orders, and product reports.</p>

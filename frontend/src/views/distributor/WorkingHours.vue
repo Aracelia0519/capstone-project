@@ -22,7 +22,7 @@
           <CardHeader class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 py-4 px-4 md:px-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle class="text-base md:text-lg font-bold text-gray-800">Weekly Schedule</CardTitle>
+                <CardTitle class="text-base md:text-lg font-bold text-gray-500">Weekly Schedule</CardTitle>
                 <CardDescription class="text-xs md:text-sm">Set your standard opening and closing times.</CardDescription>
               </div>
               
@@ -96,18 +96,18 @@
                       <Input 
                         type="time" 
                         v-model="day.start"
-                        class="pl-9 h-12 md:h-10 w-full md:w-36 bg-white border-gray-200 focus:border-blue-500 rounded-lg text-sm md:text-base shadow-sm"
+                        class="pl-9 h-12 md:h-10 w-full md:w-36 bg-white border-gray-200 focus:border-blue-500 rounded-lg text-sm md:text-base shadow-sm text-gray-400"
                       />
                     </div>
                     
                     <span class="hidden md:block text-gray-300 font-medium">to</span>
 
                     <div class="relative w-full md:w-auto">
-                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-gray-400 tracking-wider">Out</span>
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-gray-400 tracking-wider ">Out</span>
                       <Input 
                         type="time" 
                         v-model="day.end"
-                        class="pl-10 h-12 md:h-10 w-full md:w-36 bg-white border-gray-200 focus:border-blue-500 rounded-lg text-sm md:text-base shadow-sm"
+                        class="pl-10 h-12 md:h-10 w-full md:w-36 bg-white border-gray-200 focus:border-blue-500 rounded-lg text-sm md:text-base shadow-sm text-gray-400"
                       />
                     </div>
                   </div>
@@ -164,12 +164,12 @@
 
         <Card class="border-gray-200 shadow-md">
           <CardHeader class="pb-3">
-            <CardTitle class="text-base font-bold text-gray-800">Preferences</CardTitle>
+            <CardTitle class="text-base font-bold text-gray-500">Preferences</CardTitle>
           </CardHeader>
           <CardContent class="space-y-5">
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
-                <Label class="text-sm font-medium text-gray-700">Auto-approve</Label>
+                <Label class="text-sm font-medium text-gray-500">Auto-approve</Label>
                 <p class="text-xs text-gray-500">Approve attendance automatically</p>
               </div>
               <button
@@ -187,7 +187,7 @@
             
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
-                <Label class="text-sm font-medium text-gray-700">Strict Late Policy</Label>
+                <Label class="text-sm font-medium text-gray-500">Strict Late Policy</Label>
                 <p class="text-xs text-gray-500">Mark late if >1 min past start</p>
               </div>
               <button

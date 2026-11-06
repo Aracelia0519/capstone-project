@@ -253,7 +253,7 @@ const idTypes = [
     
     <div class="flex items-center space-x-4 mb-6">
       <div class="p-3 bg-primary/10 rounded-full">
-        <Users class="w-6 h-6 text-primary" />
+        <Users class="w-6 h-6 text-gray-500" />
       </div>
       <div>
         <h2 class="text-2xl font-bold tracking-tight">Add New Personnel</h2>

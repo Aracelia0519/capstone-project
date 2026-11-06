@@ -34,7 +34,7 @@
             </div>
             <div>
               <h3 class="text-sm font-medium text-gray-500 mb-1">Period Gross Sales</h3>
-              <p class="text-2xl font-bold text-gray-900 mb-2">₱{{ formatNumber(dashboardData.totalSales) }}</p>
+              <p class="text-2xl font-bold  mb-2">₱{{ formatNumber(dashboardData.totalSales) }}</p>
               <div class="flex items-center gap-2">
                 <span class="text-sm font-medium" :class="dashboardData.salesChangePercent >= 0 ? 'text-green-600' : 'text-red-600'">
                   {{ dashboardData.salesChangePercent >= 0 ? '↑' : '↓' }} {{ Math.abs(dashboardData.salesChangePercent) }}%
@@ -54,7 +54,7 @@
             </div>
             <div>
               <h3 class="text-sm font-medium text-gray-500 mb-1">Pending Procurements</h3>
-              <p class="text-2xl font-bold text-gray-900 mb-2">{{ dashboardData.pendingBudgetCount }}</p>
+              <p class="text-2xl font-bold  mb-2">{{ dashboardData.pendingBudgetCount }}</p>
               <p class="text-sm text-gray-600">Total: ₱{{ formatNumber(dashboardData.pendingBudgetAmount) }}</p>
             </div>
           </CardContent>
@@ -69,7 +69,7 @@
             </div>
             <div>
               <h3 class="text-sm font-medium text-gray-500 mb-1">Period Total Expenses</h3>
-              <p class="text-2xl font-bold text-gray-900 mb-2">₱{{ formatNumber(dashboardData.totalExpenses) }}</p>
+              <p class="text-2xl font-bold mb-2">₱{{ formatNumber(dashboardData.totalExpenses) }}</p>
               <p class="text-sm text-gray-600">VAT, Payroll, Procurements, Refunds</p>
             </div>
           </CardContent>
@@ -82,8 +82,8 @@
           <CardContent class="p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">Revenue Per Month</h3>
-                <p class="text-sm text-gray-600">Last 6 months performance</p>
+                <h3 class="text-lg font-semibold  mb-1">Revenue Per Month</h3>
+                <p class="text-sm text-gray-500">Last 6 months performance</p>
               </div>
               <div class="mt-2 sm:mt-0 w-[160px]">
                 <Select defaultValue="6months">
@@ -119,8 +119,8 @@
           <CardContent class="p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">Order Status Distribution</h3>
-                <p class="text-sm text-gray-600">Current month status</p>
+                <h3 class="text-lg font-semibold  mb-1">Order Status Distribution</h3>
+                <p class="text-sm text-gray-500">Current month status</p>
               </div>
               <div class="mt-2 sm:mt-0 w-[160px]">
                 <Select defaultValue="thisMonth">
@@ -140,15 +140,15 @@
                 <div class="relative w-40 h-40 rounded-full bg-gray-100 overflow-hidden" :style="{ background: pieChartStyle }">
                   </div>
                 <div class="space-y-3">
-                  <div class="flex items-center gap-3 text-sm text-gray-700">
+                  <div class="flex items-center gap-3 text-sm ">
                     <span class="w-3 h-3 rounded-full bg-green-400"></span>
                     <span>Completed ({{ dashboardData.orderDistribution.completed }}%)</span>
                   </div>
-                  <div class="flex items-center gap-3 text-sm text-gray-700">
+                  <div class="flex items-center gap-3 text-sm ">
                     <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
                     <span>Pending ({{ dashboardData.orderDistribution.pending }}%)</span>
                   </div>
-                  <div class="flex items-center gap-3 text-sm text-gray-700">
+                  <div class="flex items-center gap-3 text-sm ">
                     <span class="w-3 h-3 rounded-full bg-red-400"></span>
                     <span>Cancelled ({{ dashboardData.orderDistribution.cancelled }}%)</span>
                   </div>

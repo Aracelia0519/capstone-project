@@ -150,7 +150,7 @@
                 variant="secondary" 
                 size="sm"
                 @click="viewDetails(request)"
-                class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 border border-yellow-500/30 rounded-xl gap-2 shadow-lg shadow-yellow-900/20"
+                class="bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-600 border border-yellow-500/30 rounded-xl gap-2 shadow-lg shadow-yellow-900/20"
               >
                 <CreditCard class="w-4 h-4" />
                 Payment Actions

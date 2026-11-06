@@ -294,9 +294,9 @@
               <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <Select v-model="stockFilter">
                   <SelectTrigger class="w-full sm:w-[180px] bg-white border-slate-200 rounded-xl shadow-sm focus:ring-blue-500 font-medium">
-                    <SelectValue placeholder="All Products" />
+                    <SelectValue class="text-gray-500" placeholder="All Products" />
                   </SelectTrigger>
-                  <SelectContent class="rounded-xl shadow-xl border-slate-100">
+                  <SelectContent class="rounded-xl shadow-xl border-slate-100 text-gray-500">
                     <SelectItem value="all">All Products</SelectItem>
                     <SelectItem value="low">Low Stock</SelectItem>
                     <SelectItem value="critical">Critical</SelectItem>
@@ -399,7 +399,7 @@
                         <Progress :model-value="item.stockPercentage" class="h-2.5 bg-slate-100 shadow-inner" :indicator-class="getStockPercentageColor(item.stockPercentage)" />
                       </div>
                       <div class="text-right min-w-[50px]">
-                        <div class="font-extrabold text-slate-800 text-base">{{ Math.min(item.stockPercentage, 100) }}%</div>
+                        <div class="font-extrabold text-slate-500 text-base">{{ Math.min(item.stockPercentage, 100) }}%</div>
                       </div>
                     </div>
                   </TableCell>

@@ -7,8 +7,8 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-              <div class="p-2 bg-linear-to-br from-gray-600 to-gray-500 rounded-xl shadow-xl">
-                <UserCog class="w-6 h-6 text-white" />
+              <div class="p-2 text-gray-500 rounded-xl shadow-xl">
+                <UserCog class="w-6 h-6 text-gray-500" />
               </div>
               Account Management
             </h1>
@@ -90,7 +90,7 @@
                 </button>
               </div>
 
-              <h2 class="text-2xl font-bold text-white mb-1">{{ user.full_name || `${user.first_name} ${user.last_name}` }}</h2>
+              <h2 class="text-2xl font-bold text-gray-500 mb-1">{{ user.full_name || `${user.first_name} ${user.last_name}` }}</h2>
               <p class="text-gray-400 mb-4">{{ formatRole(user.role) }}</p>
 
               <Badge variant="outline" class="mb-6 px-4 py-1.5 rounded-full capitalize" :class="statusClasses">
@@ -113,7 +113,7 @@
 
               <div class="text-center">
                 <div class="text-gray-400 text-sm mb-1">Member Since</div>
-                <div class="text-white font-medium">{{ formatDate(user.created_at) }}</div>
+                <div class="text-gray-500 font-medium">{{ formatDate(user.created_at) }}</div>
               </div>
             </CardContent>
           </Card>
@@ -125,19 +125,19 @@
                   <Shield class="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 class="text-lg font-bold text-white">Security</h2>
-                  <p class="text-gray-400 text-sm">Account security status</p>
+                  <h2 class="text-lg font-bold text-gray-500">Security</h2>
+                  <p class="text-gray-500 text-sm">Account security status</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent class="space-y-4">
               <div class="flex items-center justify-between">
-                <span class="text-gray-300">Password Last Changed</span>
-                <span class="text-sm text-gray-400">{{ securityStatus.passwordLastChanged }}</span>
+                <span class="text-gray-500">Password Last Changed</span>
+                <span class="text-sm text-gray-500">{{ securityStatus.passwordLastChanged }}</span>
               </div>
               
               <div class="flex items-center justify-between">
-                <span class="text-gray-300">Email Verified</span>
+                <span class="text-gray-500">Email Verified</span>
                 <span v-if="user.email_verified_at" class="inline-flex items-center gap-1 text-green-400">
                   <CheckCircle2 class="w-4 h-4" /> Verified
                 </span>
@@ -147,7 +147,7 @@
               </div>
               
               <div class="flex items-center justify-between">
-                <span class="text-gray-300">ID Verification</span>
+                <span class="text-gray-500">ID Verification</span>
                 <span class="capitalize" :class="idVerificationStatusClass">{{ idVerificationStatus }}</span>
               </div>
 
@@ -171,7 +171,7 @@
                     <User class="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 class="text-xl font-bold text-white">Personal Details</h2>
+                    <h2 class="text-xl font-bold text-gray-500">Personal Details</h2>
                     <p class="text-gray-400 text-sm">Update your personal information</p>
                   </div>
                 </div>
@@ -183,7 +183,7 @@
             <CardContent>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                  <Label class="text-gray-300">First Name</Label>
+                  <Label class="text-gray-500">First Name</Label>
                   <Input 
                     v-model="user.first_name" 
                     @input="markChanged"
@@ -194,7 +194,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <Label class="text-gray-300">Last Name</Label>
+                  <Label class="text-gray-500">Last Name</Label>
                   <Input 
                     v-model="user.last_name" 
                     @input="markChanged"
@@ -205,7 +205,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <Label class="text-gray-300">Email Address</Label>
+                  <Label class="text-gray-500">Email Address</Label>
                   <Input 
                     type="email"
                     v-model="user.email" 
@@ -220,7 +220,7 @@
                 </div>
 
                 <div class="space-y-2">
-                  <Label class="text-gray-300">Phone Number</Label>
+                  <Label class="text-gray-500">Phone Number</Label>
                   <Input 
                     type="tel"
                     v-model="user.phone" 
@@ -232,7 +232,7 @@
                 </div>
 
                 <div class="md:col-span-2 space-y-2">
-                  <Label class="text-gray-300">Address Overview</Label>
+                  <Label class="text-gray-500">Address Overview</Label>
                   <Textarea 
                     v-model="user.address" 
                     @input="markChanged"
@@ -243,7 +243,7 @@
                 </div>
 
                 <div class="md:col-span-2 space-y-2">
-                  <Label class="text-gray-300">Bio / Professional Summary</Label>
+                  <Label class="text-gray-500">Bio / Professional Summary</Label>
                   <Textarea 
                     v-model="user.bio" 
                     @input="markChanged"
@@ -354,7 +354,7 @@
                     <FileBadge class="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 class="text-xl font-bold text-white">Identity & Location Verification</h2>
+                    <h2 class="text-xl font-bold text-gray-500">Identity & Location Verification</h2>
                     <p class="text-gray-400 text-sm">Complete your profile setup in 4 easy steps</p>
                      <p v-if="idVerification.rejectionReason" class="text-xs text-red-400 mt-1">
                       Reason: {{ idVerification.rejectionReason }}
@@ -376,7 +376,7 @@
                   <CheckCircle2 class="w-6 h-6 text-green-400" />
                   <div>
                     <h3 class="font-semibold text-green-400">Account Verified</h3>
-                    <p class="text-gray-300 text-sm">Your identity and location have been verified and approved.</p>
+                    <p class="text-gray-500 text-sm">Your identity and location have been verified and approved.</p>
                   </div>
                 </div>
               </div>

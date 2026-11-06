@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-muted/20 p-4 md:p-8">
+  <div class="min-h-screen  p-4 md:p-8">
     <div class="max-w-4xl mx-auto">
       
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
-          <Wallet class="w-8 h-8 text-primary" />
+        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3 text-gray-500">
+          <Wallet class="w-8 h-8 " />
           Payment Settings
         </h1>
         <p class="text-muted-foreground mt-2 text-lg">

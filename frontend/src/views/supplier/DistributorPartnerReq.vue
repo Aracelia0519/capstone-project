@@ -7,7 +7,7 @@
           Manage incoming partnership proposals, active partners, and negotiations.
         </p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 text-gray-500">
         <Button variant="outline" size="sm" @click="fetchRequests">
           <RefreshCw :class="{'animate-spin': loading}" class="h-4 w-4 mr-2" />
           Refresh Data
@@ -90,7 +90,7 @@
       <div class="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow class="bg-slate-50/50">
+            <TableRow class="">
               <TableHead>Distributor (Buyer)</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Contract Until</TableHead>
@@ -119,7 +119,7 @@
 
             <TableRow v-for="req in filteredRequests" :key="req.id" class="hover:bg-slate-50/50">
               <TableCell>
-                <div class="font-medium text-slate-900">
+                <div class="font-medium text-slate-500">
                   {{ req.distributor?.company_name || req.distributor?.first_name }}
                 </div>
                 <div class="text-xs text-slate-500">{{ req.distributor?.email }}</div>
@@ -138,11 +138,11 @@
               </TableCell>
 
               <TableCell>
-                <div class="text-sm font-medium text-slate-800">
+                <div class="text-sm font-medium text-slate-500">
                     <span v-if="(req.status === 'active' || req.status === 'pending_supplier') && (req.proposed_end_date || req.contract_end_date)">
                         {{ formatDate(req.proposed_end_date || req.contract_end_date) }}
                     </span>
-                    <span v-else class="text-slate-400">N/A</span>
+                    <span v-else class="text-slate-500">N/A</span>
                 </div>
                 <div class="text-xs text-slate-500" v-if="req.status === 'pending_supplier'">
                    <span v-if="req.last_proposed_by === 'supplier'" class="text-amber-600">Pending Distributor</span>
@@ -151,7 +151,7 @@
               </TableCell>
 
               <TableCell>
-                <p class="text-sm text-slate-600 line-clamp-1 max-w-[250px]" :title="req.request_message">
+                <p class="text-sm text-slate-500 line-clamp-1 max-w-[250px]" :title="req.request_message">
                   {{ req.request_message || 'Standard agreement.' }}
                   <span v-if="parseTerms(req.negotiated_terms).length" class="text-blue-500 font-semibold ml-1"> (+{{ parseTerms(req.negotiated_terms).length }} terms)</span>
                 </p>

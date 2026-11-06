@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+  <div class="min-h-screen  flex flex-col font-sans text-slate-900">
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
         <div class="flex flex-col">
@@ -109,7 +109,7 @@
           </CardHeader>
           <CardContent class="space-y-6 pt-6">
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Category</h4>
+              <h4 class="text-sm font-medium text-slate-500">Category</h4>
               <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 <div v-for="category in categories" :key="category.value" class="flex items-center justify-between group">
                   <div class="flex items-center space-x-2">
@@ -121,7 +121,7 @@
                     />
                     <label 
                       :for="category.value" 
-                      class="text-sm text-slate-600 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                      class="text-sm text-slate-500 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
                     >
                       <span class="w-2 h-2 rounded-full" :class="getCategoryDotClass(category.value)"></span>
                       {{ category.label }}
@@ -133,7 +133,7 @@
             </div>
 
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Product Type</h4>
+              <h4 class="text-sm font-medium text-slate-500">Product Type</h4>
               <Select v-model="selectedType">
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
@@ -148,7 +148,7 @@
             </div>
 
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Size</h4>
+              <h4 class="text-sm font-medium text-slate-500">Size</h4>
               <div class="flex flex-wrap gap-2">
                 <Badge 
                   v-for="size in allSizes" 
@@ -332,7 +332,7 @@
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600"
+                  class="flex-1 border-slate-200 hover:bg-slate-50 hover:text-blue-600 text-gray-500"
                   @click="toggleGroupExpand(group.key)"
                 >
                   <ChevronDown class="w-3.5 h-3.5 mr-1" :class="{'rotate-180': expandedGroups.includes(group.key)}" />

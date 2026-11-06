@@ -346,7 +346,7 @@ onUnmounted(() => {
     <div class="hidden md:flex h-full w-full">
       <div class="w-80 lg:w-96 border-r bg-background flex flex-col h-full">
         <div class="p-4 border-b flex items-center justify-between sticky top-0 bg-background z-10 shrink-0">
-          <h2 class="font-semibold text-lg flex items-center gap-2">
+          <h2 class="font-semibold text-lg flex items-center gap-2 text-gray-500">
             <Package class="h-5 w-5" /> Incoming Orders
             <Badge v-if="incomingOrders.length > 0" variant="secondary" class="ml-2">
               {{ incomingOrders.length }}
@@ -437,7 +437,7 @@ onUnmounted(() => {
             </p>
           </div>
           <div v-else>
-             <h1 class="text-xl font-bold">Select an Order</h1>
+             <h1 class="text-xl font-bold text-gray-500">Select an Order</h1>
              <p class="text-sm text-muted-foreground">Choose an incoming order to view details</p>
           </div>
         </header>

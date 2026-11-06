@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+  <div class="min-h-screen  flex flex-col font-sans text-slate-900">
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
         <div class="flex flex-col">
@@ -49,7 +49,7 @@
           </CardHeader>
           <CardContent class="space-y-6 pt-6">
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Category</h4>
+              <h4 class="text-sm font-medium text-slate-500">Category</h4>
               <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 <div v-for="category in categories" :key="category.value" class="flex items-center justify-between group">
                   <div class="flex items-center space-x-2">
@@ -61,7 +61,7 @@
                     />
                     <label 
                       :for="category.value" 
-                      class="text-sm text-slate-600 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                      class="text-sm text-slate-500 font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
                     >
                       <span class="w-2 h-2 rounded-full" :class="getCategoryDotClass(category.value)"></span>
                       {{ category.label }}
@@ -73,7 +73,7 @@
             </div>
 
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Product Type</h4>
+              <h4 class="text-sm font-medium text-slate-500">Product Type</h4>
               <Select v-model="selectedType">
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
@@ -88,7 +88,7 @@
             </div>
 
             <div class="space-y-3">
-              <h4 class="text-sm font-medium text-slate-700">Size</h4>
+              <h4 class="text-sm font-medium text-slate-500">Size</h4>
               <div class="flex flex-wrap gap-2">
                 <Badge 
                   v-for="size in allSizes" 
@@ -234,7 +234,7 @@
                 <div class="space-y-3">
                   <div class="flex items-center justify-between">
                     <Label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Select Variant</Label>
-                    <Badge variant="outline" class="text-[10px] h-5">{{ group.variants.length }} options</Badge>
+                    <Badge variant="outline" class="text-[10px] h-5 text-slate-500">{{ group.variants.length }} options</Badge>
                   </div>
                   
                   <Select v-model="selectedGroupVariants[group.id]">
@@ -249,7 +249,7 @@
                   </Select>
 
                   <!-- Active Selected Variant Details -->
-                  <div v-if="selectedGroupVariants[group.id]" class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 transition-all">
+                  <div v-if="selectedGroupVariants[group.id]" class=" p-3 rounded-lg border border-blue-100 transition-all">
                     <template v-for="variant in group.variants" :key="variant.id">
                       <div v-if="variant.id.toString() === selectedGroupVariants[group.id]" class="flex flex-col gap-2">
                         <div class="flex justify-between items-start">
@@ -262,7 +262,7 @@
                         
                         <div class="flex justify-between items-center text-xs text-slate-500 mt-1">
                           <span class="flex items-center gap-1">
-                            <Package class="w-3 h-3 text-slate-400" />
+                            <Package class="w-3 h-3 text-slate-300" />
                             Stock: {{ variant.min_stock_level }} - {{ variant.max_stock_level }}
                           </span>
                           <Button 
