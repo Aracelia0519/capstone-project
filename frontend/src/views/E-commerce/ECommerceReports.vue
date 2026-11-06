@@ -5,7 +5,7 @@
     <div class="mb-8 md:mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 class="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight mb-2">
+          <h1 class="text-3xl md:text-4xl font-extrabold  tracking-tight mb-2">
             Analytics & Reports
           </h1>
           <p class="text-sm md:text-base text-slate-400 font-medium">Analyze e-commerce data, product performance, and procurement</p>

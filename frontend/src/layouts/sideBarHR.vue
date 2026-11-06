@@ -26,7 +26,7 @@
               :tooltip="item.text"
               :disabled="!item.enabled"
               class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50"
-              active-class="bg-gradient-to-r from-blue-500/20 to-emerald-500/10 !text-white ring-1 ring-blue-500/30"
+              active-class="bg-gradient-to-r from-blue-500/20 to-emerald-500/10  ring-1 ring-blue-500/30"
             >
               <router-link :to="item.enabled ? item.route : '#'" class="flex items-center w-full px-2" @click="handleNavClick">
                 <div class="shrink-0 flex items-center justify-center w-6 h-6">
@@ -67,7 +67,7 @@
           >
             <Button 
               variant="ghost" 
-              class="w-full h-full justify-start px-2 font-normal hover:bg-transparent text-white" 
+              class="w-full h-full justify-start px-2 font-normal " 
               @click="showLogoutModal = true"
               :disabled="isLoggingOut"
             >

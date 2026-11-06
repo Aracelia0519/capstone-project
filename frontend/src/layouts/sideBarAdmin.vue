@@ -29,7 +29,7 @@
               as-child 
               :tooltip="item.name" 
               class="h-11 w-full rounded-xl transition-all duration-300 text-white/70 hover:text-white hover:bg-slate-800/50 flex items-center"
-              active-class="bg-gradient-to-r from-blue-500/20 to-purple-500/10 !text-white ring-1 ring-blue-500/30"
+              active-class="bg-gradient-to-r from-blue-500/20 to-purple-500/10  ring-1 ring-blue-500/30"
             >
               <router-link :to="item.path" class="flex items-center w-full px-2">
                 <div class="shrink-0 flex items-center justify-center w-6 h-6">

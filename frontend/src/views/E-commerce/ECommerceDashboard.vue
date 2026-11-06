@@ -3,7 +3,7 @@
     
     <!-- Header -->
     <div class="mb-8 md:mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <h1 class="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-tight mb-2">
+      <h1 class="text-3xl md:text-4xl font-extrabold  tracking-tight mb-2">
         E-Commerce Dashboard
       </h1>
       <p class="text-slate-400 font-medium">Real-time overview of sales and performance metrics</p>

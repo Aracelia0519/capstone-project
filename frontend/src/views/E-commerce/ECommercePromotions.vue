@@ -5,7 +5,7 @@
 
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-1 md:mb-2">
+        <h1 class="text-2xl md:text-3xl font-extrabold mb-1 md:mb-2">
           Promotions & Discounts
         </h1>
         <p class="text-sm md:text-base text-gray-400">Increase sales through targeted promotions and discounts</p>
